@@ -1,0 +1,17 @@
+ar\utn\donatrack\donaciones\model\donacion\bien\BienConEstado.class
+ar\utn\donatrack\donaciones\model\donante\PersonaJuridica.class
+ar\utn\donatrack\donaciones\model\donacion\bien\Bien.class
+ar\utn\donatrack\donaciones\model\donacion\bien\BienPerecible.class
+ar\utn\donatrack\donaciones\model\donante\PersonaDonante.class
+ar\utn\donatrack\donaciones\model\entidad\Necesidad.class
+ar\utn\donatrack\donaciones\model\categoria\Categoria.class
+ar\utn\donatrack\donaciones\model\donacion\Donacion.class
+ar\utn\donatrack\donaciones\model\donacion\CargaDonacion.class
+ar\utn\donatrack\donaciones\model\entidad\EntidadBeneficiaria.class
+ar\utn\donatrack\donaciones\model\entidad\NecesidadExtraordinaria.class
+ar\utn\donatrack\donaciones\ServicioDonacionesApp.class
+ar\utn\donatrack\donaciones\model\entidad\NecesidadRecurrente.class
+ar\utn\donatrack\donaciones\service\SegmentadorDonaciones.class
+ar\utn\donatrack\donaciones\model\categoria\Subcategoria.class
+ar\utn\donatrack\donaciones\model\donacion\EstadoDonacion.class
+ar\utn\donatrack\donaciones\model\donante\PersonaHumana.class
