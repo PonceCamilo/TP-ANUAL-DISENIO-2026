@@ -8,10 +8,13 @@ import lombok.Setter;
 @Setter
 @EqualsAndHashCode(of = "tipo") // genera automaticamente equals() y hashCode()
 public class Subcategoria {
-    // TODO: id, nombre, categoria
-    private String tipo;
 
-    public Subcategoria(String tipo) {
+    private int idCategoria;
+    private String tipo;
+    private String nombre;
+
+    public Subcategoria(String tipo, String nombre) {
         this.tipo = tipo;
+        this.nombre = nombre;
     }
 }

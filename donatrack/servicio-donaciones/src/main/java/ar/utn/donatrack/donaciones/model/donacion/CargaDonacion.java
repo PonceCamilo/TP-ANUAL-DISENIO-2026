@@ -11,7 +11,8 @@ import java.util.List;
 @Getter
 @Setter
 public class CargaDonacion {
-    // TODO: id, descripcionGeneral, fechaIngreso, donante, bienes
+    private int idCargaDonacion;
+    private String descripcionGeneral;
     private PersonaDonante donante;
     private LocalDateTime fechaIngreso;
     private List<Bien> bienes;

@@ -11,8 +11,9 @@ import lombok.Setter;
 public class BienPerecible extends Bien {
     private LocalDate fechaVencimiento;
 
-    public BienPerecible(Subcategoria subcategoria, LocalDate fechaVencimiento) {
-        super(subcategoria);
-        this.fechaVencimiento = fechaVencimiento;
+    public BienPerecible(Subcategoria subcategoria, String descripcion,
+                         String foto, int cantidad, String unidad, LocalDate fechaVencimiento) {
+      super(subcategoria, descripcion, foto, cantidad, unidad);
+      this.fechaVencimiento = fechaVencimiento;
     }
 }
