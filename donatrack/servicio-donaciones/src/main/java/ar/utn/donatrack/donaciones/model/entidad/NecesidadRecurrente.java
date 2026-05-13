@@ -1,11 +1,16 @@
 package ar.utn.donatrack.donaciones.model.entidad;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class NecesidadRecurrente extends Necesidad {
-    // TODO: cantidadObjetivoPorPeriodo, periodoEnDias, cantidadRecibidaEnPeriodo
+    private int cantidadObjetivoPorPeriodo;
+    private int periodoEnDias;
+    private int cantidadRecibidaEnPeriodo;
 
     @Override
     public boolean estaSatisfecha() {
-        // TODO
-        return false;
+        return this.cantidadRecibidaEnPeriodo >= this.cantidadObjetivoPorPeriodo;
     }
 }
