@@ -1,12 +1,19 @@
 package ar.utn.donatrack.donaciones.model.entidad;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class NecesidadExtraordinaria extends Necesidad {
-    // TODO: cantidadRequerida, cantidadRecibida
-    // Satisfecha cuando cantidadRecibida >= cantidadRequerida
+    private int cantidadRequerida;
+    private int cantidadRecibida;
+
+    public void recibirDonacion(int cantidad){
+        this.cantidadRequerida += cantidad;
+    }
 
     @Override
     public boolean estaSatisfecha() {
-        // TODO
-        return false;
+        return this.cantidadRecibida >= this.cantidadRequerida;
     }
 }
