@@ -9,7 +9,7 @@ public class NecesidadExtraordinaria extends Necesidad {
     private int cantidadRecibida;
 
     public void recibirDonacion(int cantidad){
-        this.cantidadRequerida += cantidad;
+        this.cantidadRecibida += cantidad;
     }
 
     @Override
