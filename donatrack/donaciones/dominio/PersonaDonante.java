@@ -15,30 +15,29 @@ import java.util.UUID;
  * Invariantes del dominio:
  *  - Debe tener al menos un medio de contacto de tipo EMAIL.
  *  - El medio de contacto predeterminado debe pertenecer a la lista de medios registrados.
- *  - Toda persona donante se crea activa (activo = true).
+ *  - Toda persona donante se crea en estado ACTIVO.
+ *
+ * PATRÓN STATE aplicado: el ciclo de vida se modela con EstadoDonante en lugar
+ * de un boolean activo. Ver EstadoDonante.java para la justificación completa.
  */
 public abstract class PersonaDonante {
 
     private final UUID id;
     private final List<MedioDeContacto> mediosDeContacto;
     private MedioDeContacto medioContactoPredeterminado;
-    private boolean activo;
+    private EstadoDonante estado;
 
-    protected PersonaDonante(List<MedioDeContacto> mediosDeContacto) {
+ protected PersonaDonante(List<MedioDeContacto> mediosDeContacto) {
         validarMediosDeContacto(mediosDeContacto);
         this.id = UUID.randomUUID();
         this.mediosDeContacto = new ArrayList<>(mediosDeContacto);
-        // Por defecto, el email es el medio predeterminado
         this.medioContactoPredeterminado = obtenerEmail();
-        this.activo = true;
+        //  el estado inicial es ACTIVO, no "activo = true"
+        this.estado = EstadoDonante.ACTIVO;                          
     }
 
-    // ─── Métodos de negocio ──────────────────────────────────────────────────
+       // ─── Métodos de negocio ──────────────────────────────────────────────────
 
-    /**
-     * Agrega un nuevo medio de contacto a la persona donante.
-     * No permite duplicados del mismo tipo y valor.
-     */
     public void agregarMedioDeContacto(MedioDeContacto medio) {
         boolean yaExiste = mediosDeContacto.stream()
                 .anyMatch(m -> m.getTipo() == medio.getTipo()
@@ -51,10 +50,6 @@ public abstract class PersonaDonante {
         mediosDeContacto.add(medio);
     }
 
-    /**
-     * Establece el medio de contacto predeterminado para notificaciones.
-     * El medio debe estar previamente registrado en la persona donante.
-     */
     public void establecerMedioContactoPredeterminado(MedioDeContacto medio) {
         boolean estaRegistrado = mediosDeContacto.stream()
                 .anyMatch(m -> m.getTipo() == medio.getTipo()
@@ -66,17 +61,25 @@ public abstract class PersonaDonante {
         this.medioContactoPredeterminado = medio;
     }
 
-    /** Realiza la baja lógica de la persona donante. */
+    /**
+     * Realiza la baja lógica de la persona donante.
+     * PATRÓN STATE: valida la transición ACTIVO → INACTIVO.
+     */
     public void darDeBaja() {
-        if (!this.activo) {
+        // (STATE): la transición se valida comparando estados
+        if (this.estado == EstadoDonante.INACTIVO) {                // ← transición de estado
             throw new IllegalStateException("La persona donante ya se encuentra dada de baja.");
         }
-        this.activo = false;
+        this.estado = EstadoDonante.INACTIVO;                       // ← cambio de estado
     }
 
-    /** Reactiva una persona donante previamente dada de baja. */
+    /**
+     * Reactiva una persona donante previamente dada de baja.
+     * PATRÓN STATE: transición INACTIVO → ACTIVO.
+     */
     public void reactivar() {
-        this.activo = true;
+        // STATE: transición inversa explícita
+        this.estado = EstadoDonante.ACTIVO;                         // ← cambio de estado
     }
 
     // ─── Validaciones privadas ───────────────────────────────────────────────
@@ -98,7 +101,7 @@ public abstract class PersonaDonante {
         return mediosDeContacto.stream()
                 .filter(m -> m.getTipo() == TipoMedioContacto.EMAIL)
                 .findFirst()
-                .orElseThrow(); // nunca llega aquí si pasó la validación
+                .orElseThrow();
     }
 
     // ─── Getters ─────────────────────────────────────────────────────────────
@@ -113,5 +116,9 @@ public abstract class PersonaDonante {
         return medioContactoPredeterminado;
     }
 
-    public boolean isActivo() { return activo; }
+    // patron STATE: getter del estado tipado — reemplaza isActivo()
+    public EstadoDonante getEstado() { return estado; }             // ← getter del estado
+
+    /** Compatibilidad semántica: sigue siendo útil para filtrar activos. */
+    public boolean isActivo() { return estado == EstadoDonante.ACTIVO; }
 }
