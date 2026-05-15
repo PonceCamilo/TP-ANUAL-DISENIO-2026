@@ -3,88 +3,58 @@ package com.donatrack.donaciones.dominio;
 import com.donatrack.donaciones.dominio.contacto.MedioDeContacto;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-/**
- * Persona donante de tipo jurídico (empresa, ONG, institución, etc.).
- * Debe contar con al menos un representante habilitado para operar.
- */
-public class PersonaJuridica extends PersonaDonante {
-
-    private String razonSocial;
-    private TipoPersonaJuridica tipo;
-    private String rubro;
-    private final List<Representante> representantes;
-
-    public PersonaJuridica(String razonSocial,
-                           TipoPersonaJuridica tipo,
-                           String rubro,
-                           List<MedioDeContacto> mediosDeContacto,
-                           List<Representante> representantes) {
-        super(mediosDeContacto);
-        validar(razonSocial, tipo, rubro, representantes);
+// ═══════════════════════════════════════════════════════════════════════════════
+// PATRÓN: BUILDER — PersonaJuridicaBuilder
+// ───────────────────────────────────────────────────────────────────────────────
+// Mismo razonamiento que PersonaHumanaBuilder: PersonaJuridica tiene listas
+// (medios y representantes) que son difíciles de armar inline. Con el builder
+// se van agregando uno por uno de forma clara.
+// ═══════════════════════════════════════════════════════════════════════════════
+ 
+public class PersonaJuridicaBuilder {
+ 
+    private String razonSocial;                                         
+    private TipoPersonaJuridica tipo;                                   
+    private String rubro;                                               
+    private final List<MedioDeContacto> mediosDeContacto               
+            = new ArrayList<>();
+    private final List<Representante> representantes                    
+            = new ArrayList<>();
+ 
+    public PersonaJuridicaBuilder razonSocial(String razonSocial) {
         this.razonSocial = razonSocial;
+        return this;
+    }
+ 
+    public PersonaJuridicaBuilder tipo(TipoPersonaJuridica tipo) {
         this.tipo = tipo;
+        return this;
+    }
+ 
+    public PersonaJuridicaBuilder rubro(String rubro) {
         this.rubro = rubro;
-        this.representantes = new ArrayList<>(representantes);
+        return this;
     }
-
-    // ─── Métodos de negocio ───────────────────────────────────────────────────
-
-    public void agregarRepresentante(Representante representante) {
-        if (representante == null)
-            throw new IllegalArgumentException("El representante no puede ser nulo.");
-        boolean yaExiste = representantes.stream()
-                .anyMatch(r -> r.getEmail().equalsIgnoreCase(representante.getEmail()));
-        if (yaExiste) {
-            throw new IllegalArgumentException(
-                    "Ya existe un representante con el email: " + representante.getEmail());
-        }
-        representantes.add(representante);
+ 
+    public PersonaJuridicaBuilder medios(List<MedioDeContacto> medios) {
+        this.mediosDeContacto.addAll(medios);
+        return this;
     }
-
-    public void removerRepresentante(String emailRepresentante) {
-        boolean removed = representantes.removeIf(
-                r -> r.getEmail().equalsIgnoreCase(emailRepresentante));
-        if (!removed) {
-            throw new IllegalArgumentException(
-                    "No se encontró un representante con el email: " + emailRepresentante);
-        }
-        if (representantes.isEmpty()) {
-            throw new IllegalStateException(
-                    "La persona jurídica debe tener al menos un representante.");
-        }
+ 
+    public PersonaJuridicaBuilder agregarRepresentante(Representante rep) {
+        this.representantes.add(rep);
+        return this;
     }
-
-    public void actualizarDatos(String razonSocial, TipoPersonaJuridica tipo, String rubro) {
-        validar(razonSocial, tipo, rubro, this.representantes);
-        this.razonSocial = razonSocial;
-        this.tipo = tipo;
-        this.rubro = rubro;
+ 
+    public PersonaJuridicaBuilder representantes(List<Representante> reps) {
+        this.representantes.addAll(reps);
+        return this;
     }
-
-    // ─── Validaciones ─────────────────────────────────────────────────────────
-
-    private void validar(String razonSocial, TipoPersonaJuridica tipo,
-                         String rubro, List<Representante> reps) {
-        if (razonSocial == null || razonSocial.isBlank())
-            throw new IllegalArgumentException("La razón social no puede estar vacía.");
-        if (tipo == null)
-            throw new IllegalArgumentException("El tipo de persona jurídica no puede ser nulo.");
-        if (rubro == null || rubro.isBlank())
-            throw new IllegalArgumentException("El rubro no puede estar vacío.");
-        if (reps == null || reps.isEmpty())
-            throw new IllegalArgumentException(
-                    "La persona jurídica debe tener al menos un representante habilitado.");
-    }
-
-    // ─── Getters ──────────────────────────────────────────────────────────────
-
-    public String getRazonSocial() { return razonSocial; }
-    public TipoPersonaJuridica getTipo() { return tipo; }
-    public String getRubro() { return rubro; }
-    public List<Representante> getRepresentantes() {
-        return Collections.unmodifiableList(representantes);
+ 
+    public PersonaJuridica build() {                                     
+        return new PersonaJuridica(razonSocial, tipo, rubro,
+                mediosDeContacto, representantes);
     }
 }
