@@ -1,5 +1,6 @@
-package ar.utn.donatrack.donaciones.service;
+package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
 import ar.utn.donatrack.donaciones.model.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.model.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.model.donacion.Donacion;
@@ -9,7 +10,7 @@ import ar.utn.donatrack.donaciones.model.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.model.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.model.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.model.donacion.bien.BienPerecible;
-import ar.utn.donatrack.donaciones.repository.SegmentadorDonacionesRepository;
+import ar.utn.donatrack.donaciones.repositories.SegmentadorDonacionesRepository;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -17,20 +18,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class SegmentadorDonacionesService {
+import lombok.Getter;
+import lombok.Setter;
 
-  private static SegmentadorDonacionesService _instance;
+@Getter
+@Setter
+public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {
+
   private final SegmentadorDonacionesRepository segmentadorDonacionesRepository;
 
-  public SegmentadorDonacionesService(SegmentadorDonacionesRepository segmentadorDonacionesRepository) {
+  private static SegmentadorDonacionesService instance = null;
+  private SegmentadorDonacionesService(SegmentadorDonacionesRepository segmentadorDonacionesRepository) {
     this.segmentadorDonacionesRepository = segmentadorDonacionesRepository;
   }
 
   public static SegmentadorDonacionesService instance() {
-    if (_instance == null) {
-      _instance = new SegmentadorDonacionesService(SegmentadorDonacionesRepository.instance());
+    if (instance == null) {
+      instance = new SegmentadorDonacionesService(SegmentadorDonacionesRepository.instance());
     }
-    return _instance;
+    return instance;
   }
 
   public void segmentar(CargaDonacion carga) {

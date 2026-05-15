@@ -11,10 +11,8 @@ public class Subcategoria {
 
     private int idCategoria;
     private String tipo;
-    private String nombre;
 
-    public Subcategoria(String tipo, String nombre) {
+    public Subcategoria(String tipo) {
         this.tipo = tipo;
-        this.nombre = nombre;
     }
 }
