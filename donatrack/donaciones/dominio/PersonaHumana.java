@@ -17,14 +17,13 @@ import java.util.ArrayList;
 // ═══════════════════════════════════════════════════════════════════════════════
 public class PersonaHumanaBuilder {
  
-    // LÍNEAS CLAVE: campos del builder (algunos con valores por defecto opcionales)
-    private String nombre;                                          // ← campo builder
-    private String apellido;                                        // ← campo builder
-    private int edad;                                               // ← campo builder
-    private String numeroDocumento;                                 // ← campo builder
-    private Genero genero;                                          // ← campo builder
-    private Direccion direccion;                                     // ← campo builder
-    private final List<MedioDeContacto> mediosDeContacto           // ← campo builder
+    private String nombre;                                          
+    private String apellido;                                        
+    private int edad;                                               
+    private String numeroDocumento;                                
+    private Genero genero;                                          
+    private Direccion direccion;                                     
+    private final List<MedioDeContacto> mediosDeContacto           
             = new ArrayList<>();
  
     public PersonaHumanaBuilder nombre(String nombre) {
@@ -67,8 +66,7 @@ public class PersonaHumanaBuilder {
         return this;
     }
  
-    // LÍNEA CLAVE: build() es el único punto donde se construye el objeto real
-    public PersonaHumana build() {                                  // ← método de construcción
+    public PersonaHumana build() {                                  
         return new PersonaHumana(nombre, apellido, edad,
                 numeroDocumento, genero, direccion, mediosDeContacto);
     }
