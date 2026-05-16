@@ -15,13 +15,13 @@ import java.util.List;
 
 public class PersonaJuridicaBuilder {
 
-    // LÍNEAS CLAVE: estado acumulativo del builder
-    private String razonSocial;                                         // ← campo builder
-    private TipoPersonaJuridica tipo;                                   // ← campo builder
-    private String rubro;                                               // ← campo builder
-    private final List<MedioDeContacto> mediosDeContacto               // ← campo builder
+    // estado acumulativo del builder
+    private String razonSocial;                                         
+    private TipoPersonaJuridica tipo;                                   
+    private String rubro;                                               
+    private final List<MedioDeContacto> mediosDeContacto               
             = new ArrayList<>();
-    private final List<Representante> representantes                    // ← campo builder
+    private final List<Representante> representantes                    
             = new ArrayList<>();
 
     public PersonaJuridicaBuilder razonSocial(String razonSocial) {
@@ -54,8 +54,8 @@ public class PersonaJuridicaBuilder {
         return this;
     }
 
-    // LÍNEA CLAVE: build() ensambla el objeto con todos los datos acumulados
-    public PersonaJuridica build() {                                     // ← método de construcción
+    // build() ensambla el objeto con todos los datos acumulados
+    public PersonaJuridica build() {                                   
         return new PersonaJuridica(razonSocial, tipo, rubro,
                 mediosDeContacto, representantes);
     }
