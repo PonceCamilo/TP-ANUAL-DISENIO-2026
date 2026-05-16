@@ -11,8 +11,6 @@ import java.util.UUID;
  *
  * Decisión de diseño: se define como interfaz para desacoplar
  * la lógica de negocio del mecanismo de persistencia.
- * En Entrega 1 la implementación es en memoria; en Entrega 4
- * se reemplazará por una implementación JPA sin tocar el dominio ni el servicio.
  */
 public interface PersonaDonanteRepositorio {
 
