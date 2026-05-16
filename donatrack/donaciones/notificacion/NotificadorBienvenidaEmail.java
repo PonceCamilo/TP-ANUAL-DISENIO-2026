@@ -9,9 +9,7 @@ import org.springframework.stereotype.Component;
 // ───────────────────────────────────────────────────────────────────────────────
 // Esta clase es uno de los "observadores" que reacciona al evento de registro.
 // Su única responsabilidad: enviar el email de bienvenida.
-//
-// En Entrega 1 solo loguea (simula el envío). En entregas futuras se conectará
-// al Servicio de Notificaciones real mediante HTTP o mensajería asíncrona.
+
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ══════════════════════════════════════════════════════
@@ -23,9 +21,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class NotificadorBienvenidaEmail implements ObservadorDeRegistro { // ← observer concreto
 
-    // LÍNEA CLAVE: implementa el callback del observer
+    // implementa el callback del observer
     @Override
-    public void alRegistrarDonante(PersonaDonante donante) {          // ← reacción al evento
+    public void alRegistrarDonante(PersonaDonante donante) {          
         String email = donante.getMediosDeContacto().stream()
                 .filter(m -> m.getTipo() == TipoMedioContacto.EMAIL)
                 .findFirst()
