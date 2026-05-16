@@ -1,29 +1,32 @@
-package com.donatrack.donaciones.dominio.contacto.factory;
- 
-import com.donatrack.donaciones.dominio.contacto.*;
- 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PATRÓN: FACTORY METHOD
-// ───────────────────────────────────────────────────────────────────────────────
-// Por qué: Antes, el servicio tenía un switch para instanciar Email/Telefono/WhatsApp.
-// Eso significa que cada vez que se agregue un nuevo medio de contacto (ej: Telegram),
-// hay que tocar el servicio. Con Factory Method, ese switch vive acá y el servicio
-// no sabe nada de cómo se construye cada tipo. Solo pide "dame un medio de tipo X".
-//
-// Beneficio: Agregar un nuevo canal de contacto = agregar un case acá, nada más.
-// ═══════════════════════════════════════════════════════════════════════════════
- 
-public class MedioDeContactoFactory {
- 
-    public static MedioDeContacto crear(TipoMedioContacto tipo, String valor) {
-        return switch (tipo) {                        
-            case EMAIL    -> new Email(valor);
-            case TELEFONO -> new Telefono(valor);
-            case WHATSAPP -> new WhatsApp(valor);
-        };
+package com.donatrack.donaciones.dominio.contacto;
+
+/**
+ * Representa un medio a través del cual se puede contactar a una persona donante.
+ * Cada subclase concreta define el tipo de canal (email, teléfono, WhatsApp).
+ *
+ * Decisión de diseño: clase abstracta (no interfaz) porque todos los medios
+ * de contacto comparten un estado común: el valor del contacto (dirección de
+ * email, número de teléfono, etc.).
+ */
+public abstract class MedioDeContacto {
+
+    private final String valor;
+
+    protected MedioDeContacto(String valor) {
+        if (valor == null || valor.isBlank()) {
+            throw new IllegalArgumentException("El valor del medio de contacto no puede estar vacío.");
+        }
+        this.valor = valor;
     }
- 
-    private MedioDeContactoFactory() {
-        // No instanciable: clase utilitaria de creación
+
+    public String getValor() {
+        return valor;
+    }
+
+    public abstract TipoMedioContacto getTipo();
+
+    @Override
+    public String toString() {
+        return getTipo() + ": " + valor;
     }
 }
