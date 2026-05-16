@@ -14,8 +14,8 @@ import com.donatrack.donaciones.dominio.PersonaDonante;
 // Beneficio: agregar nuevas reacciones al registro no toca el servicio principal.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-public interface ObservadorDeRegistro {                               // ← interfaz del observer
+public interface ObservadorDeRegistro {                               
 
     // LÍNEA CLAVE: método que el sujeto llama para notificar a los suscriptores
-    void alRegistrarDonante(PersonaDonante donante);                  // ← callback del observer
+    void alRegistrarDonante(PersonaDonante donante);                 
 }
