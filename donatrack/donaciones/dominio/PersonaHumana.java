@@ -3,71 +3,74 @@ package com.donatrack.donaciones.dominio;
 import com.donatrack.donaciones.dominio.contacto.MedioDeContacto;
 
 import java.util.List;
-import java.util.ArrayList;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PATRÓN: BUILDER — PersonaHumanaBuilder => para la justificacion de diseño
-// ───────────────────────────────────────────────────────────────────────────────
-// Por qué: PersonaHumana tiene 7 parámetros en el constructor. Eso hace que quien
-// llama tenga que recordar el orden exacto y es propenso a errores (ej: confundir
-// nombre con apellido). Con Builder, cada campo se setea con nombre explícito.
-//
-// Beneficio: Código más legible, menos errores, y si en el futuro se agregan campos
-// opcionales (ej: fechaNacimiento), no rompemos constructores existentes.
-// ═══════════════════════════════════════════════════════════════════════════════
-public class PersonaHumanaBuilder {
- 
-    private String nombre;                                          
-    private String apellido;                                        
-    private int edad;                                               
-    private String numeroDocumento;                                
-    private Genero genero;                                          
-    private Direccion direccion;                                     
-    private final List<MedioDeContacto> mediosDeContacto           
-            = new ArrayList<>();
- 
-    public PersonaHumanaBuilder nombre(String nombre) {
+/**
+ * Persona donante de tipo humano (persona física).
+ * Atributos requeridos: nombre, apellido, edad, número de documento, género y dirección.
+ */
+public class PersonaHumana extends PersonaDonante {
+
+    private String nombre;
+    private String apellido;
+    private int edad;
+    private String numeroDocumento;
+    private Genero genero;
+    private Direccion direccion;
+
+    public PersonaHumana(String nombre,
+                         String apellido,
+                         int edad,
+                         String numeroDocumento,
+                         Genero genero,
+                         Direccion direccion,
+                         List<MedioDeContacto> mediosDeContacto) {
+        super(mediosDeContacto);
+        validar(nombre, apellido, edad, numeroDocumento, genero, direccion);
         this.nombre = nombre;
-        return this;
-    }
- 
-    public PersonaHumanaBuilder apellido(String apellido) {
         this.apellido = apellido;
-        return this;
-    }
- 
-    public PersonaHumanaBuilder edad(int edad) {
         this.edad = edad;
-        return this;
-    }
- 
-    public PersonaHumanaBuilder numeroDocumento(String numeroDocumento) {
         this.numeroDocumento = numeroDocumento;
-        return this;
-    }
- 
-    public PersonaHumanaBuilder genero(Genero genero) {
         this.genero = genero;
-        return this;
-    }
- 
-    public PersonaHumanaBuilder direccion(Direccion direccion) {
         this.direccion = direccion;
-        return this;
     }
- 
-    public PersonaHumanaBuilder agregarMedio(MedioDeContacto medio) {
-        this.mediosDeContacto.add(medio);
-        return this;
+
+    // ─── Actualización de datos ───────────────────────────────────────────────
+
+    public void actualizarDatos(String nombre, String apellido, int edad,
+                                Genero genero, Direccion direccion) {
+        validar(nombre, apellido, edad, this.numeroDocumento, genero, direccion);
+        this.nombre = nombre;
+        this.apellido = apellido;
+        this.edad = edad;
+        this.genero = genero;
+        this.direccion = direccion;
     }
- 
-    public PersonaHumanaBuilder medios(List<MedioDeContacto> medios) {
-        this.mediosDeContacto.addAll(medios);
-        return this;
+
+    // ─── Validaciones ─────────────────────────────────────────────────────────
+
+    private void validar(String nombre, String apellido, int edad,
+                         String documento, Genero genero, Direccion direccion) {
+        if (nombre == null || nombre.isBlank())
+            throw new IllegalArgumentException("El nombre no puede estar vacío.");
+        if (apellido == null || apellido.isBlank())
+            throw new IllegalArgumentException("El apellido no puede estar vacío.");
+        if (edad < 0 || edad > 120)
+            throw new IllegalArgumentException("La edad debe ser un valor válido.");
+        if (documento == null || documento.isBlank())
+            throw new IllegalArgumentException("El número de documento no puede estar vacío.");
+        if (genero == null)
+            throw new IllegalArgumentException("El género no puede ser nulo.");
+        if (direccion == null)
+            throw new IllegalArgumentException("La dirección no puede ser nula.");
     }
- 
-    public PersonaHumana build() {                                  
-        return new PersonaHumana(nombre, apellido, edad,
-                numeroDocumento, genero, direccion, mediosDeContacto);
-    }
+
+    // ─── Getters ──────────────────────────────────────────────────────────────
+
+    public String getNombre() { return nombre; }
+    public String getApellido() { return apellido; }
+    public String getNombreCompleto() { return nombre + " " + apellido; }
+    public int getEdad() { return edad; }
+    public String getNumeroDocumento() { return numeroDocumento; }
+    public Genero getGenero() { return genero; }
+    public Direccion getDireccion() { return direccion; }
 }
