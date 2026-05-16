@@ -2,7 +2,6 @@ package com.donatrack.donaciones.dto.response;
 
 import com.donatrack.donaciones.dominio.*;
 import com.donatrack.donaciones.dominio.contacto.MedioDeContacto;
-import com.donatrack.donaciones.dominio.contacto.TipoMedioContacto;
 
 import java.util.List;
 import java.util.UUID;
@@ -10,12 +9,18 @@ import java.util.UUID;
 /**
  * DTO de respuesta unificado para personas donantes.
  * Aplana la jerarquía de dominio para el cliente REST.
+ *
+ * PATRÓN STATE: expone el estado como String ("ACTIVO" / "INACTIVO")
+ * en lugar de un boolean, para que el cliente REST reciba el valor
+ * nombrado y no tenga que interpretar un true/false.
  */
 public record PersonaDonanteResponse(
 
         UUID id,
-        String tipoPersona,      // "HUMANA" o "JURIDICA"
-        boolean activo,
+        String tipoPersona,
+
+        // (STATE): se expone el nombre del estado, no un boolean
+        String estado,           // ← "ACTIVO" o "INACTIVO" — viene de EstadoDonante.name()
 
         // Campos de PersonaHumana (null si es jurídica)
         String nombre,
@@ -42,7 +47,7 @@ public record PersonaDonanteResponse(
         return new PersonaDonanteResponse(
                 p.getId(),
                 "HUMANA",
-                p.isActivo(),
+                p.getEstado().name(),          // ← PATRÓN STATE: getEstado() en lugar de isActivo()
                 p.getNombre(),
                 p.getApellido(),
                 p.getEdad(),
@@ -59,7 +64,7 @@ public record PersonaDonanteResponse(
         return new PersonaDonanteResponse(
                 p.getId(),
                 "JURIDICA",
-                p.isActivo(),
+                p.getEstado().name(),          // ← PATRÓN STATE: getEstado() en lugar de isActivo()
                 null, null, null, null, null, null,
                 p.getRazonSocial(),
                 p.getTipo().name(),
