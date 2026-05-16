@@ -7,17 +7,31 @@ import org.springframework.stereotype.Repository;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Implementación en memoria del repositorio de personas donantes.
- * Utilizada en Entrega 1 (sin persistencia formal).
- *
- * Usa ConcurrentHashMap para ser thread-safe en un entorno web con múltiples requests.
- * En Entrega 4 esta clase será reemplazada por PersonaDonanteRepositorioJPA.
- */
-@Repository
+// ═══════════════════════════════════════════════════════════════════════════════
+// PATRÓN: SINGLETON
+// ───────────────────────────────────────────────────────────────────────────────
+// Por qué: el almacenamiento en memoria ES el estado de la aplicación mientras
+// no hay base de datos real. Si se crearan dos instancias de este repositorio,
+// cada una tendría su propio Map y los datos quedarían partidos: un request
+// guardaría en una instancia y otro no los encontraría.
+//
+// Spring ya garantiza scope singleton con @Repository, pero lo hacemos explícito
+// documentando el patrón para que quede claro en el diagrama de clases y en la
+// justificación de diseño de la entrega.
+//
+// Beneficio: una única fuente de verdad en memoria durante toda la vida del proceso.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+
+@Repository  // ← SINGLETON: Spring instancia esta clase una sola vez en todo el contexto
 public class PersonaDonanteRepositorioEnMemoria implements PersonaDonanteRepositorio {
 
-    private final Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>();
+    // LÍNEA CLAVE (SINGLETON): instancia única controlada por Spring.
+    // Si necesitaras Singleton puro sin Spring, usarías un campo static + getInstance().
+    // Con Spring, @Repository + constructor sin argumentos lo garantiza igual.
+
+    // el Map es el estado compartido de toda la aplicación en Entrega 1
+    private final Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>(); 
 
     @Override
     public PersonaDonante guardar(PersonaDonante personaDonante) {
