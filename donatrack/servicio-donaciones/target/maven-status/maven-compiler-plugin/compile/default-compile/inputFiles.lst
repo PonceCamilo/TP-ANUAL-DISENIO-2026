@@ -1,3 +1,4 @@
+C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\controller\SegmentadorDonacionesController.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\categoria\Categoria.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\categoria\Subcategoria.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\donacion\bien\Bien.java
@@ -5,6 +6,8 @@ C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-A
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\donacion\bien\BienPerecible.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\donacion\CargaDonacion.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\donacion\Donacion.java
+C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\donacion\DonacionConEstado.java
+C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\donacion\DonacionPerecible.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\donacion\EstadoDonacion.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\donante\PersonaDonante.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\donante\PersonaHumana.java
@@ -13,5 +16,6 @@ C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-A
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\entidad\Necesidad.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\entidad\NecesidadExtraordinaria.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\model\entidad\NecesidadRecurrente.java
-C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\service\SegmentadorDonaciones.java
+C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\repository\SegmentadorDonacionesRepository.java
+C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\service\SegmentadorDonacionesService.java
 C:\Users\camil\OneDrive\Documentos\UTN-sexto-año\Disenio-Sistemas\TP-Anual\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\ServicioDonacionesApp.java

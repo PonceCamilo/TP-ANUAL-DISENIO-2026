@@ -2,13 +2,18 @@ package ar.utn.donatrack.donaciones.model.donacion;
 
 import ar.utn.donatrack.donaciones.model.categoria.Subcategoria;
 
-import java.time.LocalDate;
+import ar.utn.donatrack.donaciones.model.donacion.bien.Bien;
+import lombok.Getter;
+import lombok.Setter;
 
-public class Donacion {
-    // Resultado de la segmentacion de una CargaDonacion
-    // TODO: id, subcategoria, cantidad, unidad, estado, cargaOrigen
-    // TODO: fechaVencimiento (nullable), esNuevo (nullable)
-    private Subcategoria subcategoria;
-    private EstadoDonacion estado;
-    private CargaDonacion cargaOrigen;
+import java.util.ArrayList;
+import java.util.List;
+
+@Getter
+@Setter
+public abstract class Donacion {
+    protected Subcategoria subcategoria;
+    protected EstadoDonacion estado;
+    protected int idCargaOrigen;
+    protected List<Bien> bienes = new ArrayList<>();
 }
