@@ -12,7 +12,7 @@ public class EntidadBeneficiaria {
     private String razonSocial;
     private String direccion; // ver si es string o si hacemos una clase direccion
     private String telefono;
-    private List<String> correosRepresentantes = new ArrayList<>();;
+    private List<String> correosRepresentantes = new ArrayList<>();
     private List<Necesidad> necesidades = new ArrayList<>();
 
     public void registrarNecesidad(Necesidad necesidad) {

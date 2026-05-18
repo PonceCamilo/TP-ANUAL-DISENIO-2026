@@ -2,7 +2,10 @@ package ar.utn.donatrack.donaciones.model.entidad;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
+import ar.utn.donatrack.donaciones.model.entidad.NecesidadRecurrente;
 
 class NecesidadRecurrenteTest {
 

@@ -2,13 +2,16 @@ package ar.utn.donatrack.donaciones.model.entidad;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
+import ar.utn.donatrack.donaciones.model.entidad.NecesidadExtraordinaria;
 
 class NecesidadExtraordinariaTest {
 
     private NecesidadExtraordinaria necesidad;
 
-    @BeforeEach //no entiendo que es before
+    @BeforeEach
     void setUp() {
         necesidad = new NecesidadExtraordinaria();
         necesidad.setCantidadRequerida(30); 
@@ -17,7 +20,7 @@ class NecesidadExtraordinariaTest {
 
     @Test
     void estaSatisfecha_DeberiaRetornarFalse_CuandoNoSeAlcanzaLaCantidadRequerida() {
-        // ej: Una persona dona 2 sillas
+        // ej: Una persona dona 2
         necesidad.recibirDonacion(2);
         
         assertFalse(necesidad.estaSatisfecha(), 
