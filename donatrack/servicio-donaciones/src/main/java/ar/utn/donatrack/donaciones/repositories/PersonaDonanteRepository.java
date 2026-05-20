@@ -1,7 +1,10 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import ar.utn.donatrack.donaciones.model.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.model.contacto.TipoMedioContacto;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
@@ -24,52 +27,42 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 @Repository  // ← SINGLETON: Spring instancia esta clase una sola vez en todo el contexto
+@Getter
+@Setter
 public class PersonaDonanteRepository{
-
-    // LÍNEA CLAVE (SINGLETON): instancia única controlada por Spring.
-    // Si necesitaras Singleton puro sin Spring, usarías un campo static + getInstance().
-    // Con Spring, @Repository + constructor sin argumentos lo garantiza igual.
 
     // el Map es el estado compartido de toda la aplicación en Entrega 1
     private final Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>(); 
 
-    
-    public PersonaDonante guardar(PersonaDonante personaDonante) {
+    public void guardar(PersonaDonante personaDonante) {
         almacenamiento.put(personaDonante.getId(), personaDonante);
-        return personaDonante;
     }
-
     
     public Optional<PersonaDonante> buscarPorId(UUID id) {
         return Optional.ofNullable(almacenamiento.get(id));
     }
 
-    
     public Optional<PersonaDonante> buscarPorEmail(String email) {
         return almacenamiento.values().stream()
                 .filter(p -> p.getMediosDeContacto().stream()
-                        .anyMatch(m -> m.getTipo() == TipoMedioContacto.EMAIL
-                                && m.getValor().equalsIgnoreCase(email)))
+                        .anyMatch(m -> m == TipoMedioContacto.EMAIL
+                                && p.getEmail().equalsIgnoreCase(email)))
                 .findFirst();
     }
-
     
     public List<PersonaDonante> buscarTodos() {
         return new ArrayList<>(almacenamiento.values());
     }
-
     
     public List<PersonaDonante> buscarActivos() {
         return almacenamiento.values().stream()
-                .filter(PersonaDonante::isActivo)
-                .toList();
+            .filter(p -> p.getEstado() == EstadoDonante.ACTIVO)
+            .toList();
     }
 
-    
     public void eliminar(UUID id) {
         almacenamiento.remove(id);
     }
-
     
     public boolean existePorEmail(String email) {
         return buscarPorEmail(email).isPresent();

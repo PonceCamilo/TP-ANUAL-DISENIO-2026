@@ -1,4 +1,6 @@
 ar\utn\donatrack\donaciones\interfaces\repositories\EntidadesBeneficiariasRepositoryInterface.class
+ar\utn\donatrack\donaciones\excepcion\CsvFormatoInvalidoException.class
+ar\utn\donatrack\donaciones\importacion\dto\DonanteImportDto.class
 ar\utn\donatrack\donaciones\ServicioDonacionesApp.class
 ar\utn\donatrack\donaciones\controller\EntidadBeneficiariaController.class
 ar\utn\donatrack\donaciones\model\categoria\Subcategoria.class

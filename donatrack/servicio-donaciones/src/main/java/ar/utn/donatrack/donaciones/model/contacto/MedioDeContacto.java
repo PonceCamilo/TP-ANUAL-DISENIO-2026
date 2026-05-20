@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.model.contacto;
 
+import lombok.Getter;
+
 /**
  * Representa un medio a través del cual se puede contactar a una persona donante.
  * Cada subclase concreta define el tipo de canal (email, teléfono, WhatsApp).
@@ -8,6 +10,8 @@ package ar.utn.donatrack.donaciones.model.contacto;
  * de contacto comparten un estado común: el valor del contacto (dirección de
  * email, número de teléfono, etc.).
  */
+
+@Getter
 public abstract class MedioDeContacto {
 
     private final String valor;

@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.importacion;
+package ar.utn.donatrack.donaciones.excepcion;
 
 /**
  * Excepción lanzada cuando una fila del CSV no cumple con el formato esperado.

@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.importacion;
 
+import ar.utn.donatrack.donaciones.excepcion.CsvFormatoInvalidoException;
+import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
+
 /**
  * Responsable de parsear y validar una fila del CSV de importación masiva.
  *
@@ -19,16 +22,16 @@ public class DonanteCsvRowParser {
                             + "se encontraron " + columnas.length);
         }
 
-        String tipo    = columnas[0].trim().toUpperCase();
+        String tipoPersona = columnas[0].trim().toUpperCase();
         String tipoDoc = columnas[1].trim().toUpperCase();
         String doc     = columnas[2].trim();
         String nombre  = columnas[3].trim();
         String email   = columnas[4].trim();
         String tel     = columnas.length > 5 ? columnas[5].trim() : null;
 
-        if (!tipo.equals("HUMANA") && !tipo.equals("JURIDICA")) {
+        if (!tipoPersona.equals("HUMANA") && !tipoPersona.equals("JURIDICA")) {
             throw new CsvFormatoInvalidoException(
-                    "Línea " + numeroLinea + ": tipo de persona inválido '" + tipo
+                    "Línea " + numeroLinea + ": tipo de persona inválido '" + tipoPersona
                             + "'. Valores aceptados: HUMANA, JURIDICA");
         }
         if (email.isBlank()) {
@@ -45,7 +48,7 @@ public class DonanteCsvRowParser {
         }
 
         return new DonanteImportDto(
-                tipo, tipoDoc, doc, nombre, email,
+            tipoPersona, tipoDoc, doc, nombre, email,
                 (tel != null && tel.isBlank()) ? null : tel
         );
     }

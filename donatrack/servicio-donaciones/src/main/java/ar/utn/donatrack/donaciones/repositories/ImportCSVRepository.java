@@ -1,4 +1,10 @@
-package ar.utn.donatrack.donaciones.importacion;
+package ar.utn.donatrack.donaciones.repositories;
+
+import ar.utn.donatrack.donaciones.importacion.EstadoImport;
+import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,34 +13,38 @@ import java.util.List;
  * Resumen final del proceso de importación masiva de donantes por CSV.
  * Acumula un ImportResult por cada fila procesada.
  */
-public class ImportReport {
 
-    private final List<ImportResult> resultados = new ArrayList<>();
+@Repository
+@Getter
+@Setter
+public class ImportCSVRepository {
 
-    public void agregar(ImportResult result) {
+    private final List<ImportFilaCSV> resultados = new ArrayList<>();
+
+    public void agregar(ImportFilaCSV result) {
         resultados.add(result);
     }
 
     public long totalCreados() {
         return resultados.stream()
-                .filter(r -> r.getEstado() == ImportResult.Estado.CREADO)
+                .filter(r -> r.getEstado() == EstadoImport.CREADO)
                 .count();
     }
 
     public long totalActualizados() {
         return resultados.stream()
-                .filter(r -> r.getEstado() == ImportResult.Estado.ACTUALIZADO)
+                .filter(r -> r.getEstado() == EstadoImport.ACTUALIZADO)
                 .count();
     }
 
-    public List<ImportResult> getErrores() {
+    public List<ImportFilaCSV> getErrores() {
         return resultados.stream()
-                .filter(ImportResult::esError)
+                .filter(ImportFilaCSV::esError)
                 .toList();
     }
 
     public boolean tieneErrores() {
-        return resultados.stream().anyMatch(ImportResult::esError);
+        return resultados.stream().anyMatch(ImportFilaCSV::esError);
     }
 
     public int totalProcesadas() {

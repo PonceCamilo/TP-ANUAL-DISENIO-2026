@@ -1,8 +1,17 @@
-package ar.utn.donatrack.donaciones.importacion;
+package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.excepcion.CsvFormatoInvalidoException;
+import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
+import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
+import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
+import ar.utn.donatrack.donaciones.repositories.ImportCSVRepository;
+import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
 import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.repositories.DonanteRepository;
-import ar.utn.donatrack.donaciones.repositories.NotificacionService;
+import ar.utn.donatrack.donaciones.interfaces.repositories.DonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.services.NotificacionServiceInterface;
+
+import lombok.Builder;
+import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -29,29 +38,22 @@ import java.util.Optional;
  *  - El email es la clave de idempotencia porque es obligatorio y único
  *    para ambos tipos de persona, tal como lo define el enunciado.
  */
+
+@Builder
+@Service
 public class CsvImportService {
 
     private static final int BATCH_SIZE = 500;
 
-    private final DonanteRepository   donanteRepository;
+    private final DonanteRepositoryInterface donanteRepository;
     private final DonanteCsvRowParser parser;
-    private final DonanteFactory      factory;
-    private final NotificacionService notificacionService;
-
-    public CsvImportService(DonanteRepository donanteRepository,
-                            DonanteCsvRowParser parser,
-                            DonanteFactory factory,
-                            NotificacionService notificacionService) {
-        this.donanteRepository   = donanteRepository;
-        this.parser              = parser;
-        this.factory             = factory;
-        this.notificacionService = notificacionService;
-    }
+    private final DonanteFactory factory;
+    private final NotificacionServiceInterface notificacionService;
 
     // ─── Punto de entrada ─────────────────────────────────────────────────────
 
-    public ImportReport importar(InputStream csvStream) throws IOException {
-        ImportReport report = new ImportReport();
+    public ImportCSVRepository importar(InputStream csvStream) throws IOException {
+        ImportCSVRepository report = new ImportCSVRepository();
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(csvStream, StandardCharsets.UTF_8))) {
@@ -70,7 +72,7 @@ public class CsvImportService {
                     DonanteImportDto dto = parser.parsear(columnas, numeroLinea);
                     lote.add(dto);
                 } catch (CsvFormatoInvalidoException e) {
-                    report.agregar(ImportResult.error(numeroLinea, "", e.getMessage()));
+                    report.agregar(ImportFilaCSV.error(numeroLinea, "", e.getMessage()));
                 }
 
                 if (lote.size() >= BATCH_SIZE) {
@@ -92,7 +94,7 @@ public class CsvImportService {
     // ─── Procesamiento por lote ───────────────────────────────────────────────
 
     private void procesarLote(List<DonanteImportDto> lote,
-                               ImportReport report,
+                               ImportCSVRepository report,
                                int lineaInicio) {
         int lineaActual = lineaInicio;
         for (DonanteImportDto dto : lote) {
@@ -101,23 +103,23 @@ public class CsvImportService {
         }
     }
 
-    private ImportResult procesarFila(DonanteImportDto dto, int linea) {
+    private ImportFilaCSV procesarFila(DonanteImportDto dto, int linea) {
         try {
             Optional<PersonaDonante> existente = donanteRepository.findByEmail(dto.email());
 
             if (existente.isPresent()) {
                 actualizarContacto(existente.get(), dto);
                 donanteRepository.save(existente.get());
-                return ImportResult.actualizado(linea, dto.email());
+                return ImportFilaCSV.actualizado(linea, dto.email());
             } else {
                 PersonaDonante nuevo = crearDesdeDto(dto);
                 donanteRepository.save(nuevo);
                 notificacionService.enviarCredencialesNuevoUsuario(nuevo);
-                return ImportResult.creado(linea, dto.email());
+                return ImportFilaCSV.creado(linea, dto.email());
             }
 
         } catch (Exception e) {
-            return ImportResult.error(linea, dto.email(),
+            return ImportFilaCSV.error(linea, dto.email(),
                     "Error inesperado: " + e.getMessage());
         }
     }
@@ -129,12 +131,7 @@ public class CsvImportService {
      * Usa DonanteFactory para respetar los invariantes del dominio.
      */
     private PersonaDonante crearDesdeDto(DonanteImportDto dto) {
-        return switch (dto.tipoPersona()) {
-            case "HUMANA"   -> factory.crearHumana(dto);
-            case "JURIDICA" -> factory.crearJuridica(dto);
-            default -> throw new IllegalArgumentException(
-                    "Tipo de persona no soportado: " + dto.tipoPersona());
-        };
+        return factory.crearPersona(dto);
     }
 
     /**

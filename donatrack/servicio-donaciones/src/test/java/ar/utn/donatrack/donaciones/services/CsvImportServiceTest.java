@@ -2,8 +2,9 @@ package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.importacion.*;
 import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.repositories.DonanteRepository;
-import ar.utn.donatrack.donaciones.repositories.NotificacionService;
+import ar.utn.donatrack.donaciones.interfaces.repositories.DonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.services.NotificacionServiceInterface;
+import ar.utn.donatrack.donaciones.repositories.ImportCSVRepository;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream; // permite escribir un String y hacerle creer a Java que es un archivo que está leyendo.
@@ -17,7 +18,7 @@ class CsvImportServiceTest {
 
     // 1. Armamos dependencias "falsas" (Stubs) para no usar Mocks
     //  implementamos lo mínimo y necesario que usa el CsvImportService.
-    private final DonanteRepository repoFalso = new DonanteRepository() {
+    private final DonanteRepositoryInterface repoFalso = new DonanteRepositoryInterface() {
         @Override public Optional<PersonaDonante> findByEmail(String email) { 
             return Optional.empty(); // Simulamos que el usuario nunca existe
         }
@@ -26,7 +27,7 @@ class CsvImportServiceTest {
         }
     };
     
-    private final NotificacionService notiFalsa = new NotificacionService() {
+    private final NotificacionServiceInterface notiFalsa = new NotificacionServiceInterface() {
         @Override public void enviarCredencialesNuevoUsuario(PersonaDonante donante) {
             // No hacemos nada, evitamos mandar un mail real
         }
@@ -49,7 +50,7 @@ class CsvImportServiceTest {
         InputStream inputStream = new ByteArrayInputStream(csvFalso.getBytes(StandardCharsets.UTF_8));
 
         // Ejecutamos el método a testear
-        ImportReport reporte = service.importar(inputStream);
+        ImportCSVRepository reporte = service.importar(inputStream);
 
         // Verificamos los resultados lógicos
         assertEquals(2, reporte.totalProcesadas(), "Debería haber procesado 2 filas");
@@ -66,7 +67,7 @@ class CsvImportServiceTest {
         
         InputStream inputStream = new ByteArrayInputStream(csvFalso.getBytes(StandardCharsets.UTF_8));
 
-        ImportReport reporte = service.importar(inputStream);
+        ImportCSVRepository reporte = service.importar(inputStream);
 
         // Verificamos la tolerancia a fallos
         assertEquals(2, reporte.totalProcesadas(), "Debería haber intentado procesar ambas filas");

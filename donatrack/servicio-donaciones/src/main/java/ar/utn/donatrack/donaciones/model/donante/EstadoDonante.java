@@ -4,9 +4,8 @@ package ar.utn.donatrack.donaciones.model.donante;
 // PATRÓN: STATE
 // ───────────────────────────────────────────────────────────────────────────────
 // cada estado es explícito y nombrarlo en el código comunica la intención del negocio.
-// Agregar un nuevo estado = agregar
-// un valor al enum y las transiciones que correspondan, sin tocar nada más.
-//
+// Agregar un nuevo estado = agregar un valor al enum y las transiciones que
+// correspondan, sin tocar nada más.
 // Beneficio: el estado del donante es visible, extensible y seguro de chequear
 // con un switch exhaustivo.
 // ═══════════════════════════════════════════════════════════════════════════════

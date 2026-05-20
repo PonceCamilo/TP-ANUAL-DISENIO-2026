@@ -1,13 +1,11 @@
 package ar.utn.donatrack.donaciones.importacion;
 
-import ar.utn.donatrack.donaciones.model.donante.PersonaHumana;
-import ar.utn.donatrack.donaciones.model.donante.PersonaJuridica;
-import ar.utn.donatrack.donaciones.model.entidad.Direccion;
-import ar.utn.donatrack.donaciones.model.donante.Genero;
-import ar.utn.donatrack.donaciones.model.contacto.MedioDeContacto;
+import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
+import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.model.donante.PersonaHumanaDonante;
+import ar.utn.donatrack.donaciones.model.donante.PersonaJuridicaDonante;
 
-
-import java.util.List;
+import java.util.Objects;
 
 /**
  * Factory que construye instancias de dominio (PersonaHumana / PersonaJuridica)
@@ -29,26 +27,31 @@ public class DonanteFactory {
      * - Género: PREFIERO_NO_DECIR (valor neutro).
      * - Dirección: valores "Pendiente" para satisfacer el invariante.
      */
-    public PersonaHumana crearHumana(DonanteImportDto dto) {
+    public PersonaDonante crearPersona(DonanteImportDto dto) {
+
+        if (Objects.equals(dto.tipoPersona(), "JURIDICA")) {
+            return PersonaJuridicaDonante.builder()
+                .tipoPersona(dto.tipoPersona())
+                .tipoDocumento(dto.tipoDoc())
+                .numeroDocumento(dto.documento())
+                .razonSocial(dto.nombreORazonSocial())
+                .email(dto.email())
+                .telefono(dto.telefono())
+                .build();
+        }
+
         String[] partes = dto.nombreORazonSocial().split(" ", 2);
-        String nombre   = partes[0];
+        String nombre = partes[0];
         String apellido = partes.length > 1 ? partes[1] : "-";
 
-        // El modelo actual tiene un constructor simple (nombre, apellido, edad, documento)
-        return new PersonaHumana(nombre, apellido, 0, dto.documento(), Genero.PREFIERO_NO_DECIR, new Direccion("Pendiente", 0 , "Pendiente", "Pendiente", "Pendiente"), List.of());
+        return PersonaHumanaDonante.builder()
+            .tipoPersona(dto.tipoPersona())
+            .tipoDocumento(dto.tipoDoc())
+            .numeroDocumento(dto.documento())
+            .email(dto.email())
+            .nombre(nombre)
+            .apellido(apellido)
+            .telefono(dto.telefono())
+            .build();
     }
-
-    /**
-     * Crea una PersonaJuridica desde el DTO de importación.
-     *
-     * - Tipo: EMPRESA por defecto (desconocido en el CSV).
-     * - Rubro: "No especificado".
-     * - Representante: placeholder con el email de la organización;
-     *   debe completarse por un administrador.
-     */
-    public PersonaJuridica crearJuridica(DonanteImportDto dto) {
-        // El modelo actual de PersonaJuridica acepta (razonSocial, rubro)
-        return new PersonaJuridica(dto.nombreORazonSocial(), "No especificado");
-    }
-    // Helpers: no-op por ahora; el dominio actual es mínimo.
 }

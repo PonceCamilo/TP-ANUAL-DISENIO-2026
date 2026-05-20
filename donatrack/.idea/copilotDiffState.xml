@@ -12,15 +12,6 @@
             </PendingDiffInfo>
           </value>
         </entry>
-        <entry key="$PROJECT_DIR$/servicio-donaciones/src/main/java/ar/utn/donatrack/donaciones/model/categoria/Subcategoria.java">
-          <value>
-            <PendingDiffInfo>
-              <option name="filePath" value="$PROJECT_DIR$/servicio-donaciones/src/main/java/ar/utn/donatrack/donaciones/model/categoria/Subcategoria.java" />
-              <option name="originalContent" value="package ar.utn.donatrack.donaciones.model.categoria;&#10;&#10;import lombok.Getter;&#10;import lombok.Setter;&#10;&#10;@Getter&#10;@Setter&#10;public class Subcategoria {&#10;    // TODO: id, nombre, categoria&#10;    private String tipo;&#10;&#10;    public Subcategoria(String tipo) {&#10;        this.tipo = tipo;&#10;    }&#10;}&#10;" />
-              <option name="updatedContent" value="package ar.utn.donatrack.donaciones.model.categoria;&#10;&#10;import lombok.EqualsAndHashCode;&#10;import lombok.Getter;&#10;import lombok.Setter;&#10;&#10;@Getter&#10;@Setter&#10;@EqualsAndHashCode(of = &quot;tipo&quot;)&#10;public class Subcategoria {&#10;    // TODO: id, nombre, categoria&#10;    private String tipo;&#10;&#10;    public Subcategoria(String tipo) {&#10;        this.tipo = tipo;&#10;    }&#10;&#10;}&#10;" />
-            </PendingDiffInfo>
-          </value>
-        </entry>
       </map>
     </option>
   </component>
