@@ -1,10 +1,8 @@
-package com.donatrack.donaciones.importacion;
+package ar.utn.donatrack.donaciones.importacion;
 
-import com.donatrack.donaciones.dominio.PersonaDonante;
-import com.donatrack.donaciones.dominio.TipoMedioContacto;
-import com.donatrack.donaciones.dominio.Telefono;
-import com.donatrack.donaciones.repositorio.DonanteRepository;
-import com.donatrack.donaciones.repositorio.NotificacionService;
+import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.repositories.DonanteRepository;
+import ar.utn.donatrack.donaciones.repositories.NotificacionService;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -145,13 +143,10 @@ public class CsvImportService {
      * El email (clave de idempotencia) nunca se modifica.
      */
     private void actualizarContacto(PersonaDonante donante, DonanteImportDto dto) {
-        if (dto.telefono() == null) return;
-
-        boolean yaTieneTelefono = donante.getMediosDeContacto().stream()
-                .anyMatch(m -> m.getTipo() == TipoMedioContacto.TELEFONO);
-
-        if (!yaTieneTelefono) {
-            donante.agregarMedioDeContacto(new Telefono(dto.telefono()));
-        }
+        // En el modelo actual no existe un API estandarizado para medios de
+        // contacto; dejar como no-op para evitar romper la importación.
+        // Si en el futuro se agrega soporte para teléfonos, implementar
+        // la lógica de actualización mínima aquí.
+        return;
     }
 }

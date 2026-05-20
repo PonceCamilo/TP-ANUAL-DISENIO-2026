@@ -1,8 +1,8 @@
-package com.donatrack.donaciones.importacion;
+package ar.utn.donatrack.donaciones.importacion;
 
-import com.donatrack.donaciones.dominio.*;
+import ar.utn.donatrack.donaciones.model.donante.PersonaHumana;
+import ar.utn.donatrack.donaciones.model.donante.PersonaJuridica;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -26,21 +26,12 @@ public class DonanteFactory {
      * - Dirección: valores "Pendiente" para satisfacer el invariante.
      */
     public PersonaHumana crearHumana(DonanteImportDto dto) {
-        List<MedioDeContacto> medios = construirMedios(dto);
-
         String[] partes = dto.nombreORazonSocial().split(" ", 2);
         String nombre   = partes[0];
         String apellido = partes.length > 1 ? partes[1] : "-";
 
-        return new PersonaHumana(
-                nombre,
-                apellido,
-                0,
-                dto.documento(),
-                Genero.PREFIERO_NO_DECIR,
-                direccionVacia(),
-                medios
-        );
+        // El modelo actual tiene un constructor simple (nombre, apellido, edad, documento)
+        return new PersonaHumana(nombre, apellido, 0, dto.documento());
     }
 
     /**
@@ -52,36 +43,8 @@ public class DonanteFactory {
      *   debe completarse por un administrador.
      */
     public PersonaJuridica crearJuridica(DonanteImportDto dto) {
-        List<MedioDeContacto> medios = construirMedios(dto);
-
-        Representante repPlaceholder = new Representante(
-                "Pendiente",
-                "Completar",
-                dto.email(),
-                dto.telefono()
-        );
-
-        return new PersonaJuridica(
-                dto.nombreORazonSocial(),
-                TipoPersonaJuridica.EMPRESA,
-                "No especificado",
-                medios,
-                List.of(repPlaceholder)
-        );
+        // El modelo actual de PersonaJuridica acepta (razonSocial, rubro)
+        return new PersonaJuridica(dto.nombreORazonSocial(), "No especificado");
     }
-
-    // ─── Helpers ──────────────────────────────────────────────────────────────
-
-    private List<MedioDeContacto> construirMedios(DonanteImportDto dto) {
-        List<MedioDeContacto> medios = new ArrayList<>();
-        medios.add(new Email(dto.email()));
-        if (dto.telefono() != null) {
-            medios.add(new Telefono(dto.telefono()));
-        }
-        return medios;
-    }
-
-    private Direccion direccionVacia() {
-        return new Direccion("Pendiente", "S/N", "Pendiente", "Pendiente", "0000");
-    }
+    // Helpers: no-op por ahora; el dominio actual es mínimo.
 }

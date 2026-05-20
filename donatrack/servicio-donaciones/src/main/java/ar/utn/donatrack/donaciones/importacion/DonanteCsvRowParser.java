@@ -1,4 +1,4 @@
-package com.donatrack.donaciones.importacion;
+package ar.utn.donatrack.donaciones.importacion;
 
 /**
  * Responsable de parsear y validar una fila del CSV de importación masiva.

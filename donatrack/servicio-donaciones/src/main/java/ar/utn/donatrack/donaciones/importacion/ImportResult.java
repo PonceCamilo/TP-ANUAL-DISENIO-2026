@@ -1,4 +1,4 @@
-package com.donatrack.donaciones.importacion;
+package ar.utn.donatrack.donaciones.importacion;
 
 /**
  * Resultado del procesamiento de una sola fila del CSV.

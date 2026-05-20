@@ -1,4 +1,4 @@
-package com.donatrack.donaciones.importacion;
+package ar.utn.donatrack.donaciones.importacion;
 
 /**
  * DTO de transferencia para una fila del CSV de importación masiva.
