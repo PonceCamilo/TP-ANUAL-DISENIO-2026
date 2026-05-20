@@ -2,6 +2,10 @@ package ar.utn.donatrack.donaciones.importacion;
 
 import ar.utn.donatrack.donaciones.model.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.model.donante.PersonaJuridica;
+import ar.utn.donatrack.donaciones.model.entidad.Direccion;
+import ar.utn.donatrack.donaciones.model.donante.Genero;
+import ar.utn.donatrack.donaciones.model.contacto.MedioDeContacto;
+
 
 import java.util.List;
 
@@ -31,7 +35,7 @@ public class DonanteFactory {
         String apellido = partes.length > 1 ? partes[1] : "-";
 
         // El modelo actual tiene un constructor simple (nombre, apellido, edad, documento)
-        return new PersonaHumana(nombre, apellido, 0, dto.documento());
+        return new PersonaHumana(nombre, apellido, 0, dto.documento(), Genero.PREFIERO_NO_DECIR, new Direccion("Pendiente", 0 , "Pendiente", "Pendiente", "Pendiente"), List.of());
     }
 
     /**

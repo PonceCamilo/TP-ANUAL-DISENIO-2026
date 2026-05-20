@@ -1,0 +1,87 @@
+package ar.utn.donatrack.donaciones.model.donante;
+
+import ar.utn.donatrack.donaciones.model.contacto.MedioDeContacto;
+import ar.utn.donatrack.donaciones.model.entidad.Direccion;
+import ar.utn.donatrack.donaciones.model.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.model.donacion.CargaDonacion;
+import ar.utn.donatrack.donaciones.model.donacion.Donacion;
+import ar.utn.donatrack.donaciones.model.donante.EstadoDonante;
+import ar.utn.donatrack.donaciones.model.donante.Genero;
+import ar.utn.donatrack.donaciones.model.contacto.Email;
+import ar.utn.donatrack.donaciones.model.contacto.WhatsApp;
+import ar.utn.donatrack.donaciones.model.contacto.Telefono;
+
+
+
+import java.util.ArrayList;
+import java.util.List;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PATRÓN: BUILDER — PersonaHumanaBuilder
+// ───────────────────────────────────────────────────────────────────────────────
+// Por qué: PersonaHumana tiene 7 parámetros en el constructor. Eso hace que quien
+// llama tenga que recordar el orden exacto y es propenso a errores (ej: confundir
+// nombre con apellido). Con Builder, cada campo se setea con nombre explícito.
+//
+// Beneficio: Código más legible, menos errores, y si en el futuro se agregan campos
+// opcionales (ej: fechaNacimiento), no rompemos constructores existentes.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+public class PersonaHumanaBuilder {
+
+    //  campos del builder 
+    private String nombre;                                         
+    private String apellido;                                       
+    private int edad;                                              
+    private String numeroDocumento;                                
+    private Genero genero;                                          
+    private Direccion direccion;                                     
+    private final List<MedioDeContacto> mediosDeContacto           
+            = new ArrayList<>();
+
+    public PersonaHumanaBuilder nombre(String nombre) {
+        this.nombre = nombre;
+        return this;
+    }
+
+    public PersonaHumanaBuilder apellido(String apellido) {
+        this.apellido = apellido;
+        return this;
+    }
+
+    public PersonaHumanaBuilder edad(int edad) {
+        this.edad = edad;
+        return this;
+    }
+
+    public PersonaHumanaBuilder numeroDocumento(String numeroDocumento) {
+        this.numeroDocumento = numeroDocumento;
+        return this;
+    }
+
+    public PersonaHumanaBuilder genero(Genero genero) {
+        this.genero = genero;
+        return this;
+    }
+
+    public PersonaHumanaBuilder direccion(Direccion direccion) {
+        this.direccion = direccion;
+        return this;
+    }
+
+    public PersonaHumanaBuilder agregarMedio(MedioDeContacto medio) {
+        this.mediosDeContacto.add(medio);
+        return this;
+    }
+
+    public PersonaHumanaBuilder medios(List<MedioDeContacto> medios) {
+        this.mediosDeContacto.addAll(medios);
+        return this;
+    }
+
+    //  build() es el único punto donde se construye el objeto real
+    public PersonaHumana build() {                                  // ← método de construcción
+        return new PersonaHumana(nombre, apellido, edad,
+                numeroDocumento, genero, direccion, mediosDeContacto);
+    }
+}
