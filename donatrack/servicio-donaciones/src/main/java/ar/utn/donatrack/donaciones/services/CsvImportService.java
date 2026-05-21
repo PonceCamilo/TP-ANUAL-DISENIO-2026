@@ -7,17 +7,15 @@ import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import ar.utn.donatrack.donaciones.repositories.ImportCSVRepository;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
 import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.services.NotificacionServiceInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 
-import lombok.Builder;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Orquestador del proceso de importación masiva de personas donantes por CSV.
@@ -39,16 +37,15 @@ import java.util.Optional;
  *    para ambos tipos de persona, tal como lo define el enunciado.
  */
 
-@Builder
+@RequiredArgsConstructor
 @Service
 public class CsvImportService {
 
     private static final int BATCH_SIZE = 500;
 
-    private final DonanteRepositoryInterface donanteRepository;
+    private final PersonaDonanteRepositoryInterface donanteRepository;
     private final DonanteCsvRowParser parser;
     private final DonanteFactory factory;
-    private final NotificacionServiceInterface notificacionService;
 
     // ─── Punto de entrada ─────────────────────────────────────────────────────
 
@@ -105,16 +102,15 @@ public class CsvImportService {
 
     private ImportFilaCSV procesarFila(DonanteImportDto dto, int linea) {
         try {
-            Optional<PersonaDonante> existente = donanteRepository.findByEmail(dto.email());
+            PersonaDonante existente = donanteRepository.obtenerPorMail(dto.email());
 
-            if (existente.isPresent()) {
-                actualizarContacto(existente.get(), dto);
-                donanteRepository.save(existente.get());
+            if (existente != null) {
+                actualizarContacto(existente, dto);
+                donanteRepository.guardar(existente);
                 return ImportFilaCSV.actualizado(linea, dto.email());
             } else {
                 PersonaDonante nuevo = crearDesdeDto(dto);
-                donanteRepository.save(nuevo);
-                notificacionService.enviarCredencialesNuevoUsuario(nuevo);
+                donanteRepository.guardar(nuevo);
                 return ImportFilaCSV.creado(linea, dto.email());
             }
 

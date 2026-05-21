@@ -1,4 +1,6 @@
 package ar.utn.donatrack.donaciones.model.entidad;
+
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 /**
@@ -6,6 +8,7 @@ import lombok.Setter;
  * Inmutable: no tiene setters. Si la dirección cambia, se crea una nueva instancia.
  */
 
+@Builder
 @Getter
 @Setter
 public class Direccion {
@@ -15,14 +18,4 @@ public class Direccion {
     private String localidad;
     private String provincia;
     private String codigoPostal;
-
-    public Direccion(String calle, int numero, String localidad,
-                     String provincia, String codigoPostal) {
-        this.calle = calle;
-        this.numero = numero;
-        this.localidad = localidad;
-        this.provincia = provincia;
-        this.codigoPostal = codigoPostal;
-    }
-
 }

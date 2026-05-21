@@ -1,55 +1,71 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
+import ar.utn.donatrack.donaciones.model.contacto.TipoMedioContacto;
 import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.excepcion.EmailYaRegistradoException;
-import ar.utn.donatrack.donaciones.excepcion.PersonaDonanteNoEncontradaException;
+import ar.utn.donatrack.donaciones.model.donante.PersonaJuridicaDonante;
+import ar.utn.donatrack.donaciones.model.donante.Representante;
 import ar.utn.donatrack.donaciones.repositories.PersonaDonanteRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
 @Service
-public class PersonaDonanteService {
+@RequiredArgsConstructor
+public class PersonaDonanteService implements PersonaDonanteServiceInterface {
 
     private final PersonaDonanteRepository repositorio;
 
-    public PersonaDonanteService(PersonaDonanteRepository repositorio) {
-        this.repositorio = repositorio;
-    }
-
     public PersonaDonante registrar(PersonaDonante donante) {
-        if (repositorio.existePorEmail(
-                donante.getMedioContactoPredeterminado().getValor())) {
-            throw new EmailYaRegistradoException(
-                donante.getMedioContactoPredeterminado().getValor());
+        if (repositorio.existePorEmail(donante.getEmail())) {
+            throw new EmailYaRegistradoException(donante.getEmail());
         }
         repositorio.guardar(donante);
         return donante;
     }
 
-    public PersonaDonante buscarPorId(UUID id) {
-        return repositorio.buscarPorId(id)
-                .orElseThrow(() -> new PersonaDonanteNoEncontradaException(id));
+    public PersonaDonante obtenerPorId(UUID id) {
+        return repositorio.obtenerPorId(id);
     }
 
     public void darDeBaja(UUID id) {
-        PersonaDonante donante = buscarPorId(id);
-        donante.darDeBaja();
-        repositorio.guardar(donante);
+        repositorio.darDeBaja(id);
     }
 
     public void reactivar(UUID id) {
-        PersonaDonante donante = buscarPorId(id);
-        donante.reactivar();
-        repositorio.guardar(donante);
+        repositorio.reactivar(id);
     }
 
-    public List<PersonaDonante> listarActivos() {
-        return repositorio.buscarActivos();
+    public void agregarMedioDeContacto(UUID id, TipoMedioContacto medio){
+        PersonaDonante persona = repositorio.obtenerPorId(id);
+        persona.getMediosDeContacto().add(medio);
+        repositorio.actualizar(persona);
     }
 
-    public List<PersonaDonante> listarTodos() {
-        return repositorio.buscarTodos();
+    public void agregarRepresentante(UUID id, Representante representante){
+
+        if(!repositorio.obtenerPorId(id).getTipoPersona().equals("Juridica")){
+            throw new IllegalArgumentException("Solo se pueden agregar representantes a personas jurídicas.");
+        }
+        PersonaJuridicaDonante persona = (PersonaJuridicaDonante) repositorio.obtenerPorId(id);
+        persona.getRepresentantes().add(representante);
+        repositorio.actualizar(persona);
+    }
+
+    public void removerRepresentante(UUID id, String emailRepresentante){
+        PersonaJuridicaDonante persona = (PersonaJuridicaDonante) repositorio.obtenerPorId(id);
+        persona.getRepresentantes().removeIf(rep -> rep.getEmail().equals(emailRepresentante));
+        repositorio.actualizar(persona);
+    }
+
+    public List<PersonaDonante> listarDonantesActivos() {
+        return repositorio.obtenerTodosActivos();
+    }
+
+    public List<PersonaDonante> listarTodosDonantes() {
+        return repositorio.obtenerTodosDonantes();
     }
 }

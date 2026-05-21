@@ -3,9 +3,14 @@ package ar.utn.donatrack.donaciones.controller;
 import ar.utn.donatrack.donaciones.model.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.model.entidad.Necesidad;
 import ar.utn.donatrack.donaciones.services.EntidadesBeneficiariasService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RestController;
 
+@RestController
+@RequiredArgsConstructor
 public class EntidadBeneficiariaController {
-    private final EntidadesBeneficiariasService entidadesBeneficiariasService =EntidadesBeneficiariasService.instance();
+
+    private final EntidadesBeneficiariasService entidadesBeneficiariasService;
     
     // La entidad beneficiaria debe poder registrar necesidades materiales concretas
     public void cargarNecesidad(EntidadBeneficiaria entidadBeneficiaria, Necesidad necesidad) {

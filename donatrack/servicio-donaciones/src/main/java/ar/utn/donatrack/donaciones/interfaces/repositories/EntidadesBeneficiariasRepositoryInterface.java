@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface EntidadesBeneficiariasRepositoryInterface {
     void cargarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad);
+    void guardar(EntidadBeneficiaria entidad);
+    List<EntidadBeneficiaria> buscarTodas();
 }
-

@@ -18,24 +18,62 @@ import java.util.List;
 
 class SegmentadorDonacionesServiceTest {
 
-  private final SegmentadorDonacionesRepository repository = SegmentadorDonacionesRepository.instance();
-  private final SegmentadorDonacionesService segmentador = SegmentadorDonacionesService.instance();
+  private final SegmentadorDonacionesRepository repository = new SegmentadorDonacionesRepository();
+  private final SegmentadorDonacionesService segmentador = new SegmentadorDonacionesService(repository);
   private final Subcategoria subRopa = new Subcategoria("Ropa");
   private final Subcategoria subAlimento = new Subcategoria("Alimento");
-  BienPerecible bienPerecible = new BienPerecible(subAlimento, "Leche larga vida", "path/to/leche.jpg", 10, "unidades", LocalDate.of(2025, 1, 1));
-  BienPerecible bienPerecible2 = new BienPerecible(subAlimento, "Arroz", "path/to/arroz.jpg", 5, "kg", LocalDate.of(2025, 1, 1));
-  BienPerecible bienPerecible3 = new BienPerecible(subAlimento, "Queso", "path/to/queso.jpg", 2, "unidades", LocalDate.of(2025, 2, 1));
-  BienConEstado bienConEstado = new BienConEstado(subRopa, "Remera", "path/to/remera.jpg", 5, "unidades", true);
-  BienConEstado bienConEstado2 = new BienConEstado(subRopa, "Pantalon", "path/to/pantalon.jpg", 3, "unidades", false);
-  BienConEstado bienConEstado3 = new BienConEstado(subRopa, "Camisa", "path/to/camisa.jpg", 4, "unidades", true);
+
+  BienPerecible bienPerecible = BienPerecible.builder()
+      .subcategoria(subAlimento)
+      .descripcion("Leche larga vida")
+      .foto("path/to/leche.jpg")
+      .cantidad(10)
+      .unidad("unidades")
+      .fechaVencimiento(LocalDate.of(2025, 1, 1))
+      .build();
+  BienPerecible bienPerecible2 = BienPerecible.builder()
+      .subcategoria(subAlimento)
+      .descripcion("Arroz")
+      .foto("path/to/arroz.jpg")
+      .cantidad(5)
+      .unidad("kg")
+      .fechaVencimiento(LocalDate.of(2025, 1, 1))
+      .build();
+  BienPerecible bienPerecible3 = BienPerecible.builder()
+      .subcategoria(subAlimento)
+      .descripcion("Queso")
+      .foto("path/to/queso.jpg")
+      .cantidad(2)
+      .unidad("unidades")
+      .fechaVencimiento(LocalDate.of(2025, 2, 1))
+      .build();
+  BienConEstado bienConEstado = BienConEstado.builder()
+      .subcategoria(subRopa)
+      .descripcion("Remera")
+      .foto("path/to/remera.jpg")
+      .cantidad(5)
+      .unidad("unidades")
+      .esNuevo(true)
+      .build();
+  BienConEstado bienConEstado2 = BienConEstado.builder()
+      .subcategoria(subRopa)
+      .descripcion("Pantalon")
+      .foto("path/to/pantalon.jpg")
+      .cantidad(3)
+      .unidad("unidades")
+      .esNuevo(false)
+      .build();
+  BienConEstado bienConEstado3 = BienConEstado.builder()
+      .subcategoria(subRopa)
+      .descripcion("Camisa")
+      .foto("path/to/camisa.jpg")
+      .cantidad(4)
+      .unidad("unidades")
+      .esNuevo(true)
+      .build();
 
   @BeforeEach
   void beforeEach() {
-    this.repository.getDonaciones().clear();
-  }
-
-  @AfterEach
-  void afterEach() {
     this.repository.getDonaciones().clear();
   }
 
@@ -92,7 +130,7 @@ class SegmentadorDonacionesServiceTest {
     CargaDonacion carga = new CargaDonacion();
     carga.setBienes(List.of(bienPerecible, bienConEstado, bienPerecible2, bienConEstado2, bienPerecible3, bienConEstado3));
 
-   this.segmentador.segmentar(carga);
+    this.segmentador.segmentar(carga);
 
     assertEquals(4, this.repository.getDonaciones().size());
     assertEquals(2, (this.repository.getDonaciones().getFirst().getBienes().size()));

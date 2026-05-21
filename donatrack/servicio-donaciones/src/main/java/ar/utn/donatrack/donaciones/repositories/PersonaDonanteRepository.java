@@ -1,8 +1,10 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.model.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.model.contacto.TipoMedioContacto;
+import ar.utn.donatrack.donaciones.model.donante.PersonaHumanaDonante;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.stereotype.Repository;
@@ -29,42 +31,62 @@ import java.util.concurrent.ConcurrentHashMap;
 @Repository  // ← SINGLETON: Spring instancia esta clase una sola vez en todo el contexto
 @Getter
 @Setter
-public class PersonaDonanteRepository{
+public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterface {
 
     // el Map es el estado compartido de toda la aplicación en Entrega 1
-    private final Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>(); 
+    private Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>();
 
     public void guardar(PersonaDonante personaDonante) {
         almacenamiento.put(personaDonante.getId(), personaDonante);
     }
     
-    public Optional<PersonaDonante> buscarPorId(UUID id) {
-        return Optional.ofNullable(almacenamiento.get(id));
+    public PersonaDonante obtenerPorId(UUID id) {
+        return almacenamiento.get(id);
     }
 
-    public Optional<PersonaDonante> buscarPorEmail(String email) {
+    public PersonaDonante obtenerPorMail(String email) {
         return almacenamiento.values().stream()
-                .filter(p -> p.getMediosDeContacto().stream()
-                        .anyMatch(m -> m == TipoMedioContacto.EMAIL
-                                && p.getEmail().equalsIgnoreCase(email)))
-                .findFirst();
+            .filter(p -> p.getEmail().equalsIgnoreCase(email))
+            .findFirst()
+            .orElse(null);
     }
-    
-    public List<PersonaDonante> buscarTodos() {
-        return new ArrayList<>(almacenamiento.values());
+
+    public List<PersonaDonante> obtenerTodosDonantes() {
+        return almacenamiento.values().stream().toList();
     }
-    
-    public List<PersonaDonante> buscarActivos() {
+
+    public List<PersonaDonante> obtenerTodosActivos() {
         return almacenamiento.values().stream()
             .filter(p -> p.getEstado() == EstadoDonante.ACTIVO)
             .toList();
     }
 
-    public void eliminar(UUID id) {
-        almacenamiento.remove(id);
+    public void darDeBaja(UUID id) {
+        PersonaDonante persona = this.obtenerPorId(id);
+        // (STATE): la transición se valida comparando estados
+        if (persona.getEstado() == EstadoDonante.INACTIVO) {                // ← transición de estado
+            throw new IllegalStateException("La persona donante ya se encuentra dada de baja.");
+        }
+        persona.setEstado(EstadoDonante.INACTIVO);                       // ← cambio de estado
+    }
+
+    public void reactivar(UUID id) {
+        PersonaDonante persona = this.obtenerPorId(id);
+        // STATE: transición inversa explícita
+        if (persona.getEstado() == EstadoDonante.ACTIVO) {                // ← transición de estado
+            throw new IllegalStateException("La persona donante ya se encuentra activa.");
+        }
+        persona.setEstado(EstadoDonante.ACTIVO);                         // ← cambio de estado
     }
     
     public boolean existePorEmail(String email) {
-        return buscarPorEmail(email).isPresent();
+        return obtenerPorMail(email) != null;
+    }
+
+    public void actualizar(PersonaDonante persona) {
+        if (!almacenamiento.containsKey(persona.getId())) {
+            throw new NoSuchElementException("No se encontró la persona donante con ID: " + persona.getId());
+        }
+        almacenamiento.put(persona.getId(), persona);
     }
 }

@@ -4,23 +4,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ar.utn.donatrack.donaciones.model.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.model.entidad.Necesidad;
 import ar.utn.donatrack.donaciones.model.entidad.NecesidadExtraordinaria;
 import ar.utn.donatrack.donaciones.model.entidad.NecesidadRecurrente;
 import ar.utn.donatrack.donaciones.model.entidad.Periodicidad;
 
 import ar.utn.donatrack.donaciones.repositories.EntidadesBeneficiariasRepository;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
-import java.util.List;
 
 class EntidadesBeneficiariasServiceTest {
 
-    private final EntidadesBeneficiariasRepository repository = EntidadesBeneficiariasRepository.instance();
-    private final EntidadesBeneficiariasService service = EntidadesBeneficiariasService.instance();
+    private final EntidadesBeneficiariasRepository repository = new EntidadesBeneficiariasRepository();
+    private final EntidadesBeneficiariasService service = new EntidadesBeneficiariasService(repository);
 
     private EntidadBeneficiaria comedor;
     private NecesidadExtraordinaria bancosSillas;
@@ -29,7 +28,7 @@ class EntidadesBeneficiariasServiceTest {
     @BeforeEach
     void beforeEach() {
         this.repository.buscarTodas().clear();
-        comedor = new EntidadBeneficiaria();
+        this.comedor = EntidadBeneficiaria.builder().build();
         comedor.setRazonSocial("Comedor Escobar Sonrisas");
 
         bancosSillas = new NecesidadExtraordinaria();

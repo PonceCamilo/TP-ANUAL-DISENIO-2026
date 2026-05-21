@@ -11,7 +11,6 @@ public abstract class Necesidad {
     protected int id;
     protected Subcategoria subcategoria;
     protected String descripcion;
-    //protected EntidadBeneficiaria entidadBeneficiaria;  la entidad beneficiaria ya tiene una lista de necesidades
     protected int cantidadObjetivo;
     protected int cantidadRecibida;
 

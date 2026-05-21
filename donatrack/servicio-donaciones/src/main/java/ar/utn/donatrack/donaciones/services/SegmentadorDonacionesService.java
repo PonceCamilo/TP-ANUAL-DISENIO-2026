@@ -18,28 +18,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
-@Getter
-@Setter
+@RequiredArgsConstructor
 public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {
 
   private final SegmentadorDonacionesRepository segmentadorDonacionesRepository;
-
-  private static SegmentadorDonacionesService instance = null;
-  private SegmentadorDonacionesService(SegmentadorDonacionesRepository segmentadorDonacionesRepository) {
-    this.segmentadorDonacionesRepository = segmentadorDonacionesRepository;
-  }
-
-  public static SegmentadorDonacionesService instance() {
-    if (instance == null) {
-      instance = new SegmentadorDonacionesService(SegmentadorDonacionesRepository.instance());
-    }
-    return instance;
-  }
 
   public void segmentar(CargaDonacion carga) {
     List<Bien> listaBienes = carga.getBienes();

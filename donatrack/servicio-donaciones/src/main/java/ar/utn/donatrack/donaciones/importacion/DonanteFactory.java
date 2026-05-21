@@ -4,6 +4,7 @@ import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.model.donante.PersonaHumanaDonante;
 import ar.utn.donatrack.donaciones.model.donante.PersonaJuridicaDonante;
+import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 
@@ -17,6 +18,7 @@ import java.util.Objects;
  * invariantes del dominio y dejan en claro que deben completarse luego por
  * un administrador.
  */
+@Component
 public class DonanteFactory {
 
     /**

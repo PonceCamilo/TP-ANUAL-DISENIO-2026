@@ -2,6 +2,7 @@ package ar.utn.donatrack.donaciones.importacion;
 
 import ar.utn.donatrack.donaciones.excepcion.CsvFormatoInvalidoException;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
+import org.springframework.stereotype.Component;
 
 /**
  * Responsable de parsear y validar una fila del CSV de importación masiva.
@@ -13,6 +14,7 @@ import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
  * Los invariantes completos del dominio (edad, género, etc.) se resuelven
  * en DonanteFactory con valores neutros.
  */
+@Component
 public class DonanteCsvRowParser {
 
     public DonanteImportDto parsear(String[] columnas, int numeroLinea) {

@@ -16,22 +16,10 @@ import org.springframework.stereotype.Repository;
 @Setter
 public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasRepositoryInterface {
 
-    private static EntidadesBeneficiariasRepository instance = null;
-    private EntidadesBeneficiariasRepository(List<EntidadBeneficiaria> entidadesBeneficiarias) {
-        this.entidadesBeneficiarias = entidadesBeneficiarias;
-    }
-
-    private List<EntidadBeneficiaria> entidadesBeneficiarias;
+    private List<EntidadBeneficiaria> entidadesBeneficiarias = new ArrayList<>();
     
     public void guardar(EntidadBeneficiaria entidad) {
-    this.entidadesBeneficiarias.add(entidad);
-    }
-
-    public static EntidadesBeneficiariasRepository instance() {
-        if (instance == null) {
-            instance = new EntidadesBeneficiariasRepository(new ArrayList<>());
-        }
-        return instance;
+        this.entidadesBeneficiarias.add(entidad);
     }
 
     public void cargarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad) {
@@ -41,6 +29,4 @@ public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasR
     public List<EntidadBeneficiaria> buscarTodas() {
         return this.entidadesBeneficiarias;
     }
-
-    
 }

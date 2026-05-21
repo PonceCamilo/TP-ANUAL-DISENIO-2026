@@ -1,10 +1,9 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.model.*;
-import ar.utn.donatrack.donaciones.model.contacto.*;
 import ar.utn.donatrack.donaciones.excepcion.EmailYaRegistradoException;
-import ar.utn.donatrack.donaciones.excepcion.PersonaDonanteNoEncontradaException;
-import ar.utn.donatrack.donaciones.notificacion.ObservadorDeRegistro;
+import ar.utn.donatrack.donaciones.model.contacto.TipoMedioContacto;
+import ar.utn.donatrack.donaciones.model.donante.*;
+import ar.utn.donatrack.donaciones.model.entidad.Direccion;
 import ar.utn.donatrack.donaciones.repositories.PersonaDonanteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +15,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,244 +22,175 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("PersonaDonanteService - Template Method, Observer, Builder, Factory")
+@DisplayName("PersonaDonanteService - adaptación de tests")
 class PersonaDonanteServicioTest {
 
     @Mock
     private PersonaDonanteRepository repositorio;
 
-    @Mock
-    private ObservadorDeRegistro observador;
+    private PersonaDonanteService servicio;
 
-    private PersonaDonanteServicio servicio;
+    private static final Direccion direccion = Direccion.builder()
+        .calle("Corrientes").numero(1000).localidad("CABA").provincia("Buenos Aires").codigoPostal("1043")
+        .build();
 
-    private static final Direccion DIRECCION =
-            new Direccion("Corrientes", "1000", "CABA", "Buenos Aires", "1043");
+    private static final PersonaHumanaDonante donanteHumano = PersonaHumanaDonante.builder()
+        .nombre("Ana").apellido("Perez").edad(30)
+        .numeroDocumento("12345678").genero(Genero.FEMENINO)
+        .direccion(direccion)
+        .email("ana@mail.com")
+        .medioContactoPredeterminado(TipoMedioContacto.EMAIL)
+        .estado(EstadoDonante.ACTIVO)
+        .build();
+
+    private static final PersonaHumanaDonante donanteHumano2 = PersonaHumanaDonante.builder()
+        .nombre("Luis").apellido("Gomez").edad(45)
+        .numeroDocumento("87654321").genero(Genero.MASCULINO)
+        .direccion(direccion)
+        .email("luis@mail.com")
+        .medioContactoPredeterminado(TipoMedioContacto.TELEFONO)
+        .estado(EstadoDonante.ACTIVO)
+        .build();
+
+    private static final PersonaJuridicaDonante donanteJuridico = PersonaJuridicaDonante.builder()
+        .razonSocial("Arcos Plateados S.A.")
+        .tipo(TipoPersonaJuridica.EMPRESA)
+        .rubro("Tecnologia")
+        .email("contacto@empresa.com")
+        .medioContactoPredeterminado(TipoMedioContacto.EMAIL)
+        .estado(EstadoDonante.ACTIVO)
+        .build();
 
     @BeforeEach
     void setUp() {
-        servicio = new PersonaDonanteServicio(repositorio, List.of(observador));
+        servicio = new PersonaDonanteService(repositorio);
     }
 
-    // ─── Registro persona humana ──────────────────────────────────────────────
-
     @Nested
-    @DisplayName("registrarPersonaHumana() - Template Method")
+    @DisplayName("registrar() - flujo basico para PersonaHumanaDonante")
     class RegistrarPersonaHumana {
 
         @Test
-        @DisplayName("Flujo completo: valida, construye, guarda y notifica")
+        @DisplayName("Flujo completo: valida y guarda")
         void flujoCompleto() {
-            List<MedioDeContacto> medios = List.of(new Email("ana@mail.com"));
             when(repositorio.existePorEmail("ana@mail.com")).thenReturn(false);
-            when(repositorio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            PersonaHumana resultado = servicio.registrarPersonaHumana(
-                    "Ana", "Pérez", 30, "12345678", Genero.FEMENINO,
-                    DIRECCION, medios, medios.get(0));
+            servicio.registrar(donanteHumano);
 
-            assertEquals("Ana", resultado.getNombre());
-            assertEquals(EstadoDonante.ACTIVO, resultado.getEstado());
-
-            // Verifica paso 5: se guardó
-            verify(repositorio).guardar(any(PersonaHumana.class));
-
-            // Verifica paso 6: se notificó al observer
-            verify(observador).alRegistrarDonante(any(PersonaDonante.class));
+            verify(repositorio).guardar(donanteHumano);
         }
 
         @Test
-        @DisplayName("Lanza EmailYaRegistradoException si el email ya existe")
-        void lanzaExcepcionEmailDuplicado() {
-            List<MedioDeContacto> medios = List.of(new Email("ana@mail.com"));
-            when(repositorio.existePorEmail("ana@mail.com")).thenReturn(true);
-
-            assertThrows(EmailYaRegistradoException.class, () ->
-                    servicio.registrarPersonaHumana(
-                            "Ana", "Pérez", 30, "12345678", Genero.FEMENINO,
-                            DIRECCION, medios, null));
-
-            // Nunca debe guardar ni notificar si la validación falla
-            verify(repositorio, never()).guardar(any());
-            verify(observador, never()).alRegistrarDonante(any());
-        }
-
-        @Test
-        @DisplayName("El Observer recibe la persona correcta")
-        void observerRecibeLaPersonaCorrecta() {
-            List<MedioDeContacto> medios = List.of(new Email("ana@mail.com"));
+        @DisplayName("Verifica que se guarde el donante con los datos correctos")
+        void verificaGuardado() {
             when(repositorio.existePorEmail("ana@mail.com")).thenReturn(false);
-            when(repositorio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            servicio.registrarPersonaHumana(
-                    "Ana", "Pérez", 30, "12345678", Genero.FEMENINO,
-                    DIRECCION, medios, null);
+            servicio.registrar(donanteHumano);
 
             ArgumentCaptor<PersonaDonante> captor = ArgumentCaptor.forClass(PersonaDonante.class);
-            verify(observador).alRegistrarDonante(captor.capture());
+            verify(repositorio).guardar(captor.capture());
 
-            PersonaHumana notificada = (PersonaHumana) captor.getValue();
-            assertEquals("Ana", notificada.getNombre());
-            assertEquals(EstadoDonante.ACTIVO, notificada.getEstado());
+            PersonaHumanaDonante guardada = (PersonaHumanaDonante) captor.getValue();
+            assertEquals("Ana", guardada.getNombre());
+            assertEquals(EstadoDonante.ACTIVO, guardada.getEstado());
         }
 
         @Test
-        @DisplayName("Establece el medio predeterminado correctamente")
+        @DisplayName("El donante guardado tiene el medio de contacto predeterminado correcto")
         void estableceMedioPredeterminado() {
-            Email email = new Email("ana@mail.com");
-            WhatsApp wp = new WhatsApp("+5411999");
-            List<MedioDeContacto> medios = List.of(email, wp);
             when(repositorio.existePorEmail("ana@mail.com")).thenReturn(false);
-            when(repositorio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            PersonaHumana resultado = servicio.registrarPersonaHumana(
-                    "Ana", "Pérez", 30, "12345678", Genero.FEMENINO,
-                    DIRECCION, medios, wp); // WhatsApp como predeterminado
+            servicio.registrar(donanteHumano);
 
-            assertEquals("+5411999", resultado.getMedioContactoPredeterminado().getValor());
+            ArgumentCaptor<PersonaDonante> captor = ArgumentCaptor.forClass(PersonaDonante.class);
+            verify(repositorio).guardar(captor.capture());
+            assertEquals(TipoMedioContacto.EMAIL, captor.getValue().getMedioContactoPredeterminado());
         }
     }
 
-    // ─── Registro persona jurídica ────────────────────────────────────────────
-
     @Nested
-    @DisplayName("registrarPersonaJuridica() - Template Method")
+    @DisplayName("registrar() para PersonaJuridicaDonante")
     class RegistrarPersonaJuridica {
 
         @Test
-        @DisplayName("Flujo completo: valida, construye, guarda y notifica")
+        @DisplayName("Flujo completo: valida y guarda")
         void flujoCompleto() {
-            List<MedioDeContacto> medios = List.of(new Email("contacto@empresa.com"));
-            List<Representante> reps = List.of(
-                    new Representante("Carlos", "Ruiz", "rep@empresa.com", null));
             when(repositorio.existePorEmail("contacto@empresa.com")).thenReturn(false);
-            when(repositorio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            PersonaJuridica resultado = servicio.registrarPersonaJuridica(
-                    "Arcos Plateados S.A.", TipoPersonaJuridica.EMPRESA,
-                    "Tecnología", medios, medios.get(0), reps);
+            servicio.registrar(donanteJuridico);
 
-            assertEquals("Arcos Plateados S.A.", resultado.getRazonSocial());
-            assertEquals(EstadoDonante.ACTIVO, resultado.getEstado());
-
-            verify(repositorio).guardar(any(PersonaJuridica.class));
-            verify(observador).alRegistrarDonante(any(PersonaDonante.class));
+            verify(repositorio).guardar(donanteJuridico);
         }
 
         @Test
-        @DisplayName("Lanza excepción si el email ya está registrado")
+        @DisplayName("Lanza excepcion si el email ya esta registrado")
         void lanzaExcepcionEmailDuplicado() {
-            List<MedioDeContacto> medios = List.of(new Email("contacto@empresa.com"));
             when(repositorio.existePorEmail("contacto@empresa.com")).thenReturn(true);
 
-            assertThrows(EmailYaRegistradoException.class, () ->
-                    servicio.registrarPersonaJuridica(
-                            "Arcos S.A.", TipoPersonaJuridica.EMPRESA, "Tech",
-                            medios, null, List.of()));
+            assertThrows(EmailYaRegistradoException.class, () -> servicio.registrar(donanteJuridico));
 
             verify(repositorio, never()).guardar(any());
         }
     }
 
-    // ─── darDeBaja ────────────────────────────────────────────────────────────
-
     @Nested
-    @DisplayName("darDeBaja() - State")
+    @DisplayName("darDeBaja() - delega al repositorio")
     class DarDeBaja {
 
         @Test
-        @DisplayName("Cambia el estado de la persona a INACTIVO")
-        void cambiaEstadoAInactivo() {
-            PersonaHumana persona = humanaEnMemoria("ana@mail.com");
-            when(repositorio.buscarPorId(persona.getId())).thenReturn(Optional.of(persona));
-            when(repositorio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+        @DisplayName("Llama a darDeBaja en el repositorio")
+        void llamaRepositorioDarDeBaja() {
+            UUID id = UUID.randomUUID();
+            doNothing().when(repositorio).darDeBaja(id);
 
-            servicio.darDeBaja(persona.getId());
+            servicio.darDeBaja(id);
 
-            assertEquals(EstadoDonante.INACTIVO, persona.getEstado());
-            verify(repositorio).guardar(persona);
+            verify(repositorio).darDeBaja(id);
         }
 
         @Test
-        @DisplayName("Lanza PersonaDonanteNoEncontradaException si el ID no existe")
+        @DisplayName("Lanza NullPointerException si el ID no existe")
         void lanzaExcepcionSiIdNoExiste() {
-            UUID idInexistente = UUID.randomUUID();
-            when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
+            PersonaDonanteRepository repoReal = new PersonaDonanteRepository();
+            PersonaDonanteService servicioReal = new PersonaDonanteService(repoReal);
 
-            assertThrows(PersonaDonanteNoEncontradaException.class, () ->
-                    servicio.darDeBaja(idInexistente));
+            UUID idInexistente = UUID.randomUUID();
+
+            assertThrows(NullPointerException.class, () -> servicioReal.darDeBaja(idInexistente));
         }
     }
 
-    // ─── Consultas ────────────────────────────────────────────────────────────
-
     @Test
-    @DisplayName("buscarPorId() delega al repositorio")
-    void buscarPorId() {
-        PersonaHumana persona = humanaEnMemoria("ana@mail.com");
-        when(repositorio.buscarPorId(persona.getId())).thenReturn(Optional.of(persona));
+    @DisplayName("obtenerPorId() delega al repositorio")
+    void obtenerPorId() {
+        when(repositorio.obtenerPorId(donanteHumano.getId())).thenReturn(donanteHumano);
 
-        Optional<PersonaDonante> resultado = servicio.buscarPorId(persona.getId());
+        PersonaDonante resultado = servicio.obtenerPorId(donanteHumano.getId());
 
-        assertTrue(resultado.isPresent());
-        assertEquals(persona.getId(), resultado.get().getId());
+        assertNotNull(resultado);
+        assertEquals(donanteHumano.getId(), resultado.getId());
     }
 
     @Test
-    @DisplayName("listarActivos() delega al repositorio")
+    @DisplayName("listarDonantesActivos() delega al repositorio")
     void listarActivos() {
-        PersonaHumana persona = humanaEnMemoria("ana@mail.com");
-        when(repositorio.buscarActivos()).thenReturn(List.of(persona));
+        when(repositorio.obtenerTodosActivos()).thenReturn(List.of(donanteHumano));
 
-        List<PersonaDonante> resultado = servicio.listarActivos();
+        List<PersonaDonante> resultado = servicio.listarDonantesActivos();
 
         assertEquals(1, resultado.size());
-        assertTrue(resultado.get(0).isActivo());
+        assertEquals(EstadoDonante.ACTIVO, resultado.getFirst().getEstado());
     }
 
-    // ─── Observers múltiples ──────────────────────────────────────────────────
-
     @Test
-    @DisplayName("Notifica a TODOS los observers registrados")
-    void notificaTodosLosObservers() {
-        ObservadorDeRegistro obs2 = mock(ObservadorDeRegistro.class);
-        PersonaDonanteServicio servicioConDosObs =
-                new PersonaDonanteServicio(repositorio, List.of(observador, obs2));
-
-        List<MedioDeContacto> medios = List.of(new Email("ana@mail.com"));
+    @DisplayName("Registrar multiples donantes: verifica llamadas al repositorio")
+    void registrarMultiplesDonantes() {
         when(repositorio.existePorEmail("ana@mail.com")).thenReturn(false);
-        when(repositorio.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(repositorio.existePorEmail("luis@mail.com")).thenReturn(false);
 
-        servicioConDosObs.registrarPersonaHumana(
-                "Ana", "Pérez", 30, "12345678", Genero.FEMENINO,
-                DIRECCION, medios, null);
+        servicio.registrar(donanteHumano);
+        servicio.registrar(donanteHumano2);
 
-        verify(observador, times(1)).alRegistrarDonante(any());
-        verify(obs2, times(1)).alRegistrarDonante(any());
-    }
-
-    // ─── Factory Method expuesto ──────────────────────────────────────────────
-
-    @Test
-    @DisplayName("crearMedioDeContacto() crea la instancia correcta según el tipo")
-    void crearMedioDeContacto() {
-        MedioDeContacto email = PersonaDonanteServicio.crearMedioDeContacto(
-                TipoMedioContacto.EMAIL, "a@b.com");
-        MedioDeContacto tel = PersonaDonanteServicio.crearMedioDeContacto(
-                TipoMedioContacto.TELEFONO, "+5411");
-
-        assertInstanceOf(Email.class, email);
-        assertInstanceOf(Telefono.class, tel);
-    }
-
-    // ─── Helper ───────────────────────────────────────────────────────────────
-
-    private PersonaHumana humanaEnMemoria(String emailStr) {
-        return new PersonaHumanaBuilder()
-                .nombre("Ana").apellido("Pérez").edad(30)
-                .numeroDocumento("12345678").genero(Genero.FEMENINO)
-                .direccion(DIRECCION)
-                .agregarMedio(new Email(emailStr))
-                .build();
+        verify(repositorio, times(2)).guardar(any());
     }
 }

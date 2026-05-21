@@ -8,24 +8,14 @@ import java.util.List;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.stereotype.Repository;
 
+@Repository
 @Getter
 @Setter
 public class SegmentadorDonacionesRepository implements SegmentadorDonacionesRepositoryInterface {
 
-  private static SegmentadorDonacionesRepository instance = null;
-  private SegmentadorDonacionesRepository(List<Donacion> donaciones) {
-    this.donaciones = donaciones;
-  }
-
-  public static SegmentadorDonacionesRepository instance() {
-    if (instance == null) {
-      instance = new SegmentadorDonacionesRepository(new ArrayList<>());
-    }
-    return instance;
-  }
-
-  private final List<Donacion> donaciones;
+  private List<Donacion> donaciones = new ArrayList<>();
 
   public void cargarDonaciones(List<Donacion> cargaDonacion) {
     donaciones.addAll(cargaDonacion);

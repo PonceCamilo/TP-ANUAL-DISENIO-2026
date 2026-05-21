@@ -8,6 +8,7 @@ import java.util.List;
 public interface EntidadesBeneficiariasServiceInterface {
     void registrarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad);
     void reiniciarPeriodoNecesidadRecurrente(EntidadBeneficiaria entidad, Necesidad necesidad);
+    void actualizarPeriodos();
 }
 
 
