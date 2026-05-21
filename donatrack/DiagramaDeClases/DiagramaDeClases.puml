@@ -1,27 +1,5 @@
 @startuml diagrama-De-Clases
 
-class EntidadBeneficiariaController{
-    - entidadBeneficiariaService: EntidadBeneficiariaService;
-
-    + cargarNecesidad(EntidadBeneficiaria EntidadBeneficiaria, Necesidad necesidad): void; 
-}
-
-class SegmentadorDonacionesController{
-    - segmentadorDonacionesService: SegmentadorDonacionesService;
-
-    + cargarDonacion()
-}
-
-
-
-
-
-
-
-
-
-
-
 class Categoria{
   - subcategorias: List<Subcategoria>
 }
@@ -190,101 +168,6 @@ enum Periodicidad{
     ANUAL
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-class EntidadBeneficiariaRepository{
-    - entidadesBeneficiarias: List<EntidadBeneficiaria>;
-
-    + guardar(EntidadBeneficiaria entidad): void;
-    + cargarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad) : void;
-    + buscarTodas(): List<EntidadBeneficiaria>;
-}
-
-class importCSVRepository{
-    - resultados: List<ImportFilaCSV>;
-
-    + agregar(ImportFilaCSV result): void;
-    + totalCreados(): long;
-    + totalActualizados(): long;
-    + getErrores(): List<ImportFilaCSV>;
-    + tieneErrores(): Boolean;
-    + totalProcesadas(): Int;
-}
-
-class PersonaDonanteRepository{
-    - almacenamiento: Map<UUID, PersonaDonante>;
-
-    + guardar(PersonaDonante personaDonante): void;
-    + obtenerPorId(UUID id): PersonaDonante;
-    + obtenerPorMail(String email): PersonaDonante;
-    + obtenerTodosDonantes(): List<PersonaDonante>;
-    + obtenerTodosActivos(): List<PersonaDonante>;
-    + darDeBaja(UUID id): void;
-    + reactivar(UUID id): void;
-    + existePorEmail(String email): Boolean;
-    + actualizar(PersonaDonante persona): void; 
-}
-
-class SegmentadorDonacionesRepository{
-    - donaciones: List<Donacion>;
-
-    + cargarDonaciones(List<Donacion> cargaDonacion): void;
-}
-
-
-class CsvImportService{
-    - donanteRepository: PersonaDonanteRepositoryInterface;
-    - parser: DonanteCsvRowParser;
-    - factory: DonanteFactory;
-
-    + importar(InputStream csvStream): importCSVRepository;
-    + procesarLote(List<DonanteImportDto> lote, ImportCSVRepository report, int lineaInicio): void;
-    + procesarFila(DonanteImportDto dto, int linea): ImportFilaCSV;
-    + crearDesdeDto(DonanteImportDto dto): PersonaDonante;
-    + actualizarContacto(PersonaDonante donante, DonanteImportDto dto): void;
-}
-
-class EntidadBeneficiariaService{
-    - entidadBeneficiariaRepository: EntidadBeneficiariaRepository;
-    + registrarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad): void;
-    + reiniciarPeriodoNecesidadRecurrente(EntidadBeneficiaria entidad, Necesidad necesidad): void;
-    + actualizarPedidos(): void;
-}
-
-class PersonaDonanteService{
-    - repositorio: PersonaDonanteRepository;
-    
-    + registrar(PersonaDonante donante): PersonaDonante;
-    + obtenerPorId(UUID id): PersonaDonante;
-    + darDeBaja(UUID id): void;
-    + reactivar(UUID id): void;
-    + agregarMedioDeContacto(UUID id, TipoMedioContacto medio): void;
-    + agregarRepresentante(UUID id, Representante representante): void;
-    + removerRepresentante(UUID id, String emailRepresentante): void;
-    + listaDonantesActivos(): List<PersonaDonante>;
-    + listarTodosDonantes(): List<PersonaDonante>;
-}
-    
-class SegmentadorDonacionesService{
-    - segmentadorDonacionesRepository : SegmentadorDonacionesRepository;
-    
-    + segmentar(CargaDonacion carga): void;
-    + cargarDonaciones(List<Donacion> cargaDonacion): void;
-    
-}
-
-
 Bien <|-- BienConEstado
 Bien <|-- BienPerecible
 Donacion <|-- DonacionConEstado
@@ -304,14 +187,22 @@ PersonaDonante -- EstadoDonante
 
 PersonaJuridicaDonante -- TipoPersonaJuridica
 PersonaJuridicaDonante --* Representante
+
 PersonaHumanaDonante -- Genero
 
 EntidadBeneficiaria --* Necesidad
+EntidadBeneficiaria --* Direccion
 
 Categoria --* Subcategoria
 Subcategoria *-- Bien
+
 Donacion --* Bien
 Donacion -- EstadoDonacion
+Donacion -- Subcategoria
 
-EntidadBeneficiaria --* Direccion
+CargaDonacion --* Bien
+CargaDonacion -- PersonaDonante
+
+Necesidad -- Subcategoria
+
 @enduml
