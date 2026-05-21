@@ -1,10 +1,9 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import ar.utn.donatrack.donaciones.excepcion.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.model.donante.EstadoDonante;
-import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.model.contacto.TipoMedioContacto;
-import ar.utn.donatrack.donaciones.model.donante.PersonaHumanaDonante;
+import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.stereotype.Repository;
@@ -63,6 +62,9 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
 
     public void darDeBaja(UUID id) {
         PersonaDonante persona = this.obtenerPorId(id);
+
+        if (persona == null) throw new PersonaDonanteNoEncontradaException(id);
+
         // (STATE): la transición se valida comparando estados
         if (persona.getEstado() == EstadoDonante.INACTIVO) {                // ← transición de estado
             throw new IllegalStateException("La persona donante ya se encuentra dada de baja.");
@@ -72,21 +74,13 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
 
     public void reactivar(UUID id) {
         PersonaDonante persona = this.obtenerPorId(id);
+
+        if (persona == null) throw new PersonaDonanteNoEncontradaException(id);
+
         // STATE: transición inversa explícita
         if (persona.getEstado() == EstadoDonante.ACTIVO) {                // ← transición de estado
             throw new IllegalStateException("La persona donante ya se encuentra activa.");
         }
         persona.setEstado(EstadoDonante.ACTIVO);                         // ← cambio de estado
-    }
-    
-    public boolean existePorEmail(String email) {
-        return obtenerPorMail(email) != null;
-    }
-
-    public void actualizar(PersonaDonante persona) {
-        if (!almacenamiento.containsKey(persona.getId())) {
-            throw new NoSuchElementException("No se encontró la persona donante con ID: " + persona.getId());
-        }
-        almacenamiento.put(persona.getId(), persona);
     }
 }

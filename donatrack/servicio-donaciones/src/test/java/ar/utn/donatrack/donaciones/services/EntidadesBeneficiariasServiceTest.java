@@ -3,10 +3,10 @@ package ar.utn.donatrack.donaciones.services;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import ar.utn.donatrack.donaciones.model.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.model.entidad.NecesidadExtraordinaria;
-import ar.utn.donatrack.donaciones.model.entidad.NecesidadRecurrente;
-import ar.utn.donatrack.donaciones.model.entidad.Periodicidad;
+import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.models.entidad.NecesidadExtraordinaria;
+import ar.utn.donatrack.donaciones.models.entidad.NecesidadRecurrente;
+import ar.utn.donatrack.donaciones.models.entidad.Periodicidad;
 
 import ar.utn.donatrack.donaciones.repositories.EntidadesBeneficiariasRepository;
 

@@ -1,8 +1,8 @@
 package ar.utn.donatrack.donaciones.interfaces.services;
 
-import ar.utn.donatrack.donaciones.model.contacto.TipoMedioContacto;
-import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.model.donante.Representante;
+import ar.utn.donatrack.donaciones.models.contacto.TipoMedioContacto;
+import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.models.donante.Representante;
 
 import java.util.List;
 import java.util.UUID;

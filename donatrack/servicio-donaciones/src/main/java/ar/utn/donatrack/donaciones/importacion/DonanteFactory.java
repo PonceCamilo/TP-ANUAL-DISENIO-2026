@@ -1,9 +1,9 @@
 package ar.utn.donatrack.donaciones.importacion;
 
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
-import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.model.donante.PersonaHumanaDonante;
-import ar.utn.donatrack.donaciones.model.donante.PersonaJuridicaDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaHumanaDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaJuridicaDonante;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;

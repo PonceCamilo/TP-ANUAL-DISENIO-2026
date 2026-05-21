@@ -4,7 +4,6 @@ import ar.utn.donatrack.donaciones.importacion.EstadoImport;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +13,6 @@ import java.util.List;
  * Acumula un ImportResult por cada fila procesada.
  */
 
-@Repository
 @Getter
 @Setter
 public class ImportCSVRepository {

@@ -3,13 +3,12 @@ package ar.utn.donatrack.donaciones.services;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import ar.utn.donatrack.donaciones.model.categoria.Subcategoria;
-import ar.utn.donatrack.donaciones.model.donacion.CargaDonacion;
-import ar.utn.donatrack.donaciones.model.donacion.DonacionPerecible;
-import ar.utn.donatrack.donaciones.model.donacion.bien.BienConEstado;
-import ar.utn.donatrack.donaciones.model.donacion.bien.BienPerecible;
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
+import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
+import ar.utn.donatrack.donaciones.models.donacion.DonacionPerecible;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.repositories.SegmentadorDonacionesRepository;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -120,7 +119,7 @@ class SegmentadorDonacionesServiceTest {
     this.segmentador.segmentar(carga);
 
     assertEquals(2, this.repository.getDonaciones().size());
-    assertTrue(Boolean.parseBoolean(String.valueOf((this.repository.getDonaciones().getFirst().getBienes().stream().allMatch(b -> ((BienConEstado) b).isEsNuevo())))));
+    assertTrue(this.repository.getDonaciones().getFirst().getBienes().stream().allMatch(b -> ((BienConEstado) b).isEsNuevo()));
     assertEquals(2, (this.repository.getDonaciones().getFirst().getBienes().size()));
     assertEquals(1, (this.repository.getDonaciones().get(1).getBienes().size()));
   }

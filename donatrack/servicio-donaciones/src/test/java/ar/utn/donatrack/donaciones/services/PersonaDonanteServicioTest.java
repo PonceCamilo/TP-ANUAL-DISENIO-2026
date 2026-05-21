@@ -1,9 +1,10 @@
 package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.excepcion.EmailYaRegistradoException;
-import ar.utn.donatrack.donaciones.model.contacto.TipoMedioContacto;
-import ar.utn.donatrack.donaciones.model.donante.*;
-import ar.utn.donatrack.donaciones.model.entidad.Direccion;
+import ar.utn.donatrack.donaciones.excepcion.PersonaDonanteNoEncontradaException;
+import ar.utn.donatrack.donaciones.models.contacto.TipoMedioContacto;
+import ar.utn.donatrack.donaciones.models.donante.*;
+import ar.utn.donatrack.donaciones.models.entidad.Direccion;
 import ar.utn.donatrack.donaciones.repositories.PersonaDonanteRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -73,7 +74,7 @@ class PersonaDonanteServicioTest {
         @Test
         @DisplayName("Flujo completo: valida y guarda")
         void flujoCompleto() {
-            when(repositorio.existePorEmail("ana@mail.com")).thenReturn(false);
+            when(repositorio.obtenerPorMail("ana@mail.com")).thenReturn(null);
 
             servicio.registrar(donanteHumano);
 
@@ -83,7 +84,7 @@ class PersonaDonanteServicioTest {
         @Test
         @DisplayName("Verifica que se guarde el donante con los datos correctos")
         void verificaGuardado() {
-            when(repositorio.existePorEmail("ana@mail.com")).thenReturn(false);
+            when(repositorio.obtenerPorMail("ana@mail.com")).thenReturn(null);
 
             servicio.registrar(donanteHumano);
 
@@ -98,7 +99,7 @@ class PersonaDonanteServicioTest {
         @Test
         @DisplayName("El donante guardado tiene el medio de contacto predeterminado correcto")
         void estableceMedioPredeterminado() {
-            when(repositorio.existePorEmail("ana@mail.com")).thenReturn(false);
+            when(repositorio.obtenerPorMail("ana@mail.com")).thenReturn(null);
 
             servicio.registrar(donanteHumano);
 
@@ -115,7 +116,7 @@ class PersonaDonanteServicioTest {
         @Test
         @DisplayName("Flujo completo: valida y guarda")
         void flujoCompleto() {
-            when(repositorio.existePorEmail("contacto@empresa.com")).thenReturn(false);
+            when(repositorio.obtenerPorMail("contacto@empresa.com")).thenReturn(null);
 
             servicio.registrar(donanteJuridico);
 
@@ -125,7 +126,7 @@ class PersonaDonanteServicioTest {
         @Test
         @DisplayName("Lanza excepcion si el email ya esta registrado")
         void lanzaExcepcionEmailDuplicado() {
-            when(repositorio.existePorEmail("contacto@empresa.com")).thenReturn(true);
+            when(repositorio.obtenerPorMail("contacto@empresa.com")).thenReturn(donanteJuridico);
 
             assertThrows(EmailYaRegistradoException.class, () -> servicio.registrar(donanteJuridico));
 
@@ -156,7 +157,7 @@ class PersonaDonanteServicioTest {
 
             UUID idInexistente = UUID.randomUUID();
 
-            assertThrows(NullPointerException.class, () -> servicioReal.darDeBaja(idInexistente));
+            assertThrows(PersonaDonanteNoEncontradaException.class, () -> servicioReal.darDeBaja(idInexistente));
         }
     }
 
@@ -185,8 +186,8 @@ class PersonaDonanteServicioTest {
     @Test
     @DisplayName("Registrar multiples donantes: verifica llamadas al repositorio")
     void registrarMultiplesDonantes() {
-        when(repositorio.existePorEmail("ana@mail.com")).thenReturn(false);
-        when(repositorio.existePorEmail("luis@mail.com")).thenReturn(false);
+        when(repositorio.obtenerPorMail("ana@mail.com")).thenReturn(null);
+        when(repositorio.obtenerPorMail("luis@mail.com")).thenReturn(null);
 
         servicio.registrar(donanteHumano);
         servicio.registrar(donanteHumano2);

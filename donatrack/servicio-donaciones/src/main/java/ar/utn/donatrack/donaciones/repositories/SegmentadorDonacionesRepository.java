@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.SegmentadorDonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.model.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 
 import java.util.ArrayList;
 import java.util.List;

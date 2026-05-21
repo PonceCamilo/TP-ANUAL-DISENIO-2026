@@ -1,16 +1,16 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.interfaces.repositories.SegmentadorDonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
-import ar.utn.donatrack.donaciones.model.categoria.Subcategoria;
-import ar.utn.donatrack.donaciones.model.donacion.CargaDonacion;
-import ar.utn.donatrack.donaciones.model.donacion.Donacion;
-import ar.utn.donatrack.donaciones.model.donacion.DonacionConEstado;
-import ar.utn.donatrack.donaciones.model.donacion.DonacionPerecible;
-import ar.utn.donatrack.donaciones.model.donacion.EstadoDonacion;
-import ar.utn.donatrack.donaciones.model.donacion.bien.Bien;
-import ar.utn.donatrack.donaciones.model.donacion.bien.BienConEstado;
-import ar.utn.donatrack.donaciones.model.donacion.bien.BienPerecible;
-import ar.utn.donatrack.donaciones.repositories.SegmentadorDonacionesRepository;
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
+import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
+import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.donacion.DonacionConEstado;
+import ar.utn.donatrack.donaciones.models.donacion.DonacionPerecible;
+import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
+import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {
 
-  private final SegmentadorDonacionesRepository segmentadorDonacionesRepository;
+  private final SegmentadorDonacionesRepositoryInterface segmentadorDonacionesRepository;
 
   public void segmentar(CargaDonacion carga) {
     List<Bien> listaBienes = carga.getBienes();

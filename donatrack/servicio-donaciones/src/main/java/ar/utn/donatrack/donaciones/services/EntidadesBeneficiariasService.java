@@ -1,10 +1,10 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
-import ar.utn.donatrack.donaciones.model.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.model.entidad.Necesidad;
-import ar.utn.donatrack.donaciones.model.entidad.NecesidadRecurrente;
-import ar.utn.donatrack.donaciones.repositories.EntidadesBeneficiariasRepository;
+import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.models.entidad.Necesidad;
+import ar.utn.donatrack.donaciones.models.entidad.NecesidadRecurrente;
 
 import java.util.List;
 import java.time.LocalDate;
@@ -16,16 +16,14 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServiceInterface {
 
-    private final EntidadesBeneficiariasRepository entidadesBeneficiariasRepository;
+    private final EntidadesBeneficiariasRepositoryInterface entidadesBeneficiariasRepository;
 
     public void registrarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad) {
         entidadesBeneficiariasRepository.cargarNecesidad(entidad, necesidad);
     }
 
-    public void reiniciarPeriodoNecesidadRecurrente(EntidadBeneficiaria entidad, Necesidad necesidad) {
-        if (necesidad instanceof NecesidadRecurrente) {
-            ((NecesidadRecurrente) necesidad).reiniciarPeriodo();
-        }
+    public void reiniciarPeriodoNecesidadRecurrente(NecesidadRecurrente necesidad) {
+        necesidad.reiniciarPeriodo();
     }
 
     public void actualizarPeriodos() {

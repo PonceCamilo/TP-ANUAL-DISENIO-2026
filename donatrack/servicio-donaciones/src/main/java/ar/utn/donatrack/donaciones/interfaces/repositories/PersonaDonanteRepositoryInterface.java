@@ -1,9 +1,8 @@
 package ar.utn.donatrack.donaciones.interfaces.repositories;
 
-import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 /**

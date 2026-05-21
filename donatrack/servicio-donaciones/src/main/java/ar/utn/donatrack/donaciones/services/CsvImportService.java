@@ -6,8 +6,12 @@ import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import ar.utn.donatrack.donaciones.repositories.ImportCSVRepository;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
-import ar.utn.donatrack.donaciones.model.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
+import com.opencsv.exceptions.CsvValidationException;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,6 +39,8 @@ import java.util.List;
  *    enriquecidos por el administrador. Solo se agrega el teléfono si faltaba.
  *  - El email es la clave de idempotencia porque es obligatorio y único
  *    para ambos tipos de persona, tal como lo define el enunciado.
+ *  - Se usa OpenCSV para manejar correctamente campos con comas dentro de comillas
+ *    (ej: "Empresa, S.A.") y archivos con BOM UTF-8.
  */
 
 @RequiredArgsConstructor
@@ -52,20 +58,19 @@ public class CsvImportService {
     public ImportCSVRepository importar(InputStream csvStream) throws IOException {
         ImportCSVRepository report = new ImportCSVRepository();
 
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(csvStream, StandardCharsets.UTF_8))) {
-
-            reader.readLine(); // saltar encabezado
+        try (CSVReader csvReader = new CSVReaderBuilder(
+            new InputStreamReader(csvStream, StandardCharsets.UTF_8))
+            .withSkipLines(1) // saltar encabezado
+            .build()) {
 
             List<DonanteImportDto> lote = new ArrayList<>(BATCH_SIZE);
-            String linea;
+            String[] columnas;
             int numeroLinea = 2; // empieza en 2 por el header
 
-            while ((linea = reader.readLine()) != null) {
-                if (linea.isBlank()) { numeroLinea++; continue; }
+            while ((columnas = csvReader.readNext()) != null) {
+                if (columnas.length == 0) { numeroLinea++; continue; }
 
                 try {
-                    String[] columnas = linea.split(",", -1);
                     DonanteImportDto dto = parser.parsear(columnas, numeroLinea);
                     lote.add(dto);
                 } catch (CsvFormatoInvalidoException e) {
@@ -83,6 +88,9 @@ public class CsvImportService {
             if (!lote.isEmpty()) {
                 procesarLote(lote, report, numeroLinea - lote.size());
             }
+
+        } catch (CsvValidationException e) {
+            throw new IOException("Error al leer el archivo CSV: " + e.getMessage(), e);
         }
 
         return report;
@@ -91,8 +99,8 @@ public class CsvImportService {
     // ─── Procesamiento por lote ───────────────────────────────────────────────
 
     private void procesarLote(List<DonanteImportDto> lote,
-                               ImportCSVRepository report,
-                               int lineaInicio) {
+                              ImportCSVRepository report,
+                              int lineaInicio) {
         int lineaActual = lineaInicio;
         for (DonanteImportDto dto : lote) {
             report.agregar(procesarFila(dto, lineaActual));
@@ -116,7 +124,7 @@ public class CsvImportService {
 
         } catch (Exception e) {
             return ImportFilaCSV.error(linea, dto.email(),
-                    "Error inesperado: " + e.getMessage());
+                "Error inesperado: " + e.getMessage());
         }
     }
 
@@ -140,6 +148,5 @@ public class CsvImportService {
         // contacto; dejar como no-op para evitar romper la importación.
         // Si en el futuro se agrega soporte para teléfonos, implementar
         // la lógica de actualización mínima aquí.
-        return;
     }
 }
