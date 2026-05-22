@@ -201,7 +201,6 @@ Donacion -- EstadoDonacion
 Donacion -- Subcategoria
 
 CargaDonacion --* Bien
-CargaDonacion -- PersonaDonante
 
 Necesidad -- Subcategoria
 
