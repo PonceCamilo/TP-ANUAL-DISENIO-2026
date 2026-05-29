@@ -4,7 +4,7 @@ package ar.utn.donatrack.donaciones.models.entidad;
 import lombok.Builder;
 import lombok.Getter;
 
-import ar.utn.donatrack.donaciones.models.entidad.Localidad;
+import ar.utn.donatrack.donaciones.models.entidad.Provincia;
 
 /**
  * Objeto de valor que representa una dirección postal.
@@ -13,10 +13,8 @@ import ar.utn.donatrack.donaciones.models.entidad.Localidad;
 
 @Builder
 @Getter
-public class Direccion {
+public class Localidad {
 
-    private String calle;
-    private int numero;
-    private Localidad localidad;
-    private String codigoPostal;
+    private String nombre;
+    private Provincia provincia;
 }

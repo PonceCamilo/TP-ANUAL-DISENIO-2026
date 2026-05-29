@@ -4,8 +4,6 @@ package ar.utn.donatrack.donaciones.models.entidad;
 import lombok.Builder;
 import lombok.Getter;
 
-import ar.utn.donatrack.donaciones.models.entidad.Localidad;
-
 /**
  * Objeto de valor que representa una dirección postal.
  * Inmutable: no tiene setters. Si la dirección cambia, se crea una nueva instancia.
@@ -13,10 +11,8 @@ import ar.utn.donatrack.donaciones.models.entidad.Localidad;
 
 @Builder
 @Getter
-public class Direccion {
+public class Provincia {
 
-    private String calle;
-    private int numero;
-    private Localidad localidad;
-    private String codigoPostal;
+    private String nombre;
+
 }

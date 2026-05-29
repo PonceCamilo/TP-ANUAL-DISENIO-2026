@@ -9,7 +9,7 @@ class Subcategoria{
   - tipo : String
 }
 
-class TipoMedioContacto{
+abstract class MedioDeContacto{
 
 }
 
@@ -22,7 +22,6 @@ class Telefono{
 }
 
 class Whatsapp{
-
 }
 
 class Bien{
@@ -52,14 +51,6 @@ class Donacion{
     - cantidad: Int;
 }
 
-class DonacionConEstado{
-    - esNuevo: Boolean;
-}
-
-class DonacionPerecible{
-    - fechaVencimiento: LocalDate;
-}
-
 enum EstadoDonacion{
     PENDIENTE_ASIGNACION
     ASIGNADA
@@ -81,22 +72,20 @@ enum Genero{
     PREFIERO_NO_DECIR
 }
 
-class PersonaDonante{
+abstract class PersonaDonante{
     - tipoDocumento : String; 
     - numeroDocumento : String;
     - direccion : Direccion;
-    - email: String;
-    - telefono: String;
-    - medioContactoPredeterminado: TipoMedioContacto;
     - estado: EstadoDonante;
-    - donaciones: List<CargaDonacion>;
 }
 
 class PersonaHumanaDonante{
     - nombre: String;
     - apellido: String;
+    - dni: Int;
     - edad: Int;
     - genero: Genero;
+    - contactos: List<MedioDeContacto>;
 }
 
 class PersonaJuridicaDonante{
@@ -109,8 +98,7 @@ class PersonaJuridicaDonante{
 class Representante{
     - nombre: String;
     - apellido: String;
-    - email: String;
-    - telefono: String;
+    - contactos: List<MedioDeContacto>
 }
 
 enum TipoPersonaJuridica {
@@ -124,13 +112,12 @@ class Direccion{
     - calle: String;
     - numero: Int;
     - localidad: Localidad;
-    - provincia: Provincia;
     - codigoPostal: String;
 }
 
 class Localidad{
 - nombre: String;
-- provincia : Provincia
+- provincia: Provincia;
 }
 
 class Provincia{
@@ -147,8 +134,8 @@ class EntidadBeneficiaria{
     + registrarNecesidad(Necesidad necesidad): void;
 }
 
-class Necesidad{
-    - subcategoria: Subcategoria;
+abstract class Necesidad{
+    - bien: Bien ;
     - descripcion: String;
     - cantidadObjetivo: Int;
     - cantidadRecibida: Int;
@@ -181,30 +168,39 @@ enum Periodicidad{
     ANUAL
 }
 
+class Campania{
+    - necesidades: List<Necesidad>;
+    - fechaInicio: LocalDate;
+}
+
+Campania --* Necesidad
+
+
 Bien <|-- BienConEstado
 Bien <|-- BienPerecible
 
-Donacion <|-- DonacionConEstado
-Donacion <|-- DonacionPerecible
-Donacion -- Bien
+
+Donacion --* Bien
 Donacion -- EstadoDonacion
 
 CargaDonacion --* Donacion
+CargaDonacion -- PersonaDonante
 
 PersonaDonante <|-- PersonaHumanaDonante
 PersonaDonante <|-- PersonaJuridicaDonante
-PersonaDonante -- TipoMedioContacto
-PersonaDonante --* CargaDonacion
+PersonaHumanaDonante --* MedioDeContacto
 PersonaDonante --* Direccion
 PersonaDonante -- EstadoDonante
 
-TipoMedioContacto <|-- Email
-TipoMedioContacto <|-- Telefono
-TipoMedioContacto <|-- Whatsapp
+MedioDeContacto <|-- Email
+MedioDeContacto <|-- Telefono
+MedioDeContacto <|-- Whatsapp
+
+Representante --* MedioDeContacto
 
 Necesidad <|-- NecesidadExtraordinaria
 Necesidad <|-- NecesidadRecurrente
-Necesidad -- Subcategoria
+Necesidad --* Bien
 
 CargaNecesidad --* Necesidad
 
@@ -218,8 +214,8 @@ PersonaHumanaDonante -- Genero
 EntidadBeneficiaria --* CargaNecesidad
 EntidadBeneficiaria --* Direccion
 
-Direccion -- Localidad
-Localidad -- Provincia
+Direccion --* Localidad
+Localidad --* Provincia
 
 Categoria --* Subcategoria
 Subcategoria *-- Bien
