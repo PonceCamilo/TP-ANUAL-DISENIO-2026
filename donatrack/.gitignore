@@ -1,0 +1,28 @@
+# --- Java / Maven ---
+**/target/
+*.log
+hs_err_pid*
+replay_pid*
+
+# --- IDEs ---
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# --- Build & analysis outputs ---
+.qodana/
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- Frontend (React) ---
+donatrack-frontend/node_modules/
+donatrack-frontend/build/
+donatrack-frontend/.env.local
+donatrack-frontend/.env.development.local
+donatrack-frontend/.env.test.local
+donatrack-frontend/.env.production.local
+

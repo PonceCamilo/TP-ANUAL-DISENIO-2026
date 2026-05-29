@@ -7,11 +7,6 @@ import lombok.Setter;
 public class NecesidadExtraordinaria extends Necesidad {
 
     @Override
-    public void recibirDonacion(int cantidad) {
-        this.cantidadRecibida += cantidad;
-    }
-
-    @Override
     public boolean estaSatisfecha() {
         return this.cantidadRecibida >= this.cantidadObjetivo;
     }

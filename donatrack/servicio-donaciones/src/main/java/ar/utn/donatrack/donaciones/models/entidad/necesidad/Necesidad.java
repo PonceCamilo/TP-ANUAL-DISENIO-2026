@@ -5,14 +5,20 @@ import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 public abstract class Necesidad {
     protected Bien bien;
     protected String descripcion;
+    protected LocalDate fechaRegistro;
     protected int cantidadObjetivo;
     protected int cantidadRecibida;
 
-    public abstract void recibirDonacion(int cantidad);
+    public void recibirDonacion(int cantidad) {
+        this.cantidadRecibida += cantidad;
+    }
+
     public abstract boolean estaSatisfecha();
 }

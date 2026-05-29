@@ -5,7 +5,6 @@ class Categoria{
 }
 
 class Subcategoria{
-  - idCategoria: Int
   - tipo : String
 }
 
@@ -45,7 +44,6 @@ class Donacion{
     - bien:  Bien;
     - cantidad: Int;
     - fechaIngreso: LocalDate;
-    - idDonante: Int;
 }
 
 enum EstadoDonacion{
@@ -138,6 +136,7 @@ abstract class Necesidad{
     - descripcion: String;
     - cantidadObjetivo: Int;
     - cantidadRecibida: Int;
+    - fechaRegistro: LocalDate;
 
     + recibirDonacion(int cantidad): void;
     + estaSatisfecha(): Boolean;
@@ -164,7 +163,7 @@ enum Periodicidad{
 
 class Campania{
     - necesidades: List<Necesidad>;
-    - fechaInicio: LocalDate;
+    - nombre: String;
 }
 
 Campania --* Necesidad
@@ -178,13 +177,12 @@ Donacion --* Bien
 Donacion -- EstadoDonacion
 
 
-
 PersonaDonante <|-- PersonaHumanaDonante
 PersonaDonante <|-- PersonaJuridicaDonante
-PersonaDonante --* Donacion
 PersonaHumanaDonante --* MedioDeContacto
 PersonaDonante --* Direccion
 PersonaDonante -- EstadoDonante
+PersonaDonante --* Donacion
 
 MedioDeContacto <|-- Email
 MedioDeContacto <|-- Telefono
@@ -204,10 +202,10 @@ PersonaJuridicaDonante --* Representante
 
 PersonaHumanaDonante -- Genero
 
-EntidadBeneficiaria --* Campania
 EntidadBeneficiaria --* Direccion
 EntidadBeneficiaria --* Representante
 EntidadBeneficiaria --* MedioDeContacto
+EntidadBeneficiaria --* Campania
 
 Direccion --* Localidad
 Localidad --* Provincia

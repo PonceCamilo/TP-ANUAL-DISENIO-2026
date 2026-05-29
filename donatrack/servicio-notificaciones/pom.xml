@@ -13,18 +13,11 @@
     <artifactId>servicio-notificaciones</artifactId>
     <packaging>jar</packaging>
     <name>servicio-notificaciones</name>
+    <description>Servicio encargado del envío de notificaciones.</description>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
     </dependencies>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
 </project>

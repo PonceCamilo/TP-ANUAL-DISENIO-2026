@@ -4,7 +4,7 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiaria
 import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.CargaNecesidad;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadRecurrente;
 
 import java.util.List;
@@ -26,7 +26,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
 
     // ahora queremos poder cargar varias necesidades a la vez con la clase cargaNecesidad 
 
-    public void registrarNecesidades(EntidadBeneficiaria entidad, CargaNecesidad carga) {
+    public void registrarNecesidades(EntidadBeneficiaria entidad, Campania carga) {
         if (carga.getFechaIngreso() == null) {
             carga.setFechaIngreso(LocalDateTime.now());
         }
