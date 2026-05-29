@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
-import ar.utn.donatrack.donaciones.models.contacto.TipoMedioContacto;
+import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
 import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -25,16 +25,10 @@ import java.util.UUID;
 @Setter
 public abstract class PersonaDonante {
 
-    protected UUID id;
-    protected String tipoPersona;
     protected String tipoDocumento;
     protected String numeroDocumento;
-    protected List<TipoMedioContacto> mediosDeContacto;
-    protected CargaDonacion cargaDonacion;
     protected Direccion direccion;
-    protected String email;
-    protected String telefono;
-    protected TipoMedioContacto medioContactoPredeterminado;
     protected EstadoDonante estado;
-    protected List<Donacion> donaciones;
+
 }
+

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.entidad;
 
+import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,7 +18,7 @@ public class EntidadBeneficiaria {
     private int id;
     private String razonSocial;
     private Direccion direccion;
-    private String telefono;
+    private List<MedioDeContacto> contactos;
     private List<String> correosRepresentantes;
 
     @Builder.Default

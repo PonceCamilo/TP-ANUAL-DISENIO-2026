@@ -27,7 +27,8 @@ class Whatsapp{
 class Bien{
     - subcategoria: Subcategoria;
     - descripcion: String;
-    - foto: String; 
+    - foto: String;
+    - cantidad: Int;
     - unidad: String; 
 }
 
@@ -39,16 +40,12 @@ class BienPerecible{
     - fechaVencimiento: LocalDate;
 }
 
-class CargaDonacion{
-    - descripcionGeneral: String;
-    - fechaIngreso: LocalDate;
-    - donaciones:  List<Donacion>;
-}
-
 class Donacion{
     - estado: EstadoDonacion;
     - bien:  Bien;
     - cantidad: Int;
+    - fechaIngreso: LocalDate;
+    - idDonante: Int;
 }
 
 enum EstadoDonacion{
@@ -73,10 +70,12 @@ enum Genero{
 }
 
 abstract class PersonaDonante{
-    - tipoDocumento : String; 
-    - numeroDocumento : String;
-    - direccion : Direccion;
+    - idDonante: int;
+    - tipoDocumento: String;
+    - numeroDocumento: String;
+    - direccion: Direccion;
     - estado: EstadoDonante;
+    - donaciones: List<Donacion>;
 }
 
 class PersonaHumanaDonante{
@@ -127,9 +126,9 @@ class Provincia{
 class EntidadBeneficiaria{
     - razonSocial: String;
     - direccion: Direccion;
-    - telefono: String;
-    - correosRepresentatnes: List<String>;
-    - necesidades: List<CargaNecesidad>;
+    - contactos: List<MedioDeContacto>;
+    - representantes: List<Representante>;
+    - campanias: List<Campania>;
 
     + registrarNecesidad(Necesidad necesidad): void;
 }
@@ -142,11 +141,6 @@ abstract class Necesidad{
 
     + recibirDonacion(int cantidad): void;
     + estaSatisfecha(): Boolean;
-}
-
-class CargaNecesidad{
-    - necesidades:  List<Necesidad>;
-    - fechaIngreso: LocalDate;
 }
 
 class NecesidadExtraordinaria{
@@ -183,11 +177,11 @@ Bien <|-- BienPerecible
 Donacion --* Bien
 Donacion -- EstadoDonacion
 
-CargaDonacion --* Donacion
-CargaDonacion -- PersonaDonante
+
 
 PersonaDonante <|-- PersonaHumanaDonante
 PersonaDonante <|-- PersonaJuridicaDonante
+PersonaDonante --* Donacion
 PersonaHumanaDonante --* MedioDeContacto
 PersonaDonante --* Direccion
 PersonaDonante -- EstadoDonante
@@ -202,7 +196,6 @@ Necesidad <|-- NecesidadExtraordinaria
 Necesidad <|-- NecesidadRecurrente
 Necesidad --* Bien
 
-CargaNecesidad --* Necesidad
 
 NecesidadRecurrente -- Periodicidad
 
@@ -211,8 +204,10 @@ PersonaJuridicaDonante --* Representante
 
 PersonaHumanaDonante -- Genero
 
-EntidadBeneficiaria --* CargaNecesidad
+EntidadBeneficiaria --* Campania
 EntidadBeneficiaria --* Direccion
+EntidadBeneficiaria --* Representante
+EntidadBeneficiaria --* MedioDeContacto
 
 Direccion --* Localidad
 Localidad --* Provincia

@@ -53,6 +53,10 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
         persona.getRepresentantes().add(representante);
     }
 
+    public void donar(List<Bien> bienes){
+
+    }
+
     public void removerRepresentante(UUID id, String emailRepresentante){
         PersonaJuridicaDonante persona = (PersonaJuridicaDonante) repositorio.obtenerPorId(id);
         persona.getRepresentantes().removeIf(rep -> rep.getEmail().equals(emailRepresentante));

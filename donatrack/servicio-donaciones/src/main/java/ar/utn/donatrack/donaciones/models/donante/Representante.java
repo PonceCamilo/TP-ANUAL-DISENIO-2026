@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
+import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,6 +18,5 @@ public class Representante {
 
     private final String nombre;
     private final String apellido;
-    private final String email;
-    private String telefono; // opcional
+    private List<MedioDeContacto> contactos;
 }

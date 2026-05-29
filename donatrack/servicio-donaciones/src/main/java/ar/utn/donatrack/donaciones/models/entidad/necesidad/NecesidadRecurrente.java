@@ -11,6 +11,8 @@ import java.util.ArrayList;
 @Setter
 public class NecesidadRecurrente extends Necesidad {
     private Periodicidad periodo;
+    private LocalDate fechaInicio;
+    private int cantidadObjetivo;
     private List<NecesidadConPeriodo> historialPeriodos = new ArrayList<>();
 
     @Override

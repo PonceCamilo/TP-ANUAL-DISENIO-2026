@@ -10,7 +10,6 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @Setter
 public abstract class Bien {
-    protected int idBien;
     protected Subcategoria subcategoria;
     protected String descripcion;
     protected String foto; // URL o path a la foto

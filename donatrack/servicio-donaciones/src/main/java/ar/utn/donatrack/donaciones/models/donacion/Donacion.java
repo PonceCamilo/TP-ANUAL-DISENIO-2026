@@ -12,8 +12,8 @@ import java.util.List;
 @Getter
 @Setter
 public abstract class Donacion {
-    protected Subcategoria subcategoria;
+    protected Bien bien;
     protected EstadoDonacion estado;
     protected int idCargaOrigen;
-    protected List<Bien> bienes = new ArrayList<>();
+    protected int cantidad;
 }

@@ -5,7 +5,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class NecesidadExtraordinaria extends Necesidad {
-    private int cantidadRecibida;
 
     @Override
     public void recibirDonacion(int cantidad) {
