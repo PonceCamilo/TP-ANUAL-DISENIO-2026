@@ -7,6 +7,8 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
+
 @Builder
 @Getter
 @Setter

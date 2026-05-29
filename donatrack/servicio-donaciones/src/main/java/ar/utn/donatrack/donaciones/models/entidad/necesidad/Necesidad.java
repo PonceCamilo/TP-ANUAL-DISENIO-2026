@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.models.entidad;
+package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 
@@ -12,13 +12,7 @@ public abstract class Necesidad {
     protected Subcategoria subcategoria;
     protected String descripcion;
     protected int cantidadObjetivo;
-    protected int cantidadRecibida;
 
-    public void recibirDonacion(int cantidad){
-        this.cantidadRecibida += cantidad;
-    }
-
-    public boolean estaSatisfecha() {
-        return this.cantidadRecibida >= this.cantidadObjetivo;
-    }
+    public abstract void recibirDonacion(int cantidad);
+    public abstract boolean estaSatisfecha();
 }

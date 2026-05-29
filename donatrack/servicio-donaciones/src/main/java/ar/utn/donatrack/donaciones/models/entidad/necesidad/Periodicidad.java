@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.models.entidad;
+package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
 public enum Periodicidad {
     SEMANAL,

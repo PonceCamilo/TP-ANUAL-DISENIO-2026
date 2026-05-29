@@ -1,4 +1,6 @@
+ar\utn\donatrack\donaciones\models\entidad\necesidad\NecesidadConPeriodo.class
 ar\utn\donatrack\donaciones\interfaces\repositories\EntidadesBeneficiariasRepositoryInterface.class
+ar\utn\donatrack\donaciones\models\entidad\necesidad\NecesidadRecurrente.class
 ar\utn\donatrack\donaciones\repositories\ImportCSVRepository.class
 ar\utn\donatrack\donaciones\excepcion\CsvFormatoInvalidoException.class
 ar\utn\donatrack\donaciones\importacion\dto\DonanteImportDto.class
@@ -7,10 +9,15 @@ ar\utn\donatrack\donaciones\repositories\EntidadesBeneficiariasRepository.class
 ar\utn\donatrack\donaciones\excepcion\PersonaDonanteNoEncontradaException.class
 ar\utn\donatrack\donaciones\interfaces\services\EntidadesBeneficiariasServiceInterface.class
 ar\utn\donatrack\donaciones\interfaces\services\PersonaDonanteServiceInterface.class
+ar\utn\donatrack\donaciones\models\entidad\necesidad\NecesidadRecurrente$1.class
 ar\utn\donatrack\donaciones\ServicioDonacionesApp.class
 ar\utn\donatrack\donaciones\importacion\ImportFilaCSV.class
 ar\utn\donatrack\donaciones\repositories\PersonaDonanteRepository.class
 ar\utn\donatrack\donaciones\importacion\ImportFilaCSV$ImportFilaCSVBuilder.class
+ar\utn\donatrack\donaciones\models\entidad\necesidad\Periodicidad.class
 ar\utn\donatrack\donaciones\services\EntidadesBeneficiariasService.class
+ar\utn\donatrack\donaciones\models\entidad\necesidad\NecesidadExtraordinaria.class
+ar\utn\donatrack\donaciones\models\entidad\necesidad\CargaNecesidad.class
 ar\utn\donatrack\donaciones\excepcion\EmailYaRegistradoException.class
+ar\utn\donatrack\donaciones\models\entidad\necesidad\Necesidad.class
 ar\utn\donatrack\donaciones\importacion\EstadoImport.class

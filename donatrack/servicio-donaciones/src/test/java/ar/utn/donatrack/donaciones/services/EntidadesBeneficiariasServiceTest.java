@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.models.entidad.NecesidadExtraordinaria;
-import ar.utn.donatrack.donaciones.models.entidad.NecesidadRecurrente;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadRecurrente;
 import ar.utn.donatrack.donaciones.models.entidad.Periodicidad;
 
 import ar.utn.donatrack.donaciones.repositories.EntidadesBeneficiariasRepository;

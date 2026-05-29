@@ -34,10 +34,12 @@ E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\
 E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\donante\TipoPersonaJuridica.java
 E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\Direccion.java
 E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\EntidadBeneficiaria.java
-E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\Necesidad.java
-E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\NecesidadExtraordinaria.java
-E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\NecesidadRecurrente.java
-E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\Periodicidad.java
+E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\necesidad\CargaNecesidad.java
+E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\necesidad\Necesidad.java
+E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\necesidad\NecesidadConPeriodo.java
+E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\necesidad\NecesidadExtraordinaria.java
+E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\necesidad\NecesidadRecurrente.java
+E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\models\entidad\necesidad\Periodicidad.java
 E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\repositories\EntidadesBeneficiariasRepository.java
 E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\repositories\ImportCSVRepository.java
 E:\Diseño\TP-ANUAL-DISENIO-2026\donatrack\servicio-donaciones\src\main\java\ar\utn\donatrack\donaciones\repositories\PersonaDonanteRepository.java

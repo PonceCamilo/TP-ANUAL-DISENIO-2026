@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.models.entidad.Necesidad;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 
 import java.util.ArrayList;
