@@ -15,12 +15,11 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @Getter
 @Setter
-public class PersonaHumanaDonante extends PersonaDonante {
+public class PersonaHumana extends PersonaDonante {
 
     private String nombre;
     private String apellido;
     private int dni;
     private int edad;
     private Genero genero;
-    protected List<MedioDeContacto> contactos;
 }

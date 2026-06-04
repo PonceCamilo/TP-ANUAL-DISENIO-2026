@@ -25,10 +25,11 @@ import java.util.UUID;
 @Setter
 public abstract class PersonaDonante {
 
+    protected UUID id;
     protected String tipoDocumento;
     protected String numeroDocumento;
     protected Direccion direccion;
     protected EstadoDonante estado;
-
+    protected List<MedioDeContacto> contactos;
 }
 

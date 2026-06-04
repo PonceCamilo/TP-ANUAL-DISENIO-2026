@@ -16,7 +16,7 @@ import lombok.Setter;
 @Setter
 public class Representante {
 
-    private final String nombre;
-    private final String apellido;
+    private String nombre;
+    private String apellido;
     private List<MedioDeContacto> contactos;
 }

@@ -2,6 +2,7 @@ package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.excepcion.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import lombok.Getter;
@@ -45,9 +46,12 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
 
     public PersonaDonante obtenerPorMail(String email) {
         return almacenamiento.values().stream()
-            .filter(p -> p.getEmail().equalsIgnoreCase(email))
+            .filter(p -> p.getContactos().stream()
+                    .filter(contacto -> contacto instanceof Email)
+                    .map(contacto -> (Email) contacto)
+                    .anyMatch(contacto -> contacto.getDireccion().equals(email)))
             .findFirst()
-            .orElse(null);
+            .orElse(null); //THROW EXCEPTION: NO EXISTE
     }
 
     public List<PersonaDonante> obtenerTodosDonantes() {

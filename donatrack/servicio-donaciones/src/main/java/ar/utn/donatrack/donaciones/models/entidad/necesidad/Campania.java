@@ -12,4 +12,5 @@ public class Campania {
     private int idCargaNecesidad;
     private String descripcionGeneral;
     private List<Necesidad> necesidades;
+    private String razonSocialEntidad;
 }

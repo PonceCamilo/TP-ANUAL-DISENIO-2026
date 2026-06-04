@@ -5,8 +5,6 @@ import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServ
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
-import ar.utn.donatrack.donaciones.models.donacion.DonacionConEstado;
-import ar.utn.donatrack.donaciones.models.donacion.DonacionPerecible;
 import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
@@ -25,10 +23,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {
 
-  private final SegmentadorDonacionesRepositoryInterface segmentadorDonacionesRepository;
-
-  public void segmentar(CargaDonacion carga) {
-    List<Bien> listaBienes = carga.getBienes();
+  public void segmentar(List<Bien> bienes) {
     List<Donacion> resultado = new ArrayList<>();
 
     Map<Subcategoria, List<Bien>> porSubcategoria = listaBienes.stream()

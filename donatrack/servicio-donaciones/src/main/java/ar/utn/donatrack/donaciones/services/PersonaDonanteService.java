@@ -2,10 +2,13 @@ package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
-import ar.utn.donatrack.donaciones.models.contacto.TipoMedioContacto;
+import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
+import ar.utn.donatrack.donaciones.models.contacto.Email;
+import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
+import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.excepcion.EmailYaRegistradoException;
-import ar.utn.donatrack.donaciones.models.donante.PersonaJuridicaDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,13 +21,20 @@ import java.util.UUID;
 public class PersonaDonanteService implements PersonaDonanteServiceInterface {
 
     private final PersonaDonanteRepositoryInterface repositorio;
+    private final SegmentadorDonacionesServiceInterface segmentador;
 
-    public PersonaDonante registrar(PersonaDonante donante) {
-        if (repositorio.obtenerPorMail(donante.getEmail()) != null) {
-            throw new EmailYaRegistradoException(donante.getEmail());
+    public void registrar(PersonaDonante donante) {
+
+        boolean emailExistente = donante.getContactos().stream()
+                .filter(contacto -> contacto instanceof Email)
+                .map(contacto -> (Email) contacto)
+                .anyMatch(contacto -> repositorio.obtenerPorMail(contacto.getDireccion()) != null);
+
+        if (emailExistente) {
+            throw new EmailYaRegistradoException("El email ya está registrado");
         }
+
         repositorio.guardar(donante);
-        return donante;
     }
 
     public PersonaDonante obtenerPorId(UUID id) {
@@ -39,27 +49,29 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
         repositorio.reactivar(id);
     }
 
-    public void agregarMedioDeContacto(UUID id, TipoMedioContacto medio){
+
+    public void agregarMedioDeContacto(UUID id, MedioDeContacto medio){
         PersonaDonante persona = repositorio.obtenerPorId(id);
-        persona.getMediosDeContacto().add(medio);
+        persona.getContactos().add(medio);
     }
 
     public void agregarRepresentante(UUID id, Representante representante){
 
-        if(!repositorio.obtenerPorId(id).getTipoPersona().equals("JURIDICA")){
+        if(!(repositorio.obtenerPorId(id) instanceof PersonaJuridica)){
             throw new IllegalArgumentException("Solo se pueden agregar representantes a personas jurídicas.");
         }
-        PersonaJuridicaDonante persona = (PersonaJuridicaDonante) repositorio.obtenerPorId(id);
+        PersonaJuridica persona = (PersonaJuridica) repositorio.obtenerPorId(id);
         persona.getRepresentantes().add(representante);
     }
 
-    public void donar(List<Bien> bienes){
-
-    }
 
     public void removerRepresentante(UUID id, String emailRepresentante){
-        PersonaJuridicaDonante persona = (PersonaJuridicaDonante) repositorio.obtenerPorId(id);
-        persona.getRepresentantes().removeIf(rep -> rep.getEmail().equals(emailRepresentante));
+        PersonaJuridica persona = (PersonaJuridica) repositorio.obtenerPorId(id);
+        persona.getRepresentantes().removeIf(rep -> rep.getContactos()
+                .stream()
+                .filter(contacto -> contacto instanceof Email)
+                .map(contacto -> (Email) contacto)
+                .anyMatch(mail -> mail.getDireccion().equals(emailRepresentante)));
     }
 
     public List<PersonaDonante> listarDonantesActivos() {
@@ -70,3 +82,19 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
         return repositorio.obtenerTodosDonantes();
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
