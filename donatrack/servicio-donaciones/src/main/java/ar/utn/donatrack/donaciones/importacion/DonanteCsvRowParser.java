@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.importacion;
 
-import ar.utn.donatrack.donaciones.excepcion.CsvFormatoInvalidoException;
+import ar.utn.donatrack.donaciones.exceptions.CsvFormatoInvalidoException;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import org.springframework.stereotype.Component;
 

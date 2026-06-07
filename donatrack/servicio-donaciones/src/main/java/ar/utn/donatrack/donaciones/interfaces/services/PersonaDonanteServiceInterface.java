@@ -12,9 +12,9 @@ public interface PersonaDonanteServiceInterface {
   PersonaDonante obtenerPorId(UUID id);
   void darDeBaja(UUID id);
   void reactivar(UUID id);
+  List<PersonaDonante> listarDonantesActivos();
+  List<PersonaDonante> listarTodosDonantes();
   void agregarMedioDeContacto(UUID id, MedioDeContacto medio);
   void agregarRepresentante(UUID id, Representante representante);
   void removerRepresentante(UUID id, String emailRepresentante);
-  List<PersonaDonante> listarDonantesActivos();
-  List<PersonaDonante> listarTodosDonantes();
 }

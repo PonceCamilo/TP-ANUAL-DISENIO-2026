@@ -1,16 +1,10 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.util.List;
-
-/**
- * Persona donante de tipo jurídico (empresa, ONG, institución, etc.).
- * Debe contar con al menos un representante habilitado para operar.
- */
 
 @SuperBuilder
 @Getter

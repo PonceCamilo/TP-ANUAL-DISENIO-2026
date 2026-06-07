@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 
@@ -15,7 +16,7 @@ import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 @Setter
 public class EntidadBeneficiaria {
     
-    private int id;
+    private UUID id;
     private String razonSocial;
     private Direccion direccion;
     private List<MedioDeContacto> contactos;

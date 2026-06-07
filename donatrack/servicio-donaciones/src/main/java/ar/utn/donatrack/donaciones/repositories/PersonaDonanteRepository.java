@@ -1,57 +1,72 @@
 package ar.utn.donatrack.donaciones.repositories;
 
-import ar.utn.donatrack.donaciones.excepcion.PersonaDonanteNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.EmailYaRegistradoException;
+import ar.utn.donatrack.donaciones.exceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+
 import lombok.Getter;
-import lombok.Setter;
 import org.springframework.stereotype.Repository;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PATRÓN: SINGLETON
-// ───────────────────────────────────────────────────────────────────────────────
-// Por qué: el almacenamiento en memoria ES el estado de la aplicación mientras
-// no hay base de datos real. Si se crearan dos instancias de este repositorio,
-// cada una tendría su propio Map y los datos quedarían partidos: un request
-// guardaría en una instancia y otro no los encontraría.
-//
-// Spring ya garantiza scope singleton con @Repository, pero lo hacemos explícito
-// documentando el patrón para que quede claro en el diagrama de clases y en la
-// justificación de diseño de la entrega.
-//
-// Beneficio: una única fuente de verdad en memoria durante toda la vida del proceso.
-// ═══════════════════════════════════════════════════════════════════════════════
-
-
-@Repository  // ← SINGLETON: Spring instancia esta clase una sola vez en todo el contexto
+/**
+ * Repositorio en memoria para PersonaDonante.
+ * Spring garantiza scope singleton con @Repository: una única instancia
+ * compartida en todo el contexto de la aplicación.
+ *
+ * El índice secundario `porEmail` permite O(1) para la búsqueda por email,
+ * necesaria tanto en el registro individual como en la importación masiva CSV.
+ */
+@Repository
 @Getter
-@Setter
 public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterface {
 
-    // el Map es el estado compartido de toda la aplicación en Entrega 1
-    private Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>();
+    private final Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>();
 
+    // Índice secundario: email → UUID para búsqueda eficiente sin recorrer todo el mapa
+    private final Map<String, UUID> indicePorEmail = new ConcurrentHashMap<>();
+
+    /**
+     * Persiste una nueva PersonaDonante.
+     * Lanza EmailYaRegistradoException si el email ya está en uso.
+     * Genera un UUID si la entidad no tiene uno asignado.
+     */
     public void guardar(PersonaDonante personaDonante) {
+        if (personaDonante.getId() == null) {
+            personaDonante.setId(UUID.randomUUID());
+        }
+
+        String email = personaDonante.getEmail();
+        if (email != null && indicePorEmail.containsKey(email.toLowerCase())) {
+            // Solo lanzar si el ID es distinto (no es una actualización del mismo objeto)
+            UUID idExistente = indicePorEmail.get(email.toLowerCase());
+            if (!idExistente.equals(personaDonante.getId())) {
+                throw new EmailYaRegistradoException();
+            }
+        }
+
         almacenamiento.put(personaDonante.getId(), personaDonante);
+        if (email != null) {
+            indicePorEmail.put(email.toLowerCase(), personaDonante.getId());
+        }
     }
-    
+
     public PersonaDonante obtenerPorId(UUID id) {
         return almacenamiento.get(id);
     }
 
+    /**
+     * Búsqueda O(1) por email usando el índice secundario.
+     * Devuelve null si no existe (sin lanzar excepción, para uso en importación CSV).
+     */
+
     public PersonaDonante obtenerPorMail(String email) {
-        return almacenamiento.values().stream()
-            .filter(p -> p.getContactos().stream()
-                    .filter(contacto -> contacto instanceof Email)
-                    .map(contacto -> (Email) contacto)
-                    .anyMatch(contacto -> contacto.getDireccion().equals(email)))
-            .findFirst()
-            .orElse(null); //THROW EXCEPTION: NO EXISTE
+        if (email == null) return null;
+        UUID id = indicePorEmail.get(email.toLowerCase());
+        return id != null ? almacenamiento.get(id) : null;
     }
 
     public List<PersonaDonante> obtenerTodosDonantes() {
@@ -65,26 +80,20 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
     }
 
     public void darDeBaja(UUID id) {
-        PersonaDonante persona = this.obtenerPorId(id);
-
+        PersonaDonante persona = obtenerPorId(id);
         if (persona == null) throw new PersonaDonanteNoEncontradaException(id);
-
-        // (STATE): la transición se valida comparando estados
-        if (persona.getEstado() == EstadoDonante.INACTIVO) {                // ← transición de estado
+        if (persona.getEstado() == EstadoDonante.INACTIVO) {
             throw new IllegalStateException("La persona donante ya se encuentra dada de baja.");
         }
-        persona.setEstado(EstadoDonante.INACTIVO);                       // ← cambio de estado
+        persona.setEstado(EstadoDonante.INACTIVO);
     }
 
     public void reactivar(UUID id) {
-        PersonaDonante persona = this.obtenerPorId(id);
-
+        PersonaDonante persona = obtenerPorId(id);
         if (persona == null) throw new PersonaDonanteNoEncontradaException(id);
-
-        // STATE: transición inversa explícita
-        if (persona.getEstado() == EstadoDonante.ACTIVO) {                // ← transición de estado
+        if (persona.getEstado() == EstadoDonante.ACTIVO) {
             throw new IllegalStateException("La persona donante ya se encuentra activa.");
         }
-        persona.setEstado(EstadoDonante.ACTIVO);                         // ← cambio de estado
+        persona.setEstado(EstadoDonante.ACTIVO);
     }
 }

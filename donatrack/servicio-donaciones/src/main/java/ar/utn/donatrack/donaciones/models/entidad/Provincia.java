@@ -14,5 +14,4 @@ import lombok.Getter;
 public class Provincia {
 
     private String nombre;
-
 }

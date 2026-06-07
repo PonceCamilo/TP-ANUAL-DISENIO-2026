@@ -19,55 +19,95 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * Orquesta la segmentación automática de una CargaDonacion en múltiples Donaciones
+ * independientes, agrupadas por subcategoría y, dentro de ella, por el criterio
+ * que corresponda al tipo de bien:
+ *   - BienPerecible  → una Donacion por fecha de vencimiento distinta
+ *   - BienConEstado  → una Donacion por estado (nuevo / usado)
+ *   - Bien genérico  → una única Donacion por subcategoría
+ */
+
 @Service
 @RequiredArgsConstructor
 public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {
 
-  public void segmentar(List<Bien> bienes) {
+  private final SegmentadorDonacionesRepositoryInterface segmentadorDonacionesRepository;
+
+  @Override
+  public void segmentar(CargaDonacion carga) {
     List<Donacion> resultado = new ArrayList<>();
 
-    Map<Subcategoria, List<Bien>> porSubcategoria = listaBienes.stream()
-        .collect(Collectors.groupingBy(Bien::getSubcategoria, LinkedHashMap::new, Collectors.toList()));
+    // Agrupar todos los bienes de la carga por subcategoría
+    Map<Subcategoria, List<Bien>> porSubcategoria = carga.getBienes().stream()
+        .collect(Collectors.groupingBy(
+            Bien::getSubcategoria,
+            LinkedHashMap::new,
+            Collectors.toList()
+        ));
 
     for (Map.Entry<Subcategoria, List<Bien>> entry : porSubcategoria.entrySet()) {
       Subcategoria sub = entry.getKey();
-      List<Bien> bienes = entry.getValue();
+      List<Bien> bienesDeSubcat = entry.getValue();
 
       // BienPerecible → agrupar por fechaVencimiento
-      bienes.stream()
-          .filter(b -> b instanceof BienPerecible)
+      bienesDeSubcat.stream()
+          .filter(BienPerecible.class::isInstance)
           .map(b -> (BienPerecible) b)
-          .collect(Collectors.groupingBy(BienPerecible::getFechaVencimiento, LinkedHashMap::new, Collectors.toList()))
+          .collect(Collectors.groupingBy(
+              BienPerecible::getFechaVencimiento,
+              LinkedHashMap::new,
+              Collectors.toList()
+          ))
           .forEach((fecha, grupo) -> {
             DonacionPerecible donacion = new DonacionPerecible();
             donacion.setSubcategoria(sub);
-            donacion.setEstado(EstadoDonacion.ASIGNADA);
+            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
             donacion.setFechaVencimiento(fecha);
             donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
             donacion.getBienes().addAll(grupo);
             resultado.add(donacion);
           });
 
-      // BienConEstado → agrupar por estado (NUEVO / USADO)
-      bienes.stream()
+      // BienConEstado → agrupar por estado nuevo/usado
+      bienesDeSubcat.stream()
           .filter(b -> b instanceof BienConEstado)
           .map(b -> (BienConEstado) b)
-          .collect(Collectors.groupingBy(BienConEstado::isEsNuevo, LinkedHashMap::new, Collectors.toList()))
+          .collect(Collectors.groupingBy(
+              BienConEstado::isEsNuevo,
+              LinkedHashMap::new,
+              Collectors.toList()
+          ))
           .forEach((esNuevo, grupo) -> {
             DonacionConEstado donacion = new DonacionConEstado();
             donacion.setSubcategoria(sub);
-            donacion.setEstado(EstadoDonacion.ASIGNADA);
+            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
             donacion.setEsNuevo(esNuevo);
             donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
             donacion.getBienes().addAll(grupo);
             resultado.add(donacion);
           });
+
+      // Bienes genéricos (ni perecederos ni con estado) → una sola donación por subcategoría
+      List<Bien> genericos = bienesDeSubcat.stream()
+          .filter(b -> !(b instanceof BienPerecible) && !(b instanceof BienConEstado))
+          .toList();
+
+      if (!genericos.isEmpty()) {
+        Donacion donacion = new Donacion() {}; // clase anónima; reemplazar si surge un tipo concreto
+        donacion.setSubcategoria(sub);
+        donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
+        donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
+        donacion.getBienes().addAll(genericos);
+        resultado.add(donacion);
+      }
     }
 
-    this.cargarDonaciones(resultado);
+    cargarDonaciones(resultado);
   }
 
-  public void cargarDonaciones(List<Donacion> cargaDonacion){
-    this.segmentadorDonacionesRepository.cargarDonaciones(cargaDonacion);
+  @Override
+  public void cargarDonaciones(List<Donacion> donaciones) {
+    segmentadorDonacionesRepository.cargarDonaciones(donaciones);
   }
 }

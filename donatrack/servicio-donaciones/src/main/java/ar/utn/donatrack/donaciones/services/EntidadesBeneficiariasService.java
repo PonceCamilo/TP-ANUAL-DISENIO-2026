@@ -3,16 +3,16 @@ package ar.utn.donatrack.donaciones.services;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadRecurrente;
-
-import java.util.List;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -20,38 +20,38 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
 
     private final EntidadesBeneficiariasRepositoryInterface entidadesBeneficiariasRepository;
 
-    //public void registrarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad) {
-    //    entidadesBeneficiariasRepository.cargarNecesidad(entidad, necesidad);
-    //}
-
-    // ahora queremos poder cargar varias necesidades a la vez con la clase cargaNecesidad 
-
-    public void registrarNecesidades(EntidadBeneficiaria entidad, Campania carga) {
-        if (carga.getFechaIngreso() == null) {
-            carga.setFechaIngreso(LocalDateTime.now());
-        }
-        LocalDate hoy = carga.getFechaIngreso().toLocalDate();
-        for (Necesidad necesidad : carga.getNecesidades()) {
-            // Si la necesidad es recurrente, inicializamos su período automáticamente hoy
-            if (necesidad instanceof NecesidadRecurrente necesidadRecurrente) {
-                necesidadRecurrente.obtenerOGenerarPeriodoActual(hoy);
-            }
-            entidad.registrarNecesidad(necesidad);
-        }
+    /**
+     * Registra una única necesidad en una entidad beneficiaria.
+     * Usado tanto por los tests como por el controller de alta individual.
+     */
+    public void registrarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad) {
+        entidad.registrarNecesidad(necesidad);
+        entidadesBeneficiariasRepository.guardar(entidad);
     }
 
-    //public void reiniciarPeriodoNecesidadRecurrente(NecesidadRecurrente necesidad) {
-    //    necesidad.reiniciarPeriodo();
-    //}
+    /**
+     * Registra múltiples necesidades agrupadas en una campaña.
+     * Si fechaInicio es null, usa la fecha de hoy.
+     */
+    public void registrarNecesidades(EntidadBeneficiaria entidad, Campania campania) {
+        campania.getNecesidades().forEach(entidad::registrarNecesidad);
+        entidadesBeneficiariasRepository.guardar(entidad);
+    }
 
+    /**
+     * Recorre todas las entidades y reinicia el período de las NecesidadRecurrente
+     * que hayan vencido respecto a la fecha de hoy.
+     * Diseñado para ejecutarse como tarea programada diaria.
+     */
     public void actualizarPeriodos() {
-    List<EntidadBeneficiaria> entidades = entidadesBeneficiariasRepository.buscarTodas();
-    LocalDate hoy = LocalDate.now();
-    entidades.forEach(entidad -> entidad.getNecesidades().stream()
-                .filter(n -> n instanceof NecesidadRecurrente)
+        LocalDate hoy = LocalDate.now();
+        List<EntidadBeneficiaria> entidades = entidadesBeneficiariasRepository.buscarTodas();
+
+        entidades.forEach(entidad ->
+            entidad.getNecesidades().stream()
+                .filter(NecesidadRecurrente.class::isInstance)
                 .map(n -> (NecesidadRecurrente) n)
-                .filter(necesidadRecurrente -> necesidadRecurrente.periodoVencido(hoy))
-                .forEach(necesidadRecurrente -> necesidadRecurrente.obtenerOGenerarPeriodoActual(hoy))  // crea el periodo
+                .forEach(nr -> nr.obtenerOGenerarPeriodoActual(hoy))
         );
     }
 }

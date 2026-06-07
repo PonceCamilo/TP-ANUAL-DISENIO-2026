@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.excepcion.EmailYaRegistradoException;
-import ar.utn.donatrack.donaciones.excepcion.PersonaDonanteNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.EmailYaRegistradoException;
+import ar.utn.donatrack.donaciones.exceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.models.contacto.TipoMedioContacto;
 import ar.utn.donatrack.donaciones.models.donante.*;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
