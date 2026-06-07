@@ -60,18 +60,17 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
               Collectors.toList()
           ))
           .forEach((fecha, grupo) -> {
-            DonacionPerecible donacion = new DonacionPerecible();
-            donacion.setSubcategoria(sub);
-            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
-            donacion.setFechaVencimiento(fecha);
-            donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
-            donacion.getBienes().addAll(grupo);
+            Donacion donacion = new Donacion();
+              donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
+              donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
+              donacion.getBienes().addAll(grupo);
+              donacion.setSubcategoria(sub);
             resultado.add(donacion);
           });
 
       // BienConEstado → agrupar por estado nuevo/usado
       bienesDeSubcat.stream()
-          .filter(b -> b instanceof BienConEstado)
+          .filter(BienConEstado.class::isInstance)
           .map(b -> (BienConEstado) b)
           .collect(Collectors.groupingBy(
               BienConEstado::isEsNuevo,
@@ -79,12 +78,11 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
               Collectors.toList()
           ))
           .forEach((esNuevo, grupo) -> {
-            DonacionConEstado donacion = new DonacionConEstado();
-            donacion.setSubcategoria(sub);
-            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
-            donacion.setEsNuevo(esNuevo);
-            donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
-            donacion.getBienes().addAll(grupo);
+            Donacion donacion = new Donacion();
+              donacion.setSubcategoria(sub);
+              donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
+              donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
+              donacion.getBienes().addAll(grupo);
             resultado.add(donacion);
           });
 
@@ -94,7 +92,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
           .toList();
 
       if (!genericos.isEmpty()) {
-        Donacion donacion = new Donacion() {}; // clase anónima; reemplazar si surge un tipo concreto
+        Donacion donacion = new Donacion();
         donacion.setSubcategoria(sub);
         donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
         donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
@@ -106,7 +104,6 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
     cargarDonaciones(resultado);
   }
 
-  @Override
   public void cargarDonaciones(List<Donacion> donaciones) {
     segmentadorDonacionesRepository.cargarDonaciones(donaciones);
   }

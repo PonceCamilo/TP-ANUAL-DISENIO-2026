@@ -1,7 +1,9 @@
-
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,16 +12,22 @@ import java.util.List;
 
 @Getter
 @Setter
-public abstract class Donacion {
-    protected Bien bien;
+public class Donacion {
+
+    protected List<Bien> bienes = new ArrayList<>();
+    protected Subcategoria subcategoria;
     protected EstadoDonacion estado = EstadoDonacion.EN_DEPOSITO;
     protected List<CambioEstado> historialEstados = new ArrayList<>(
-        List.of(CambioEstado.builder().estado(EstadoDonacion.EN_DEPOSITO).build())
-    );
+        List.of(CambioEstado.builder().estado(EstadoDonacion.EN_DEPOSITO).build()));
     protected int idCargaOrigen;
-    protected int cantidad;
-    protected List<Bien> bienes = new ArrayList<>();
 
+    public boolean esPerecible() {
+        return !bienes.isEmpty() && bienes.get(0) instanceof BienPerecible;
+    }
+
+    public boolean requiereEstado() {
+        return !bienes.isEmpty() && bienes.get(0) instanceof BienConEstado;
+    }
 
     public void cambiarEstado(EstadoDonacion nuevo, String justificacion) {
         validarTransicion(nuevo);
@@ -31,10 +39,6 @@ public abstract class Donacion {
                 .justificacion(justificacion)
                 .build());
         this.estado = nuevo;
-    }
-
-    public void cambiarEstado(EstadoDonacion nuevo) {
-        cambiarEstado(nuevo, null);
     }
 
     private void validarTransicion(EstadoDonacion nuevo) {

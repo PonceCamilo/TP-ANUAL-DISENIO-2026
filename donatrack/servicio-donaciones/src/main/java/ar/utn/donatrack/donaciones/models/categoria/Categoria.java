@@ -11,11 +11,6 @@ import java.util.UUID;
 /**
  * Categoría de bien donado (ej: Alimentos, Vestimenta, Mobiliario).
  *
- * requiereEstado: si true, los bienes de esta categoría son BienConEstado
- *                (deben indicar nuevo/usado). Ej: Mobiliario, Vestimenta.
- * esPerecible:   si true, los bienes de esta categoría son BienPerecible
- *                (requieren fecha de vencimiento). Ej: Alimentos.
- *
  * El segmentador usa estas flags para decidir el tipo de Donacion a generar.
  */
 
@@ -26,8 +21,7 @@ public class Categoria {
 
     private UUID id;
     private String nombre;
-    private boolean requiereEstado;
-    private boolean esPerecible;
+    private TipoBien tipoBien;
 
     @Builder.Default
     private List<Subcategoria> subcategorias = new ArrayList<>();
