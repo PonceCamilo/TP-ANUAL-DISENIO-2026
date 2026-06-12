@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.repositories;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 
 import lombok.Getter;
 import org.springframework.stereotype.Repository;
@@ -16,8 +17,7 @@ import java.util.UUID;
 @Getter
 public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasRepositoryInterface {
 
-    private final List<EntidadBeneficiaria> entidadesBeneficiarias =
-        Collections.synchronizedList(new ArrayList<>());
+    private final List<EntidadBeneficiaria> entidadesBeneficiarias = new ArrayList<>(); //qué es synchronized? (antes estaba asi)
 
     public void guardar(EntidadBeneficiaria entidad) {
         // Si ya existe (misma UUID), reemplazar; si no, agregar
@@ -25,15 +25,11 @@ public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasR
         entidadesBeneficiarias.add(entidad);
     }
 
-    public void cargarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad) {
-        entidad.registrarNecesidad(necesidad);
-    }
-
     public List<EntidadBeneficiaria> buscarTodas() {
         return entidadesBeneficiarias;
     }
 
-    public EntidadBeneficiaria buscarPorId(UUID id) {
+    public EntidadBeneficiaria obtenerPorId(UUID id) {
         return entidadesBeneficiarias.stream()
             .filter(e -> e.getId().equals(id))
             .findFirst()

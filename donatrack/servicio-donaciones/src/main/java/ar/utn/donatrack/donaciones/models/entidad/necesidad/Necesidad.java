@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
+import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,7 +16,7 @@ import java.time.LocalDate;
 @Setter
 public abstract class Necesidad {
 
-    protected Subcategoria subcategoria;
+    protected Bien bien;
     protected String descripcion;
     protected LocalDate fechaRegistro;
     protected int cantidadObjetivo;

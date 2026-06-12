@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.exceptions.CsvFormatoInvalidoException;
+import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoLineaException;
 import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
 import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
@@ -62,7 +62,7 @@ public class CsvImportService {
                 try {
                     DonanteImportDto dto = parser.parsear(columnas, numeroLinea);
                     lote.add(dto);
-                } catch (CsvFormatoInvalidoException e) {
+                } catch (CsvFormatoLineaException e) {
                     report.agregar(ImportFilaCSV.error(numeroLinea, "", e.getMessage()));
                 }
 

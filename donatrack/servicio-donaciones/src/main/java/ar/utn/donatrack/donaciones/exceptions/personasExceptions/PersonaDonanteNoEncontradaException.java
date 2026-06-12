@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.exceptions;
+package ar.utn.donatrack.donaciones.exceptions.personasExceptions;
 
 import java.util.UUID;
 

@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.exceptions;
+package ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions;
 
 public class EmailYaRegistradoException extends RuntimeException {
 

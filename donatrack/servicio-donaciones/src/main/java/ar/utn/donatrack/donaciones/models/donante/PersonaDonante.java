@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
+import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
 
@@ -33,9 +34,16 @@ public abstract class PersonaDonante {
     protected String numeroDocumento;
     protected Direccion direccion;
     protected EstadoDonante estado;
-    protected String email;
     protected MedioDeContacto medioContactoPredeterminado;
 
     @Builder.Default
     protected List<MedioDeContacto> contactos = new ArrayList<>();
+
+    @Builder.Default
+    protected String email = this.contactos.stream()
+            .filter(Email.class::isInstance)
+            .findFirst()
+            .map(Email.class::cast)
+            .map(Email::getDireccion)
+            .orElse("");
 }

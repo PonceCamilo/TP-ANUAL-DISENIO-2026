@@ -1,6 +1,10 @@
 package ar.utn.donatrack.donaciones.importacion;
 
-import ar.utn.donatrack.donaciones.exceptions.CsvFormatoInvalidoException;
+import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoDocumentoException;
+import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoLineaException;
+import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoMailException;
+import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoNombreException;
+import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoPersonaException;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import org.springframework.stereotype.Component;
 
@@ -19,9 +23,7 @@ public class DonanteCsvRowParser {
 
     public DonanteImportDto parsear(String[] columnas, int numeroLinea) {
         if (columnas.length < 5) {
-            throw new CsvFormatoInvalidoException(
-                    "Línea " + numeroLinea + ": se esperaban al menos 5 columnas, "
-                            + "se encontraron " + columnas.length);
+            throw new CsvFormatoLineaException(numeroLinea, columnas.length);
         }
 
         String tipoPersona = columnas[0].trim().toUpperCase();
@@ -32,21 +34,16 @@ public class DonanteCsvRowParser {
         String tel     = columnas.length > 5 ? columnas[5].trim() : null;
 
         if (!tipoPersona.equals("HUMANA") && !tipoPersona.equals("JURIDICA")) {
-            throw new CsvFormatoInvalidoException(
-                    "Línea " + numeroLinea + ": tipo de persona inválido '" + tipoPersona
-                            + "'. Valores aceptados: HUMANA, JURIDICA");
+            throw new CsvFormatoPersonaException(numeroLinea, tipoPersona);
         }
         if (email.isBlank()) {
-            throw new CsvFormatoInvalidoException(
-                    "Línea " + numeroLinea + ": el email es obligatorio");
+            throw new CsvFormatoMailException(numeroLinea);
         }
         if (doc.isBlank()) {
-            throw new CsvFormatoInvalidoException(
-                    "Línea " + numeroLinea + ": el documento no puede estar vacío");
+            throw new CsvFormatoDocumentoException(numeroLinea);
         }
         if (nombre.isBlank()) {
-            throw new CsvFormatoInvalidoException(
-                    "Línea " + numeroLinea + ": el nombre/razón social no puede estar vacío");
+            throw new CsvFormatoNombreException(numeroLinea);
         }
 
         return new DonanteImportDto(

@@ -24,6 +24,7 @@ public class Campania {
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
     private String descripcionGeneral;
+    private UUID idCampania;
 
     private List<Necesidad> necesidades = new ArrayList<>();
 }

@@ -1,6 +1,9 @@
 package ar.utn.donatrack.donaciones.interfaces.repositories;
 
+import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
+import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.models.donante.Representante;
 
 import java.util.List;
 import java.util.UUID;
@@ -10,12 +13,10 @@ import java.util.UUID;
  * Implementaciones existentes del proyecto pueden adaptarse a esta interfaz.
  */
 public interface PersonaDonanteRepositoryInterface {
-    PersonaDonante obtenerPorMail(String email);
-    PersonaDonante obtenerPorId(UUID id);
+    PersonaDonante obtenerPersona(UUID idPersona, String mail);
     List<PersonaDonante> obtenerTodosDonantes();
-    List<PersonaDonante> obtenerTodosActivos();
-    void darDeBaja(UUID id);
     void guardar(PersonaDonante donante);
-    void reactivar(UUID id);
-
+    void cambiarEstado(UUID idDonante, EstadoDonante nuevoEstado);
+    void modificarRepresentante(UUID idDonante, Representante representante);
+    void modificarMedioContacto(UUID idDonante, MedioDeContacto medio);
 }

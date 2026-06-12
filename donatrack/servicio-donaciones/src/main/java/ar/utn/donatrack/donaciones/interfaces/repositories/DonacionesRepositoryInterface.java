@@ -4,6 +4,6 @@ import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 
 import java.util.List;
 
-public interface SegmentadorDonacionesRepositoryInterface {
+public interface DonacionesRepositoryInterface {
     void cargarDonaciones(List<Donacion> donaciones);
 }

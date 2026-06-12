@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.interfaces.services;
 
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
+import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
 
@@ -9,12 +10,9 @@ import java.util.UUID;
 
 public interface PersonaDonanteServiceInterface {
   void registrar(PersonaDonante donante);
-  PersonaDonante obtenerPorId(UUID id);
-  void darDeBaja(UUID id);
-  void reactivar(UUID id);
-  List<PersonaDonante> listarDonantesActivos();
-  List<PersonaDonante> listarTodosDonantes();
+  PersonaDonante obtenerPersona(UUID idPersona, String mail);
+  List<PersonaDonante> obtenerPersonasDonantes();
+  public List<PersonaDonante> obtenerDonantesPorEstado(EstadoDonante estado);
   void agregarMedioDeContacto(UUID id, MedioDeContacto medio);
-  void agregarRepresentante(UUID id, Representante representante);
-  void removerRepresentante(UUID id, String emailRepresentante);
+  public void modificarRepresentante(UUID idPersonaJuridica, Representante representante);
 }

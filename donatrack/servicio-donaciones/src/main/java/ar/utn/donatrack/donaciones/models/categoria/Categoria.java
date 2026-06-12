@@ -10,7 +10,6 @@ import java.util.UUID;
 
 /**
  * Categoría de bien donado (ej: Alimentos, Vestimenta, Mobiliario).
- *
  * El segmentador usa estas flags para decidir el tipo de Donacion a generar.
  */
 
