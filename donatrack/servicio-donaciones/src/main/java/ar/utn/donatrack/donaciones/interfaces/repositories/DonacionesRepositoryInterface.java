@@ -12,7 +12,8 @@ public interface DonacionesRepositoryInterface {
     List<Donacion> obtenerTodas();
     List<Donacion> obtenerPorEstado(EstadoDonacion estado);
     Donacion obtenerPorId(UUID id);
-    void cambiarEstado(UUID idDonacion, EstadoDonacion nuevoEstado);
+    void cambiarEstado(UUID idDonacion, EstadoDonacion nuevoEstado, String justificacion);
     void modificarBien(UUID idDonacion, Bien bien);
+    void eliminar(UUID idDonacion);
 }
 

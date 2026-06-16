@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.validations;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoPersonaIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import org.springframework.stereotype.Component;
@@ -23,7 +23,7 @@ public class DonacionesValidator {
       default -> false;
     };
     if (!valida) {
-      throw new CambioEstadoIlegalException(estadoActual, estadoNuevo);
+      throw new CambioEstadoPersonaIlegalException(estadoActual, estadoNuevo);
     }
   }
 }

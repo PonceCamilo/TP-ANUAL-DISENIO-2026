@@ -1,10 +1,10 @@
 package ar.utn.donatrack.donaciones.models.contacto;
 
-import lombok.Builder;
 import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 
-@Builder
 @Getter
+@SuperBuilder
 public class Whatsapp extends MedioDeContacto {
 
 }

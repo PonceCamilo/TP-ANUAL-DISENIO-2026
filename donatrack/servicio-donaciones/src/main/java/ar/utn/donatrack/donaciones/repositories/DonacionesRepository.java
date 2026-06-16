@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
@@ -46,10 +47,14 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
   }
 
   @Override
-  public void cambiarEstado(UUID idDonacion, EstadoDonacion nuevoEstado) {
+  public void cambiarEstado(UUID idDonacion, EstadoDonacion nuevoEstado, String justificacion) {
     Donacion donacion = obtenerPorId(idDonacion);
     if (donacion != null) {
       donacion.setEstado(nuevoEstado);
+      donacion.getHistorialEstados().add(CambioEstado.builder()
+          .estado(nuevoEstado)
+          .justificacion(justificacion)
+          .build());
     }
   }
 
@@ -59,5 +64,10 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
     if (donacion != null && !donacion.getBienes().isEmpty()) {
       donacion.getBienes().set(0, bien);
     }
+  }
+
+  @Override
+  public void eliminar(UUID idDonacion) {
+    donaciones.removeIf(d -> d.getId().equals(idDonacion));
   }
 }

@@ -1,16 +1,12 @@
 package ar.utn.donatrack.donaciones.controllers;
 
-import ar.utn.donatrack.donaciones.dtos.request.EstadoUpdateDTO;
-import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoDTO;
+import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
-import ar.utn.donatrack.donaciones.dtos.request.RepresentanteDTO;
+import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
-import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.services.PersonaDonanteService;
-import ar.utn.donatrack.donaciones.validations.PersonasValidator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -56,7 +52,7 @@ public class PersonaDonanteController {
   @PatchMapping("/{id}/estado")
   public ResponseEntity<Void> cambiarEstado(
       @PathVariable UUID id,
-      @RequestBody @Valid EstadoUpdateDTO dto) {
+      @RequestBody @Valid EstadoDonanteRequestDTO dto) {
 
     personaDonanteService.cambiarEstado(id, dto);
     return ResponseEntity.noContent().build();
@@ -65,7 +61,7 @@ public class PersonaDonanteController {
   @PatchMapping("/{id}/contactos")
   public ResponseEntity<Void> modificarContacto(
       @PathVariable UUID id,
-      @RequestBody @Valid MedioDeContactoDTO dto) {
+      @RequestBody @Valid MedioDeContactoRequestDTO dto) {
 
     personaDonanteService.modificarContacto(id, dto);
     return ResponseEntity.noContent().build();
@@ -74,7 +70,7 @@ public class PersonaDonanteController {
   @PatchMapping("/{id}/representantes")
   public ResponseEntity<Void> modificarRepresentante(
       @PathVariable UUID id,
-      @RequestBody @Valid RepresentanteDTO dto) {
+      @RequestBody @Valid RepresentanteRequestDTO dto) {
 
     personaDonanteService.modificarRepresentante(id, dto);
     return ResponseEntity.noContent().build();

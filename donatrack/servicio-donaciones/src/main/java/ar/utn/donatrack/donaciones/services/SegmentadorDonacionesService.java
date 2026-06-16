@@ -133,11 +133,16 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
     return donacionesRepository.obtenerPorId(id);
   }
 
-  public void cambiarEstadoDonacion(UUID idDonacion, EstadoDonacion nuevoEstado) {
-    donacionesRepository.cambiarEstado(idDonacion, nuevoEstado);
+  public void cambiarEstadoDonacion(UUID idDonacion, EstadoDonacion nuevoEstado, String justificacion) {
+    donacionesRepository.cambiarEstado(idDonacion, nuevoEstado, justificacion);
   }
 
   public void modificarBien(UUID idDonacion, Bien bien) {
     donacionesRepository.modificarBien(idDonacion, bien);
   }
+
+  public void eliminar(UUID idDonacion) {
+    donacionesRepository.eliminar(idDonacion);
+  }
 }
+

@@ -1,8 +1,11 @@
 package ar.utn.donatrack.donaciones.dtos.request;
 
 import ar.utn.donatrack.donaciones.models.donante.TipoPersonaJuridica;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import lombok.Builder;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,6 +18,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
 public class PersonaJuridicaRequestDTO extends PersonaDonanteRequestDTO {
 
   @NotBlank
@@ -23,9 +27,11 @@ public class PersonaJuridicaRequestDTO extends PersonaDonanteRequestDTO {
   @NotBlank
   private String rubro;
 
-  @NotBlank
+  @NotNull
   private TipoPersonaJuridica tipo;
 
-  @Builder.Default
-  private List<RepresentanteDTO> representantes = new ArrayList<>();
+  @Valid
+  @NotEmpty
+  @lombok.Builder.Default
+  private List<RepresentanteRequestDTO> representantes = new ArrayList<>();
 }

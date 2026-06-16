@@ -13,7 +13,6 @@ import java.util.UUID;
  * Implementaciones existentes del proyecto pueden adaptarse a esta interfaz.
  */
 public interface PersonaDonanteRepositoryInterface {
-    PersonaDonante obtenerPersona(UUID idPersona, String mail);
     List<PersonaDonante> obtenerTodosDonantes();
     void guardar(PersonaDonante donante);
     void cambiarEstado(UUID idDonante, EstadoDonante nuevoEstado);
@@ -21,5 +20,5 @@ public interface PersonaDonanteRepositoryInterface {
     void modificarMedioContacto(UUID idDonante, MedioDeContacto medio);
     boolean existePorId(UUID id);
     boolean existePorEmail(String email);
-    PersonaDonante obtenerPersona(UUID id); // firma simplificada
+    PersonaDonante obtenerPersona(UUID id);
 }
