@@ -1,11 +1,16 @@
 package ar.utn.donatrack.donaciones.controllers;
 
-
+import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
 import ar.utn.donatrack.donaciones.validations.PersonasValidator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,14 +28,58 @@ public class DonacionesController {
   private final SegmentadorDonacionesService segmentadorDonacionesService;
   private final PersonasValidator personasValidator;
 
+  @GetMapping
+  public ResponseEntity<List<Donacion>> obtenerDonaciones(
+      @RequestParam(value = "estado", required = false) EstadoDonacion estado) {
+
+    List<Donacion> donaciones;
+
+    if (estado != null) {
+      donaciones = segmentadorDonacionesService.obtenerDonacionesPorEstado(estado);
+    } else {
+      donaciones = segmentadorDonacionesService.obtenerTodasLasDonaciones();
+    }
+
+    return ResponseEntity.ok(donaciones);
+  }
+
+  @GetMapping("/{id}")
+  public ResponseEntity<Donacion> obtenerDonacion(
+      @PathVariable UUID id
+  ) {
+    Donacion donacion = segmentadorDonacionesService.obtenerDonacionPorId(id);
+
+    return ResponseEntity.ok(donacion);
+  }
+
   @PostMapping
   public ResponseEntity<Void> segmentar(
-      @RequestBody List<Bien> bienesASegmentar, // 👈 @RequestBody indica que esto viene en el JSON de la petición
-      @RequestParam UUID idDonante              // 👈 @RequestParam si viene en la URL como ?idDonante=...
+      @RequestBody List<Bien> bienesASegmentar,
+      @RequestParam UUID idDonante
   ) {
     personasValidator.validarExistenciaPersona(idDonante);
 
     segmentadorDonacionesService.segmentar(bienesASegmentar, idDonante);
+
+    return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
+  @PatchMapping("/{id}")
+  public ResponseEntity<Void> cambiarEstadoDonacion(
+      @PathVariable UUID id,
+      @RequestBody EstadoDonacion estado
+  ) {
+    segmentadorDonacionesService.cambiarEstadoDonacion(id, estado);
+
+    return ResponseEntity.ok().build();
+  }
+
+  @PatchMapping("/{id}/bien")
+  public ResponseEntity<Void> modificarBienDonacion(
+      @PathVariable UUID id,
+      @RequestBody Bien bien
+  ) {
+    segmentadorDonacionesService.modificarBien(id, bien);
 
     return ResponseEntity.ok().build();
   }

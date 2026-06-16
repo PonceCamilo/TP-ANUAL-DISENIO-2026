@@ -35,15 +35,8 @@ public abstract class PersonaDonante {
     protected Direccion direccion;
     protected EstadoDonante estado;
     protected MedioDeContacto medioContactoPredeterminado;
+    protected String email;
 
     @Builder.Default
     protected List<MedioDeContacto> contactos = new ArrayList<>();
-
-    @Builder.Default
-    protected String email = this.contactos.stream()
-            .filter(Email.class::isInstance)
-            .findFirst()
-            .map(Email.class::cast)
-            .map(Email::getDireccion)
-            .orElse("");
 }

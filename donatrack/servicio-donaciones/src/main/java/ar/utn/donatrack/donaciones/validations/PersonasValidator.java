@@ -12,53 +12,38 @@ import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.repositories.PersonaDonanteRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
 @Component
+@RequiredArgsConstructor
 public class PersonasValidator {
 
-  private final PersonaDonanteRepositoryInterface repositorio = new PersonaDonanteRepository();
+  private final PersonaDonanteRepositoryInterface repositorio;
 
-  public void validarExistenciaMail(String mail){
-
-    if(mail == null || mail.isBlank()) {
-      throw new EmailInvalidoException();
-    }
-
-    if (repositorio.obtenerPersona(null, mail) != null) {
+  public void validarEmailNoDuplicado(String email) {
+    if (repositorio.existePorEmail(email)) {
       throw new EmailYaRegistradoException();
     }
   }
 
-  public void validarExistenciaPersona(UUID idPersona, String mail){
-    if(repositorio.obtenerPersona(idPersona, mail) == null){
-      throw new PersonaDonanteNoEncontradaException(idPersona);
+  public void validarExistenciaPersona(UUID id) {
+    if (!repositorio.existePorId(id)) {
+      throw new PersonaDonanteNoEncontradaException(id);
     }
   }
 
-  public void validarTipoPersona(UUID idPersona){
-    if(!(repositorio.obtenerPersona(idPersona, null) instanceof PersonaJuridica)){
+  public void validarEsPersonaJuridica(UUID id) {
+    if (!(repositorio.obtenerPersona(id) instanceof PersonaJuridica)) {
       throw new TipoPersonaIlegalException();
     }
   }
 
-  public void validarCambioEstado(EstadoDonante estadoActual, EstadoDonante nuevoEstado){
-    if(estadoActual == nuevoEstado){
-      throw new PersonaConMimsoEstadoException(nuevoEstado);
-    }
-  }
-
-  public void validarMedioContacto(MedioDeContacto contacto) {
-    if(contacto == null || contacto.getValor() == null || contacto.getValor().isBlank()) {
-      throw new MedioContactoInvalidoException();
-    }
-  }
-
-  public void validarExistenciaEstado(EstadoDonante estado) {
-    if(estado == null || (!estado.equals(EstadoDonante.ACTIVO) && !estado.equals(EstadoDonante.INACTIVO))) {
-      throw new EstadoNoExistenteException(estado);
+  public void validarCambioEstado(EstadoDonante actual, EstadoDonante nuevo) {
+    if (actual == nuevo) {
+      throw new PersonaConMismoEstadoException(nuevo);
     }
   }
 }

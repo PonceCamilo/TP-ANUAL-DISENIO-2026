@@ -19,4 +19,7 @@ public interface PersonaDonanteRepositoryInterface {
     void cambiarEstado(UUID idDonante, EstadoDonante nuevoEstado);
     void modificarRepresentante(UUID idDonante, Representante representante);
     void modificarMedioContacto(UUID idDonante, MedioDeContacto medio);
+    boolean existePorId(UUID id);
+    boolean existePorEmail(String email);
+    PersonaDonante obtenerPersona(UUID id); // firma simplificada
 }

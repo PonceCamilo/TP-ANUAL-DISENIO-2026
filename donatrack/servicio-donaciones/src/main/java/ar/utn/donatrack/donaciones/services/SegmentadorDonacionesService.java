@@ -120,4 +120,24 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
   public void cargarDonaciones(List<Donacion> donaciones) {
     donacionesRepository.cargarDonaciones(donaciones);
   }
+
+  public List<Donacion> obtenerTodasLasDonaciones() {
+    return donacionesRepository.obtenerTodas();
+  }
+
+  public List<Donacion> obtenerDonacionesPorEstado(EstadoDonacion estado) {
+    return donacionesRepository.obtenerPorEstado(estado);
+  }
+
+  public Donacion obtenerDonacionPorId(UUID id) {
+    return donacionesRepository.obtenerPorId(id);
+  }
+
+  public void cambiarEstadoDonacion(UUID idDonacion, EstadoDonacion nuevoEstado) {
+    donacionesRepository.cambiarEstado(idDonacion, nuevoEstado);
+  }
+
+  public void modificarBien(UUID idDonacion, Bien bien) {
+    donacionesRepository.modificarBien(idDonacion, bien);
+  }
 }

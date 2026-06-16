@@ -23,6 +23,7 @@ public class Donacion {
             .justificacion("Llegada todos los bienes donados")
             .build()));
     protected UUID idDonante;
+    protected UUID id = UUID.randomUUID();
 
     public boolean esPerecible() {
         return !bienes.isEmpty() && bienes.getFirst() instanceof BienPerecible;

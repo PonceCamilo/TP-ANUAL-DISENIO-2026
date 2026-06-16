@@ -96,4 +96,16 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
             persona.getContactos().add(medio);
         }
     }
+
+    public boolean existePorId(UUID id) {
+        return almacenamiento.containsKey(id);
+    }
+
+    public boolean existePorEmail(String email) {
+        return indicePorEmail.containsKey(email.toLowerCase());
+    }
+
+    public PersonaDonante obtenerPersona(UUID id) {
+        return almacenamiento.get(id);
+    }
 }
