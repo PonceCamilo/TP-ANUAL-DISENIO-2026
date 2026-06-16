@@ -1,0 +1,83 @@
+@startuml diagramaClasesIncentivosModel
+
+class Donante {
+    - String nombreUsuario
+    - CategoriaDonante categoria
+    - EstadoMision misionActual
+    - List<InsigniaObtenida> insignias
+}
+
+abstract class CategoriaDonante {
+    - String nombre
+    - List<Mision> misiones
+
+    + siguienteCategoria() : CategoriaDonante
+}
+
+class Colaborador {
+
+}
+
+class Sostenedor {
+
+}
+
+class Transformador {
+
+}
+
+abstract class Mision {
+    - int objetivo
+    - Insignia insignia
+
+    + progresoActual() : int
+    + restante() : int
+    + estaCompletada() : Boolean
+
+}
+
+class Racha {
+
+}
+
+class Completitud {
+
+}
+
+class HabilDonador {
+
+}
+
+class DonacionesExitosas {
+
+}
+
+class Insignia {
+    - String nombre
+    - String imagen
+}
+
+class InsigniaObtenida {
+    - Insignia insignia
+    - Boolean visibilidad
+    - Date fechaObtencion
+}
+
+Donante -- CategoriaDonante
+Donante -- Mision
+Donante -- "*" InsigniaObtenida
+
+CategoriaDonante -- "*" Mision
+
+Colaborador --|> CategoriaDonante
+Sostenedor --|> CategoriaDonante
+Transformador --|> CategoriaDonante
+
+Racha --|> Mision
+Completitud --|> Mision
+HabilDonador --|> Mision
+DonacionesExitosas --|> Mision
+
+InsigniaObtenida -- Insignia
+
+@enduml
