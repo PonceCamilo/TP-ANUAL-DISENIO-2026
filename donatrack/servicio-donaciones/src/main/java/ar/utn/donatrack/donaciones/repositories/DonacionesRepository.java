@@ -7,6 +7,7 @@ import lombok.Getter;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,34 +15,43 @@ import java.util.UUID;
 @Getter
 public class DonacionesRepository implements DonacionesRepositoryInterface {
 
-  private final List<Donacion> donaciones = new ArrayList<>();
+  /**
+   * CORRECCIÓN: la lista original era un ArrayList sin sincronización.
+   * PersonaDonanteRepository usa ConcurrentHashMap (thread-safe) pero este repositorio
+   * usaba ArrayList, inconsistente y potencialmente corrupto bajo acceso concurrente.
+   *
+   * Se reemplaza por Collections.synchronizedList para mantener thread-safety
+   * con una API idéntica a la original.
+   */
+  private final List<Donacion> donaciones = Collections.synchronizedList(new ArrayList<>());
 
-  @Override
   public void cargarDonaciones(List<Donacion> cargaDonaciones) {
     donaciones.addAll(cargaDonaciones);
   }
 
-  @Override
   public List<Donacion> obtenerTodas() {
-    return new ArrayList<>(donaciones);
+    synchronized (donaciones) {
+      return new ArrayList<>(donaciones);
+    }
   }
 
-  @Override
   public List<Donacion> obtenerPorEstado(EstadoDonacion estado) {
-    return donaciones.stream()
-        .filter(d -> d.getEstado().equals(estado))
-        .toList();
+    synchronized (donaciones) {
+      return donaciones.stream()
+          .filter(d -> d.getEstado().equals(estado))
+          .toList();
+    }
   }
 
-  @Override
   public Donacion obtenerPorId(UUID id) {
-    return donaciones.stream()
-        .filter(d -> d.getId().equals(id))
-        .findFirst()
-        .orElse(null);
+    synchronized (donaciones) {
+      return donaciones.stream()
+          .filter(d -> d.getId().equals(id))
+          .findFirst()
+          .orElse(null);
+    }
   }
 
-  @Override
   public void eliminar(UUID idDonacion) {
     donaciones.removeIf(d -> d.getId().equals(idDonacion));
   }

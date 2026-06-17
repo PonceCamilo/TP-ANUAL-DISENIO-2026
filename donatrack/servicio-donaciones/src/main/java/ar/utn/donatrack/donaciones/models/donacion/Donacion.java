@@ -18,10 +18,7 @@ public class Donacion {
     protected List<Bien> bienes = new ArrayList<>();
     protected Subcategoria subcategoria;
     protected EstadoDonacion estado = EstadoDonacion.EN_DEPOSITO;
-    protected List<CambioEstado> historialEstados = new ArrayList<>(
-        List.of(CambioEstado.builder().estado(EstadoDonacion.EN_DEPOSITO)
-            .justificacion("Llegada todos los bienes donados")
-            .build()));
+    protected List<CambioEstado> historialEstados = new ArrayList<>();
     protected UUID idDonante;
     protected UUID id = UUID.randomUUID();
 

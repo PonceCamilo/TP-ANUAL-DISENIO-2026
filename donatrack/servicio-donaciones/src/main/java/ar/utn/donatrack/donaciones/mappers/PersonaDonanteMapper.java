@@ -2,6 +2,7 @@ package ar.utn.donatrack.donaciones.mappers;
 
 import ar.utn.donatrack.donaciones.dtos.request.DireccionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EmailRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.LocalidadRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaHumanaRequestDTO;
@@ -11,10 +12,12 @@ import ar.utn.donatrack.donaciones.dtos.request.TelefonoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.WhatsappRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DireccionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EmailResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.LocalidadResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.MedioDeContactoResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaHumanaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaJuridicaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.ProvinciaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.RepresentanteResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.TelefonoResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.WhatsappResponseDTO;
@@ -27,6 +30,8 @@ import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
+import ar.utn.donatrack.donaciones.models.entidad.Localidad;
+import ar.utn.donatrack.donaciones.models.entidad.Provincia;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -60,7 +65,8 @@ public class PersonaDonanteMapper {
           .tipoDocumento(j.getTipoDocumento())
           .numeroDocumento(j.getNumeroDocumento())
           .rubro(j.getRubro())
-          .tipo(j.getTipo())
+          // CORRECCIÓN: era j.getTipo(), ahora j.getTipoOrganizacion()
+          .tipo(j.getTipoOrganizacion())
           .direccion(toDireccion(j.getDireccion()))
           .representantes(toRepresentantes(j.getRepresentantes()))
           .medioContactoPredeterminado(toContacto(j.getMedioContactoPredeterminado()))
@@ -141,8 +147,18 @@ public class PersonaDonanteMapper {
     return Direccion.builder()
         .calle(dto.getCalle())
         .numero(dto.getNumero())
-        .localidad(dto.getLocalidad())
         .codigoPostal(dto.getCodigoPostal())
+        .localidad(toLocalidad(dto.getLocalidad()))
+        .build();
+  }
+
+  private Localidad toLocalidad(LocalidadRequestDTO dto) {
+    if (dto == null) return null;
+    return Localidad.builder()
+        .nombre(dto.getNombre())
+        .provincia(Provincia.builder()
+            .nombre(dto.getProvincia().getNombre())
+            .build())
         .build();
   }
 
@@ -151,8 +167,19 @@ public class PersonaDonanteMapper {
     return DireccionResponseDTO.builder()
         .calle(dir.getCalle())
         .numero(dir.getNumero())
-        .localidad(dir.getLocalidad())
         .codigoPostal(dir.getCodigoPostal())
+        .localidad(toLocalidadDTO(dir.getLocalidad()))
+        .build();
+  }
+
+  private LocalidadResponseDTO toLocalidadDTO(Localidad localidad) {
+    if (localidad == null) return null;
+    return LocalidadResponseDTO.builder()
+        .nombre(localidad.getNombre())
+        .provincia(localidad.getProvincia() == null ? null :
+            ProvinciaResponseDTO.builder()
+                .nombre(localidad.getProvincia().getNombre())
+                .build())
         .build();
   }
 

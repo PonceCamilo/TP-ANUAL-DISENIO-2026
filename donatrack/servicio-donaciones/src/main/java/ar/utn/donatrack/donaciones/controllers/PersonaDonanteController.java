@@ -5,11 +5,13 @@ import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
+import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
 import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.services.PersonaDonanteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,24 +28,29 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/donantes")
+@Validated
 public class PersonaDonanteController {
 
-  private final PersonaDonanteService personaDonanteService;
+  private final PersonaDonanteServiceInterface personaDonanteService;
 
   @GetMapping
   public ResponseEntity<List<PersonaDonanteResponseDTO>> obtenerDonantes(
-      @RequestParam(required = false) EstadoDonante estado) {
-
+      @RequestParam(required = false) EstadoDonante estado
+  ) {
     return ResponseEntity.ok(personaDonanteService.obtenerDonantes(estado));
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<PersonaDonanteResponseDTO> obtenerDonante(@PathVariable UUID id) {
+  public ResponseEntity<PersonaDonanteResponseDTO> obtenerDonante(
+      @PathVariable UUID id
+  ) {
     return ResponseEntity.ok(personaDonanteService.obtenerDonante(id));
   }
 
   @PostMapping
-  public ResponseEntity<Void> registrarDonante(@RequestBody @Valid PersonaDonanteRequestDTO dto) {
+  public ResponseEntity<Void> registrarDonante(
+      @RequestBody @Valid PersonaDonanteRequestDTO dto
+  ) {
     UUID id = personaDonanteService.registrar(dto);
     URI location = URI.create("/donantes/" + id);
     return ResponseEntity.created(location).build();
@@ -52,8 +59,8 @@ public class PersonaDonanteController {
   @PatchMapping("/{id}/estado")
   public ResponseEntity<Void> cambiarEstado(
       @PathVariable UUID id,
-      @RequestBody @Valid EstadoDonanteRequestDTO dto) {
-
+      @RequestBody @Valid EstadoDonanteRequestDTO dto
+  ) {
     personaDonanteService.cambiarEstado(id, dto);
     return ResponseEntity.noContent().build();
   }
@@ -61,8 +68,8 @@ public class PersonaDonanteController {
   @PatchMapping("/{id}/contactos")
   public ResponseEntity<Void> modificarContacto(
       @PathVariable UUID id,
-      @RequestBody @Valid MedioDeContactoRequestDTO dto) {
-
+      @RequestBody @Valid MedioDeContactoRequestDTO dto
+  ) {
     personaDonanteService.modificarContacto(id, dto);
     return ResponseEntity.noContent().build();
   }
@@ -70,8 +77,8 @@ public class PersonaDonanteController {
   @PatchMapping("/{id}/representantes")
   public ResponseEntity<Void> modificarRepresentante(
       @PathVariable UUID id,
-      @RequestBody @Valid RepresentanteRequestDTO dto) {
-
+      @RequestBody @Valid RepresentanteRequestDTO dto
+  ) {
     personaDonanteService.modificarRepresentante(id, dto);
     return ResponseEntity.noContent().build();
   }

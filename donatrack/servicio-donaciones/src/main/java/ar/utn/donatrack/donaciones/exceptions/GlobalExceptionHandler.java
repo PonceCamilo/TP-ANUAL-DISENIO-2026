@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.exceptions;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
@@ -71,8 +71,8 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.CONFLICT, "Conflict", ex.getMessage()), HttpStatus.CONFLICT);
   }
 
-  @ExceptionHandler(CambioEstadoIlegalException.class)
-  public ResponseEntity<Map<String, Object>> manejarCambioEstadoIlegal(CambioEstadoIlegalException ex) {
+  @ExceptionHandler(CambioEstadoDonacionIlegalException.class)
+  public ResponseEntity<Map<String, Object>> manejarCambioEstadoIlegal(CambioEstadoDonacionIlegalException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable Entity", ex.getMessage()), HttpStatus.UNPROCESSABLE_ENTITY);
   }
 

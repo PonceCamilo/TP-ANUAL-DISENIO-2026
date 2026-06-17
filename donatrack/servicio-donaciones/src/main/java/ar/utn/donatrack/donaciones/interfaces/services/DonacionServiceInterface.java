@@ -9,8 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface DonacionServiceInterface {
-  List<DonacionResponseDTO> obtenerTodas();
-  List<DonacionResponseDTO> obtenerPorEstado(EstadoDonacion estado);
+  List<DonacionResponseDTO> obtenerDonaciones(EstadoDonacion estado);
   DonacionResponseDTO obtenerPorId(UUID id);
   void cambiarEstado(UUID id, CambioEstadoRequestDTO dto);
   void modificarBien(UUID id, BienRequestDTO dto);

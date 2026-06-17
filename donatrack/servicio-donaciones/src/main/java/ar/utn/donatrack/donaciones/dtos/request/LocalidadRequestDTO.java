@@ -3,7 +3,6 @@ package ar.utn.donatrack.donaciones.dtos.request;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,18 +14,12 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DireccionRequestDTO {
+public class LocalidadRequestDTO {
 
   @NotBlank
-  private String calle;
-
-  @Positive
-  private int numero;
-
-  @NotBlank
-  private String codigoPostal;
+  private String nombre;
 
   @Valid
   @NotNull
-  private LocalidadRequestDTO localidad;
+  private ProvinciaRequestDTO provincia;
 }

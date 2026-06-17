@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.dtos.response;
 
-import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
+
 import lombok.Builder;
 import lombok.Getter;
 

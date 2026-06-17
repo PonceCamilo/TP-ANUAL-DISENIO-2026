@@ -28,7 +28,7 @@ public class PersonaJuridicaRequestDTO extends PersonaDonanteRequestDTO {
   private String rubro;
 
   @NotNull
-  private TipoPersonaJuridica tipo;
+  private TipoPersonaJuridica tipoOrganizacion;
 
   @Valid
   @NotEmpty

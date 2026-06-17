@@ -39,14 +39,13 @@ public class DonacionesController {
   public ResponseEntity<List<DonacionResponseDTO>> obtenerDonaciones(
       @RequestParam(required = false) EstadoDonacion estado
   ) {
-    if (estado != null) {
-      return ResponseEntity.ok(donacionService.obtenerPorEstado(estado));
-    }
-    return ResponseEntity.ok(donacionService.obtenerTodas());
+    return ResponseEntity.ok(donacionService.obtenerDonaciones(estado));
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<DonacionResponseDTO> obtenerDonacion(@PathVariable UUID id) {
+  public ResponseEntity<DonacionResponseDTO> obtenerDonacion(
+      @PathVariable UUID id
+  ) {
     return ResponseEntity.ok(donacionService.obtenerPorId(id));
   }
 
@@ -56,6 +55,7 @@ public class DonacionesController {
       @RequestParam UUID idDonante
   ) {
     personasValidator.validarExistenciaPersona(idDonante);
+
     segmentadorDonacionesService.segmentar(bienes, idDonante);
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
@@ -79,7 +79,9 @@ public class DonacionesController {
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> eliminarDonacion(@PathVariable UUID id) {
+  public ResponseEntity<Void> eliminarDonacion(
+      @PathVariable UUID id
+  ) {
     donacionService.eliminar(id);
     return ResponseEntity.noContent().build();
   }

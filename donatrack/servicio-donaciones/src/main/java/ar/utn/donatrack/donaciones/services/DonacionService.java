@@ -25,12 +25,11 @@ public class DonacionService implements DonacionServiceInterface {
   private final DonacionesValidator validador;
   private final DonacionMapper mapper;
 
-  public List<DonacionResponseDTO> obtenerTodas() {
+  public List<DonacionResponseDTO> obtenerDonaciones(EstadoDonacion estado) {
+    if (estado != null) {
+      return mapper.toDTOList(repositorio.obtenerPorEstado(estado));
+    }
     return mapper.toDTOList(repositorio.obtenerTodas());
-  }
-
-  public List<DonacionResponseDTO> obtenerPorEstado(EstadoDonacion estado) {
-    return mapper.toDTOList(repositorio.obtenerPorEstado(estado));
   }
 
   public DonacionResponseDTO obtenerPorId(UUID id) {
