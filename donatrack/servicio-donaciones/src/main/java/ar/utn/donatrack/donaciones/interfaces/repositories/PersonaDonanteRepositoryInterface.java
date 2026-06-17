@@ -7,13 +7,14 @@ import ar.utn.donatrack.donaciones.models.donante.Representante;
 
 import java.util.List;
 import java.util.UUID;
-
+import java.time.LocalDateTime;
 /**
  * Interfaz mínima para persistir y buscar donantes desde el servicio de importación.
  * Implementaciones existentes del proyecto pueden adaptarse a esta interfaz.
  */
 public interface PersonaDonanteRepositoryInterface {
     List<PersonaDonante> obtenerTodosDonantes();
+    List<PersonaDonante> obtenerInactivosDesde(LocalDateTime fechaLimite);
     void guardar(PersonaDonante donante);
     void cambiarEstado(UUID idDonante, EstadoDonante nuevoEstado);
     void modificarRepresentante(UUID idDonante, Representante representante);
