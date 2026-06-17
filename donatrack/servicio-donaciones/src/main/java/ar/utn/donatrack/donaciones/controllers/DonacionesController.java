@@ -1,14 +1,16 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
-import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
-import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
+import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
 import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
-import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
-import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
 import ar.utn.donatrack.donaciones.validations.PersonasValidator;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,71 +28,59 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/donaciones")
+@Validated
 public class DonacionesController {
 
-  private final SegmentadorDonacionesService segmentadorDonacionesService;
+  private final DonacionServiceInterface donacionService;
+  private final SegmentadorDonacionesServiceInterface segmentadorDonacionesService;
   private final PersonasValidator personasValidator;
 
   @GetMapping
   public ResponseEntity<List<DonacionResponseDTO>> obtenerDonaciones(
-      @RequestParam(value = "estado", required = false) EstadoDonacion estado
+      @RequestParam(required = false) EstadoDonacion estado
   ) {
-    List<Donacion> donaciones;
-
     if (estado != null) {
-      donaciones = segmentadorDonacionesService.obtenerDonacionesPorEstado(estado);
-    } else {
-      donaciones = segmentadorDonacionesService.obtenerTodasLasDonaciones();
+      return ResponseEntity.ok(donacionService.obtenerPorEstado(estado));
     }
-
-    return ResponseEntity.ok(DonacionMapper.toDTOList(donaciones));
+    return ResponseEntity.ok(donacionService.obtenerTodas());
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<DonacionResponseDTO> obtenerDonacion(
-      @PathVariable UUID id
-  ) {
-    Donacion donacion = segmentadorDonacionesService.obtenerDonacionPorId(id);
-
-    return ResponseEntity.ok(DonacionMapper.toDTO(donacion));
+  public ResponseEntity<DonacionResponseDTO> obtenerDonacion(@PathVariable UUID id) {
+    return ResponseEntity.ok(donacionService.obtenerPorId(id));
   }
 
   @PostMapping
   public ResponseEntity<Void> segmentar(
-      @RequestBody List<Bien> bienesASegmentar,
+      @RequestBody @Valid List<BienRequestDTO> bienes,
       @RequestParam UUID idDonante
   ) {
     personasValidator.validarExistenciaPersona(idDonante);
-
-    segmentadorDonacionesService.segmentar(bienesASegmentar, idDonante);
-
+    segmentadorDonacionesService.segmentar(bienes, idDonante);
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
-  @PatchMapping("/{id}")
+  @PatchMapping("/{id}/estado")
   public ResponseEntity<Void> cambiarEstadoDonacion(
       @PathVariable UUID id,
-      @RequestBody CambioEstadoRequestDTO cambioEstado
+      @RequestBody @Valid CambioEstadoRequestDTO dto
   ) {
-    segmentadorDonacionesService.cambiarEstadoDonacion(id, cambioEstado.getEstado(), cambioEstado.getJustificacion());
-    return ResponseEntity.ok().build();
+    donacionService.cambiarEstado(id, dto);
+    return ResponseEntity.noContent().build();
   }
 
   @PatchMapping("/{id}/bien")
   public ResponseEntity<Void> modificarBienDonacion(
       @PathVariable UUID id,
-      @RequestBody Bien bien
+      @RequestBody @Valid BienRequestDTO dto
   ) {
-    segmentadorDonacionesService.modificarBien(id, bien);
-
-    return ResponseEntity.ok().build();
+    donacionService.modificarBien(id, dto);
+    return ResponseEntity.noContent().build();
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<Void> eliminarDonacion(
-      @PathVariable UUID id
-  ) {
-    segmentadorDonacionesService.eliminar(id);
+  public ResponseEntity<Void> eliminarDonacion(@PathVariable UUID id) {
+    donacionService.eliminar(id);
     return ResponseEntity.noContent().build();
   }
 }

@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.validations;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoPersonaIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;

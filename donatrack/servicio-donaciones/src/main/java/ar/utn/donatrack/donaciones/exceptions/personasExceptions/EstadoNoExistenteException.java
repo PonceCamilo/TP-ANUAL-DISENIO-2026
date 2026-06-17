@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions;
+package ar.utn.donatrack.donaciones.exceptions.personasExceptions;
 
 import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 
