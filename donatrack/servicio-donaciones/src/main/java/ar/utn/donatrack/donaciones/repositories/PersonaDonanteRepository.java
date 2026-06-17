@@ -15,6 +15,7 @@ import org.springframework.stereotype.Repository;
 import java.lang.annotation.Repeatable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.time.LocalDateTime;
 
 /**
  * Repositorio en memoria para PersonaDonante.
@@ -65,6 +66,12 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
         PersonaDonante persona = obtenerPersona(id, null);
 
         persona.setEstado(nuevoEstado);
+    }
+    public List<PersonaDonante> obtenerInactivosDesde(LocalDateTime fechaLimite) {
+        return almacenamiento.values().stream()
+                .filter(p -> p.getUltimaInteraccion() == null
+                        || p.getUltimaInteraccion().isBefore(fechaLimite))
+                .toList();
     }
 
     public void modificarRepresentante(UUID idPersonaJuridica, Representante representante) {

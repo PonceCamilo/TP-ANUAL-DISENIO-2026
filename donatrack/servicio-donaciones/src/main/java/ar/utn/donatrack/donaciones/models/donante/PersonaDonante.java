@@ -12,6 +12,7 @@ import lombok.experimental.SuperBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 /**
  * Raíz de la jerarquía de personas donantes.
@@ -35,6 +36,7 @@ public abstract class PersonaDonante {
     protected Direccion direccion;
     protected EstadoDonante estado;
     protected MedioDeContacto medioContactoPredeterminado;
+    protected LocalDateTime ultimaInteraccion;
 
     @Builder.Default
     protected List<MedioDeContacto> contactos = new ArrayList<>();
