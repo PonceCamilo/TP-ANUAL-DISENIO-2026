@@ -1,7 +1,9 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
+import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -9,6 +11,8 @@ import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -17,30 +21,26 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 /**
- * Orquesta la segmentación automática de una Donacion mixeada de bienesen múltiples
- * Donaciones independientes, agrupadas por subcategoría y, dentro de ella, por el criterio
- * que corresponda al tipo de bien:
+ * Orquesta la segmentación automática de bienes en múltiples Donaciones independientes,
+ * agrupadas por subcategoría y, dentro de ella, por el criterio del tipo de bien:
  *   - BienPerecible  → una Donacion por fecha de vencimiento distinta
  *   - BienConEstado  → una Donacion por estado (nuevo / usado)
- *   - Bien genérico  → una única Donacion por subcategoría
+ *   - BienGenerico   → una única Donacion por subcategoría
  */
-
 @Service
 @RequiredArgsConstructor
 public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {
 
   private final DonacionesRepositoryInterface donacionesRepository;
+  private final DonacionMapper mapper;
 
   @Override
-  public void segmentar(List<Bien> bienesASegmentar, UUID idDonante) {
+  public void segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante) {
+    List<Bien> bienes = bienesDTO.stream().map(mapper::toBien).toList();
     List<Donacion> resultado = new ArrayList<>();
 
-    // Agrupar los bienes por subcategoría
-    Map<Subcategoria, List<Bien>> porSubcategoria = bienesASegmentar.stream()
+    Map<Subcategoria, List<Bien>> porSubcategoria = bienes.stream()
         .collect(Collectors.groupingBy(
             Bien::getSubcategoria,
             LinkedHashMap::new,
@@ -51,7 +51,6 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
       Subcategoria sub = entry.getKey();
       List<Bien> bienesDeSubcat = entry.getValue();
 
-      // BienPerecible → agrupar por fechaVencimiento
       bienesDeSubcat.stream()
           .filter(BienPerecible.class::isInstance)
           .map(b -> (BienPerecible) b)
@@ -62,18 +61,17 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
           ))
           .forEach((fecha, grupo) -> {
             Donacion donacion = new Donacion();
-              donacion.setIdDonante(idDonante);
-              donacion.setSubcategoria(sub);
-              donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
-              donacion.getHistorialEstados().add(CambioEstado.builder()
-                  .estado(EstadoDonacion.EN_DEPOSITO)
-                  .justificacion("Segmentación automática: perecibles con vencimiento " + fecha)
-                  .build());
-              donacion.getBienes().addAll(grupo);
+            donacion.setIdDonante(idDonante);
+            donacion.setSubcategoria(sub);
+            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
+            donacion.getHistorialEstados().add(CambioEstado.builder()
+                .estado(EstadoDonacion.EN_DEPOSITO)
+                .justificacion("Segmentación automática: perecibles con vencimiento " + fecha)
+                .build());
+            donacion.getBienes().addAll(grupo);
             resultado.add(donacion);
           });
 
-      // BienConEstado → agrupar por estado nuevo/usado
       bienesDeSubcat.stream()
           .filter(BienConEstado.class::isInstance)
           .map(b -> (BienConEstado) b)
@@ -84,32 +82,31 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
           ))
           .forEach((esNuevo, grupo) -> {
             Donacion donacion = new Donacion();
-              donacion.setIdDonante(idDonante);
-              donacion.setSubcategoria(sub);
-              donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
-              donacion.getHistorialEstados().add(CambioEstado.builder()
-                  .estado(EstadoDonacion.EN_DEPOSITO)
-                  .justificacion("Segmentación automática: bienes con estado " + (esNuevo ? "nuevo" : "usado"))
-                  .build());
-              donacion.getBienes().addAll(grupo);
+            donacion.setIdDonante(idDonante);
+            donacion.setSubcategoria(sub);
+            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
+            donacion.getHistorialEstados().add(CambioEstado.builder()
+                .estado(EstadoDonacion.EN_DEPOSITO)
+                .justificacion("Segmentación automática: bienes con estado " + (esNuevo ? "nuevo" : "usado"))
+                .build());
+            donacion.getBienes().addAll(grupo);
             resultado.add(donacion);
           });
 
-      // Bienes genéricos (ni perecederos ni con estado) → una sola donación por subcategoría
       List<Bien> genericos = bienesDeSubcat.stream()
           .filter(b -> !(b instanceof BienPerecible) && !(b instanceof BienConEstado))
           .toList();
 
       if (!genericos.isEmpty()) {
         Donacion donacion = new Donacion();
-          donacion.setIdDonante(idDonante);
-          donacion.setSubcategoria(sub);
-          donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
-          donacion.getHistorialEstados().add(CambioEstado.builder()
-              .estado(EstadoDonacion.EN_DEPOSITO)
-              .justificacion("Segmentación automática: bienes genéricos")
-              .build());
-          donacion.getBienes().addAll(genericos);
+        donacion.setIdDonante(idDonante);
+        donacion.setSubcategoria(sub);
+        donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
+        donacion.getHistorialEstados().add(CambioEstado.builder()
+            .estado(EstadoDonacion.EN_DEPOSITO)
+            .justificacion("Segmentación automática: bienes genéricos")
+            .build());
+        donacion.getBienes().addAll(genericos);
         resultado.add(donacion);
       }
     }
@@ -117,6 +114,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
     cargarDonaciones(resultado);
   }
 
+  @Override
   public void cargarDonaciones(List<Donacion> donaciones) {
     donacionesRepository.cargarDonaciones(donaciones);
   }

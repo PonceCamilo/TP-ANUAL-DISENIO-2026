@@ -17,9 +17,7 @@ import java.time.LocalDateTime;
 /**
  * Raíz de la jerarquía de personas donantes.
  * Una persona donante puede ser humana (PersonaHumana) o jurídica (PersonaJuridica).
- *
  * PATRÓN STATE: el ciclo de vida se modela con EstadoDonante.
- *
  * Unificación de contactos: el email es obligatorio y se almacena directamente
  * como campo para ser la clave de idempotencia en importaciones CSV y búsquedas.
  * Los contactos adicionales (teléfono, WhatsApp) se agregan a la lista `contactos`.
@@ -37,15 +35,8 @@ public abstract class PersonaDonante {
     protected EstadoDonante estado;
     protected MedioDeContacto medioContactoPredeterminado;
     protected LocalDateTime ultimaInteraccion;
+    protected String email;
 
     @Builder.Default
     protected List<MedioDeContacto> contactos = new ArrayList<>();
-
-    @Builder.Default
-    protected String email = this.contactos.stream()
-            .filter(Email.class::isInstance)
-            .findFirst()
-            .map(Email.class::cast)
-            .map(Email::getDireccion)
-            .orElse("");
 }

@@ -1,8 +1,15 @@
 package ar.utn.donatrack.donaciones.exceptions;
 
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
+import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -26,19 +33,51 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(PersonaDonanteNoEncontradaException.class)
   public ResponseEntity<Map<String, Object>> manejarDonanteNoEncontrado(PersonaDonanteNoEncontradaException ex) {
-    Map<String, Object> error = construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
-    return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage()), HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(DonacionNoEncontradaException.class)
+  public ResponseEntity<Map<String, Object>> manejarDonacionNoEncontrada(DonacionNoEncontradaException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage()), HttpStatus.NOT_FOUND);
   }
 
   @ExceptionHandler(EmailInvalidoException.class)
   public ResponseEntity<Map<String, Object>> manejarEmailInvalido(EmailInvalidoException ex) {
-    Map<String, Object> error = construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage());
-    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(FaltaJustificacionException.class)
+  public ResponseEntity<Map<String, Object>> manejarFaltaJustificacion(FaltaJustificacionException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(TipoPersonaIlegalException.class)
+  public ResponseEntity<Map<String, Object>> manejarTipoPersonaIlegal(TipoPersonaIlegalException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(MedioContactoInvalidoException.class)
+  public ResponseEntity<Map<String, Object>> manejarMedioContactoInvalido(MedioContactoInvalidoException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
   }
 
   @ExceptionHandler(EmailYaRegistradoException.class)
   public ResponseEntity<Map<String, Object>> manejarEmailYaRegistrado(EmailYaRegistradoException ex) {
-    Map<String, Object> error = construirCuerpoError(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
-    return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.CONFLICT, "Conflict", ex.getMessage()), HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(PersonaConMismoEstadoException.class)
+  public ResponseEntity<Map<String, Object>> manejarPersonaConMismoEstado(PersonaConMismoEstadoException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.CONFLICT, "Conflict", ex.getMessage()), HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(CambioEstadoDonacionIlegalException.class)
+  public ResponseEntity<Map<String, Object>> manejarCambioEstadoIlegal(CambioEstadoDonacionIlegalException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable Entity", ex.getMessage()), HttpStatus.UNPROCESSABLE_ENTITY);
+  }
+
+  @ExceptionHandler(CambioEstadoPersonaIlegalException.class)
+  public ResponseEntity<Map<String, Object>> manejarCambioEstadoPersonaIlegal(CambioEstadoPersonaIlegalException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable Entity", ex.getMessage()), HttpStatus.UNPROCESSABLE_ENTITY);
   }
 }

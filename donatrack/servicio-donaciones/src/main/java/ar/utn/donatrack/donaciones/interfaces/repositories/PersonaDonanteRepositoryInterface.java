@@ -13,11 +13,13 @@ import java.time.LocalDateTime;
  * Implementaciones existentes del proyecto pueden adaptarse a esta interfaz.
  */
 public interface PersonaDonanteRepositoryInterface {
-    PersonaDonante obtenerPersona(UUID idPersona, String mail);
     List<PersonaDonante> obtenerTodosDonantes();
     List<PersonaDonante> obtenerInactivosDesde(LocalDateTime fechaLimite);
     void guardar(PersonaDonante donante);
     void cambiarEstado(UUID idDonante, EstadoDonante nuevoEstado);
     void modificarRepresentante(UUID idDonante, Representante representante);
     void modificarMedioContacto(UUID idDonante, MedioDeContacto medio);
+    boolean existePorId(UUID id);
+    boolean existePorEmail(String email);
+    PersonaDonante obtenerPersona(UUID id);
 }

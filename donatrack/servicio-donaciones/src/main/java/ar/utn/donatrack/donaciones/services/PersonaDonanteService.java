@@ -1,14 +1,16 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
-import ar.utn.donatrack.donaciones.models.contacto.Email;
+import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
-import ar.utn.donatrack.donaciones.models.donante.Representante;
-
 import ar.utn.donatrack.donaciones.validations.PersonasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,44 +23,59 @@ import java.util.UUID;
 public class PersonaDonanteService implements PersonaDonanteServiceInterface {
 
     private final PersonaDonanteRepositoryInterface repositorio;
-    private final PersonasValidator validadorPersonas;
+    private final PersonasValidator validador;
+    private final PersonaDonanteMapper mapper;
 
-    public void registrar(PersonaDonante donante) {
+    public UUID registrar(PersonaDonanteRequestDTO dto) {
+        validador.validarEmail(dto.getEmail());
 
+        PersonaDonante donante = mapper.toModel(dto);
+        donante.setEstado(EstadoDonante.ACTIVO);
         repositorio.guardar(donante);
+
+        return donante.getId();
     }
 
-    public PersonaDonante obtenerPersona(UUID idPersona, String mail) {
-        return repositorio.obtenerPersona(idPersona, mail);
+    public PersonaDonanteResponseDTO obtenerDonante(UUID id) {
+        validador.validarExistenciaPersona(id);
+
+        return mapper.toDTO(repositorio.obtenerPersona(id));
     }
 
-    public List<PersonaDonante> obtenerPersonasDonantes() {
-        return repositorio.obtenerTodosDonantes();
+    public List<PersonaDonanteResponseDTO> obtenerDonantes(EstadoDonante estado) {
+        List<PersonaDonante> todos = repositorio.obtenerTodosDonantes();
+
+        List<PersonaDonante> resultado = estado != null
+            ? todos.stream().filter(d -> d.getEstado() == estado).toList()
+            : todos;
+
+        return resultado.stream().map(mapper::toDTO).toList();
     }
 
-    public List<PersonaDonante> obtenerDonantesPorEstado(EstadoDonante estado) {
-        validadorPersonas.validarExistenciaEstado(estado);
+    public void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto) {
+        validador.validarExistenciaPersona(id);
 
-        return repositorio.obtenerTodosDonantes().stream()
-                .filter(d -> d.getEstado() == estado)
-                .toList();
+        PersonaDonante donante = repositorio.obtenerPersona(id);
+
+        validador.validarCambioEstado(donante.getEstado(), dto.getEstado(), dto.getJustificacion());
+
+        repositorio.cambiarEstado(id, dto.getEstado());
     }
 
-    public void cambiarEstadoPersona(UUID id, EstadoDonante estado) {
-        repositorio.cambiarEstado(id, estado);
-    }
+    public void modificarContacto(UUID id, MedioDeContactoRequestDTO dto) {
+        validador.validarExistenciaPersona(id);
 
-    public void modificarMedioContacto(UUID id, MedioDeContacto medio) {
+        MedioDeContacto medio = mapper.toContacto(dto);
+
+        validador.validarMedioContacto(medio);
+
         repositorio.modificarMedioContacto(id, medio);
     }
 
-    public void agregarMedioDeContacto(UUID id, MedioDeContacto medio) {
-        PersonaDonante persona = repositorio.obtenerPersona(id, null);
-        persona.getContactos().add(medio);
-        repositorio.guardar(persona);
-    }
+    public void modificarRepresentante(UUID id, RepresentanteRequestDTO dto) {
+        validador.validarExistenciaPersona(id);
+        validador.validarEsPersonaJuridica(id);
 
-    public void modificarRepresentante(UUID idPersonaJuridica, Representante representante) {
-        repositorio.modificarRepresentante(idPersonaJuridica, representante);
+        repositorio.modificarRepresentante(id, mapper.toRepresentante(dto));
     }
 }

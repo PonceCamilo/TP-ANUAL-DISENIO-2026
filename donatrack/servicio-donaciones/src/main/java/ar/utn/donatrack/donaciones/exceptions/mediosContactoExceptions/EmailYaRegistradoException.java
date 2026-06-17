@@ -2,7 +2,7 @@ package ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions;
 
 public class EmailYaRegistradoException extends RuntimeException {
 
-    public EmailYaRegistradoException() {
-        super("Ese mail ya se encuentra registrado en el sistema.");
+    public EmailYaRegistradoException(String email) {
+        super("El mail '" + email + "' ya se encuentra registrado en el sistema.");
     }
 }

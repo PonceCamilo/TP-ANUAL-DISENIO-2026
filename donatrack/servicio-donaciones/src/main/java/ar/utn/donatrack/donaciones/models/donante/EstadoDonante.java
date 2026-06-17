@@ -4,7 +4,8 @@ public enum EstadoDonante {
 
     // LÍNEAS CLAVE: estados posibles del ciclo de vida de la persona donante
     ACTIVO,      // ← estado inicial al registrarse
-    INACTIVO;    // ← estado tras darDeBaja()
+    INACTIVO,    // ← estado tras darDeBaja()
+    BLOQUEADO;
 
     // ══════════════════════════════════════════════════
     // PRÓXIMA ENTREGA: agregar estados intermedios como
