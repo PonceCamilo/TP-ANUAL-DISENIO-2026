@@ -1,4 +1,11 @@
-//TODO package y import
+package ar.utn.donatrack.incentivos.models;
+
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.util.List;
+import java.util.UUID
 
 @Getter
 @Setter

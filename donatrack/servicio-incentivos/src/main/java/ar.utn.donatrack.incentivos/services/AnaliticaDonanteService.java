@@ -1,5 +1,17 @@
-// TODO
+package ar.utn.donatrack.incentivos.services;
 
+import ar.utn.donatrack.incentivos.interfaces.ports.DonacionesQueryPort;
+import ar.utn.donatrack.incentivos.interfaces.ports.DonacionesQueryPort.DonacionResumen;
+import ar.utn.donatrack.incentivos.models.EvolucionPeriodo;
+import ar.utn.donatrack.incentivos.models.MetricasDonante;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AnaliticaDonanteService {

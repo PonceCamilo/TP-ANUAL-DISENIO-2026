@@ -1,5 +1,8 @@
-//TODO
 package ar.utn.donatrack.incentivos.interfaces.services;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 
 public class DonacionesQueryPort {
     List<DonacionResumen> obtenerDonacionesDe(UUID donanteId);

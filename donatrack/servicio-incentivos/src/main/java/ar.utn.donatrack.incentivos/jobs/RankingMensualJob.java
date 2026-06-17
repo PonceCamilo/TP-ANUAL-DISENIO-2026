@@ -1,4 +1,18 @@
-//TODO
+package ar.utn.donatrack.incentivos.jobs;
+
+import ar.utn.donatrack.incentivos.interfaces.ports.DonacionesQueryPort;
+import ar.utn.donatrack.incentivos.interfaces.ports.MisionesQueryPort;
+import ar.utn.donatrack.incentivos.interfaces.repositories.RankingMensualRepositoryInterface;
+import ar.utn.donatrack.incentivos.models.PosicionRanking;
+import ar.utn.donatrack.incentivos.models.RankingMensual;
+import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor

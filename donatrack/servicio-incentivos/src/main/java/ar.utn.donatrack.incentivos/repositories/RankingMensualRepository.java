@@ -1,5 +1,12 @@
-//TODO package y import
+package ar.utn.donatrack.incentivos.repositories;
 
+import ar.utn.donatrack.incentivos.interfaces.repositories.RankingMensualRepositoryInterface;
+import ar.utn.donatrack.incentivos.models.RankingMensual;
+import org.springframework.stereotype.Repository;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 @Repository
 public class RankingMensualRepository implements RankingMensualRepositoryInterface {
 
