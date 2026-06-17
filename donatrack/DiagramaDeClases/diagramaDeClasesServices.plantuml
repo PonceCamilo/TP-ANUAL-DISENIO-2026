@@ -1,0 +1,44 @@
+@startuml diagrama-De-Clases
+
+class CsvImportService{
+-BATCH_SIZE int;
+-donanteRepository PersonaDonanteRepositoryInterface;
+-parser DonanteCsvRowParser;
+- factory DonanteFactory;
+
++ importar(InputStream csvStream): ImportCSVRepository;
++ procesarLote(List<DonanteImportDto> lote,ImportCSVRepository report, int lineaInicio): void;
++ procesarFila(DonanteImportDto dto, int linea): ImportFilaCSV;
++ crearDesdeDto(DonanteImportDto dto): PersonaDonante;
++ actualizarContacto(PersonaDonante donante, DonanteImportDto dto): void;
+}
+
+class EntidadesBeneficiariasService{
+- entidadesBeneficiariasRepository EntidadesBeneficiariasRepositoryInterface;
+
++ registrarNecesidad(EntidadBeneficiaria entidad, Necesidad necesidad): void;
++ reiniciarPeriodoNecesidadRecurrente(NecesidadRecurrente necesidad): void;
++ actualizarPeriodos(): void;
+}
+
+class PersonaDonanteService{
+- repositorio PersonaDonanteRepositoryInterface;
+
++registrar(PersonaDonante donante): PersonaDonante;
++ obtenerPorId(UUID id): PersonaDonante;
++ darDeBaja(UUID id): void;
++ reactivar(UUID id): void;
++ agregarMedioDeContacto(UUID id, TipoMedioContacto medio): void;
++agregarRepresentante(UUID id, Representante representante): void;
++ removerRepresentante(UUID id, String emailRepresentante): void;
++ listarDonantesActivos(): List<PersonaDonante>;
++ listarTodosDonantes(): List<PersonaDonante>;
+}
+
+class SegmentadorDonacionesService{
+- segmentadorDonacionesRepository SegmentadorDonacionesRepositoryInterface;
+
++segmentar(CargaDonacion carga): void;
++cargarDonaciones(List<Donacion> cargaDonacion): void;
+}
+@enduml
