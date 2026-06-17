@@ -2,37 +2,38 @@ package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
-
-import lombok.Getter;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
-@Getter
 public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasRepositoryInterface {
 
-    private final List<EntidadBeneficiaria> entidadesBeneficiarias = new ArrayList<>(); //qué es synchronized? (antes estaba asi)
+    private final Map<UUID, EntidadBeneficiaria> almacenamiento = new ConcurrentHashMap<>();
 
+    @Override
     public void guardar(EntidadBeneficiaria entidad) {
-        // Si ya existe (misma UUID), reemplazar; si no, agregar
-        entidadesBeneficiarias.removeIf(e -> e.getId().equals(entidad.getId()));
-        entidadesBeneficiarias.add(entidad);
+        if (entidad.getId() == null) {
+            entidad.setId(UUID.randomUUID());
+        }
+        almacenamiento.put(entidad.getId(), entidad);
     }
 
+    @Override
     public List<EntidadBeneficiaria> buscarTodas() {
-        return entidadesBeneficiarias;
+        return almacenamiento.values().stream().toList();
     }
 
+    @Override
     public EntidadBeneficiaria obtenerPorId(UUID id) {
-        return entidadesBeneficiarias.stream()
-            .filter(e -> e.getId().equals(id))
-            .findFirst()
-            .orElse(null);
+        return almacenamiento.get(id);
+    }
+
+    @Override
+    public boolean existePorId(UUID id) {
+        return almacenamiento.containsKey(id);
     }
 }

@@ -1,81 +1,92 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
-import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
-import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
-import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
-import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
+import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
+import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
+import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
-import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.validations.PersonasValidator;
+import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadRecurrente;
+import ar.utn.donatrack.donaciones.validations.EntidadesBeneficiariasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class PersonaDonanteService implements PersonaDonanteServiceInterface {
+public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServiceInterface {
 
-    private final PersonaDonanteRepositoryInterface repositorio;
-    private final PersonasValidator validador;
-    private final PersonaDonanteMapper mapper;
+    private final EntidadesBeneficiariasRepositoryInterface repositorio;
+    private final EntidadesBeneficiariasValidator validador;
+    private final EntidadBeneficiariaMapper mapper;
+    private final PersonaDonanteMapper dependenciasMapper;
 
-    public UUID registrar(PersonaDonanteRequestDTO dto) {
-        validador.validarEmail(dto.getEmail());
-
-        PersonaDonante donante = mapper.toModel(dto);
-        donante.setEstado(EstadoDonante.ACTIVO);
-        repositorio.guardar(donante);
-
-        return donante.getId();
+    public UUID guardar(EntidadBeneficiariaRequestDTO dto) {
+        EntidadBeneficiaria entidad = mapper.toModel(dto);
+        repositorio.guardar(entidad);
+        return entidad.getId();
     }
 
-    public PersonaDonanteResponseDTO obtenerDonante(UUID id) {
-        validador.validarExistenciaPersona(id);
-
-        return mapper.toDTO(repositorio.obtenerPersona(id));
+    public List<EntidadBeneficiariaResponseDTO> obtenerTodas() {
+        return repositorio.buscarTodas().stream()
+                .map(mapper::toDTO)
+                .collect(Collectors.toList());
     }
 
-    public List<PersonaDonanteResponseDTO> obtenerDonantes(EstadoDonante estado) {
-        List<PersonaDonante> todos = repositorio.obtenerTodosDonantes();
-
-        List<PersonaDonante> resultado = estado != null
-            ? todos.stream().filter(d -> d.getEstado() == estado).toList()
-            : todos;
-
-        return resultado.stream().map(mapper::toDTO).toList();
+    public EntidadBeneficiariaResponseDTO obtenerPorId(UUID id) {
+        validador.validarExistenciaEntidad(id);
+        return mapper.toDTO(repositorio.obtenerPorId(id));
     }
 
-    public void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto) {
-        validador.validarExistenciaPersona(id);
+    public void actualizar(UUID id, EntidadBeneficiariaRequestDTO dtoNueva) {
+        validador.validarExistenciaEntidad(id);
+        EntidadBeneficiaria entidadExistente = repositorio.obtenerPorId(id);
 
-        PersonaDonante donante = repositorio.obtenerPersona(id);
+        // Actualización completa usando los mappers
+        entidadExistente.setRazonSocial(dtoNueva.getRazonSocial());
+        entidadExistente.setDireccion(dependenciasMapper.toDireccion(dtoNueva.getDireccion()));
 
-        validador.validarCambioEstado(donante.getEstado(), dto.getEstado(), dto.getJustificacion());
+        if (dtoNueva.getContactos() != null) {
+            entidadExistente.setContactos(dtoNueva.getContactos().stream()
+                    .map(dependenciasMapper::toContacto).toList());
+        }
 
-        repositorio.cambiarEstado(id, dto.getEstado());
+        if (dtoNueva.getRepresentantes() != null) {
+            entidadExistente.setRepresentantes(dependenciasMapper.toRepresentantes(dtoNueva.getRepresentantes()));
+        }
+
+        repositorio.guardar(entidadExistente);
     }
 
-    public void modificarContacto(UUID id, MedioDeContactoRequestDTO dto) {
-        validador.validarExistenciaPersona(id);
+    // crear NecesidadRequestDTO por NecesidadRequestDTO.
+    public void agregarNecesidadACampania(UUID entidadId, UUID campaniaId, Necesidad nuevaNecesidad) {
+        validador.validarExistenciaEntidad(entidadId);
+        EntidadBeneficiaria entidad = repositorio.obtenerPorId(entidadId);
 
-        MedioDeContacto medio = mapper.toContacto(dto);
+        // Uso el validador para verificar que la campaña existe dentro de la entidad
+        Campania campaniaTarget = validador.validarYObtenerCampania(entidad, campaniaId);
+        campaniaTarget.getNecesidades().add(nuevaNecesidad);
 
-        validador.validarMedioContacto(medio);
-
-        repositorio.modificarMedioContacto(id, medio);
+        repositorio.guardar(entidad);
     }
 
-    public void modificarRepresentante(UUID id, RepresentanteRequestDTO dto) {
-        validador.validarExistenciaPersona(id);
-        validador.validarEsPersonaJuridica(id);
+    public void actualizarPeriodos() {
+        LocalDate hoy = LocalDate.now();
+        List<EntidadBeneficiaria> entidades = repositorio.buscarTodas();
 
-        repositorio.modificarRepresentante(id, mapper.toRepresentante(dto));
+        entidades.forEach(entidad ->
+                entidad.getCampanias().stream()
+                        .flatMap(campania -> campania.getNecesidades().stream())
+                        .filter(NecesidadRecurrente.class::isInstance)
+                        .map(n -> (NecesidadRecurrente) n)
+                        .forEach(nr -> nr.obtenerOGenerarPeriodoActual(hoy))
+        );
     }
 }

@@ -124,7 +124,7 @@ public class PersonaDonanteMapper {
     };
   }
 
-  private MedioDeContactoResponseDTO toContactoDTO(MedioDeContacto c) {
+  public MedioDeContactoResponseDTO toContactoDTO(MedioDeContacto c) {
     if (c == null) return null;
     return switch (c) {
       case Email e    -> EmailResponseDTO.builder().valor(e.getValor()).build();
@@ -135,14 +135,14 @@ public class PersonaDonanteMapper {
     };
   }
 
-  private List<MedioDeContactoResponseDTO> toContactosDTO(List<MedioDeContacto> contactos) {
+  public List<MedioDeContactoResponseDTO> toContactosDTO(List<MedioDeContacto> contactos) {
     if (contactos == null) return new ArrayList<>();
     return contactos.stream().map(this::toContactoDTO).toList();
   }
 
   // ── DIRECCIÓN ─────────────────────────────────────────────────────────────
 
-  private Direccion toDireccion(DireccionRequestDTO dto) {
+  public Direccion toDireccion(DireccionRequestDTO dto) {
     if (dto == null) return null;
     return Direccion.builder()
         .calle(dto.getCalle())
@@ -152,7 +152,7 @@ public class PersonaDonanteMapper {
         .build();
   }
 
-  private Localidad toLocalidad(LocalidadRequestDTO dto) {
+  public Localidad toLocalidad(LocalidadRequestDTO dto) {
     if (dto == null) return null;
     return Localidad.builder()
         .nombre(dto.getNombre())
@@ -162,7 +162,7 @@ public class PersonaDonanteMapper {
         .build();
   }
 
-  private DireccionResponseDTO toDireccionDTO(Direccion dir) {
+  public DireccionResponseDTO toDireccionDTO(Direccion dir) {
     if (dir == null) return null;
     return DireccionResponseDTO.builder()
         .calle(dir.getCalle())
@@ -172,7 +172,7 @@ public class PersonaDonanteMapper {
         .build();
   }
 
-  private LocalidadResponseDTO toLocalidadDTO(Localidad localidad) {
+  public LocalidadResponseDTO toLocalidadDTO(Localidad localidad) {
     if (localidad == null) return null;
     return LocalidadResponseDTO.builder()
         .nombre(localidad.getNombre())
@@ -194,12 +194,12 @@ public class PersonaDonanteMapper {
         .build();
   }
 
-  private List<Representante> toRepresentantes(List<RepresentanteRequestDTO> dtos) {
+  public List<Representante> toRepresentantes(List<RepresentanteRequestDTO> dtos) {
     if (dtos == null) return new ArrayList<>();
     return dtos.stream().map(this::toRepresentante).toList();
   }
 
-  private List<RepresentanteResponseDTO> toRepresentantesDTO(List<Representante> representantes) {
+  public List<RepresentanteResponseDTO> toRepresentantesDTO(List<Representante> representantes) {
     if (representantes == null) return new ArrayList<>();
     return representantes.stream()
         .map(r -> RepresentanteResponseDTO.builder()

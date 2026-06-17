@@ -3,6 +3,8 @@ package ar.utn.donatrack.donaciones.exceptions;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
@@ -79,5 +81,15 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(CambioEstadoPersonaIlegalException.class)
   public ResponseEntity<Map<String, Object>> manejarCambioEstadoPersonaIlegal(CambioEstadoPersonaIlegalException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable Entity", ex.getMessage()), HttpStatus.UNPROCESSABLE_ENTITY);
+  }
+
+  @ExceptionHandler(EntidadBeneficiariaNoEncontradaException.class)
+  public ResponseEntity<Map<String, Object>> manejarEntidadBeneficiariaNoEncontrada(ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage()), HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(CampaniaNoEncontradaException.class)
+  public ResponseEntity<Map<String, Object>> manejarCampaniaNoEncontrada(ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage()), HttpStatus.NOT_FOUND);
   }
 }

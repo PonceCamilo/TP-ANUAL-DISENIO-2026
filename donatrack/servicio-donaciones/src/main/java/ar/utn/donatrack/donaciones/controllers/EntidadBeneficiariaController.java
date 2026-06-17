@@ -1,84 +1,85 @@
 package ar.utn.donatrack.donaciones.controllers;
 
-import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
+import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.services.EntidadesBeneficiariasService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PostMapping;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/entidades")
+@Validated
 public class EntidadBeneficiariaController {
 
     private final EntidadesBeneficiariasService entidadesBeneficiariasService;
 
     @PostMapping
-    public ResponseEntity<Void> crearEntidad(@RequestBody EntidadBeneficiaria entidad) {
-        // la entidad ya viene con su UUID seteado desde el frontend
-        entidadesBeneficiariasService.guardar(entidad);
-            //código 201 (Created) con una "caja vacía" (.build())
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+    public ResponseEntity<Void> crearEntidad(
+            @RequestBody @Valid EntidadBeneficiariaRequestDTO dto
+    ) {
+        UUID id = entidadesBeneficiariasService.guardar(dto);
+        URI location = URI.create("/entidades/" + id);
+        return ResponseEntity.created(location).build();
     }
 
     @GetMapping
-    public ResponseEntity<List<EntidadBeneficiaria>> obtenerTodas() {
-        List<EntidadBeneficiaria> entidades = entidadesBeneficiariasService.obtenerTodas();
-        // 200 OK con la lista en el cuerpo de la respuesta
-        return ResponseEntity.ok(entidades);
+    public ResponseEntity<List<EntidadBeneficiariaResponseDTO>> obtenerTodas() {
+        return ResponseEntity.ok(entidadesBeneficiariasService.obtenerTodas());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EntidadBeneficiaria> obtenerPorId(
-        @PathVariable UUID id
+    public ResponseEntity<EntidadBeneficiariaResponseDTO> obtenerPorId(
+            @PathVariable UUID id
     ) {
-        EntidadBeneficiaria entidad = entidadesBeneficiariasService.obtenerPorId(id);
-
-        //!!!!! Si no encuentra el id en la BD: EXCEPCION HTTP 404 Not Found
-
-        // 200 OK con los datos de la entidad
-        return ResponseEntity.ok(entidad);
+        return ResponseEntity.ok(entidadesBeneficiariasService.obtenerPorId(id));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Void> actualizarEntidad(
-        @PathVariable UUID id,
-        @RequestBody EntidadBeneficiaria entidad
+            @PathVariable UUID id,
+            @RequestBody @Valid EntidadBeneficiariaRequestDTO dto
     ) {
-
-        //validar Existencia
-
-        entidadesBeneficiariasService.actualizar(id, entidad);
-        // Convención REST: Cuando un PUT sale bien pero no devuelve datos,
-        // se responde con 204 No Content (Sin Contenido)
+        entidadesBeneficiariasService.actualizar(id, dto);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/{entidadId}/{campaniaId}")
-    public ResponseEntity<Void> agregarNecesidadACampania(
-        @PathVariable UUID entidadId,
-        @PathVariable UUID campaniaId,
-        @RequestBody Necesidad nuevaNecesidad) {
+    // ── ENDPOINTS NUEVOS PARA CUMPLIR EL CRUD Y REQUISITOS ──
 
-
-        //validarExistenciaEntidad(entidadId);
-
-        entidadesBeneficiariasService.agregarNecesidadACampania(entidadId, campaniaId, nuevaNecesidad);
-
-                        // 201 Created (Caja vacía)
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarEntidad(
+            @PathVariable UUID id
+    ) {
+        entidadesBeneficiariasService.eliminarEntidad(id);
+        return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/campanias")
+    public ResponseEntity<Void> crearCampania(
+            @PathVariable UUID id,
+            @RequestBody @Valid CampaniaRequestDTO dto
+    ) {
+        UUID campaniaId = entidadesBeneficiariasService.agregarCampaniaAEntidad(id, dto);
+        URI location = URI.create("/entidades/" + id + "/campanias/" + campaniaId);
+        return ResponseEntity.created(location).build();
+    }
+
+    @PostMapping("/{entidadId}/campanias/{campaniaId}/necesidades")
+    public ResponseEntity<Void> agregarNecesidadACampania(
+            @PathVariable UUID entidadId,
+            @PathVariable UUID campaniaId,
+            @RequestBody @Valid NecesidadRequestDTO dto // <--- ACA AHORA SE RECIBE EL DTO, NO EL MODELO
+    ) {
+        entidadesBeneficiariasService.agregarNecesidadACampania(entidadId, campaniaId, dto);
+        return ResponseEntity.status(201).build(); // 201 Created es lo correcto al crear una Necesidad
+    }
 }
