@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoLineaException;
+import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoException;
 import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
 import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
@@ -8,6 +8,8 @@ import ar.utn.donatrack.donaciones.importacion.ImportReport;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
+import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
@@ -62,7 +64,7 @@ public class CsvImportService {
                 try {
                     DonanteImportDto dto = parser.parsear(columnas, numeroLinea);
                     lote.add(dto);
-                } catch (CsvFormatoLineaException e) {
+                } catch (CsvFormatoException e) {
                     report.agregar(ImportFilaCSV.error(numeroLinea, "", e.getMessage()));
                 }
 
@@ -94,10 +96,22 @@ public class CsvImportService {
 
     private ImportFilaCSV procesarFila(DonanteImportDto dto, int linea) {
         try {
-            PersonaDonante existente = donanteRepository.obtenerPorMail(dto.email());
+            PersonaDonante existente = donanteRepository.obtenerPorEmail(dto.email());
 
             if (existente != null) {
-                // Actualización mínima: el email (clave) nunca se modifica
+                // El email es la clave de idempotencia: nunca se modifica.
+                // Se actualizan el resto de los datos identificatorios del CSV.
+                existente.setTipoDocumento(dto.tipoDoc());
+                existente.setNumeroDocumento(dto.documento());
+
+                if (existente instanceof PersonaHumana humana) {
+                    String[] partes = dto.nombreORazonSocial().split(" ", 2);
+                    humana.setNombre(partes[0]);
+                    humana.setApellido(partes.length > 1 ? partes[1] : humana.getApellido());
+                } else if (existente instanceof PersonaJuridica juridica) {
+                    juridica.setRazonSocial(dto.nombreORazonSocial());
+                }
+
                 donanteRepository.guardar(existente);
                 return ImportFilaCSV.actualizado(linea, dto.email());
             } else {

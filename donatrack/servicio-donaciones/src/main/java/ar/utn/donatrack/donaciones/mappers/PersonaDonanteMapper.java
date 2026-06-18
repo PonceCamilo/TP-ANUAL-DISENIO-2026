@@ -84,7 +84,9 @@ public class PersonaDonanteMapper {
           .nombre(h.getNombre())
           .apellido(h.getApellido())
           .genero(h.getGenero())
-          .edad(Period.between(h.getFechaNacimiento(), LocalDate.now()).getYears())
+          .edad(h.getFechaNacimiento() != null
+              ? Period.between(h.getFechaNacimiento(), LocalDate.now()).getYears()
+              : null)
           .tipoDocumento(h.getTipoDocumento())
           .numeroDocumento(h.getNumeroDocumento())
           .email(h.getEmail())

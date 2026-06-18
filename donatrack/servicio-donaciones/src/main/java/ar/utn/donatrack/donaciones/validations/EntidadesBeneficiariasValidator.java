@@ -2,12 +2,14 @@ package ar.utn.donatrack.donaciones.validations;
 
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Component
@@ -31,7 +33,8 @@ public class EntidadesBeneficiariasValidator {
 
     public void validarFechasCampania(LocalDate inicio, LocalDate fin) {
         if (inicio != null && fin != null && inicio.isAfter(fin)) {
-            throw new FechasCampaniaInvalidasException();
+            throw new FechasCampaniaInvalidasException(
+                    "La fecha de inicio no puede ser posterior a la fecha de fin");
         }
     }
 }

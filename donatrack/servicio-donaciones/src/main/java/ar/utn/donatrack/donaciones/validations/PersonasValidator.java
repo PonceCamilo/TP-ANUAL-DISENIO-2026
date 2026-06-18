@@ -56,19 +56,24 @@ public class PersonasValidator {
   }
 
   public void validarCambioEstado(EstadoDonante actual, EstadoDonante nuevo, String justificacion) {
-    // 1. Validar que no se intente cambiar al mismo estado actual
+    // 1. No se permite "cambiar" al mismo estado actual.
     if (actual == nuevo) {
       throw new PersonaConMismoEstadoException(nuevo);
     }
 
-    // 2. Validar justificación obligatoria para estados restrictivos (ej. BLOQUEADO)
+    // 2. Justificación obligatoria para bloquear a un donante.
     if (nuevo == EstadoDonante.BLOQUEADO && (justificacion == null || justificacion.isBlank())) {
       throw new FaltaJustificacionException("Es obligatorio proveer una justificación para bloquear al donante.");
     }
 
-    // 3. Validar transiciones de estado ilegales lógicamente
-    // Ejemplo: Un donante INACTIVO no puede pasar directamente a BLOQUEADO sin antes ser reactivado
-    if (actual == EstadoDonante.INACTIVO && nuevo == EstadoDonante.BLOQUEADO) {
+    // 3. Matriz explícita de transiciones permitidas.
+    boolean valida = switch (actual) {
+      case ACTIVO -> nuevo == EstadoDonante.INACTIVO || nuevo == EstadoDonante.BLOQUEADO;
+      case INACTIVO -> nuevo == EstadoDonante.ACTIVO;
+      case BLOQUEADO -> nuevo == EstadoDonante.ACTIVO;
+    };
+
+    if (!valida) {
       throw new CambioEstadoPersonaIlegalException(actual, nuevo);
     }
   }

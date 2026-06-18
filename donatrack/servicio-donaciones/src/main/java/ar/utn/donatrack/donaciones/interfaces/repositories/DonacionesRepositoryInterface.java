@@ -10,6 +10,7 @@ public interface DonacionesRepositoryInterface {
   void cargarDonaciones(List<Donacion> donaciones);
   List<Donacion> obtenerTodas();
   List<Donacion> obtenerPorEstado(EstadoDonacion estado);
+  List<Donacion> obtenerPorDonante(UUID idDonante);
   Donacion obtenerPorId(UUID id);
   void eliminar(UUID idDonacion);
 }

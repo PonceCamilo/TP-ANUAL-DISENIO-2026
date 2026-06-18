@@ -2,12 +2,19 @@ package ar.utn.donatrack.notificaciones.controller;
 
 import ar.utn.donatrack.notificaciones.dto.SolicitudNotificacionDto;
 import ar.utn.donatrack.notificaciones.interfaces.services.NotificacionServiceInterface;
+import ar.utn.donatrack.notificaciones.model.Notificacion;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Expone el componente notificador solicitado por el enunciado:
@@ -24,9 +31,18 @@ public class NotificacionController {
     private final NotificacionServiceInterface notificacionService;
 
     @PostMapping
-    public ResponseEntity<Void> enviar(@RequestBody SolicitudNotificacionDto solicitud) {
+    public ResponseEntity<Void> enviar(@RequestBody @Valid SolicitudNotificacionDto solicitud) {
         notificacionService.enviar(solicitud);
         return ResponseEntity.ok().build();
     }
-    /** Este metodo lo que hace es recivir la soli y pasarla al service que va a ser el que lo haga */
+
+    @GetMapping
+    public ResponseEntity<List<Notificacion>> obtenerTodas() {
+        return ResponseEntity.ok(notificacionService.obtenerTodas());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Notificacion> obtenerPorId(@PathVariable UUID id) {
+        return ResponseEntity.ok(notificacionService.obtenerPorId(id));
+    }
 }

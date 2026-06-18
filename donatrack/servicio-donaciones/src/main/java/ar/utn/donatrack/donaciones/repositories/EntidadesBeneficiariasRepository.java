@@ -36,4 +36,9 @@ public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasR
     public boolean existePorId(UUID id) {
         return almacenamiento.containsKey(id);
     }
+
+    @Override
+    public void eliminar(UUID id) {
+        almacenamiento.remove(id);
+    }
 }

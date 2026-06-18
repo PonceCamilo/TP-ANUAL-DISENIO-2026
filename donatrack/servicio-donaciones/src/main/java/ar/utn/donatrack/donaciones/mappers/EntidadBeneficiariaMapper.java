@@ -79,7 +79,7 @@ public class EntidadBeneficiariaMapper {
             necesidad.setDescripcion(extraDto.getDescripcion());
             necesidad.setCantidadObjetivo(extraDto.getCantidadObjetivo());
             // Toda necesidad nueva arranca con 0 recibido
-            necesidad.setCantidadRecibida(0.0);
+            necesidad.setCantidadRecibida(0);
             return necesidad;
 
         } else if (dto instanceof NecesidadRecurrenteRequestDTO recuDto) {
@@ -87,7 +87,7 @@ public class EntidadBeneficiariaMapper {
             necesidad.setNombre(recuDto.getNombre());
             necesidad.setDescripcion(recuDto.getDescripcion());
             necesidad.setCantidadObjetivo(recuDto.getCantidadObjetivo());
-            necesidad.setCantidadRecibida(0.0);
+            necesidad.setCantidadRecibida(0);
 
             // Setear atributos propios de la recurrente
             necesidad.setPeriodo(recuDto.getPeriodo());
@@ -123,3 +123,4 @@ public class EntidadBeneficiariaMapper {
         }
         throw new IllegalArgumentException("Tipo de Necesidad desconocido");
     }
+}

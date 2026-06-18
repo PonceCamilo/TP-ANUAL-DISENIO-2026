@@ -1,23 +1,19 @@
 package ar.utn.donatrack.donaciones.interfaces.services;
 
-import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
+import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface EntidadesBeneficiariasServiceInterface {
-
-    void guardar(EntidadBeneficiaria entidad);
-
-    List<EntidadBeneficiaria> obtenerTodas();
-
-    EntidadBeneficiaria obtenerPorId(UUID id);
-
-    void actualizar(UUID id, EntidadBeneficiaria entidadNueva);
-
-    void agregarNecesidadACampania(UUID idEntidad, UUID  idCampania, Necesidad necesidad);
-
-    void actualizarPeriodos();
+    UUID guardar(EntidadBeneficiariaRequestDTO dto);
+    List<EntidadBeneficiariaResponseDTO> obtenerTodas();
+    EntidadBeneficiariaResponseDTO obtenerPorId(UUID id);
+    void actualizar(UUID id, EntidadBeneficiariaRequestDTO dto);
+    void eliminarEntidad(UUID id);
+    UUID agregarCampaniaAEntidad(UUID idEntidad, CampaniaRequestDTO dto);
+    void agregarNecesidadACampania(UUID entidadId, UUID campaniaId, NecesidadRequestDTO dto);
 }

@@ -5,15 +5,18 @@ import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJusti
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.EstadoNoExistenteException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -91,5 +94,37 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(CampaniaNoEncontradaException.class)
   public ResponseEntity<Map<String, Object>> manejarCampaniaNoEncontrada(ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage()), HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(EstadoNoExistenteException.class)
+  public ResponseEntity<Map<String, Object>> manejarEstadoNoExistente(EstadoNoExistenteException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(FechasCampaniaInvalidasException.class)
+  public ResponseEntity<Map<String, Object>> manejarFechasCampaniaInvalidas(FechasCampaniaInvalidasException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(IllegalStateException.class)
+  public ResponseEntity<Map<String, Object>> manejarEstadoIlegal(IllegalStateException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.CONFLICT, "Conflict", ex.getMessage()), HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ResponseEntity<Map<String, Object>> manejarValidacion(MethodArgumentNotValidException ex) {
+    String detalle = ex.getBindingResult().getFieldErrors().stream()
+        .map(e -> e.getField() + ": " + e.getDefaultMessage())
+        .reduce((a, b) -> a + "; " + b)
+        .orElse("Datos inválidos");
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", detalle), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<Map<String, Object>> manejarErrorGeneral(Exception ex) {
+    return new ResponseEntity<>(
+        construirCuerpoError(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
+            "Error inesperado. Contacte al administrador."),
+        HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }

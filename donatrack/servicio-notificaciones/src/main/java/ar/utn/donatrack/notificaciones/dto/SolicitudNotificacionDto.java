@@ -2,6 +2,8 @@ package ar.utn.donatrack.notificaciones.dto;
 
 import ar.utn.donatrack.notificaciones.model.TipoEvento;
 import ar.utn.donatrack.notificaciones.model.TipoMedioNotificacion;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * Decisión de diseño: no se recibe el objeto MedioDeContacto del dominio
@@ -9,8 +11,8 @@ import ar.utn.donatrack.notificaciones.model.TipoMedioNotificacion;
  * Cada servicio mantiene su propio modelo (Bounded Context independiente).
  */
 public record SolicitudNotificacionDto(
-        String destinatario,
-        String mensaje,
-        TipoMedioNotificacion medio,
-        TipoEvento evento
+        @NotBlank String destinatario,
+        @NotBlank String mensaje,
+        @NotNull TipoMedioNotificacion medio,
+        @NotNull TipoEvento evento
 ) {}

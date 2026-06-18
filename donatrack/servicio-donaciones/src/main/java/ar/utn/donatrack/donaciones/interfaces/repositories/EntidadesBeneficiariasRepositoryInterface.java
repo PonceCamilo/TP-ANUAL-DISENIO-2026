@@ -9,4 +9,5 @@ public interface EntidadesBeneficiariasRepositoryInterface {
     List<EntidadBeneficiaria> buscarTodas();
     EntidadBeneficiaria obtenerPorId(UUID id);
     boolean existePorId(UUID id);
+    void eliminar(UUID id);
 }

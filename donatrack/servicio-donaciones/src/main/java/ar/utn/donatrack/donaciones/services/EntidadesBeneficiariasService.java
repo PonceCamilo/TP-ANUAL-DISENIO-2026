@@ -61,11 +61,10 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         repositorio.guardar(entidadExistente);
     }
 
-    // NUEVO REQUERIDO: Eliminar entidad (Podría ser baja lógica según tu repositorio)
+    // NUEVO REQUERIDO: Eliminar entidad
     public void eliminarEntidad(UUID id) {
         validador.validarExistenciaEntidad(id);
-        // Suponiendo que tu repo tenga un método eliminar o que uses borrado lógico
-        // repositorio.eliminar(id);
+        repositorio.eliminar(id);
     }
 
     // NUEVO REQUERIDO: Crear Campaña dentro de Entidad

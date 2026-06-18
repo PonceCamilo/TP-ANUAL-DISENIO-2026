@@ -6,7 +6,7 @@ package ar.utn.donatrack.donaciones.exceptions.csvExcepctions;
  * sino que se registra en el ImportReport y se continúa con la siguiente fila.
  */
 
-public class CsvFormatoLineaException extends RuntimeException {
+public class CsvFormatoLineaException extends CsvFormatoException {
 
     public CsvFormatoLineaException(int numeroLinea, int columnas) {
         super("Línea " + numeroLinea + ": se esperaban al menos 5 columnas, "

@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.exceptions.csvExcepctions;
 
-public class CsvFormatoDocumentoException extends RuntimeException {
+public class CsvFormatoDocumentoException extends CsvFormatoException {
   public CsvFormatoDocumentoException(int numeroLinea) {
     super("Línea " + numeroLinea + ": el documento no puede estar vacío");
   }

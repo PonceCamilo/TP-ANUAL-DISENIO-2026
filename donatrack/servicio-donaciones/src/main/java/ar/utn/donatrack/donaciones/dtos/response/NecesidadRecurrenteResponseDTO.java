@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.dtos.response;
 
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Periodicidad;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.periodicidades.Periodicidad;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -16,5 +16,6 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class NecesidadRecurrenteResponseDTO extends NecesidadResponseDTO {
 
-    //private Periodicidad periodo;
+    private Periodicidad periodo;
     private LocalDate fechaInicioPeriodo;
+}

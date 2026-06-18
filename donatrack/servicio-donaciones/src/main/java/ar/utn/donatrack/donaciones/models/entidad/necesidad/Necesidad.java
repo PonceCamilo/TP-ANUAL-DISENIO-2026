@@ -16,6 +16,7 @@ import java.time.LocalDate;
 @Setter
 public abstract class Necesidad {
 
+    protected String nombre;
     protected Bien bien;
     protected String descripcion;
     protected LocalDate fechaRegistro;

@@ -77,4 +77,22 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
     public boolean existePorEmail(String email) {
         return indicePorEmail.containsKey(email.toLowerCase());
     }
+
+    public PersonaDonante obtenerPorEmail(String email) {
+        UUID id = indicePorEmail.get(email.toLowerCase());
+        return id != null ? almacenamiento.get(id) : null;
+    }
+
+    public List<PersonaDonante> obtenerPorEstado(EstadoDonante estado) {
+        return almacenamiento.values().stream()
+                .filter(p -> p.getEstado() == estado)
+                .toList();
+    }
+
+    public void eliminar(UUID id) {
+        PersonaDonante persona = almacenamiento.remove(id);
+        if (persona != null && persona.getEmail() != null) {
+            indicePorEmail.remove(persona.getEmail().toLowerCase());
+        }
+    }
 }

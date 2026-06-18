@@ -7,6 +7,7 @@ import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,9 @@ public class Donacion {
     protected EstadoDonacion estado = EstadoDonacion.EN_DEPOSITO;
     protected List<CambioEstado> historialEstados = new ArrayList<>();
     protected UUID idDonante;
+    protected UUID idEntidadBeneficiaria;
+    protected String descripcion;
+    protected LocalDateTime fechaDonacion = LocalDateTime.now();
     protected UUID id = UUID.randomUUID();
 
     public boolean esPerecible() {

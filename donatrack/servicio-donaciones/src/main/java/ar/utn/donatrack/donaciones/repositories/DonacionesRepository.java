@@ -43,6 +43,14 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
     }
   }
 
+  public List<Donacion> obtenerPorDonante(UUID idDonante) {
+    synchronized (donaciones) {
+      return donaciones.stream()
+          .filter(d -> idDonante.equals(d.getIdDonante()))
+          .toList();
+    }
+  }
+
   public Donacion obtenerPorId(UUID id) {
     synchronized (donaciones) {
       return donaciones.stream()

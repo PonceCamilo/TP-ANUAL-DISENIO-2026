@@ -36,7 +36,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
   private final DonacionMapper mapper;
 
   @Override
-  public void segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante) {
+  public void segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante, String descripcion) {
     List<Bien> bienes = bienesDTO.stream().map(mapper::toBien).toList();
     List<Donacion> resultado = new ArrayList<>();
 
@@ -62,6 +62,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
           .forEach((fecha, grupo) -> {
             Donacion donacion = new Donacion();
             donacion.setIdDonante(idDonante);
+            donacion.setDescripcion(descripcion);
             donacion.setSubcategoria(sub);
             donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
             donacion.getHistorialEstados().add(CambioEstado.builder()
@@ -83,6 +84,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
           .forEach((esNuevo, grupo) -> {
             Donacion donacion = new Donacion();
             donacion.setIdDonante(idDonante);
+            donacion.setDescripcion(descripcion);
             donacion.setSubcategoria(sub);
             donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
             donacion.getHistorialEstados().add(CambioEstado.builder()
@@ -100,6 +102,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
       if (!genericos.isEmpty()) {
         Donacion donacion = new Donacion();
         donacion.setIdDonante(idDonante);
+        donacion.setDescripcion(descripcion);
         donacion.setSubcategoria(sub);
         donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
         donacion.getHistorialEstados().add(CambioEstado.builder()

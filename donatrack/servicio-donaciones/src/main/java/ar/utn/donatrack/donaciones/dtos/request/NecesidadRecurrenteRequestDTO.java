@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.dtos.request;
 
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Periodicidad;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.periodicidades.Periodicidad;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;

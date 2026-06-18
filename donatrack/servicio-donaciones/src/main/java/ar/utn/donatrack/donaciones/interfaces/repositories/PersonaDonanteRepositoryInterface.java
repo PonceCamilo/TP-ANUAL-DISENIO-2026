@@ -22,4 +22,7 @@ public interface PersonaDonanteRepositoryInterface {
     boolean existePorId(UUID id);
     boolean existePorEmail(String email);
     PersonaDonante obtenerPersona(UUID id);
+    PersonaDonante obtenerPorEmail(String email);
+    List<PersonaDonante> obtenerPorEstado(EstadoDonante estado);
+    void eliminar(UUID id);
 }

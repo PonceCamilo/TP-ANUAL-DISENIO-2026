@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -66,5 +67,15 @@ public class NotificacionService implements NotificacionServiceInterface {
         }
 
         repositorio.guardar(notificacion);
+    }
+
+    @Override
+    public List<Notificacion> obtenerTodas() {
+        return repositorio.buscarTodas();
+    }
+
+    @Override
+    public Notificacion obtenerPorId(UUID id) {
+        return repositorio.buscarPorId(id);
     }
 }

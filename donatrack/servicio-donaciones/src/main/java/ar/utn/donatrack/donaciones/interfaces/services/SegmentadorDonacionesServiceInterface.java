@@ -7,6 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface SegmentadorDonacionesServiceInterface {
-  void segmentar(List<BienRequestDTO> bienes, UUID idDonante);
+  void segmentar(List<BienRequestDTO> bienes, UUID idDonante, String descripcion);
   void cargarDonaciones(List<Donacion> donaciones);
 }
