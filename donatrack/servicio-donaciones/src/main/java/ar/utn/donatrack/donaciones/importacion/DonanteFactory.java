@@ -1,59 +1,55 @@
 package ar.utn.donatrack.donaciones.importacion;
 
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
+import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.models.donante.PersonaHumanaDonante;
-import ar.utn.donatrack.donaciones.models.donante.PersonaJuridicaDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
+import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import org.springframework.stereotype.Component;
 
-import java.util.Objects;
+import java.time.LocalDateTime;
 
 /**
- * Factory que construye instancias de dominio (PersonaHumana / PersonaJuridica)
- * a partir de los datos parciales disponibles en el CSV de importación.
+ * Factory que construye instancias de dominio a partir de los datos parciales
+ * disponibles en el CSV de importación.
  *
- * Decisión de diseño: el CSV no incluye todos los campos requeridos por el
- * dominio (edad, género, dirección, tipo de jurídica, rubro, representantes).
- * La factory completa esos campos con valores neutros que satisfacen los
- * invariantes del dominio y dejan en claro que deben completarse luego por
- * un administrador.
+ * El CSV no incluye todos los campos del dominio (edad, género, dirección, tipo
+ * jurídico, rubro, representantes). Esta factory completa esos campos con valores
+ * neutros para satisfacer los invariantes del dominio. Un administrador deberá
+ * completar la información faltante desde la interfaz web.
  */
+
 @Component
 public class DonanteFactory {
 
-    /**
-     * Crea una PersonaHumana desde el DTO de importación.
-     *
-     * - Nombre y apellido se infieren separando por el primer espacio.
-     * - Edad: 0 (desconocida).
-     * - Género: PREFIERO_NO_DECIR (valor neutro).
-     * - Dirección: valores "Pendiente" para satisfacer el invariante.
-     */
     public PersonaDonante crearPersona(DonanteImportDto dto) {
+        PersonaDonante persona;
 
-        if (Objects.equals(dto.tipoPersona(), "JURIDICA")) {
-            return PersonaJuridicaDonante.builder()
-                .tipoPersona(dto.tipoPersona())
+        if ("JURIDICA".equals(dto.tipoPersona())) {
+            persona = PersonaJuridica.builder()
                 .tipoDocumento(dto.tipoDoc())
                 .numeroDocumento(dto.documento())
                 .razonSocial(dto.nombreORazonSocial())
                 .email(dto.email())
-                .telefono(dto.telefono())
+                .build();
+        } else {
+            // HUMANA: inferir nombre y apellido separando por el primer espacio
+            String[] partes = dto.nombreORazonSocial().split(" ", 2);
+            String nombre = partes[0];
+            String apellido = partes.length > 1 ? partes[1] : "-";
+
+            persona = PersonaHumana.builder()
+                .tipoDocumento(dto.tipoDoc())
+                .numeroDocumento(dto.documento())
+                .email(dto.email())
+                .nombre(nombre)
+                .apellido(apellido)
                 .build();
         }
 
-        String[] partes = dto.nombreORazonSocial().split(" ", 2);
-        String nombre = partes[0];
-        String apellido = partes.length > 1 ? partes[1] : "-";
-
-        return PersonaHumanaDonante.builder()
-            .tipoPersona(dto.tipoPersona())
-            .tipoDocumento(dto.tipoDoc())
-            .numeroDocumento(dto.documento())
-            .email(dto.email())
-            .nombre(nombre)
-            .apellido(apellido)
-            .telefono(dto.telefono())
-            .build();
+        // Todo donante importado arranca ACTIVO y con interacción inicial registrada
+        persona.setEstado(EstadoDonante.ACTIVO);
+        persona.setUltimaInteraccion(LocalDateTime.now());
+        return persona;
     }
 }

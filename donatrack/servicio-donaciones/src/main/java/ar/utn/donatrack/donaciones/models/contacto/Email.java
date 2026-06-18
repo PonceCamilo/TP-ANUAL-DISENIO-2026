@@ -1,9 +1,9 @@
 package ar.utn.donatrack.donaciones.models.contacto;
 
 import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 
 @Getter
+@SuperBuilder
 public class Email extends MedioDeContacto {
-
-    private String direccion;
 }

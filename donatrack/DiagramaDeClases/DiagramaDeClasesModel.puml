@@ -28,7 +28,7 @@ class Bien{
     - subcategoria: Subcategoria;
     - descripcion: String;
     - foto: String;
-    - cantidad: Int;
+    - cantidad(ej: Peso Neto): Int;
     - unidad: String; 
 }
 
@@ -41,6 +41,7 @@ class BienPerecible{
 }
 
 class Donacion{
+    - idDonante: UUID;
     - estado: EstadoDonacion;
     - bien:  Bien;
     - cantidad: Int;
@@ -69,12 +70,11 @@ enum Genero{
 }
 
 abstract class PersonaDonante{
-    - idDonante: int;
+    - idDonante: UUID;
     - tipoDocumento: String;
     - numeroDocumento: String;
     - direccion: Direccion;
     - estado: EstadoDonante;
-    - donaciones: List<Donacion>;
 }
 
 class PersonaHumana{

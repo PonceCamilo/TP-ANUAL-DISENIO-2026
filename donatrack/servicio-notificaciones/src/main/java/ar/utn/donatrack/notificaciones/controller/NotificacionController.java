@@ -1,56 +1,48 @@
 package ar.utn.donatrack.notificaciones.controller;
 
-import ar.utn.donatrack.notificaciones.dto.request.EnviarNotificacionRequest;
-import ar.utn.donatrack.notificaciones.dto.response.NotificacionResponse;
+import ar.utn.donatrack.notificaciones.dto.SolicitudNotificacionDto;
+import ar.utn.donatrack.notificaciones.interfaces.services.NotificacionServiceInterface;
 import ar.utn.donatrack.notificaciones.model.Notificacion;
-import ar.utn.donatrack.notificaciones.service.NotificacionService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
- * API REST del Servicio de Notificaciones.
- *
- * POST  /api/notificaciones/enviar   → enviar una notificación
- * GET   /api/notificaciones          → historial (auditoría)
+ * Expone el componente notificador solicitado por el enunciado:
+ * "dado un destinatario, un mensaje y un medio de notificación,
+ * pueda realizar el envío".
+ * Es consumido vía HTTP REST por el Servicio de Donaciones y el
+ * Servicio de Incentivos cuando ocurren los eventos relevantes.
  */
 @RestController
-@RequestMapping("/api/notificaciones")
+@RequestMapping("/notificaciones")
+@RequiredArgsConstructor
 public class NotificacionController {
 
-    private final NotificacionService service;
+    private final NotificacionServiceInterface notificacionService;
 
-    public NotificacionController(NotificacionService service) {
-        this.service = service;
+    @PostMapping
+    public ResponseEntity<Void> enviar(@RequestBody @Valid SolicitudNotificacionDto solicitud) {
+        notificacionService.enviar(solicitud);
+        return ResponseEntity.ok().build();
     }
 
-    /**
-     * Endpoint principal: recibe destinatario + mensaje + medio y envía (mock).
-     * Este es el endpoint que llaman los demás servicios (donaciones, incentivos).
-     */
-    @PostMapping("/enviar")
-    public ResponseEntity<NotificacionResponse> enviar(
-            @Valid @RequestBody EnviarNotificacionRequest request) {
-
-        Notificacion notificacion = service.enviar(
-                request.destinatario(),
-                request.mensaje(),
-                request.medio()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(NotificacionResponse.desde(notificacion));
-    }
-
-    /** Historial completo para auditoría. */
     @GetMapping
-    public ResponseEntity<List<NotificacionResponse>> listarTodas() {
-        List<NotificacionResponse> respuesta = service.listarTodas()
-                .stream()
-                .map(NotificacionResponse::desde)
-                .toList();
-        return ResponseEntity.ok(respuesta);
+    public ResponseEntity<List<Notificacion>> obtenerTodas() {
+        return ResponseEntity.ok(notificacionService.obtenerTodas());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Notificacion> obtenerPorId(@PathVariable UUID id) {
+        return ResponseEntity.ok(notificacionService.obtenerPorId(id));
     }
 }

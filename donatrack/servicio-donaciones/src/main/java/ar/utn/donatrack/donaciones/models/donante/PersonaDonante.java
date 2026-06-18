@@ -1,23 +1,26 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
+import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
-import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
-import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDateTime;
 
 /**
  * Raíz de la jerarquía de personas donantes.
- * Una persona donante puede ser humana o jurídica.
- *
- * PATRÓN STATE aplicado: el ciclo de vida se modela con EstadoDonante en lugar
- * de un boolean activo. Ver EstadoDonante.java para la justificación completa.
+ * Una persona donante puede ser humana (PersonaHumana) o jurídica (PersonaJuridica).
+ * PATRÓN STATE: el ciclo de vida se modela con EstadoDonante.
+ * Unificación de contactos: el email es obligatorio y se almacena directamente
+ * como campo para ser la clave de idempotencia en importaciones CSV y búsquedas.
+ * Los contactos adicionales (teléfono, WhatsApp) se agregan a la lista `contactos`.
  */
 
 @SuperBuilder
@@ -30,6 +33,10 @@ public abstract class PersonaDonante {
     protected String numeroDocumento;
     protected Direccion direccion;
     protected EstadoDonante estado;
-    protected List<MedioDeContacto> contactos;
-}
+    protected MedioDeContacto medioContactoPredeterminado;
+    protected LocalDateTime ultimaInteraccion;
+    protected String email;
 
+    @Builder.Default
+    protected List<MedioDeContacto> contactos = new ArrayList<>();
+}

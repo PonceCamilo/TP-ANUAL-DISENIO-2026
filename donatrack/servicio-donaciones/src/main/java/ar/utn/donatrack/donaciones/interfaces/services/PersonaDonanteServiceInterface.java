@@ -1,20 +1,23 @@
 package ar.utn.donatrack.donaciones.interfaces.services;
 
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.models.donante.Representante;
+import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
+import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface PersonaDonanteServiceInterface {
-  void registrar(PersonaDonante donante);
-  PersonaDonante obtenerPorId(UUID id);
-  void darDeBaja(UUID id);
-  void reactivar(UUID id);
-  void agregarMedioDeContacto(UUID id, MedioDeContacto medio);
-  void agregarRepresentante(UUID id, Representante representante);
-  void removerRepresentante(UUID id, String emailRepresentante);
-  List<PersonaDonante> listarDonantesActivos();
-  List<PersonaDonante> listarTodosDonantes();
+  UUID registrar(PersonaDonanteRequestDTO dto);
+  PersonaDonanteResponseDTO obtenerDonante(UUID id);
+  List<PersonaDonanteResponseDTO> obtenerDonantes(EstadoDonante estado);
+  void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto);
+  void modificarContacto(UUID id, MedioDeContactoRequestDTO dto);
+  void modificarRepresentante(UUID id, RepresentanteRequestDTO dto);
+  PersonaDonanteResponseDTO actualizar(UUID id, PersonaDonanteUpdateRequestDTO dto);
+  void eliminar(UUID id);
 }

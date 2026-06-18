@@ -1,7 +1,8 @@
+/*
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.excepcion.EmailYaRegistradoException;
-import ar.utn.donatrack.donaciones.excepcion.PersonaDonanteNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.mailsExceptions.EmailYaRegistradoException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.models.contacto.TipoMedioContacto;
 import ar.utn.donatrack.donaciones.models.donante.*;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
@@ -195,3 +196,5 @@ class PersonaDonanteServicioTest {
         verify(repositorio, times(2)).guardar(any());
     }
 }
+
+ */

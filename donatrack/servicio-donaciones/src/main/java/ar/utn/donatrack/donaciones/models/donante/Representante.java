@@ -1,14 +1,16 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Persona física habilitada para operar en nombre de una persona jurídica.
- * Una persona jurídica puede tener múltiples representantes.
+ * Persona física habilitada para operar en nombre de una PersonaJuridicaDonante.
+ * El email es campo directo para facilitar búsqueda/remoción sin recorrer la lista.
  */
 
 @Builder
@@ -18,5 +20,8 @@ public class Representante {
 
     private String nombre;
     private String apellido;
-    private List<MedioDeContacto> contactos;
+    private String email;
+
+    @Builder.Default
+    private List<MedioDeContacto> contactos = new ArrayList<>();
 }

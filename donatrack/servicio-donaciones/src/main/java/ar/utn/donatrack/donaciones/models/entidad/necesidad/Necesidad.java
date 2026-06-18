@@ -1,16 +1,22 @@
 package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
-import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
-
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.UUID;
+
+/**
+ * Raíz de la jerarquía de necesidades de una EntidadBeneficiaria.
+ * Subclases: NecesidadExtraordinaria, NecesidadRecurrente.
+ */
 
 @Getter
 @Setter
 public abstract class Necesidad {
-    protected Bien bien;
+
+    protected UUID id = UUID.randomUUID();
+    protected String nombre;
     protected String descripcion;
     protected LocalDate fechaRegistro;
     protected int cantidadObjetivo;
