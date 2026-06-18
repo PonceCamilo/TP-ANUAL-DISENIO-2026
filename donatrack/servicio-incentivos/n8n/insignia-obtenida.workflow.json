@@ -1,0 +1,105 @@
+{
+  "name": "DonaTrack - Insignia Obtenida",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "insignia-obtenida",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1f2c1f1a-0001-4a00-9aaa-000000000001",
+      "name": "Webhook - Insignia Obtenida",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 0],
+      "webhookId": "insignia-obtenida"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "a1", "name": "donanteId", "type": "string", "value": "={{ $json.body.donanteId }}" },
+            { "id": "a2", "name": "insigniaId", "type": "string", "value": "={{ $json.body.insigniaId }}" },
+            { "id": "a3", "name": "insigniaNombre", "type": "string", "value": "={{ $json.body.insigniaNombre }}" },
+            { "id": "a4", "name": "insigniaImagen", "type": "string", "value": "={{ $json.body.insigniaImagen }}" },
+            { "id": "a5", "name": "fechaObtencion", "type": "string", "value": "={{ $json.body.fechaObtencion }}" },
+            { "id": "a6", "name": "destinatario", "type": "string", "value": "={{ $json.body.destinatario }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1f2c1f1a-0002-4a00-9aaa-000000000002",
+      "name": "Normalizar payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [20, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.IMAGEN_INSIGNIA_API_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ plantilla: $json.insigniaImagen, titulo: $json.insigniaNombre, donanteId: $json.donanteId }) }}",
+        "options": {}
+      },
+      "id": "1f2c1f1a-0003-4a00-9aaa-000000000003",
+      "name": "Generar imagen de la insignia",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "notes": "Llama a un servicio de generación de imágenes (ej. plantilla + Canva/Bannerbear/Cloudinary). Configurar IMAGEN_INSIGNIA_API_URL y credenciales del servicio elegido."
+    },
+    {
+      "parameters": {
+        "resource": "tweet",
+        "text": "=🏆 {{ $('Normalizar payload').item.json.destinatario }} obtuvo la insignia \"{{ $('Normalizar payload').item.json.insigniaNombre }}\" en DonaTrack!",
+        "additionalFields": {
+          "attachments": "={{ [$json.imagenUrl] }}"
+        }
+      },
+      "id": "1f2c1f1a-0004-4a00-9aaa-000000000004",
+      "name": "Publicar en red social",
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [460, 0],
+      "credentials": {
+        "twitterOAuth2Api": {
+          "id": "REEMPLAZAR_CON_ID_DE_CREDENCIAL",
+          "name": "Cuenta DonaTrack"
+        }
+      },
+      "notes": "Reemplazar por el nodo de la red social elegida (Twitter/X, Instagram, LinkedIn, etc.) y configurar credenciales OAuth en n8n."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ok\" } }}"
+      },
+      "id": "1f2c1f1a-0005-4a00-9aaa-000000000005",
+      "name": "Responder al backend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 0]
+    }
+  ],
+  "connections": {
+    "Webhook - Insignia Obtenida": {
+      "main": [[{ "node": "Normalizar payload", "type": "main", "index": 0 }]]
+    },
+    "Normalizar payload": {
+      "main": [[{ "node": "Generar imagen de la insignia", "type": "main", "index": 0 }]]
+    },
+    "Generar imagen de la insignia": {
+      "main": [[{ "node": "Publicar en red social", "type": "main", "index": 0 }]]
+    },
+    "Publicar en red social": {
+      "main": [[{ "node": "Responder al backend", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
