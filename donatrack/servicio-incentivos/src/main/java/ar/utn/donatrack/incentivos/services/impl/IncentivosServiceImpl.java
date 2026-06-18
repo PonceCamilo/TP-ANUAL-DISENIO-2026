@@ -1,5 +1,6 @@
 package ar.utn.donatrack.incentivos.services.impl;
 
+import ar.utn.donatrack.incentivos.client.N8nWebhookClient;
 import ar.utn.donatrack.incentivos.client.NotificacionClient;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.Colaborador;
@@ -21,10 +22,13 @@ public class IncentivosServiceImpl implements IncentivosService {
     private static final Logger log = LoggerFactory.getLogger(IncentivosServiceImpl.class);
     private final IncentivosRepositorioEnMemoria repositorio;
     private final NotificacionClient notificacionClient;
+    private final N8nWebhookClient n8nWebhookClient;
 
-    public IncentivosServiceImpl(IncentivosRepositorioEnMemoria repositorio, NotificacionClient notificacionClient) {
+    public IncentivosServiceImpl(IncentivosRepositorioEnMemoria repositorio, NotificacionClient notificacionClient,
+                                  N8nWebhookClient n8nWebhookClient) {
         this.repositorio = repositorio;
         this.notificacionClient = notificacionClient;
+        this.n8nWebhookClient = n8nWebhookClient;
     }
 
     @PostConstruct
@@ -80,9 +84,11 @@ public class IncentivosServiceImpl implements IncentivosService {
         if (activa != null && activa.estaCompletada(perfil)) {
             InsigniaObtenida nueva = new InsigniaObtenida(activa.getInsignia(), true);
             perfil.addInsignia(nueva);
-            
-            notificacionClient.enviarNotificacion(destinatario, 
+
+            notificacionClient.enviarNotificacion(destinatario,
                 "¡Misión cumplida!: " + activa.getNombre(), medio);
+
+            n8nWebhookClient.notificarInsigniaObtenida(perfil.getId(), nueva, destinatario);
                 
             if (perfil.subirCategoria()) {
                 notificacionClient.enviarNotificacion(destinatario, 
