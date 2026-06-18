@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -25,6 +26,8 @@ public class Donacion {
     protected String descripcion;
     protected LocalDateTime fechaDonacion = LocalDateTime.now();
     protected UUID id = UUID.randomUUID();
+    protected UUID idEntidadAsignada; /** para saber que entindad fue asinada */
+    protected LocalDate fechaAsignacion; /** para calcular el ultimo trimestre necesito sabe cuando se asigno*/
 
     public boolean esPerecible() {
         return !bienes.isEmpty() && bienes.getFirst() instanceof BienPerecible;
