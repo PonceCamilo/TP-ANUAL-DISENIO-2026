@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * Raíz de la jerarquía de necesidades de una EntidadBeneficiaria.
@@ -14,6 +15,7 @@ import java.time.LocalDate;
 @Setter
 public abstract class Necesidad {
 
+    protected UUID id = UUID.randomUUID();
     protected String nombre;
     protected String descripcion;
     protected LocalDate fechaRegistro;

@@ -103,7 +103,8 @@ public class EntidadBeneficiariaMapper {
     private NecesidadResponseDTO toNecesidadDTO(Necesidad necesidad) {
         if (necesidad instanceof NecesidadExtraordinaria extra) {
             return NecesidadExtraordinariaResponseDTO.builder()
-
+                    .id(extra.getId())
+                    .nombre(extra.getNombre())
                     .descripcion(extra.getDescripcion())
                     .cantidadObjetivo((double) extra.getCantidadObjetivo())
                     .cantidadRecibida((double) extra.getCantidadRecibida())
@@ -112,7 +113,8 @@ public class EntidadBeneficiariaMapper {
 
         } else if (necesidad instanceof NecesidadRecurrente recu) {
             return NecesidadRecurrenteResponseDTO.builder()
-
+                    .id(recu.getId())
+                    .nombre(recu.getNombre())
                     .descripcion(recu.getDescripcion())
                     .cantidadObjetivo((double) recu.getCantidadObjetivo())
                     .cantidadRecibida((double) recu.getCantidadRecibida())

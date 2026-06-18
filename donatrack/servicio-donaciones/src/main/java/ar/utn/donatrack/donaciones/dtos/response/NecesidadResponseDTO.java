@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import java.util.UUID;
+
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "tipo")
 @JsonSubTypes({
         @JsonSubTypes.Type(value = NecesidadExtraordinariaResponseDTO.class, name = "EXTRAORDINARIA"),
@@ -20,9 +22,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 public abstract class NecesidadResponseDTO {
 
-
-    // private UUID id;
-
+    private UUID id;
     private String nombre;
     private String descripcion;
     private Double cantidadObjetivo;

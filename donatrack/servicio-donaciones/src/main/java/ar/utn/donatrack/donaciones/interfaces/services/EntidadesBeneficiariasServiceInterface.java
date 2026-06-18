@@ -15,5 +15,5 @@ public interface EntidadesBeneficiariasServiceInterface {
     void actualizar(UUID id, EntidadBeneficiariaRequestDTO dto);
     void eliminarEntidad(UUID id);
     UUID agregarCampaniaAEntidad(UUID idEntidad, CampaniaRequestDTO dto);
-    void agregarNecesidadACampania(UUID entidadId, UUID campaniaId, NecesidadRequestDTO dto);
+    UUID agregarNecesidadACampania(UUID entidadId, UUID campaniaId, NecesidadRequestDTO dto);
 }

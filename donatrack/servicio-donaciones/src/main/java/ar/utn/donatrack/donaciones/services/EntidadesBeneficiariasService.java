@@ -82,7 +82,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
     }
 
     // ACTUALIZADO CON DTO
-    public void agregarNecesidadACampania(UUID entidadId, UUID campaniaId, NecesidadRequestDTO dto) {
+    public UUID agregarNecesidadACampania(UUID entidadId, UUID campaniaId, NecesidadRequestDTO dto) {
         validador.validarExistenciaEntidad(entidadId);
         EntidadBeneficiaria entidad = repositorio.obtenerPorId(entidadId);
 
@@ -93,5 +93,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         campaniaTarget.getNecesidades().add(nuevaNecesidad);
 
         repositorio.guardar(entidad);
+
+        return nuevaNecesidad.getId();
     }
 }

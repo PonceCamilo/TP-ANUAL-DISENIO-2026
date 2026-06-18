@@ -54,22 +54,14 @@ public class DonacionesController {
     return ResponseEntity.ok(donacionService.obtenerPorId(id));
   }
 
-  @GetMapping("/donante/{idDonante}")
-  public ResponseEntity<List<DonacionResponseDTO>> obtenerPorDonante(
-      @PathVariable UUID idDonante
-  ) {
-    personasValidator.validarExistenciaPersona(idDonante);
-    return ResponseEntity.ok(donacionService.obtenerPorDonante(idDonante));
-  }
-
   @PostMapping
-  public ResponseEntity<Void> registrar(
-      @RequestBody @Valid DonacionRequestDTO dto,
-      @RequestParam UUID idDonante
+  public ResponseEntity<List<UUID>> registrar(
+      @RequestBody @Valid DonacionRequestDTO dto
   ) {
-    personasValidator.validarExistenciaPersona(idDonante);
-    segmentadorDonacionesService.segmentar(dto.getBienes(), idDonante, dto.getDescripcion());
-    return ResponseEntity.status(HttpStatus.CREATED).build();
+    personasValidator.validarExistenciaPersona(dto.getIdDonante());
+    List<UUID> idsCreadas = segmentadorDonacionesService.segmentar(
+        dto.getBienes(), dto.getIdDonante(), dto.getDescripcion());
+    return ResponseEntity.status(HttpStatus.CREATED).body(idsCreadas);
   }
 
   @PatchMapping("/{id}/estado")

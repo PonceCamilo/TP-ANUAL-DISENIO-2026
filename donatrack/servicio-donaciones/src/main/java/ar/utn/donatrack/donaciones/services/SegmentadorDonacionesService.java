@@ -35,8 +35,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
   private final DonacionesRepositoryInterface donacionesRepository;
   private final DonacionMapper mapper;
 
-  @Override
-  public void segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante, String descripcion) {
+  public List<UUID> segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante, String descripcion) {
     List<Bien> bienes = bienesDTO.stream().map(mapper::toBien).toList();
     List<Donacion> resultado = new ArrayList<>();
 
@@ -115,9 +114,10 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
     }
 
     cargarDonaciones(resultado);
+
+    return resultado.stream().map(Donacion::getId).toList();
   }
 
-  @Override
   public void cargarDonaciones(List<Donacion> donaciones) {
     donacionesRepository.cargarDonaciones(donaciones);
   }

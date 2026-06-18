@@ -45,7 +45,6 @@ public class DonacionService implements DonacionServiceInterface {
   private final PersonaDonanteRepositoryInterface donanteRepositorio;
   private final NotificacionClient notificacionClient;
 
-  @Override
   public List<DonacionResponseDTO> obtenerDonaciones(EstadoDonacion estado, UUID idDonante, String subcategoria) {
     List<Donacion> resultado = repositorio.obtenerTodas();
 
@@ -65,17 +64,10 @@ public class DonacionService implements DonacionServiceInterface {
     return mapper.toDTOList(resultado);
   }
 
-  @Override
-  public List<DonacionResponseDTO> obtenerPorDonante(UUID idDonante) {
-    return mapper.toDTOList(repositorio.obtenerPorDonante(idDonante));
-  }
-
-  @Override
   public DonacionResponseDTO obtenerPorId(UUID id) {
     return mapper.toDTO(buscarOFallar(id));
   }
 
-  @Override
   public void cambiarEstado(UUID id, CambioEstadoRequestDTO dto) {
     Donacion donacion = buscarOFallar(id);
     validador.validarTransicion(donacion.getEstado(), dto.getEstado(), dto.getJustificacion());
@@ -86,7 +78,6 @@ public class DonacionService implements DonacionServiceInterface {
     donacion.setEstado(dto.getEstado());
   }
 
-  @Override
   public void modificarBien(UUID id, BienRequestDTO dto) {
     Donacion donacion = buscarOFallar(id);
     if (!donacion.getBienes().isEmpty()) {
@@ -94,7 +85,6 @@ public class DonacionService implements DonacionServiceInterface {
     }
   }
 
-  @Override
   public CandidatosAsignacionResponseDTO obtenerCandidatos(UUID idDonacion) {
     Donacion donacion = buscarOFallar(idDonacion);
     AsignacionDonacionesService.ResultadoMatchmaking ranking = asignacionService.generarRanking(donacion);
@@ -107,7 +97,6 @@ public class DonacionService implements DonacionServiceInterface {
         .build();
   }
 
-  @Override
   public void asignar(UUID idDonacion, AsignacionRequestDTO dto) {
     Donacion donacion = buscarOFallar(idDonacion);
 
@@ -129,7 +118,6 @@ public class DonacionService implements DonacionServiceInterface {
     notificarAsignacion(donacion, entidad);
   }
 
-  @Override
   public void eliminar(UUID id) {
     buscarOFallar(id);
     repositorio.eliminar(id);

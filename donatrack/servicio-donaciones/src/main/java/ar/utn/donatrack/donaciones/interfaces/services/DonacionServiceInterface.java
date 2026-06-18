@@ -12,7 +12,6 @@ import java.util.UUID;
 
 public interface DonacionServiceInterface {
   List<DonacionResponseDTO> obtenerDonaciones(EstadoDonacion estado, UUID idDonante, String subcategoria);
-  List<DonacionResponseDTO> obtenerPorDonante(UUID idDonante);
   DonacionResponseDTO obtenerPorId(UUID id);
   void cambiarEstado(UUID id, CambioEstadoRequestDTO dto);
   void modificarBien(UUID id, BienRequestDTO dto);

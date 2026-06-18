@@ -79,7 +79,8 @@ public class EntidadBeneficiariaController {
             @PathVariable UUID campaniaId,
             @RequestBody @Valid NecesidadRequestDTO dto // <--- ACA AHORA SE RECIBE EL DTO, NO EL MODELO
     ) {
-        entidadesBeneficiariasService.agregarNecesidadACampania(entidadId, campaniaId, dto);
-        return ResponseEntity.status(201).build(); // 201 Created es lo correcto al crear una Necesidad
+        UUID necesidadId = entidadesBeneficiariasService.agregarNecesidadACampania(entidadId, campaniaId, dto);
+        URI location = URI.create("/entidades/" + entidadId + "/campanias/" + campaniaId + "/necesidades/" + necesidadId);
+        return ResponseEntity.created(location).build();
     }
 }
