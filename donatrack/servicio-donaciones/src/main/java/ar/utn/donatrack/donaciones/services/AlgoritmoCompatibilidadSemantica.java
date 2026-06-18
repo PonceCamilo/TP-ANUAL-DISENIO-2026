@@ -1,48 +1,43 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.interfaces.services.AlgoritmoAsignacionInterface;
-import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 import org.springframework.stereotype.Component;
 
-import java.util.Comparator;
-import java.util.List;
-
 /**
- * Evalúa la correspondencia entre la subcategoría del bien donado
- * y las necesidades declaradas por cada entidad beneficiaria.
- * Cuantas más necesidades coincidentes tenga la entidad, mayor su puntaje.
+ * Evalúa la correspondencia entre la subcategoría del bien donado y las
+ * necesidades declaradas por cada entidad beneficiaria.
+ *
+ * El puntaje es la cantidad de necesidades de la entidad cuyo nombre o
+ * descripción mencionan la subcategoría de la donación. Cuantas más
+ * necesidades coincidentes, mayor el puntaje. Las entidades sin ninguna
+ * coincidencia (puntaje 0) quedan fuera del ranking.
  */
 @Component
-public class AlgoritmoCompatibilidadSemantica implements AlgoritmoAsignacionInterface {
-
-    private static final int TOP_N = 10;
+public class AlgoritmoCompatibilidadSemantica extends AlgoritmoAsignacionBase {
 
     @Override
-    public List<ResultadoAsignacion> evaluar(Donacion donacion, List<EntidadBeneficiaria> entidades) {
-        return entidades.stream()
-                .map(entidad -> new ResultadoAsignacion(
-                        entidad.getId(),
-                        contarCoincidencias(donacion, entidad))) /** para cada entidad creo un result con id y puntaje, voy a tener esto por cada entidad*/
-                .filter(resultado -> resultado.getPuntaje() > 0) /** descarto las que tengo 0*/
-                .sorted(Comparator.comparingDouble(ResultadoAsignacion::getPuntaje).reversed())
-                .limit(TOP_N)
-                .toList();
-    }
-
-    private double contarCoincidencias(Donacion donacion, EntidadBeneficiaria entidad) {
+    protected double calcularPuntaje(Donacion donacion, EntidadBeneficiaria entidad) {
+        String subcategoria = donacion.getSubcategoria() != null ? donacion.getSubcategoria().getTipo() : null;
+        if (subcategoria == null || subcategoria.isBlank() || entidad.getCampanias() == null) {
+            return 0;
+        }
+        String objetivo = subcategoria.toLowerCase();
         return entidad.getCampanias().stream()
-                .flatMap(c -> c.getNecesidades().stream()) /** pongo todas las necesidades en de todas las campanias en una sola lista*/
-                .filter(n -> coincideSubcategoria(n, donacion))
+                .filter(campania -> campania.getNecesidades() != null)
+                .flatMap(campania -> campania.getNecesidades().stream())
+                .filter(necesidad -> contieneTexto(necesidad.getNombre(), objetivo)
+                        || contieneTexto(necesidad.getDescripcion(), objetivo))
                 .count();
     }
 
-    private boolean coincideSubcategoria(Necesidad necesidad, Donacion donacion) {
-        return necesidad.getBien() != null
-                && necesidad.getBien().getSubcategoria() != null
-                && necesidad.getBien().getSubcategoria().equals(donacion.getSubcategoria());
+    /** Solo entran al ranking las entidades con al menos una necesidad compatible. */
+    @Override
+    protected boolean incluir(double puntaje) {
+        return puntaje > 0;
+    }
+
+    private boolean contieneTexto(String texto, String objetivo) {
+        return texto != null && texto.toLowerCase().contains(objetivo);
     }
 }

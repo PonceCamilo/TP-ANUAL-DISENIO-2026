@@ -65,7 +65,8 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
         PersonaJuridica persona = (PersonaJuridica) obtenerPersona(idPersonaJuridica);
         if (persona != null) {
             persona.getRepresentantes()
-                    .removeIf(rep -> rep.getEmail().equalsIgnoreCase(representante.getEmail()));
+                    .removeIf(rep -> rep.getEmail() != null
+                            && rep.getEmail().equalsIgnoreCase(representante.getEmail()));
             persona.getRepresentantes().add(representante);
         }
     }

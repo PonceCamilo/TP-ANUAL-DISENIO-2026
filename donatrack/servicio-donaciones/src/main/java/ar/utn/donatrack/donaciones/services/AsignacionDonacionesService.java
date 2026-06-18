@@ -4,24 +4,23 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiaria
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.services.AlgoritmoCompatibilidadSemantica;
-import ar.utn.donatrack.donaciones.services.AlgoritmoPrioridadSubAtendidos;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Orquesta el proceso de matchmaking de una donación: ejecuta ambos
- * algoritmos de asignación, intersecta sus rankings y devuelve el
- * resultado para que la persona administradora confirme el destino final.
+ * Orquesta el matchmaking de una donación: ejecuta ambos algoritmos de
+ * asignación y calcula la intersección de sus rankings.
  *
- * Si ambos algoritmos coinciden en alguna entidad, se devuelven solo
- * esas (mayor confianza). Si no hubo coincidencias, se devuelven
- * ambos rankings completos por separado, tal como pide el enunciado.
+ * Siempre devuelve las tres listas (compatibilidad semántica, prioridad a
+ * sub-atendidos y coincidencias entre ambos) para que la capa superior
+ * decida cómo presentarlas. Las coincidencias son las candidatas de mayor
+ * confianza: aparecen recomendadas por los dos criterios a la vez.
  */
 @Service
 @RequiredArgsConstructor
@@ -36,17 +35,13 @@ public class AsignacionDonacionesService {
 
         List<ResultadoAsignacion> rankingSemantico = algoritmoSemantico.evaluar(donacion, entidades);
         List<ResultadoAsignacion> rankingSubAtendidos = algoritmoSubAtendidos.evaluar(donacion, entidades);
-
         List<ResultadoAsignacion> coincidencias = intersectar(rankingSemantico, rankingSubAtendidos);
 
-        if (!coincidencias.isEmpty()) {
-            return new ResultadoMatchmaking(coincidencias, List.of(), List.of(), true);
-        }
-        return new ResultadoMatchmaking(List.of(), rankingSemantico, rankingSubAtendidos, false);
+        return new ResultadoMatchmaking(coincidencias, rankingSemantico, rankingSubAtendidos);
     }
 
     private List<ResultadoAsignacion> intersectar(List<ResultadoAsignacion> a, List<ResultadoAsignacion> b) {
-        Set<java.util.UUID> idsB = b.stream().map(ResultadoAsignacion::getIdEntidad).collect(Collectors.toSet());
+        Set<UUID> idsB = b.stream().map(ResultadoAsignacion::getIdEntidad).collect(Collectors.toSet());
         return a.stream()
                 .filter(resultado -> idsB.contains(resultado.getIdEntidad()))
                 .toList();
@@ -57,16 +52,17 @@ public class AsignacionDonacionesService {
         private final List<ResultadoAsignacion> coincidencias;
         private final List<ResultadoAsignacion> rankingSemantico;
         private final List<ResultadoAsignacion> rankingSubAtendidos;
-        private final boolean huboCoincidencias;
 
         public ResultadoMatchmaking(List<ResultadoAsignacion> coincidencias,
                                     List<ResultadoAsignacion> rankingSemantico,
-                                    List<ResultadoAsignacion> rankingSubAtendidos,
-                                    boolean huboCoincidencias) {
+                                    List<ResultadoAsignacion> rankingSubAtendidos) {
             this.coincidencias = coincidencias;
             this.rankingSemantico = rankingSemantico;
             this.rankingSubAtendidos = rankingSubAtendidos;
-            this.huboCoincidencias = huboCoincidencias;
+        }
+
+        public boolean huboCoincidencias() {
+            return !coincidencias.isEmpty();
         }
     }
 }

@@ -26,8 +26,7 @@ public class Donacion {
     protected String descripcion;
     protected LocalDateTime fechaDonacion = LocalDateTime.now();
     protected UUID id = UUID.randomUUID();
-    protected UUID idEntidadAsignada; /** para saber que entindad fue asinada */
-    protected LocalDate fechaAsignacion; /** para calcular el ultimo trimestre necesito sabe cuando se asigno*/
+    protected LocalDate fechaAsignacion; /** fecha en que se asignó la entidad; usada por el algoritmo de sub-atendidos */
 
     public boolean esPerecible() {
         return !bienes.isEmpty() && bienes.getFirst() instanceof BienPerecible;

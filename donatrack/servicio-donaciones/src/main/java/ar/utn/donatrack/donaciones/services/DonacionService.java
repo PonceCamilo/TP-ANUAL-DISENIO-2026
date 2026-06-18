@@ -1,10 +1,12 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
+import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
@@ -13,10 +15,9 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteReposit
 import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
+import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.contacto.Telefono;
-import ar.utn.donatrack.donaciones.models.contacto.Whatsapp;
 import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
@@ -25,18 +26,10 @@ import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.validations.DonacionesValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
-import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.models.contacto.Email;
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -46,6 +39,11 @@ public class DonacionService implements DonacionServiceInterface {
   private final DonacionesRepositoryInterface repositorio;
   private final DonacionesValidator validador;
   private final DonacionMapper mapper;
+  private final AsignacionDonacionesService asignacionService;
+  private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
+  private final EntidadBeneficiariaMapper entidadMapper;
+  private final PersonaDonanteRepositoryInterface donanteRepositorio;
+  private final NotificacionClient notificacionClient;
 
   @Override
   public List<DonacionResponseDTO> obtenerDonaciones(EstadoDonacion estado, UUID idDonante, String subcategoria) {
@@ -67,22 +65,20 @@ public class DonacionService implements DonacionServiceInterface {
     return mapper.toDTOList(resultado);
   }
 
-  public DonacionResponseDTO obtenerPorId(UUID id) {
-    Donacion donacion = repositorio.obtenerPorId(id);
-    if (donacion == null) {
-      throw new DonacionNoEncontradaException(id);
-    }
-    return mapper.toDTO(donacion);
+  @Override
+  public List<DonacionResponseDTO> obtenerPorDonante(UUID idDonante) {
+    return mapper.toDTOList(repositorio.obtenerPorDonante(idDonante));
   }
 
+  @Override
+  public DonacionResponseDTO obtenerPorId(UUID id) {
+    return mapper.toDTO(buscarOFallar(id));
+  }
+
+  @Override
   public void cambiarEstado(UUID id, CambioEstadoRequestDTO dto) {
-    Donacion donacion = repositorio.obtenerPorId(id);
-    if (donacion == null) {
-      throw new DonacionNoEncontradaException(id);
-    }
-
+    Donacion donacion = buscarOFallar(id);
     validador.validarTransicion(donacion.getEstado(), dto.getEstado(), dto.getJustificacion());
-
     donacion.getHistorialEstados().add(CambioEstado.builder()
             .estado(dto.getEstado())
             .justificacion(dto.getJustificacion())
@@ -92,59 +88,37 @@ public class DonacionService implements DonacionServiceInterface {
 
   @Override
   public void modificarBien(UUID id, BienRequestDTO dto) {
-    Donacion donacion = repositorio.obtenerPorId(id);
-    if (donacion == null) {
-      throw new DonacionNoEncontradaException(id);
+    Donacion donacion = buscarOFallar(id);
+    if (!donacion.getBienes().isEmpty()) {
+      donacion.getBienes().set(0, mapper.toBien(dto));
     }
-    return donacion;
   }
 
-  private List<EntidadBeneficiariaResponseDTO> mapearEntidades(List<EntidadBeneficiaria> entidades) {
-    return entidades.stream().map(entidadMapper::toDTO).toList();
+  @Override
+  public CandidatosAsignacionResponseDTO obtenerCandidatos(UUID idDonacion) {
+    Donacion donacion = buscarOFallar(idDonacion);
+    AsignacionDonacionesService.ResultadoMatchmaking ranking = asignacionService.generarRanking(donacion);
+
+    return CandidatosAsignacionResponseDTO.builder()
+        .idDonacion(idDonacion)
+        .porCompatibilidad(mapearRanking(ranking.getRankingSemantico()))
+        .porSubatendidos(mapearRanking(ranking.getRankingSubAtendidos()))
+        .coincidencias(mapearRanking(ranking.getCoincidencias()))
+        .build();
   }
 
-  private boolean tieneNecesidadCompatible(EntidadBeneficiaria entidad, String subcategoria) {
-    if (entidad.getCampanias() == null) {
-      return false;
-    }
-    String objetivo = subcategoria.toLowerCase();
-    return entidad.getCampanias().stream()
-        .filter(c -> c.getNecesidades() != null)
-        .flatMap(c -> c.getNecesidades().stream())
-        .anyMatch(n -> contieneTexto(n.getNombre(), objetivo) || contieneTexto(n.getDescripcion(), objetivo));
-  }
+  @Override
+  public void asignar(UUID idDonacion, AsignacionRequestDTO dto) {
+    Donacion donacion = buscarOFallar(idDonacion);
 
-  private boolean contieneTexto(String texto, String objetivo) {
-    return texto != null && texto.toLowerCase().contains(objetivo);
-  }
-
-  private long contarAsignadas(EntidadBeneficiaria entidad) {
-    return repositorio.obtenerTodas().stream()
-        .filter(d -> entidad.getId().equals(d.getIdEntidadBeneficiaria()))
-        .count();
-  }
-
-  public void eliminar(UUID id) {
-    if (repositorio.obtenerPorId(id) == null) {
-      throw new DonacionNoEncontradaException(id);
-    }
-    repositorio.eliminar(id);
-  }
-
-  public void asignarEntidad(UUID idDonacion, UUID idEntidad) {
-    Donacion donacion = repositorio.obtenerPorId(idDonacion);
-    if (donacion == null) {
-      throw new DonacionNoEncontradaException(idDonacion);
-    }
-
-    EntidadBeneficiaria entidad = entidadesRepository.obtenerPorId(idEntidad);
+    EntidadBeneficiaria entidad = entidadesRepositorio.obtenerPorId(dto.getIdEntidadBeneficiaria());
     if (entidad == null) {
-      throw new EntidadBeneficiariaNoEncontradaException(idEntidad);
+      throw new EntidadBeneficiariaNoEncontradaException(dto.getIdEntidadBeneficiaria());
     }
 
     validador.validarTransicion(donacion.getEstado(), EstadoDonacion.ASIGNACION_REALIZADA, null);
 
-    donacion.setIdEntidadAsignada(idEntidad);
+    donacion.setIdEntidadBeneficiaria(entidad.getId());
     donacion.setFechaAsignacion(LocalDate.now());
     donacion.getHistorialEstados().add(CambioEstado.builder()
             .estado(EstadoDonacion.ASIGNACION_REALIZADA)
@@ -153,6 +127,32 @@ public class DonacionService implements DonacionServiceInterface {
     donacion.setEstado(EstadoDonacion.ASIGNACION_REALIZADA);
 
     notificarAsignacion(donacion, entidad);
+  }
+
+  @Override
+  public void eliminar(UUID id) {
+    buscarOFallar(id);
+    repositorio.eliminar(id);
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  /** Recupera la donación o lanza la excepción de dominio (mismo patrón que PersonaDonanteService). */
+  private Donacion buscarOFallar(UUID id) {
+    Donacion donacion = repositorio.obtenerPorId(id);
+    if (donacion == null) {
+      throw new DonacionNoEncontradaException(id);
+    }
+    return donacion;
+  }
+
+  /** Convierte un ranking de (idEntidad, puntaje) en los DTOs de las entidades correspondientes. */
+  private List<EntidadBeneficiariaResponseDTO> mapearRanking(List<ResultadoAsignacion> ranking) {
+    return ranking.stream()
+        .map(resultado -> entidadesRepositorio.obtenerPorId(resultado.getIdEntidad()))
+        .filter(Objects::nonNull)
+        .map(entidadMapper::toDTO)
+        .toList();
   }
 
   private void notificarAsignacion(Donacion donacion, EntidadBeneficiaria entidad) {
@@ -166,7 +166,7 @@ public class DonacionService implements DonacionServiceInterface {
       );
     }
 
-    PersonaDonante donante = donanteRepository.obtenerPersona(donacion.getIdDonante());
+    PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
     if (donante != null && donante.getEmail() != null) {
       notificacionClient.enviarNotificacion(
               donante.getEmail(),
@@ -178,6 +178,9 @@ public class DonacionService implements DonacionServiceInterface {
   }
 
   private String obtenerEmail(List<MedioDeContacto> contactos) {
+    if (contactos == null) {
+      return null;
+    }
     return contactos.stream()
             .filter(c -> c instanceof Email)
             .map(MedioDeContacto::getValor)
