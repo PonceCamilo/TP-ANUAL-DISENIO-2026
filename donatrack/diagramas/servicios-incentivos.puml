@@ -1,0 +1,127 @@
+@startuml servicios-incentivos
+'  Diagrama de clases - SERVICIOS / PATRONES - servicio-incentivos
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam class {
+  BackgroundColor #F3E5F5
+  BorderColor #4A148C
+  ArrowColor #37474F
+}
+skinparam interface {
+  BackgroundColor #EFEBE9
+  BorderColor #4E342E
+}
+hide circle
+title Servicios y Patrones - Servicio de Incentivos
+
+' ===================== INTERFACES =====================
+interface IncentivosService {
+  + obtenerMetricas(id)
+  + obtenerMisiones(id)
+  + obtenerInsignias(id)
+  + procesarDonacion(id, dest, medio, cant, cats)
+  + procesarDonacionExitosa(id, dest, medio)
+}
+interface DonanteServiceInterface {
+  + procesarAvance(id)
+  + completarMision(donante, mision)
+  + subirDeCategoria(donante)
+  + cambiarVisibilidadInsignia(...)
+}
+interface DonanteRepositoryInterface {
+  + findById(id) : Optional<Donante>
+  + save(donante) : Donante
+}
+interface DonacionesQueryPort {
+  + obtenerDonacionesDe(id)
+  + obtenerTodosLosDonantesIds()
+}
+interface MisionesQueryPort {
+  + contarMisionesCompletadasEnPeriodo(id, mes, anio)
+}
+interface RankingMensualRepositoryInterface {
+  + guardar / buscarPorPeriodo / obtenerHistorial
+}
+
+' ===================== IMPLEMENTACIONES =====================
+class IncentivosServiceImpl {
+  - repositorio
+  - notificacionClient
+  - n8nWebhookClient
+  + {static} @PostConstruct inicializarMisiones()
+  - obtenerOCrearPerfilConInit(id)
+  - verificarMisionActiva(...)
+}
+class DonanteService {
+  - donanteRepository
+}
+class AnaliticaDonanteService {
+  - donacionesQueryPort
+  + calcularMetricas(id) : MetricasDonante
+}
+
+' ===================== PORTS / ADAPTERS =====================
+class DonacionesQueryPortImpl {
+  - repositorio
+}
+class MisionesQueryPortImpl {
+  - repositorio
+}
+class DonanteRepositorioAdapter <<Adapter>> {
+  - repositorio
+}
+class IncentivosRepositorioEnMemoria <<in-memory>> {
+  - misiones : ConcurrentHashMap
+  - perfiles : ConcurrentHashMap
+  + guardarMision / listarMisionesPorCategoria
+  + obtenerOCrearPerfil(id)
+  + listarTodosLosDonanteIds()
+}
+class RankingMensualRepository <<in-memory>>
+
+' ===================== JOB / CLIENTES =====================
+class RankingMensualJob <<@Scheduled>> {
+  - donacionesQueryPort
+  - misionesQueryPort
+  - rankingRepository
+  + ejecutarRankingMensual()
+  .. cron: ultimo dia de mes ..
+}
+class NotificacionClient <<HttpClient>> {
+  baseUrl : :8084
+  + enviarNotificacion(...)
+}
+class N8nWebhookClient <<HttpClient>> {
+  webhookUrl : n8n :5678
+  + notificarInsigniaObtenida(...)
+}
+
+' ===================== RELACIONES =====================
+IncentivosServiceImpl ..|> IncentivosService
+IncentivosServiceImpl o-- IncentivosRepositorioEnMemoria
+IncentivosServiceImpl o-- NotificacionClient
+IncentivosServiceImpl o-- N8nWebhookClient
+
+DonanteService ..|> DonanteServiceInterface
+DonanteService o-- DonanteRepositoryInterface
+
+AnaliticaDonanteService o-- DonacionesQueryPort
+
+DonacionesQueryPortImpl ..|> DonacionesQueryPort
+MisionesQueryPortImpl ..|> MisionesQueryPort
+DonanteRepositorioAdapter ..|> DonanteRepositoryInterface
+
+DonacionesQueryPortImpl o-- IncentivosRepositorioEnMemoria
+MisionesQueryPortImpl o-- IncentivosRepositorioEnMemoria
+DonanteRepositorioAdapter o-- IncentivosRepositorioEnMemoria
+RankingMensualRepository ..|> RankingMensualRepositoryInterface
+
+RankingMensualJob o-- DonacionesQueryPort
+RankingMensualJob o-- MisionesQueryPort
+RankingMensualJob o-- RankingMensualRepositoryInterface
+
+NotificacionClient ..> "POST :8084" : notificaciones
+N8nWebhookClient ..> "POST :5678" : n8n webhook
+
+@enduml

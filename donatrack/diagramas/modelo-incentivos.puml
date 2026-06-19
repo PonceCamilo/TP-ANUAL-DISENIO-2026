@@ -1,0 +1,132 @@
+@startuml modelo-incentivos
+'  Diagrama de clases - MODELO DE DOMINIO - servicio-incentivos
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam class {
+  BackgroundColor #F3E5F5
+  BorderColor #4A148C
+  ArrowColor #37474F
+}
+skinparam enum {
+  BackgroundColor #F5F5F5
+  BorderColor #424242
+}
+hide circle
+title Modelo de Dominio - Servicio de Incentivos
+
+class Donante {
+  - id : UUID
+  - progresoMisionActual : int
+  - totalDonacionesHistoricas : int
+  - donacionesMesActual : int
+  - organizacionesAyudadas : int
+  - donacionesExitosas : int
+  - recordBienesUnicaDonacion : int
+  - mesesConsecutivosDonando : int
+  - posicionRanking : int
+  - categoriasHistorial : Set<String>
+  + registrarDonacion(int, List<String>)
+  + registrarOrganizacionAyudada()
+  + subirCategoria() : boolean
+  + addInsignia(InsigniaObtenida)
+  + getCategoriasDistintasDonadas() : int
+}
+
+' ===================== CATEGORIAS DE DONANTE =====================
+abstract class CategoriaDonante {
+  - nombre : String
+  + {abstract} siguienteCategoria() : CategoriaDonante
+  + primeraMision() : Mision
+  + siguienteMision(Mision) : Mision
+}
+class Colaborador {
+  + siguienteCategoria() : Sostenedor
+}
+class Sostenedor {
+  + siguienteCategoria() : Transformador
+}
+class Transformador {
+  + siguienteCategoria() : null
+}
+
+' ===================== MISIONES =====================
+abstract class Mision {
+  - id : UUID
+  - nombre : String
+  - descripcion : String
+  - orden : int
+  # objetivo : int
+  + {abstract} progresoActual(Donante) : int
+  + {abstract} estaCompletada(Donante) : boolean
+  + restante(Donante) : int
+}
+class DonacionesExitosas {
+  - cantidadDonacionesRequerida : int
+}
+class HabilDonador {
+  - cantidadBienesRequerida : int
+}
+class Completitud {
+  - categoriasRequeridas : int
+}
+class Racha {
+  - mesesRequeridos : int
+}
+
+' ===================== INSIGNIAS =====================
+class Insignia {
+  - id : UUID
+  - nombre : String
+  - imagen : String
+}
+class InsigniaObtenida {
+  - id : UUID
+  - visibilidad : boolean
+  - fechaObtencion : LocalDate
+}
+
+' ===================== RANKING / METRICAS =====================
+class RankingMensual {
+  - mes : int
+  - anio : int
+  - fechaCalculo : LocalDate
+  + top3() : List<PosicionRanking>
+}
+class PosicionRanking {
+  - donanteId : UUID
+  - puesto : int
+  - misionesCompletadas : int
+}
+class MetricasDonante {
+  - donanteId : UUID
+  - totalDonacionesHistoricas : int
+  - organizacionesAyudadas : int
+}
+class EvolucionPeriodo {
+  - mes : int
+  - anio : int
+  - cantidadDonaciones : int
+}
+
+' ===================== RELACIONES =====================
+Colaborador --|> CategoriaDonante
+Sostenedor --|> CategoriaDonante
+Transformador --|> CategoriaDonante
+CategoriaDonante o-- "*" Mision : misiones
+
+DonacionesExitosas --|> Mision
+HabilDonador --|> Mision
+Completitud --|> Mision
+Racha --|> Mision
+Mision o-- "1" Insignia
+
+Donante --> "1" CategoriaDonante : categoria
+Donante --> "1" Mision : misionActual
+Donante o-- "*" InsigniaObtenida : insigniasObtenidas
+InsigniaObtenida o-- "1" Insignia
+
+RankingMensual o-- "*" PosicionRanking : posiciones
+MetricasDonante o-- "*" EvolucionPeriodo
+
+@enduml

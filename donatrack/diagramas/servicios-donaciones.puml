@@ -1,0 +1,129 @@
+@startuml servicios-donaciones
+'  Diagrama de clases - SERVICIOS / PATRONES - servicio-donaciones
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam class {
+  BackgroundColor #E3F0FF
+  BorderColor #1565C0
+  ArrowColor #37474F
+}
+skinparam interface {
+  BackgroundColor #EFEBE9
+  BorderColor #4E342E
+}
+hide circle
+title Servicios y Patrones - Servicio de Donaciones
+
+' ===================== INTERFACES =====================
+interface AlgoritmoAsignacionInterface {
+  + evaluar(Donacion, List<EntidadBeneficiaria>) : List<ResultadoAsignacion>
+}
+interface SegmentadorDonacionesServiceInterface {
+  + segmentar(bienes, idDonante, descripcion) : List<Donacion>
+  + cargarDonaciones(List<Donacion>)
+}
+interface DonacionServiceInterface {
+  + obtenerDonaciones(estado, idDonante, subcat)
+  + obtenerPorId(id)
+  + cambiarEstado(id, dto)
+  + modificarBien(id, dto)
+  + asignar(id, dto)
+  + eliminar(id)
+  + obtenerCandidatos(id)
+}
+interface PersonaDonanteServiceInterface {
+  + registrar / actualizar / cambiarEstado
+}
+interface EntidadesBeneficiariasServiceInterface
+
+' ===================== TEMPLATE METHOD: ALGORITMOS =====================
+abstract class AlgoritmoAsignacionBase <<Template Method>> {
+  # TOP_N : int = 10
+  + {final} evaluar(Donacion, List<EB>) : List<ResultadoAsignacion>
+  # {abstract} calcularPuntaje(Donacion, EB) : double
+  # incluir(puntaje) : boolean  <<hook>>
+}
+class AlgoritmoCompatibilidadSemantica {
+  # calcularPuntaje(...) : double
+  # incluir(p) : p > 0
+}
+class AlgoritmoPrioridadSubAtendidos {
+  - donacionesRepository
+  # calcularPuntaje(...) : 1/(1+recibidas)
+}
+
+' ===================== ORQUESTADOR ASIGNACION =====================
+class AsignacionDonacionesService {
+  - algoritmoSemantico
+  - algoritmoSubAtendidos
+  - entidadesRepository
+  + generarRanking(Donacion) : ResultadoMatchmaking
+}
+class ResultadoMatchmaking {
+  - coincidencias
+  - rankingSemantico
+  - rankingSubAtendidos
+  + huboCoincidencias() : boolean
+}
+
+' ===================== SERVICIOS PRINCIPALES =====================
+class DonacionService {
+  - repositorio
+  - validador
+  - asignacionService
+  - notificacionClient
+  - incentivosClient
+}
+class SegmentadorDonacionesService {
+  - donacionesRepository
+  - donanteRepository
+  - incentivosClient
+}
+class PersonaDonanteService {
+  - donanteRepository
+  - notificacionClient
+}
+class InactividadDonantesService <<@Scheduled>> {
+  - donanteRepository
+  - notificacionClient
+  .. inactividad > 20 dias ..
+}
+
+' ===================== CLIENTES HTTP =====================
+class NotificacionClient <<RestClient>> {
+  baseUrl : :8084
+  + enviarNotificacion(dest, msg, medio, evento)
+}
+class IncentivosClient <<RestClient>> {
+  baseUrl : :8083
+  + notificarDonacionRegistrada(...)
+  + notificarDonacionExitosa(...)
+}
+
+' ===================== RELACIONES =====================
+AlgoritmoAsignacionBase ..|> AlgoritmoAsignacionInterface
+AlgoritmoCompatibilidadSemantica --|> AlgoritmoAsignacionBase
+AlgoritmoPrioridadSubAtendidos --|> AlgoritmoAsignacionBase
+
+AsignacionDonacionesService o-- AlgoritmoCompatibilidadSemantica
+AsignacionDonacionesService o-- AlgoritmoPrioridadSubAtendidos
+AsignacionDonacionesService ..> ResultadoMatchmaking : crea
+
+DonacionService ..|> DonacionServiceInterface
+DonacionService o-- AsignacionDonacionesService
+DonacionService o-- NotificacionClient
+DonacionService o-- IncentivosClient
+
+SegmentadorDonacionesService ..|> SegmentadorDonacionesServiceInterface
+SegmentadorDonacionesService o-- IncentivosClient
+
+PersonaDonanteService ..|> PersonaDonanteServiceInterface
+PersonaDonanteService ..> NotificacionClient
+
+InactividadDonantesService ..> NotificacionClient
+
+NotificacionClient ..> "POST :8084" : notificaciones
+IncentivosClient ..> "POST :8083" : incentivos
+
+@enduml
