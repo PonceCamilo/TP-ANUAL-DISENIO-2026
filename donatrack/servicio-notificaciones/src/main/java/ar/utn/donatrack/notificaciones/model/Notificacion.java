@@ -23,4 +23,15 @@ public class Notificacion {
     private EstadoNotificacion estado;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaEnvio;
+
+    /** Marca la notificación como enviada exitosamente y registra el momento del envío. */
+    public void marcarEnviada() {
+        this.estado = EstadoNotificacion.ENVIADA;
+        this.fechaEnvio = LocalDateTime.now();
+    }
+
+    /** Marca la notificación como fallida (no se pudo entregar por el medio elegido). */
+    public void marcarFallida() {
+        this.estado = EstadoNotificacion.FALLIDA;
+    }
 }

@@ -44,4 +44,8 @@ public class IncentivosRepositorioEnMemoria {
     public Optional<Donante> buscarPerfil(UUID donanteId) {
         return Optional.ofNullable(perfiles.get(donanteId));
     }
+
+    public List<UUID> listarTodosLosDonanteIds() {
+        return new ArrayList<>(perfiles.keySet());
+    }
 }

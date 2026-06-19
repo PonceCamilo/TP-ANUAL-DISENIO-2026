@@ -1,0 +1,242 @@
+@startuml donaciones-modelo
+title Servicio de Donaciones - Modelo de Dominio
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+' ============================ DONANTES ============================
+package donante {
+  abstract class PersonaDonante {
+    - id: UUID
+    - tipoDocumento: String
+    - numeroDocumento: String
+    - email: String
+    - estado: EstadoDonante
+    - ultimaInteraccion: LocalDateTime
+  }
+  class PersonaHumana {
+    - nombre: String
+    - apellido: String
+    - fechaNacimiento: LocalDate
+    - genero: Genero
+  }
+  class PersonaJuridica {
+    - razonSocial: String
+    - tipo: TipoPersonaJuridica
+    - rubro: String
+  }
+  class Representante {
+    - nombre: String
+    - apellido: String
+    - email: String
+  }
+  enum EstadoDonante {
+    ACTIVO
+    INACTIVO
+    BLOQUEADO
+  }
+  enum Genero {
+    MASCULINO
+    FEMENINO
+    NO_BINARIO
+    OTRO
+    PREFIERO_NO_DECIR
+  }
+  enum TipoPersonaJuridica {
+    GUBERNAMENTAL
+    ONG
+    EMPRESA
+    INSTITUCION
+  }
+}
+
+' ============================ CONTACTO ============================
+package contacto {
+  abstract class MedioDeContacto {
+    # valor: String
+  }
+  class Email
+  class Telefono
+  class Whatsapp
+}
+
+' ============================ DONACION ============================
+package donacion {
+  class Donacion {
+    - id: UUID
+    - idDonante: UUID
+    - idEntidadBeneficiaria: UUID
+    - estado: EstadoDonacion
+    - descripcion: String
+    - fechaDonacion: LocalDateTime
+    - fechaAsignacion: LocalDate
+    + esPerecible(): boolean
+    + requiereEstado(): boolean
+  }
+  class CambioEstado {
+    - estado: EstadoDonacion
+    - justificacion: String
+    - fechaHora: LocalDateTime
+  }
+  enum EstadoDonacion {
+    EN_DEPOSITO
+    ASIGNACION_REALIZADA
+    LISTA_PARA_ENTREGAR
+    EN_TRASLADO
+    ENTREGADA
+    ENTREGA_FALLIDA
+    VENCIDA
+  }
+  abstract class Bien {
+    # subcategoria: Subcategoria
+    # descripcion: String
+    # foto: String
+    # cantidad: int
+    # unidad: String
+  }
+  class BienGenerico
+  class BienConEstado {
+    - esNuevo: boolean
+  }
+  class BienPerecible {
+    - fechaVencimiento: LocalDate
+  }
+}
+
+' ============================ CATEGORIA ============================
+package categoria {
+  class Categoria {
+    - id: UUID
+    - nombre: String
+    - tipoBien: TipoBien
+  }
+  class Subcategoria {
+    - tipo: String
+    - tipoNormalizado: String
+  }
+  enum TipoBien {
+    PERECIBLE
+    CON_ESTADO
+    GENERICO
+  }
+}
+
+' ============================ ENTIDAD ============================
+package entidad {
+  class EntidadBeneficiaria {
+    - id: UUID
+    - razonSocial: String
+    + agregarCampania(c: Campania): void
+    + agregarNecesidadACampania(c: Campania, n: Necesidad): void
+  }
+  class Direccion {
+    - calle: String
+    - numero: int
+    - codigoPostal: String
+  }
+  class Localidad {
+    - nombre: String
+  }
+  class Provincia {
+    - nombre: String
+  }
+  class Campania {
+    - idCampania: UUID
+    - idEntidad: UUID
+    - descripcionGeneral: String
+    - fechaInicio: LocalDate
+    - fechaFin: LocalDate
+  }
+  abstract class Necesidad {
+    - id: UUID
+    - nombre: String
+    - descripcion: String
+    - cantidadObjetivo: int
+    - cantidadRecibida: int
+    - fechaRegistro: LocalDate
+    + recibirDonacion(cantidad: int): void
+    + {abstract} estaSatisfecha(): boolean
+  }
+  class NecesidadExtraordinaria {
+    + estaSatisfecha(): boolean
+  }
+  class NecesidadRecurrente {
+    - periodo: Periodicidad
+    - fechaInicioPeriodo: LocalDate
+    + periodoVencido(ref: LocalDate): boolean
+    + obtenerOGenerarPeriodoActual(hoy: LocalDate): void
+    + estaSatisfecha(): boolean
+  }
+  enum Periodicidad {
+    SEMANAL
+    MENSUAL
+    CUATRIMESTRAL
+    ANUAL
+    --
+    + getDias(): int
+  }
+}
+
+' ============================ ASIGNACION ============================
+package asignacion {
+  class ResultadoAsignacion {
+    - idEntidad: UUID
+    - puntaje: double
+  }
+}
+
+' ===================== Relaciones: donante =====================
+PersonaDonante <|-- PersonaHumana
+PersonaDonante <|-- PersonaJuridica
+PersonaDonante --> EstadoDonante
+PersonaDonante *-- Direccion
+PersonaDonante "1" *-- "0..*" MedioDeContacto : contactos
+PersonaDonante "1" --> "1" MedioDeContacto : predeterminado
+PersonaHumana --> Genero
+PersonaJuridica --> TipoPersonaJuridica
+PersonaJuridica "1" *-- "0..*" Representante
+Representante "1" o-- "0..*" MedioDeContacto
+
+MedioDeContacto <|-- Email
+MedioDeContacto <|-- Telefono
+MedioDeContacto <|-- Whatsapp
+
+' ===================== Relaciones: donacion =====================
+Donacion "1" *-- "1..*" Bien : bienes
+Donacion "1" *-- "0..*" CambioEstado : historial
+Donacion --> EstadoDonacion
+Donacion --> Subcategoria
+CambioEstado --> EstadoDonacion
+Bien <|-- BienGenerico
+Bien <|-- BienConEstado
+Bien <|-- BienPerecible
+Bien --> Subcategoria
+
+' ===================== Relaciones: categoria =====================
+Categoria "1" *-- "0..*" Subcategoria
+Categoria --> TipoBien
+
+' ===================== Relaciones: entidad =====================
+EntidadBeneficiaria *-- Direccion
+EntidadBeneficiaria "1" o-- "0..*" MedioDeContacto
+EntidadBeneficiaria "1" *-- "0..*" Representante
+EntidadBeneficiaria "1" *-- "0..*" Campania
+Campania "1" *-- "0..*" Necesidad
+Necesidad <|-- NecesidadExtraordinaria
+Necesidad <|-- NecesidadRecurrente
+NecesidadRecurrente --> Periodicidad
+Direccion *-- Localidad
+Localidad *-- Provincia
+
+' ========= Asociaciones por id (no hay referencia directa de objeto) =========
+Donacion ..> PersonaDonante : idDonante
+Donacion ..> EntidadBeneficiaria : idEntidadBeneficiaria
+ResultadoAsignacion ..> EntidadBeneficiaria : idEntidad
+
+note as N1
+  Las flechas punteadas (..>) representan referencias por UUID,
+  no asociaciones por objeto: Donacion guarda idDonante e
+  idEntidadBeneficiaria, no las instancias.
+end note
+
+@enduml

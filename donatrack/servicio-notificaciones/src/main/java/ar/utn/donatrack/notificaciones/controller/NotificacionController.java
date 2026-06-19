@@ -1,8 +1,8 @@
 package ar.utn.donatrack.notificaciones.controller;
 
 import ar.utn.donatrack.notificaciones.dto.SolicitudNotificacionDto;
+import ar.utn.donatrack.notificaciones.dto.response.NotificacionResponse;
 import ar.utn.donatrack.notificaciones.interfaces.services.NotificacionServiceInterface;
-import ar.utn.donatrack.notificaciones.model.Notificacion;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -37,12 +37,15 @@ public class NotificacionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Notificacion>> obtenerTodas() {
-        return ResponseEntity.ok(notificacionService.obtenerTodas());
+    public ResponseEntity<List<NotificacionResponse>> obtenerTodas() {
+        List<NotificacionResponse> respuesta = notificacionService.obtenerTodas().stream()
+                .map(NotificacionResponse::desde)
+                .toList();
+        return ResponseEntity.ok(respuesta);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Notificacion> obtenerPorId(@PathVariable UUID id) {
-        return ResponseEntity.ok(notificacionService.obtenerPorId(id));
+    public ResponseEntity<NotificacionResponse> obtenerPorId(@PathVariable UUID id) {
+        return ResponseEntity.ok(NotificacionResponse.desde(notificacionService.obtenerPorId(id)));
     }
 }

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
@@ -44,6 +45,7 @@ public class DonacionService implements DonacionServiceInterface {
   private final EntidadBeneficiariaMapper entidadMapper;
   private final PersonaDonanteRepositoryInterface donanteRepositorio;
   private final NotificacionClient notificacionClient;
+  private final IncentivosClient incentivosClient;
 
   public List<DonacionResponseDTO> obtenerDonaciones(EstadoDonacion estado, UUID idDonante, String subcategoria) {
     List<Donacion> resultado = repositorio.obtenerTodas();
@@ -76,6 +78,10 @@ public class DonacionService implements DonacionServiceInterface {
             .justificacion(dto.getJustificacion())
             .build());
     donacion.setEstado(dto.getEstado());
+
+    if (dto.getEstado() == EstadoDonacion.ENTREGADA) {
+      notificarDonacionExitosa(donacion);
+    }
   }
 
   public void modificarBien(UUID id, BienRequestDTO dto) {
@@ -141,6 +147,14 @@ public class DonacionService implements DonacionServiceInterface {
         .filter(Objects::nonNull)
         .map(entidadMapper::toDTO)
         .toList();
+  }
+
+  /** Avisa a incentivos que la donación llegó a destino (actualiza donaciones exitosas / organizaciones ayudadas). */
+  private void notificarDonacionExitosa(Donacion donacion) {
+    PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
+    if (donante != null && donante.getEmail() != null) {
+      incentivosClient.notificarDonacionExitosa(donacion.getIdDonante(), donante.getEmail(), "EMAIL");
+    }
   }
 
   private void notificarAsignacion(Donacion donacion, EntidadBeneficiaria entidad) {

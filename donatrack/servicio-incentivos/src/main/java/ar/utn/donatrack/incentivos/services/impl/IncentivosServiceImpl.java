@@ -86,13 +86,14 @@ public class IncentivosServiceImpl implements IncentivosService {
             perfil.addInsignia(nueva);
 
             notificacionClient.enviarNotificacion(destinatario,
-                "¡Misión cumplida!: " + activa.getNombre(), medio);
+                "¡Misión cumplida!: " + activa.getNombre(), medio, "MISION_CUMPLIDA");
 
             n8nWebhookClient.notificarInsigniaObtenida(perfil.getId(), nueva, destinatario);
-                
+
             if (perfil.subirCategoria()) {
-                notificacionClient.enviarNotificacion(destinatario, 
-                    "¡Subiste de categoría! Ahora sos " + perfil.getCategoria().getClass().getSimpleName(), medio);
+                notificacionClient.enviarNotificacion(destinatario,
+                    "¡Subiste de categoría! Ahora sos " + perfil.getCategoria().getClass().getSimpleName(),
+                    medio, "CAMBIO_CATEGORIA");
             }
             repositorio.guardarPerfil(perfil);
         }

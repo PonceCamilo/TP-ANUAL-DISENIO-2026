@@ -1,7 +1,9 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
@@ -11,6 +13,7 @@ import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
+import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +21,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -34,6 +38,8 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
 
   private final DonacionesRepositoryInterface donacionesRepository;
   private final DonacionMapper mapper;
+  private final PersonaDonanteRepositoryInterface donanteRepository;
+  private final IncentivosClient incentivosClient;
 
   public List<UUID> segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante, String descripcion) {
     List<Bien> bienes = bienesDTO.stream().map(mapper::toBien).toList();
@@ -115,10 +121,33 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
 
     cargarDonaciones(resultado);
 
+    notificarIncentivos(idDonante, bienes);
+
     return resultado.stream().map(Donacion::getId).toList();
   }
 
   public void cargarDonaciones(List<Donacion> donaciones) {
     donacionesRepository.cargarDonaciones(donaciones);
+  }
+
+  /**
+   * Avisa a incentivos que el donante registró una donación (un único evento por
+   * registración, aunque la segmentación haya derivado en varias Donaciones).
+   * Se usa el email del donante como destinatario; si incentivos está caído, el
+   * cliente loguea el error sin frenar la registración.
+   */
+  private void notificarIncentivos(UUID idDonante, List<Bien> bienes) {
+    PersonaDonante donante = donanteRepository.obtenerPersona(idDonante);
+    if (donante == null || donante.getEmail() == null) {
+      return;
+    }
+    List<String> categorias = bienes.stream()
+        .map(Bien::getSubcategoria)
+        .filter(Objects::nonNull)
+        .map(Subcategoria::getTipo)
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
+    incentivosClient.notificarDonacionRegistrada(idDonante, donante.getEmail(), "EMAIL", bienes.size(), categorias);
   }
 }

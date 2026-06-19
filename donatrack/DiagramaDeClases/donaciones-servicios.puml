@@ -1,0 +1,191 @@
+@startuml donaciones-servicios
+title Servicio de Donaciones - Capa de Servicios / Lógica
+
+skinparam classAttributeIconSize 0
+hide empty members
+
+' ============================ SERVICES ============================
+package services {
+  class DonacionService {
+    + obtenerDonaciones(estado, idDonante, subcategoria): List<DonacionResponseDTO>
+    + obtenerPorId(id): DonacionResponseDTO
+    + cambiarEstado(id, dto): void
+    + modificarBien(id, dto): void
+    + obtenerCandidatos(idDonacion): CandidatosAsignacionResponseDTO
+    + asignar(idDonacion, dto): void
+    + eliminar(id): void
+  }
+  class PersonaDonanteService {
+    + registrar(dto): UUID
+    + obtenerDonante(id): PersonaDonanteResponseDTO
+    + obtenerDonantes(estado): List<PersonaDonanteResponseDTO>
+    + cambiarEstado(id, dto): void
+    + modificarContacto(id, dto): void
+    + modificarRepresentante(id, dto): void
+    + actualizar(id, dto): PersonaDonanteResponseDTO
+    + eliminar(id): void
+  }
+  class EntidadesBeneficiariasService {
+    + guardar(dto): UUID
+    + obtenerTodas(): List<EntidadBeneficiariaResponseDTO>
+    + obtenerPorId(id): EntidadBeneficiariaResponseDTO
+    + actualizar(id, dto): void
+    + eliminarEntidad(id): void
+    + agregarCampaniaAEntidad(idEntidad, dto): UUID
+    + agregarNecesidadACampania(entidadId, campaniaId, dto): UUID
+  }
+  class SegmentadorDonacionesService {
+    + segmentar(bienes, idDonante, descripcion): List<UUID>
+    + cargarDonaciones(donaciones): void
+  }
+  class AsignacionDonacionesService {
+    + generarRanking(donacion): ResultadoMatchmaking
+  }
+  class InactividadDonantesService {
+    + notificarDonantesInactivos(): void
+  }
+  class CsvImportService {
+    + importar(csvStream): ImportReport
+  }
+}
+
+' ============================ STRATEGY (asignación) ============================
+package strategy {
+  interface AlgoritmoAsignacionInterface {
+    + evaluar(donacion, entidades): List<ResultadoAsignacion>
+  }
+  abstract class AlgoritmoAsignacionBase {
+    # {static} TOP_N: int
+    + evaluar(donacion, entidades): List<ResultadoAsignacion>
+    # {abstract} calcularPuntaje(donacion, entidad): double
+    # incluir(puntaje): boolean
+  }
+  class AlgoritmoCompatibilidadSemantica {
+    # calcularPuntaje(donacion, entidad): double
+    # incluir(puntaje): boolean
+  }
+  class AlgoritmoPrioridadSubAtendidos {
+    # calcularPuntaje(donacion, entidad): double
+  }
+}
+
+' ============================ VALIDATIONS ============================
+package validations {
+  class DonacionesValidator {
+    + validarTransicion(actual, nuevo, justif): void
+  }
+  class PersonasValidator {
+    + validarEmail(email): void
+    + validarExistenciaPersona(id): void
+    + validarEsPersonaJuridica(id): void
+    + validarMedioContacto(medio): void
+    + validarCambioEstado(actual, nuevo, justif): void
+  }
+  class EntidadesBeneficiariasValidator {
+    + validarExistenciaEntidad(id): void
+    + validarYObtenerCampania(entidad, campaniaId): Campania
+    + validarFechasCampania(inicio, fin): void
+  }
+}
+
+' ============================ MAPPERS ============================
+package mappers {
+  class DonacionMapper
+  class PersonaDonanteMapper
+  class EntidadBeneficiariaMapper
+}
+
+' ============================ REPOSITORIES (in-memory) ============================
+package repositories {
+  class DonacionesRepository
+  class PersonaDonanteRepository
+  class EntidadesBeneficiariasRepository
+}
+
+' ============================ IMPORTACION CSV ============================
+package importacion {
+  class DonanteCsvRowParser
+  class DonanteFactory
+}
+
+' ============================ CLIENTE EXTERNO ============================
+package clientes {
+  class NotificacionClient {
+    + enviarNotificacion(destinatario, mensaje, medio, evento): void
+  }
+}
+
+' ===================== Strategy (herencia) =====================
+AlgoritmoAsignacionInterface <|.. AlgoritmoAsignacionBase
+AlgoritmoAsignacionBase <|-- AlgoritmoCompatibilidadSemantica
+AlgoritmoAsignacionBase <|-- AlgoritmoPrioridadSubAtendidos
+
+' ===================== DonacionService =====================
+DonacionService --> DonacionesRepository
+DonacionService --> DonacionesValidator
+DonacionService --> DonacionMapper
+DonacionService --> AsignacionDonacionesService
+DonacionService --> EntidadesBeneficiariasRepository
+DonacionService --> EntidadBeneficiariaMapper
+DonacionService --> PersonaDonanteRepository
+DonacionService --> NotificacionClient
+
+' ===================== AsignacionDonacionesService =====================
+AsignacionDonacionesService --> AlgoritmoCompatibilidadSemantica
+AsignacionDonacionesService --> AlgoritmoPrioridadSubAtendidos
+AsignacionDonacionesService --> EntidadesBeneficiariasRepository
+AlgoritmoPrioridadSubAtendidos --> DonacionesRepository
+
+' ===================== PersonaDonanteService =====================
+PersonaDonanteService --> PersonaDonanteRepository
+PersonaDonanteService --> PersonasValidator
+PersonaDonanteService --> PersonaDonanteMapper
+
+' ===================== EntidadesBeneficiariasService =====================
+EntidadesBeneficiariasService --> EntidadesBeneficiariasRepository
+EntidadesBeneficiariasService --> EntidadesBeneficiariasValidator
+EntidadesBeneficiariasService --> EntidadBeneficiariaMapper
+EntidadesBeneficiariasService --> PersonaDonanteMapper
+
+' ===================== Segmentador =====================
+SegmentadorDonacionesService --> DonacionesRepository
+SegmentadorDonacionesService --> DonacionMapper
+
+' ===================== CSV Import =====================
+CsvImportService --> PersonaDonanteRepository
+CsvImportService --> DonanteCsvRowParser
+CsvImportService --> DonanteFactory
+
+' ===================== Inactividad (scheduled) =====================
+InactividadDonantesService --> PersonaDonanteRepository
+InactividadDonantesService --> NotificacionClient
+
+' ===================== Mapper interno =====================
+EntidadBeneficiariaMapper --> PersonaDonanteMapper
+
+note top of AlgoritmoAsignacionBase
+  Template Method: evaluar() es final y fija el
+  esqueleto (puntuar -> filtrar -> ordenar -> top N).
+  Cada algoritmo solo implementa calcularPuntaje().
+end note
+
+note right of NotificacionClient
+  RestClient HTTP --> servicio-notificaciones (:8084)
+  POST /notificaciones
+  Eventos: ASIGNACION_DONACION_*, INACTIVIDAD_DONANTE
+end note
+
+note as DIP
+  Los services dependen de las INTERFACES de repositorio
+  (DonacionesRepositoryInterface, etc.), no de las clases
+  concretas. Se muestran las implementaciones para no
+  duplicar cajas (Inversion de Dependencias).
+end note
+
+note as N2
+  Controllers (REST) y DTOs no se incluyen:
+  los controllers solo delegan en estos services
+  y los DTOs son objetos de transporte sin logica.
+end note
+
+@enduml
