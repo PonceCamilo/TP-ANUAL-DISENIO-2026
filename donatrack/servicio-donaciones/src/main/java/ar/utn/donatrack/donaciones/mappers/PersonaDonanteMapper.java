@@ -38,6 +38,7 @@ import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class PersonaDonanteMapper {
@@ -139,7 +140,7 @@ public class PersonaDonanteMapper {
 
   public List<MedioDeContactoResponseDTO> toContactosDTO(List<MedioDeContacto> contactos) {
     if (contactos == null) return new ArrayList<>();
-    return contactos.stream().map(this::toContactoDTO).toList();
+    return contactos.stream().map(this::toContactoDTO).collect(Collectors.toCollection(ArrayList::new));
   }
 
   // ── DIRECCIÓN ─────────────────────────────────────────────────────────────
@@ -198,7 +199,7 @@ public class PersonaDonanteMapper {
 
   public List<Representante> toRepresentantes(List<RepresentanteRequestDTO> dtos) {
     if (dtos == null) return new ArrayList<>();
-    return dtos.stream().map(this::toRepresentante).toList();
+    return dtos.stream().map(this::toRepresentante).collect(Collectors.toCollection(ArrayList::new));
   }
 
   public List<RepresentanteResponseDTO> toRepresentantesDTO(List<Representante> representantes) {
@@ -210,6 +211,6 @@ public class PersonaDonanteMapper {
             .email(r.getEmail())
             .contactos(toContactosDTO(r.getContactos()))
             .build())
-        .toList();
+        .collect(Collectors.toCollection(ArrayList::new));
   }
 }

@@ -41,7 +41,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
   private final PersonaDonanteRepositoryInterface donanteRepository;
   private final IncentivosClient incentivosClient;
 
-  public List<UUID> segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante, String descripcion) {
+  public List<Donacion> segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante, String descripcion) {
     List<Bien> bienes = bienesDTO.stream().map(mapper::toBien).toList();
     List<Donacion> resultado = new ArrayList<>();
 
@@ -123,7 +123,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
 
     notificarIncentivos(idDonante, bienes);
 
-    return resultado.stream().map(Donacion::getId).toList();
+    return resultado;
   }
 
   public void cargarDonaciones(List<Donacion> donaciones) {

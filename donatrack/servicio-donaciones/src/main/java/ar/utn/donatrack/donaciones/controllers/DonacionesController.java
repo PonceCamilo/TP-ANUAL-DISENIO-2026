@@ -8,6 +8,8 @@ import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
+import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
+import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.validations.PersonasValidator;
 import jakarta.validation.Valid;
@@ -37,6 +39,7 @@ public class DonacionesController {
   private final DonacionServiceInterface donacionService;
   private final SegmentadorDonacionesServiceInterface segmentadorDonacionesService;
   private final PersonasValidator personasValidator;
+  private final DonacionMapper mapper;
 
   @GetMapping
   public ResponseEntity<List<DonacionResponseDTO>> obtenerDonaciones(
@@ -55,13 +58,13 @@ public class DonacionesController {
   }
 
   @PostMapping
-  public ResponseEntity<List<UUID>> registrar(
+  public ResponseEntity<List<DonacionResponseDTO>> registrar(
       @RequestBody @Valid DonacionRequestDTO dto
   ) {
     personasValidator.validarExistenciaPersona(dto.getIdDonante());
-    List<UUID> idsCreadas = segmentadorDonacionesService.segmentar(
+    List<Donacion> donacionesCreadas = segmentadorDonacionesService.segmentar(
         dto.getBienes(), dto.getIdDonante(), dto.getDescripcion());
-    return ResponseEntity.status(HttpStatus.CREATED).body(idsCreadas);
+    return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toDTOList(donacionesCreadas));
   }
 
   @PatchMapping("/{id}/estado")

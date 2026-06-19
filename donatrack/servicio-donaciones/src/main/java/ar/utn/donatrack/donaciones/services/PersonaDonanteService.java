@@ -20,8 +20,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -98,7 +100,9 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
       persona.setDireccion(mapper.toDireccion(dto.getDireccion()));
     }
     if (dto.getContactos() != null) {
-      persona.setContactos(dto.getContactos().stream().map(mapper::toContacto).toList());
+      persona.setContactos(dto.getContactos().stream()
+          .map(mapper::toContacto)
+          .collect(Collectors.toCollection(ArrayList::new)));
     }
     persona.setUltimaInteraccion(LocalDateTime.now());
 
