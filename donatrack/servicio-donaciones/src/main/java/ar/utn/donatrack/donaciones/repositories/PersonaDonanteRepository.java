@@ -1,86 +1,99 @@
 package ar.utn.donatrack.donaciones.repositories;
 
-import ar.utn.donatrack.donaciones.excepcion.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
+import ar.utn.donatrack.donaciones.models.donante.Representante;
 import lombok.Getter;
-import lombok.Setter;
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// PATRÓN: SINGLETON
-// ───────────────────────────────────────────────────────────────────────────────
-// Por qué: el almacenamiento en memoria ES el estado de la aplicación mientras
-// no hay base de datos real. Si se crearan dos instancias de este repositorio,
-// cada una tendría su propio Map y los datos quedarían partidos: un request
-// guardaría en una instancia y otro no los encontraría.
-//
-// Spring ya garantiza scope singleton con @Repository, pero lo hacemos explícito
-// documentando el patrón para que quede claro en el diagrama de clases y en la
-// justificación de diseño de la entrega.
-//
-// Beneficio: una única fuente de verdad en memoria durante toda la vida del proceso.
-// ═══════════════════════════════════════════════════════════════════════════════
-
-
-@Repository  // ← SINGLETON: Spring instancia esta clase una sola vez en todo el contexto
+@Repository
 @Getter
-@Setter
 public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterface {
 
-    // el Map es el estado compartido de toda la aplicación en Entrega 1
-    private Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>();
+    private final Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>();
+    private final Map<String, UUID> indicePorEmail = new ConcurrentHashMap<>();
 
     public void guardar(PersonaDonante personaDonante) {
+        if (personaDonante.getId() == null) {
+            personaDonante.setId(UUID.randomUUID());
+        }
         almacenamiento.put(personaDonante.getId(), personaDonante);
-    }
-    
-    public PersonaDonante obtenerPorId(UUID id) {
-        return almacenamiento.get(id);
+        indicePorEmail.put(personaDonante.getEmail().toLowerCase(), personaDonante.getId());
     }
 
-    public PersonaDonante obtenerPorMail(String email) {
-        return almacenamiento.values().stream()
-            .filter(p -> p.getEmail().equalsIgnoreCase(email))
-            .findFirst()
-            .orElse(null);
+    public PersonaDonante obtenerPersona(UUID id) {
+        return almacenamiento.get(id);
     }
 
     public List<PersonaDonante> obtenerTodosDonantes() {
         return almacenamiento.values().stream().toList();
     }
 
-    public List<PersonaDonante> obtenerTodosActivos() {
+    public void cambiarEstado(UUID id, EstadoDonante nuevoEstado) {
+        PersonaDonante persona = obtenerPersona(id);
+        if (persona != null) {
+            persona.setEstado(nuevoEstado);
+        }
+    }
+
+    public List<PersonaDonante> obtenerInactivosDesde(LocalDateTime fechaLimite) {
         return almacenamiento.values().stream()
-            .filter(p -> p.getEstado() == EstadoDonante.ACTIVO)
-            .toList();
+                .filter(p -> p.getUltimaInteraccion() == null
+                        || p.getUltimaInteraccion().isBefore(fechaLimite))
+                .toList();
     }
 
-    public void darDeBaja(UUID id) {
-        PersonaDonante persona = this.obtenerPorId(id);
-
-        if (persona == null) throw new PersonaDonanteNoEncontradaException(id);
-
-        // (STATE): la transición se valida comparando estados
-        if (persona.getEstado() == EstadoDonante.INACTIVO) {                // ← transición de estado
-            throw new IllegalStateException("La persona donante ya se encuentra dada de baja.");
+    public void modificarMedioContacto(UUID id, MedioDeContacto medio) {
+        PersonaDonante persona = obtenerPersona(id);
+        if (persona != null) {
+            Class<?> tipoNuevo = medio.getClass();
+            persona.getContactos().removeIf(mc -> mc.getClass().equals(tipoNuevo));
+            persona.getContactos().add(medio);
         }
-        persona.setEstado(EstadoDonante.INACTIVO);                       // ← cambio de estado
     }
 
-    public void reactivar(UUID id) {
-        PersonaDonante persona = this.obtenerPorId(id);
-
-        if (persona == null) throw new PersonaDonanteNoEncontradaException(id);
-
-        // STATE: transición inversa explícita
-        if (persona.getEstado() == EstadoDonante.ACTIVO) {                // ← transición de estado
-            throw new IllegalStateException("La persona donante ya se encuentra activa.");
+    public void modificarRepresentante(UUID idPersonaJuridica, Representante representante) {
+        PersonaJuridica persona = (PersonaJuridica) obtenerPersona(idPersonaJuridica);
+        if (persona != null) {
+            persona.getRepresentantes()
+                    .removeIf(rep -> rep.getEmail() != null
+                            && rep.getEmail().equalsIgnoreCase(representante.getEmail()));
+            persona.getRepresentantes().add(representante);
         }
-        persona.setEstado(EstadoDonante.ACTIVO);                         // ← cambio de estado
+    }
+
+    public boolean existePorId(UUID id) {
+        return almacenamiento.containsKey(id);
+    }
+
+    public boolean existePorEmail(String email) {
+        return indicePorEmail.containsKey(email.toLowerCase());
+    }
+
+    public PersonaDonante obtenerPorEmail(String email) {
+        UUID id = indicePorEmail.get(email.toLowerCase());
+        return id != null ? almacenamiento.get(id) : null;
+    }
+
+    public List<PersonaDonante> obtenerPorEstado(EstadoDonante estado) {
+        return almacenamiento.values().stream()
+                .filter(p -> p.getEstado() == estado)
+                .toList();
+    }
+
+    public void eliminar(UUID id) {
+        PersonaDonante persona = almacenamiento.remove(id);
+        if (persona != null && persona.getEmail() != null) {
+            indicePorEmail.remove(persona.getEmail().toLowerCase());
+        }
     }
 }

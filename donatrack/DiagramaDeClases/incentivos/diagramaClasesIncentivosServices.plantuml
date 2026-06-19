@@ -1,0 +1,42 @@
+@startuml diagramaClasesIncentivosServices
+
+interface IncentivosService {
+    + obtenerMetricas(donanteId: UUID): Donante
+    + obtenerMisiones(donanteId: UUID): List<Mision>
+    + obtenerInsignias(donanteId: UUID): List<InsigniaObtenida>
+    + procesarDonacion(donanteId: UUID, destinatario: String, medio: String, cantidadBienes: int, categoriasDonadas: List<String>): void
+    + procesarDonacionExitosa(donanteId: UUID, destinatario: String, medio: String): void
+}
+
+class IncentivosServiceImpl implements IncentivosService {
+    - log: Logger
+    - repositorio: IncentivosRepositorioEnMemoria
+    - notificacionClient: NotificacionClient
+    - n8nWebhookClient: N8nWebhookClient
+    + inicializarMisiones(): void
+    + obtenerMetricas(donanteId: UUID): Donante
+    + obtenerMisiones(donanteId: UUID): List<Mision>
+    + obtenerInsignias(donanteId: UUID): List<InsigniaObtenida>
+    + procesarDonacion(donanteId: UUID, destinatario: String, medio: String, cantidadBienes: int, categoriasDonadas: List<String>): void
+    + procesarDonacionExitosa(donanteId: UUID, destinatario: String, medio: String): void
+    - verificarMisionActiva(perfil: Donante, destinatario: String, medio: String): void
+}
+
+class AnaliticaDonanteService {
+    - donacionesQueryPort: DonacionesQueryPort
+    + calcularMetricas(donanteId: UUID): MetricasDonante
+}
+
+
+class DonanteService {
+    - repositoryInterface: DonanteRepositoryInterface
+    + procesarAvance(idDonante: UUID): void
+    + completarMision(donante: Donante, mision: Mision): void
+    + subirDeCategoria(donante: Donante): void
+    + cambiarVisibilidadInsignia(idDonante: UUID, idInsignia: UUID, visible: boolean): void
+    + obtenerProgresoMisionActual(idDonante: UUID): int
+    + obtenerDistanciaRestanteMisionActual(idDonante: UUID): int
+}
+
+
+@enduml

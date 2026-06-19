@@ -1,0 +1,135 @@
+@startuml diagramaClasesIncentivosModel
+
+class Donante {
+    - categoria: CategoriaDonante
+    - misionActual: Mision
+    - progresoMisionActual: int
+    - insigniasObtenidas: List<InsigniaObtenida>
+    - totalDonacionesHistoricas: int
+    - donacionesMesActual: int
+    - organizacionesAyudadas: int
+    - posicionRanking: int
+    - categoriasDistintasDonadas: int
+    - donacionesExitosas: int
+    - recordBienesUnicaDonacion: int
+    - mesesConsecutivosDonando: int
+    - metricas: MetricasDonante
+    - historialRankings: List<RankingMensual>
+    + addInsignia(insignia: InsigniaObtenida): void
+    + registrarDonacion(cantidadBienes: int): void
+    + registrarOrganizacionAyudada(): void
+    + subirCategoria(): boolean
+}
+
+
+abstract class CategoriaDonante {
+    - nombre: String
+    - misiones: List<Mision>
+
+    + siguienteCategoria(): CategoriaDonante {abstract}
+    + primeraMision(): Mision
+    + siguienteMision(misionActual: Mision): Mision
+}
+
+class Colaborador extends CategoriaDonante {
+    + siguienteCategoria(): CategoriaDonante
+}
+
+class Sostenedor extends CategoriaDonante{
+    + siguienteCategoria(): CategoriaDonante
+}
+
+class Transformador extends CategoriaDonante{
+    + siguienteCategoria(): CategoriaDonante
+}
+
+abstract class Mision {
+    - nombre: String
+    - descripcion: String
+    # objetivo: int
+    - orden: int
+    # insignia: Insignia
+
+    + progresoActual(donante: Donante): int {abstract}
+    + restante(donante: Donante): int
+    + estaCompletada(donante: Donante): boolean {abstract}
+}
+
+class Racha extends Mision {
+    - mesesRequeridos: int
+    + estaCompletada(donante: Donante): boolean
+    + progresoActual(donante: Donante): int
+}
+
+class Completitud extends Mision {
+    - categoriasRequeridas: int
+    + estaCompletada(donante: Donante): boolean
+    + progresoActual(donante: Donante): int
+}
+
+class HabilDonador extends Mision {
+    - cantidadBienesRequerida: int
+    + estaCompletada(donante: Donante): boolean
+    + progresoActual(donante: Donante): int
+}
+
+class DonacionesExitosas extends Mision {
+    - cantidadDonacionesRequerida: int
+    + estaCompletada(donante: Donante): boolean
+    + progresoActual(donante: Donante): int
+}
+
+class Insignia {
+    - String nombre
+    - String imagen
+}
+
+class InsigniaObtenida {
+    - Insignia insignia
+    - Boolean visibilidad
+    - Date fechaObtencion
+
+    + InsigniaObtenida(insignia: Insignia, visibilidad: boolean)
+}
+
+class EvolucionPeriodo {
+    - int mes
+    - int anio
+    - int cantidadDonaciones
+}
+
+class MetricasDonante {
+    - totalDonacionesHistoricas: int
+    - organizacionesAyudadas: int
+    - evolucionPorPeriodo: List<EvolucionPeriodo>
+}
+
+class PosicionRanking {
+    - puesto: int
+    - misionesCompletadas: int
+}
+
+class RankingMensual {
+    - mes: int
+    - anio: int
+    - fechaCalculo: LocalDate
+    - posiciones: List<PosicionRanking>
+    + top3(): List<PosicionRanking>
+}
+
+
+Donante --> CategoriaDonante
+Donante --> InsigniaObtenida
+Donante --> MetricasDonante
+Donante --> RankingMensual
+
+CategoriaDonante --> Mision
+
+Mision --> Insignia
+
+InsigniaObtenida --> Insignia
+
+MetricasDonante --> EvolucionPeriodo
+RankingMensual --> PosicionRanking
+
+@enduml

@@ -13,18 +13,11 @@
     <artifactId>servicio-logistica</artifactId>
     <packaging>jar</packaging>
     <name>servicio-logistica</name>
+    <description>Servicio encargado de la logística de entregas y seguimiento.</description>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
     </dependencies>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
 </project>

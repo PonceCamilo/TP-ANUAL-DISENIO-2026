@@ -1,78 +1,153 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.SegmentadorDonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
+import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
+import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
+import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
-import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
+import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
-import ar.utn.donatrack.donaciones.models.donacion.DonacionConEstado;
-import ar.utn.donatrack.donaciones.models.donacion.DonacionPerecible;
 import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
+import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
+/**
+ * Orquesta la segmentación automática de bienes en múltiples Donaciones independientes,
+ * agrupadas por subcategoría y, dentro de ella, por el criterio del tipo de bien:
+ *   - BienPerecible  → una Donacion por fecha de vencimiento distinta
+ *   - BienConEstado  → una Donacion por estado (nuevo / usado)
+ *   - BienGenerico   → una única Donacion por subcategoría
+ */
 @Service
 @RequiredArgsConstructor
 public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {
 
-  private final SegmentadorDonacionesRepositoryInterface segmentadorDonacionesRepository;
+  private final DonacionesRepositoryInterface donacionesRepository;
+  private final DonacionMapper mapper;
+  private final PersonaDonanteRepositoryInterface donanteRepository;
+  private final IncentivosClient incentivosClient;
 
-  public void segmentar(CargaDonacion carga) {
-    List<Bien> listaBienes = carga.getBienes();
+  public List<Donacion> segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante, String descripcion) {
+    List<Bien> bienes = bienesDTO.stream().map(mapper::toBien).toList();
     List<Donacion> resultado = new ArrayList<>();
 
-    Map<Subcategoria, List<Bien>> porSubcategoria = listaBienes.stream()
-        .collect(Collectors.groupingBy(Bien::getSubcategoria, LinkedHashMap::new, Collectors.toList()));
+    Map<Subcategoria, List<Bien>> porSubcategoria = bienes.stream()
+        .collect(Collectors.groupingBy(
+            Bien::getSubcategoria,
+            LinkedHashMap::new,
+            Collectors.toList()
+        ));
 
     for (Map.Entry<Subcategoria, List<Bien>> entry : porSubcategoria.entrySet()) {
       Subcategoria sub = entry.getKey();
-      List<Bien> bienes = entry.getValue();
+      List<Bien> bienesDeSubcat = entry.getValue();
 
-      // BienPerecible → agrupar por fechaVencimiento
-      bienes.stream()
-          .filter(b -> b instanceof BienPerecible)
+      bienesDeSubcat.stream()
+          .filter(BienPerecible.class::isInstance)
           .map(b -> (BienPerecible) b)
-          .collect(Collectors.groupingBy(BienPerecible::getFechaVencimiento, LinkedHashMap::new, Collectors.toList()))
+          .collect(Collectors.groupingBy(
+              BienPerecible::getFechaVencimiento,
+              LinkedHashMap::new,
+              Collectors.toList()
+          ))
           .forEach((fecha, grupo) -> {
-            DonacionPerecible donacion = new DonacionPerecible();
+            Donacion donacion = new Donacion();
+            donacion.setIdDonante(idDonante);
+            donacion.setDescripcion(descripcion);
             donacion.setSubcategoria(sub);
-            donacion.setEstado(EstadoDonacion.ASIGNADA);
-            donacion.setFechaVencimiento(fecha);
-            donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
+            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
+            donacion.getHistorialEstados().add(CambioEstado.builder()
+                .estado(EstadoDonacion.EN_DEPOSITO)
+                .justificacion("Segmentación automática: perecibles con vencimiento " + fecha)
+                .build());
             donacion.getBienes().addAll(grupo);
             resultado.add(donacion);
           });
 
-      // BienConEstado → agrupar por estado (NUEVO / USADO)
-      bienes.stream()
-          .filter(b -> b instanceof BienConEstado)
+      bienesDeSubcat.stream()
+          .filter(BienConEstado.class::isInstance)
           .map(b -> (BienConEstado) b)
-          .collect(Collectors.groupingBy(BienConEstado::isEsNuevo, LinkedHashMap::new, Collectors.toList()))
+          .collect(Collectors.groupingBy(
+              BienConEstado::isEsNuevo,
+              LinkedHashMap::new,
+              Collectors.toList()
+          ))
           .forEach((esNuevo, grupo) -> {
-            DonacionConEstado donacion = new DonacionConEstado();
+            Donacion donacion = new Donacion();
+            donacion.setIdDonante(idDonante);
+            donacion.setDescripcion(descripcion);
             donacion.setSubcategoria(sub);
-            donacion.setEstado(EstadoDonacion.ASIGNADA);
-            donacion.setEsNuevo(esNuevo);
-            donacion.setIdCargaOrigen(carga.getIdCargaDonacion());
+            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
+            donacion.getHistorialEstados().add(CambioEstado.builder()
+                .estado(EstadoDonacion.EN_DEPOSITO)
+                .justificacion("Segmentación automática: bienes con estado " + (esNuevo ? "nuevo" : "usado"))
+                .build());
             donacion.getBienes().addAll(grupo);
             resultado.add(donacion);
           });
+
+      List<Bien> genericos = bienesDeSubcat.stream()
+          .filter(b -> !(b instanceof BienPerecible) && !(b instanceof BienConEstado))
+          .toList();
+
+      if (!genericos.isEmpty()) {
+        Donacion donacion = new Donacion();
+        donacion.setIdDonante(idDonante);
+        donacion.setDescripcion(descripcion);
+        donacion.setSubcategoria(sub);
+        donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
+        donacion.getHistorialEstados().add(CambioEstado.builder()
+            .estado(EstadoDonacion.EN_DEPOSITO)
+            .justificacion("Segmentación automática: bienes genéricos")
+            .build());
+        donacion.getBienes().addAll(genericos);
+        resultado.add(donacion);
+      }
     }
 
-    this.cargarDonaciones(resultado);
+    cargarDonaciones(resultado);
+
+    notificarIncentivos(idDonante, bienes);
+
+    return resultado;
   }
 
-  public void cargarDonaciones(List<Donacion> cargaDonacion){
-    this.segmentadorDonacionesRepository.cargarDonaciones(cargaDonacion);
+  public void cargarDonaciones(List<Donacion> donaciones) {
+    donacionesRepository.cargarDonaciones(donaciones);
+  }
+
+  /**
+   * Avisa a incentivos que el donante registró una donación (un único evento por
+   * registración, aunque la segmentación haya derivado en varias Donaciones).
+   * Se usa el email del donante como destinatario; si incentivos está caído, el
+   * cliente loguea el error sin frenar la registración.
+   */
+  private void notificarIncentivos(UUID idDonante, List<Bien> bienes) {
+    PersonaDonante donante = donanteRepository.obtenerPersona(idDonante);
+    if (donante == null || donante.getEmail() == null) {
+      return;
+    }
+    List<String> categorias = bienes.stream()
+        .map(Bien::getSubcategoria)
+        .filter(Objects::nonNull)
+        .map(Subcategoria::getTipo)
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
+    incentivosClient.notificarDonacionRegistrada(idDonante, donante.getEmail(), "EMAIL", bienes.size(), categorias);
   }
 }

@@ -10,10 +10,9 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @Setter
 public abstract class Bien {
-    protected int idBien;
     protected Subcategoria subcategoria;
     protected String descripcion;
     protected String foto; // URL o path a la foto
-    protected int cantidad;
-    protected String unidad; // ej: "kg", "litros", "unidades"
+    protected int cantidad; // ej: 15 sillas. cantidadad= "15". unidadad= "unidades"
+    protected String unidad;// ej: "kg", "litros", "unidades"
 }

@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/TP-ANUAL-DISENIO-2026.iml" filepath="$PROJECT_DIR$/.idea/TP-ANUAL-DISENIO-2026.iml" />
+      <module fileurl="file://$PROJECT_DIR$/donatrack/servicio-incentivos/src/src.iml" filepath="$PROJECT_DIR$/donatrack/servicio-incentivos/src/src.iml" />
     </modules>
   </component>
 </project>
