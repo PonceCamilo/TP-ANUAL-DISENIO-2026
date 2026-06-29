@@ -12,14 +12,14 @@ public record MetricasDonanteResponse(
         int organizacionesAyudadas,
         int posicionRanking
 ) {
-    public static MetricasDonanteResponse desde(Donante p) {
+    public static MetricasDonanteResponse desde(Donante donante, int posicionRanking) {
         return new MetricasDonanteResponse(
-                p.getId(),
-                p.getCategoria() != null ? p.getCategoria().getClass().getSimpleName() : "Sin Categoria", // <-- Corrección
-                p.getTotalDonacionesHistoricas(),
-                p.getDonacionesMesActual(),
-                p.getOrganizacionesAyudadas(),
-                p.getPosicionRanking()
+                donante.getId(),
+                donante.getCategoria() != null ? donante.getCategoria().getClass().getSimpleName() : "Sin Categoria",
+                donante.totalDonacionesHistoricas(),
+                donante.donacionesDelMesActual(),
+                donante.organizacionesAyudadas(),
+                posicionRanking
         );
     }
 }

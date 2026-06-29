@@ -1,0 +1,13 @@
+services:
+  servicio-incentivos:
+    build:
+      context: ..
+      dockerfile: servicio-incentivos/Dockerfile
+    container_name: donatrack-servicio-incentivos
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      SERVICIOS_NOTIFICACIONES_URL: http://host.docker.internal:8084
+      INTEGRACIONES_N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/insignia-obtenida
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"

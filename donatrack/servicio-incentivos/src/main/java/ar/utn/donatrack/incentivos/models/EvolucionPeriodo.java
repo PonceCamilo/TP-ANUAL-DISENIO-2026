@@ -2,14 +2,16 @@ package ar.utn.donatrack.incentivos.models;
 
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Getter
-@Setter
 @Builder
-
 public class EvolucionPeriodo {
-    private int mes;
-    private int anio;
-    private int cantidadDonaciones;
+    private LocalDate fecha;
+    private int cantidadBienes;
+    private List<String> categoriasDonadas;
+    private boolean exitosa;
+
 }

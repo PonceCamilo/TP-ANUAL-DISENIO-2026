@@ -16,8 +16,7 @@ public record MisionResponse(
         int progresoActual,
         int distanciaRestante,
         boolean completada,
-        LocalDateTime fechaCompletada,
-        int orden
+        LocalDateTime fechaCompletada
 ) {
     public static MisionResponse desde(Mision m, Donante d) {
         return new MisionResponse(
@@ -30,8 +29,7 @@ public record MisionResponse(
                 m.progresoActual(d),
                 m.restante(d),
                 m.estaCompletada(d),
-                null, 
-                m.getOrden()
+                null
         );
     }
 }

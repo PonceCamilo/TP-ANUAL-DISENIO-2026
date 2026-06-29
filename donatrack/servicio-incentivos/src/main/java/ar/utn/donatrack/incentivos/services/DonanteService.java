@@ -1,23 +1,27 @@
 package ar.utn.donatrack.incentivos.services;
 
+import ar.utn.donatrack.incentivos.interfaces.repositories.DonanteRepositoryInterface;
+import ar.utn.donatrack.incentivos.interfaces.services.DonanteServiceInterface;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
-import ar.utn.donatrack.incentivos.interfaces.repositories.DonanteRepositoryInterface;
-import ar.utn.donatrack.incentivos.interfaces.services.DonanteServiceInterface;
+import ar.utn.donatrack.incentivos.repositories.IncentivosRepositorioEnMemoria;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class DonanteService implements DonanteServiceInterface {
 
     private final DonanteRepositoryInterface repositoryInterface;
+    private final IncentivosRepositorioEnMemoria incentivosRepositorio;
 
-    // Eliminamos la inyección de DonacionesClient porque las métricas ahora viven en Donante
-    public DonanteService(DonanteRepositoryInterface repositoryInterface) {
+    public DonanteService(DonanteRepositoryInterface repositoryInterface,
+                          IncentivosRepositorioEnMemoria incentivosRepositorio) {
         this.repositoryInterface = repositoryInterface;
+        this.incentivosRepositorio = incentivosRepositorio;
     }
 
     @Override
@@ -25,8 +29,7 @@ public class DonanteService implements DonanteServiceInterface {
         Donante donante = repositoryInterface.findById(idDonante)
                 .orElseThrow(() -> new RuntimeException("Donante no encontrado"));
 
-        Mision misionActual = donante.getMisionActual();
-
+        Mision misionActual = donante.misionActual();
         if (misionActual != null && misionActual.estaCompletada(donante)) {
             completarMision(donante, misionActual);
         }
@@ -37,11 +40,9 @@ public class DonanteService implements DonanteServiceInterface {
         InsigniaObtenida nuevaInsignia = new InsigniaObtenida(mision.getInsignia(), true);
         donante.addInsignia(nuevaInsignia);
 
-        Mision siguienteMision = donante.getCategoria().siguienteMision(mision);
-
+        Mision siguienteMision = siguienteMisionDeCategoria(donante, mision);
         if (siguienteMision != null) {
-            donante.setMisionActual(siguienteMision);
-            donante.setProgresoMisionActual(0);
+            donante.asignarMisionActual(siguienteMision);
         } else {
             subirDeCategoria(donante);
         }
@@ -55,8 +56,7 @@ public class DonanteService implements DonanteServiceInterface {
 
         if (categoriaSiguiente != null) {
             donante.setCategoria(categoriaSiguiente);
-            donante.setMisionActual(categoriaSiguiente.primeraMision());
-            donante.setProgresoMisionActual(0);
+            donante.asignarMisionActual(primeraMisionDeCategoria(categoriaSiguiente));
         }
     }
 
@@ -78,7 +78,7 @@ public class DonanteService implements DonanteServiceInterface {
         Donante donante = repositoryInterface.findById(idDonante)
                 .orElseThrow(() -> new RuntimeException("Donante no encontrado"));
 
-        Mision mision = donante.getMisionActual();
+        Mision mision = donante.misionActual();
         if (mision == null) return 0;
 
         return mision.progresoActual(donante);
@@ -89,9 +89,23 @@ public class DonanteService implements DonanteServiceInterface {
         Donante donante = repositoryInterface.findById(idDonante)
                 .orElseThrow(() -> new RuntimeException("Donante no encontrado"));
 
-        Mision mision = donante.getMisionActual();
+        Mision mision = donante.misionActual();
         if (mision == null) return 0;
 
-        return Math.max(0, mision.getObjetivo() - mision.progresoActual(donante));
+        return mision.restante(donante);
+    }
+
+    private Mision primeraMisionDeCategoria(CategoriaDonante categoria) {
+        List<Mision> misiones = incentivosRepositorio.listarMisionesPorCategoria(categoria);
+        return misiones.isEmpty() ? null : misiones.get(0);
+    }
+
+    private Mision siguienteMisionDeCategoria(Donante donante, Mision misionActual) {
+        List<Mision> misiones = incentivosRepositorio.listarMisionesPorCategoria(donante.getCategoria());
+        int index = misiones.indexOf(misionActual);
+        if (index == -1 || index == misiones.size() - 1) {
+            return null;
+        }
+        return misiones.get(index + 1);
     }
 }
