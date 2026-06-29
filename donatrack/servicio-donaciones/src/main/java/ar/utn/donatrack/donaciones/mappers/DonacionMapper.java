@@ -26,7 +26,7 @@ public class DonacionMapper {
         .descripcion(donacion.getDescripcion())
         .fechaDonacion(donacion.getFechaDonacion())
         .subcategoria(donacion.getSubcategoria() != null ? donacion.getSubcategoria().getTipo() : null)
-        .estado(donacion.getEstado())
+        .estado(donacion.getEstado().nombre())
         .bienes(toBienesDTO(donacion.getBienes()))
         .historialEstados(toHistorialDTO(donacion.getHistorialEstados()))
         .build();
@@ -91,7 +91,9 @@ public class DonacionMapper {
   private List<CambioEstadoResponseDTO> toHistorialDTO(List<CambioEstado> historial) {
     return historial.stream()
         .map(c -> CambioEstadoResponseDTO.builder()
-            .estado(c.getEstado())
+            .estadoPrevio(c.getEstadoPrevio() != null ? c.getEstadoPrevio().nombre() : null)
+            .estado(c.getEstado().nombre())
+            .nombreTransicion(c.getNombreTransicion())
             .justificacion(c.getJustificacion())
             .fechaHora(c.getFechaHora())
             .build())

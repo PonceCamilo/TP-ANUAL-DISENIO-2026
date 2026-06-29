@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.validations;
+package ar.utn.donatrack.donaciones.validations.entidades;
 
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;

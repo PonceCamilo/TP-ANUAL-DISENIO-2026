@@ -11,7 +11,7 @@ import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
-import ar.utn.donatrack.donaciones.validations.EntidadesBeneficiariasValidator;
+import ar.utn.donatrack.donaciones.validations.entidades.EntidadesBeneficiariasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

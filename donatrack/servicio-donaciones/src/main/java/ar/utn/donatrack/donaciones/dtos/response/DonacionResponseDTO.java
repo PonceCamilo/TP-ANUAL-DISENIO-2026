@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.dtos.response;
 
-import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -17,7 +16,7 @@ public class DonacionResponseDTO {
   private String descripcion;
   private LocalDateTime fechaDonacion;
   private String subcategoria;
-  private EstadoDonacion estado;
+  private String estado;
   private List<BienResponseDTO> bienes;
   private List<CambioEstadoResponseDTO> historialEstados;
 }

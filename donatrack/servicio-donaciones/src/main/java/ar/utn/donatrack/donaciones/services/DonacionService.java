@@ -19,12 +19,9 @@ import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
-import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.validations.DonacionesValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -38,7 +35,6 @@ import java.util.UUID;
 public class DonacionService implements DonacionServiceInterface {
 
   private final DonacionesRepositoryInterface repositorio;
-  private final DonacionesValidator validador;
   private final DonacionMapper mapper;
   private final AsignacionDonacionesService asignacionService;
   private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
@@ -47,11 +43,11 @@ public class DonacionService implements DonacionServiceInterface {
   private final NotificacionClient notificacionClient;
   private final IncentivosClient incentivosClient;
 
-  public List<DonacionResponseDTO> obtenerDonaciones(EstadoDonacion estado, UUID idDonante, String subcategoria) {
+  public List<DonacionResponseDTO> obtenerDonaciones(String estado, UUID idDonante, String subcategoria) {
     List<Donacion> resultado = repositorio.obtenerTodas();
 
-    if (estado != null) {
-      resultado = resultado.stream().filter(d -> d.getEstado() == estado).toList();
+    if (estado != null && !estado.isBlank()) {
+      resultado = resultado.stream().filter(d -> d.getEstado().nombre().equals(estado)).toList();
     }
     if (idDonante != null) {
       resultado = resultado.stream().filter(d -> idDonante.equals(d.getIdDonante())).toList();
@@ -72,14 +68,9 @@ public class DonacionService implements DonacionServiceInterface {
 
   public void cambiarEstado(UUID id, CambioEstadoRequestDTO dto) {
     Donacion donacion = buscarOFallar(id);
-    validador.validarTransicion(donacion.getEstado(), dto.getEstado(), dto.getJustificacion());
-    donacion.getHistorialEstados().add(CambioEstado.builder()
-            .estado(dto.getEstado())
-            .justificacion(dto.getJustificacion())
-            .build());
-    donacion.setEstado(dto.getEstado());
+    donacion.cambiarEstado(dto.getEstado(), dto.getNombreTransicion(), dto.getJustificacion());
 
-    if (dto.getEstado() == EstadoDonacion.ENTREGADA) {
+    if ("ENTREGADA".equals(donacion.getEstado().nombre())) {
       notificarDonacionExitosa(donacion);
     }
   }
@@ -111,15 +102,9 @@ public class DonacionService implements DonacionServiceInterface {
       throw new EntidadBeneficiariaNoEncontradaException(dto.getIdEntidadBeneficiaria());
     }
 
-    validador.validarTransicion(donacion.getEstado(), EstadoDonacion.ASIGNACION_REALIZADA, null);
-
     donacion.setIdEntidadBeneficiaria(entidad.getId());
     donacion.setFechaAsignacion(LocalDate.now());
-    donacion.getHistorialEstados().add(CambioEstado.builder()
-            .estado(EstadoDonacion.ASIGNACION_REALIZADA)
-            .justificacion("Asignada a " + entidad.getRazonSocial())
-            .build());
-    donacion.setEstado(EstadoDonacion.ASIGNACION_REALIZADA);
+    donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", "Asignada a " + entidad.getRazonSocial());
 
     notificarAsignacion(donacion, entidad);
   }

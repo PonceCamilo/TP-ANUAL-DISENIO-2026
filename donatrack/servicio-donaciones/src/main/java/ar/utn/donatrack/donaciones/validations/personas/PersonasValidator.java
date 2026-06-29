@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.validations;
+package ar.utn.donatrack.donaciones.validations.personas;
 
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
@@ -24,7 +24,6 @@ public class PersonasValidator {
 
   private final PersonaDonanteRepositoryInterface repositorio;
 
-  // Regex básica para validar emails
   private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
 
   public void validarEmail(String email) {
@@ -52,21 +51,17 @@ public class PersonasValidator {
     if (medio == null || medio.getValor() == null || medio.getValor().isBlank()) {
       throw new MedioContactoInvalidoException();
     }
-    // Aquí podrías agregar más validaciones dependiendo del tipo de contacto (ej. si es teléfono que solo tenga números)
   }
 
   public void validarCambioEstado(EstadoDonante actual, EstadoDonante nuevo, String justificacion) {
-    // 1. No se permite "cambiar" al mismo estado actual.
     if (actual == nuevo) {
       throw new PersonaConMismoEstadoException(nuevo);
     }
 
-    // 2. Justificación obligatoria para bloquear a un donante.
     if (nuevo == EstadoDonante.BLOQUEADO && (justificacion == null || justificacion.isBlank())) {
       throw new FaltaJustificacionException("Es obligatorio proveer una justificación para bloquear al donante.");
     }
 
-    // 3. Matriz explícita de transiciones permitidas.
     boolean valida = switch (actual) {
       case ACTIVO -> nuevo == EstadoDonante.INACTIVO || nuevo == EstadoDonante.BLOQUEADO;
       case INACTIVO -> nuevo == EstadoDonante.ACTIVO;

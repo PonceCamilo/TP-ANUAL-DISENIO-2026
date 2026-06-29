@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.exceptions;
 
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
@@ -54,6 +55,11 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(FaltaJustificacionException.class)
   public ResponseEntity<Map<String, Object>> manejarFaltaJustificacion(FaltaJustificacionException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(FaltaJustificacionDonacionException.class)
+  public ResponseEntity<Map<String, Object>> manejarFaltaJustificacionDonacion(FaltaJustificacionDonacionException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
   }
 

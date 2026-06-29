@@ -15,7 +15,7 @@ import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
-import ar.utn.donatrack.donaciones.validations.PersonasValidator;
+import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

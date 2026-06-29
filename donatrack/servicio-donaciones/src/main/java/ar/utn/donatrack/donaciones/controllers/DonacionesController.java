@@ -10,8 +10,7 @@ import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
-import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
-import ar.utn.donatrack.donaciones.validations.PersonasValidator;
+import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -43,7 +42,7 @@ public class DonacionesController {
 
   @GetMapping
   public ResponseEntity<List<DonacionResponseDTO>> obtenerDonaciones(
-      @RequestParam(required = false) EstadoDonacion estado,
+      @RequestParam(required = false) String estado,
       @RequestParam(required = false) UUID idDonante,
       @RequestParam(required = false) String subcategoria
   ) {

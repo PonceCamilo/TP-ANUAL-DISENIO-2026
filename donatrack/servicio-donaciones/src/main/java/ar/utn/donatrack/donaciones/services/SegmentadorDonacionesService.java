@@ -7,9 +7,7 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteReposit
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
-import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
-import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
@@ -69,11 +67,6 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
             donacion.setIdDonante(idDonante);
             donacion.setDescripcion(descripcion);
             donacion.setSubcategoria(sub);
-            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
-            donacion.getHistorialEstados().add(CambioEstado.builder()
-                .estado(EstadoDonacion.EN_DEPOSITO)
-                .justificacion("Segmentación automática: perecibles con vencimiento " + fecha)
-                .build());
             donacion.getBienes().addAll(grupo);
             resultado.add(donacion);
           });
@@ -91,11 +84,6 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
             donacion.setIdDonante(idDonante);
             donacion.setDescripcion(descripcion);
             donacion.setSubcategoria(sub);
-            donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
-            donacion.getHistorialEstados().add(CambioEstado.builder()
-                .estado(EstadoDonacion.EN_DEPOSITO)
-                .justificacion("Segmentación automática: bienes con estado " + (esNuevo ? "nuevo" : "usado"))
-                .build());
             donacion.getBienes().addAll(grupo);
             resultado.add(donacion);
           });
@@ -109,11 +97,6 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
         donacion.setIdDonante(idDonante);
         donacion.setDescripcion(descripcion);
         donacion.setSubcategoria(sub);
-        donacion.setEstado(EstadoDonacion.EN_DEPOSITO);
-        donacion.getHistorialEstados().add(CambioEstado.builder()
-            .estado(EstadoDonacion.EN_DEPOSITO)
-            .justificacion("Segmentación automática: bienes genéricos")
-            .build());
         donacion.getBienes().addAll(genericos);
         resultado.add(donacion);
       }

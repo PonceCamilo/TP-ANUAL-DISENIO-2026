@@ -2,7 +2,6 @@ package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
-import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import lombok.Getter;
 import org.springframework.stereotype.Repository;
 
@@ -35,10 +34,10 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
     }
   }
 
-  public List<Donacion> obtenerPorEstado(EstadoDonacion estado) {
+  public List<Donacion> obtenerPorEstado(String estado) {
     synchronized (donaciones) {
       return donaciones.stream()
-          .filter(d -> d.getEstado().equals(estado))
+          .filter(d -> d.getEstado().nombre().equals(estado))
           .toList();
     }
   }
