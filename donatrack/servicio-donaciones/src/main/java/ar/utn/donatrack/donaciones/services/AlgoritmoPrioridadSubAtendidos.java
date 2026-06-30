@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.services;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +24,7 @@ public class AlgoritmoPrioridadSubAtendidos extends AlgoritmoAsignacionBase {
 
     @Override
     protected double calcularPuntaje(Donacion donacion, EntidadBeneficiaria entidad) {
-        LocalDate fechaLimite = LocalDate.now().minusMonths(MESES_TRIMESTRE);
+        LocalDate fechaLimite = FechaHoraArgentina.hoy().minusMonths(MESES_TRIMESTRE);
 
         long donacionesRecibidas = donacionesRepository.obtenerTodas().stream()
                 .filter(d -> entidad.getId().equals(d.getIdEntidadBeneficiaria()))

@@ -7,6 +7,7 @@ import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.contacto.Whatsapp;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,7 +33,7 @@ public class InactividadDonantesService {
 
     @Scheduled(cron = "0 0 0 * * *")
     public void notificarDonantesInactivos() {
-        LocalDateTime fechaLimite = LocalDateTime.now().minusDays(DIAS_LIMITE_INACTIVIDAD);
+        LocalDateTime fechaLimite = FechaHoraArgentina.ahora().minusDays(DIAS_LIMITE_INACTIVIDAD);
 
         List<PersonaDonante> inactivos = donanteRepository.obtenerInactivosDesde(fechaLimite);
 

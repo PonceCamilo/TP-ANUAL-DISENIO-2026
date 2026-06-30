@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.periodicidades.Periodicidad;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -52,6 +53,6 @@ public class NecesidadRecurrente extends Necesidad {
      */
     @Override
     public boolean estaSatisfecha() {
-        return cantidadRecibida >= cantidadObjetivo && !periodoVencido(LocalDate.now());
+        return cantidadRecibida >= cantidadObjetivo && !periodoVencido(FechaHoraArgentina.hoy());
     }
 }

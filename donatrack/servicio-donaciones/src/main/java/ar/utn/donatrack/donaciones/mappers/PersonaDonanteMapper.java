@@ -32,9 +32,10 @@ import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
 import ar.utn.donatrack.donaciones.models.entidad.Localidad;
 import ar.utn.donatrack.donaciones.models.entidad.Provincia;
+import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
 import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
@@ -73,7 +74,7 @@ public class PersonaDonanteMapper {
           .medioContactoPredeterminado(toContacto(j.getMedioContactoPredeterminado()))
           .build();
     }
-    throw new IllegalArgumentException("Tipo de donante desconocido");
+    throw new TipoDesconocidoException("donante");
   }
 
   // ── MODELO → RESPONSE ─────────────────────────────────────────────────────
@@ -86,7 +87,7 @@ public class PersonaDonanteMapper {
           .apellido(h.getApellido())
           .genero(h.getGenero())
           .edad(h.getFechaNacimiento() != null
-              ? Period.between(h.getFechaNacimiento(), LocalDate.now()).getYears()
+              ? Period.between(h.getFechaNacimiento(), FechaHoraArgentina.hoy()).getYears()
               : null)
           .tipoDocumento(h.getTipoDocumento())
           .numeroDocumento(h.getNumeroDocumento())
@@ -113,7 +114,7 @@ public class PersonaDonanteMapper {
           .contactos(toContactosDTO(j.getContactos()))
           .build();
     }
-    throw new IllegalArgumentException("Tipo de donante desconocido");
+    throw new TipoDesconocidoException("donante");
   }
 
   // ── CONTACTOS ─────────────────────────────────────────────────────────────
@@ -123,7 +124,7 @@ public class PersonaDonanteMapper {
       case EmailRequestDTO    ignored -> Email.builder().valor(dto.getValor()).build();
       case WhatsappRequestDTO ignored -> Whatsapp.builder().valor(dto.getValor()).build();
       case TelefonoRequestDTO ignored -> Telefono.builder().valor(dto.getValor()).build();
-      case null, default -> throw new IllegalArgumentException("Tipo de contacto desconocido");
+      case null, default -> throw new TipoDesconocidoException("contacto");
     };
   }
 
@@ -133,8 +134,7 @@ public class PersonaDonanteMapper {
       case Email e    -> EmailResponseDTO.builder().valor(e.getValor()).build();
       case Telefono t -> TelefonoResponseDTO.builder().valor(t.getValor()).build();
       case Whatsapp w -> WhatsappResponseDTO.builder().valor(w.getValor()).build();
-      default -> throw new IllegalArgumentException(
-          "Tipo de contacto desconocido: " + c.getClass().getSimpleName());
+      default -> throw new TipoDesconocidoException("contacto");
     };
   }
 

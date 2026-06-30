@@ -4,6 +4,7 @@ import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.NecesidadResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -74,13 +75,15 @@ public class EntidadBeneficiariaController {
     }
 
     @PostMapping("/{entidadId}/campanias/{campaniaId}/necesidades")
-    public ResponseEntity<Void> agregarNecesidadACampania(
+    public ResponseEntity<NecesidadResponseDTO> agregarNecesidadACampania(
             @PathVariable UUID entidadId,
             @PathVariable UUID campaniaId,
-            @RequestBody @Valid NecesidadRequestDTO dto // <--- ACA AHORA SE RECIBE EL DTO, NO EL MODELO
+            @RequestBody @Valid NecesidadRequestDTO dto
     ) {
-        UUID necesidadId = entidadesBeneficiariasService.agregarNecesidadACampania(entidadId, campaniaId, dto);
-        URI location = URI.create("/entidades/" + entidadId + "/campanias/" + campaniaId + "/necesidades/" + necesidadId);
-        return ResponseEntity.created(location).build();
+        NecesidadResponseDTO necesidadCreada =
+                entidadesBeneficiariasService.agregarNecesidadACampania(entidadId, campaniaId, dto);
+        URI location = URI.create(
+                "/entidades/" + entidadId + "/campanias/" + campaniaId + "/necesidades/" + necesidadCreada.getId());
+        return ResponseEntity.created(location).body(necesidadCreada);
     }
 }

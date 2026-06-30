@@ -1,12 +1,11 @@
 package ar.utn.donatrack.donaciones.interfaces.services;
 
-import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
+import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 
 import java.util.List;
-import java.util.UUID;
 
 public interface SegmentadorDonacionesServiceInterface {
-  List<Donacion> segmentar(List<BienRequestDTO> bienes, UUID idDonante, String descripcion);
+  List<Donacion> segmentar(CargaDonacion carga);
   void cargarDonaciones(List<Donacion> donaciones);
 }

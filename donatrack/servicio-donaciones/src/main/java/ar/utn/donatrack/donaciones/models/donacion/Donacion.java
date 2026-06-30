@@ -6,6 +6,7 @@ import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.models.donacion.estado.EnDepositoState;
 import ar.utn.donatrack.donaciones.models.donacion.estado.EstadoDonacionBase;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,7 +26,7 @@ public class Donacion {
     @Setter protected UUID idDonante;
     @Setter protected UUID idEntidadBeneficiaria;
     @Setter protected String descripcion;
-    @Setter protected LocalDateTime fechaDonacion = LocalDateTime.now();
+    @Setter protected LocalDateTime fechaDonacion = FechaHoraArgentina.ahora();
     @Setter protected UUID id = UUID.randomUUID();
     @Setter protected LocalDate fechaAsignacion;
 

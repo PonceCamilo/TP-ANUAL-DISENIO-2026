@@ -11,6 +11,7 @@ import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIleg
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
+import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -39,6 +40,15 @@ public class PersonasValidator {
     if (!repositorio.existePorId(id)) {
       throw new PersonaDonanteNoEncontradaException(id);
     }
+  }
+
+  /** Recupera la persona donante o lanza la excepción de dominio si no existe. */
+  public PersonaDonante validarYObtenerPersona(UUID id) {
+    PersonaDonante persona = repositorio.obtenerPersona(id);
+    if (persona == null) {
+      throw new PersonaDonanteNoEncontradaException(id);
+    }
+    return persona;
   }
 
   public void validarEsPersonaJuridica(UUID id) {

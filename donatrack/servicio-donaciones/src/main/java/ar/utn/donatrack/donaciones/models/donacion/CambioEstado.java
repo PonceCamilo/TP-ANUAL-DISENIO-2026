@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
 import ar.utn.donatrack.donaciones.models.donacion.estado.EstadoDonacionBase;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,5 +16,5 @@ public class CambioEstado {
   private final String justificacion;
 
   @Builder.Default
-  private final LocalDateTime fechaHora = LocalDateTime.now();
+  private final LocalDateTime fechaHora = FechaHoraArgentina.ahora();
 }

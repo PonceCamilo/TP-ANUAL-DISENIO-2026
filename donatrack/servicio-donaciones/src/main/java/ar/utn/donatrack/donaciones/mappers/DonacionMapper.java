@@ -1,11 +1,13 @@
 package ar.utn.donatrack.donaciones.mappers;
 
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.BienResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CambioEstadoResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
+import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
@@ -34,6 +36,14 @@ public class DonacionMapper {
 
   public List<DonacionResponseDTO> toDTOList(List<Donacion> donaciones) {
     return donaciones.stream().map(this::toDTO).toList();
+  }
+
+  public CargaDonacion toCargaDonacion(DonacionRequestDTO dto) {
+    return new CargaDonacion(
+        dto.getIdDonante(),
+        dto.getDescripcion(),
+        dto.getBienes().stream().map(this::toBien).toList()
+    );
   }
 
   public Bien toBien(BienRequestDTO dto) {

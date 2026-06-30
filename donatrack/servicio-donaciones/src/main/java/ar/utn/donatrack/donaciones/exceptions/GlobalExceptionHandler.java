@@ -3,7 +3,9 @@ package ar.utn.donatrack.donaciones.exceptions;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
@@ -22,7 +24,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,7 +33,7 @@ public class GlobalExceptionHandler {
 
   private Map<String, Object> construirCuerpoError(HttpStatus status, String error, String mensaje) {
     Map<String, Object> cuerpo = new HashMap<>();
-    cuerpo.put("timestamp", LocalDateTime.now());
+    cuerpo.put("timestamp", FechaHoraArgentina.ahora());
     cuerpo.put("status", status.value());
     cuerpo.put("error", error);
     cuerpo.put("message", mensaje);
@@ -86,6 +88,16 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(CambioEstadoDonacionIlegalException.class)
   public ResponseEntity<Map<String, Object>> manejarCambioEstadoIlegal(CambioEstadoDonacionIlegalException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable Entity", ex.getMessage()), HttpStatus.UNPROCESSABLE_ENTITY);
+  }
+
+  @ExceptionHandler(DonacionSinBienesException.class)
+  public ResponseEntity<Map<String, Object>> manejarDonacionSinBienes(DonacionSinBienesException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.CONFLICT, "Conflict", ex.getMessage()), HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(TipoDesconocidoException.class)
+  public ResponseEntity<Map<String, Object>> manejarTipoDesconocido(TipoDesconocidoException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
   }
 
   @ExceptionHandler(CambioEstadoPersonaIlegalException.class)

@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 /**
  * Raíz de la jerarquía de personas donantes.
  * Una persona donante puede ser humana (PersonaHumana) o jurídica (PersonaJuridica).
- * PATRÓN STATE: el ciclo de vida se modela con EstadoDonante.
+ * El ciclo de vida se modela con el enum EstadoDonante (ACTIVO, INACTIVO, BLOQUEADO);
+ * las transiciones válidas se validan en PersonasValidator.
  * Unificación de contactos: el email es obligatorio y se almacena directamente
  * como campo para ser la clave de idempotencia en importaciones CSV y búsquedas.
  * Los contactos adicionales (teléfono, WhatsApp) se agregan a la lista `contactos`.

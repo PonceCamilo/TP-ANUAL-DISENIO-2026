@@ -4,6 +4,7 @@ import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
+import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
@@ -61,8 +62,8 @@ public class DonacionesController {
       @RequestBody @Valid DonacionRequestDTO dto
   ) {
     personasValidator.validarExistenciaPersona(dto.getIdDonante());
-    List<Donacion> donacionesCreadas = segmentadorDonacionesService.segmentar(
-        dto.getBienes(), dto.getIdDonante(), dto.getDescripcion());
+    CargaDonacion carga = mapper.toCargaDonacion(dto);
+    List<Donacion> donacionesCreadas = segmentadorDonacionesService.segmentar(carga);
     return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toDTOList(donacionesCreadas));
   }
 

@@ -6,7 +6,6 @@ import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
@@ -15,11 +14,11 @@ import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -40,7 +39,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     PersonaDonante persona = mapper.toModel(dto);
     persona.setId(UUID.randomUUID());
     persona.setEstado(EstadoDonante.ACTIVO);
-    persona.setUltimaInteraccion(LocalDateTime.now());
+    persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
 
     repositorio.guardar(persona);
     return persona.getId();
@@ -48,7 +47,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
 
   @Override
   public PersonaDonanteResponseDTO obtenerDonante(UUID id) {
-    return mapper.toDTO(buscarOFallar(id));
+    return mapper.toDTO(validador.validarYObtenerPersona(id));
   }
 
   @Override
@@ -61,19 +60,19 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
 
   @Override
   public void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto) {
-    PersonaDonante persona = buscarOFallar(id);
+    PersonaDonante persona = validador.validarYObtenerPersona(id);
     validador.validarCambioEstado(persona.getEstado(), dto.getEstado(), dto.getJustificacion());
     repositorio.cambiarEstado(id, dto.getEstado());
-    persona.setUltimaInteraccion(LocalDateTime.now());
+    persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
   }
 
   @Override
   public void modificarContacto(UUID id, MedioDeContactoRequestDTO dto) {
-    PersonaDonante persona = buscarOFallar(id);
+    PersonaDonante persona = validador.validarYObtenerPersona(id);
     MedioDeContacto medio = mapper.toContacto(dto);
     validador.validarMedioContacto(medio);
     repositorio.modificarMedioContacto(id, medio);
-    persona.setUltimaInteraccion(LocalDateTime.now());
+    persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
   }
 
   @Override
@@ -85,7 +84,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
 
   @Override
   public PersonaDonanteResponseDTO actualizar(UUID id, PersonaDonanteUpdateRequestDTO dto) {
-    PersonaDonante persona = buscarOFallar(id);
+    PersonaDonante persona = validador.validarYObtenerPersona(id);
 
     if (persona instanceof PersonaHumana humana) {
       if (dto.getNombre() != null) humana.setNombre(dto.getNombre());
@@ -104,7 +103,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
           .map(mapper::toContacto)
           .collect(Collectors.toCollection(ArrayList::new)));
     }
-    persona.setUltimaInteraccion(LocalDateTime.now());
+    persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
 
     repositorio.guardar(persona);
     return mapper.toDTO(persona);
@@ -114,13 +113,5 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
   public void eliminar(UUID id) {
     validador.validarExistenciaPersona(id);
     repositorio.eliminar(id);
-  }
-
-  private PersonaDonante buscarOFallar(UUID id) {
-    PersonaDonante persona = repositorio.obtenerPersona(id);
-    if (persona == null) {
-      throw new PersonaDonanteNoEncontradaException(id);
-    }
-    return persona;
   }
 }

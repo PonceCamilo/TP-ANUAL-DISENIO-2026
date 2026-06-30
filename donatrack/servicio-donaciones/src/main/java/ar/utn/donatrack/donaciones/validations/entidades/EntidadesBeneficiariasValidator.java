@@ -24,6 +24,15 @@ public class EntidadesBeneficiariasValidator {
         }
     }
 
+    /** Recupera la entidad o lanza la excepción de dominio si no existe. */
+    public EntidadBeneficiaria validarYObtenerEntidad(UUID id) {
+        EntidadBeneficiaria entidad = repositorio.obtenerPorId(id);
+        if (entidad == null) {
+            throw new EntidadBeneficiariaNoEncontradaException(id);
+        }
+        return entidad;
+    }
+
     public Campania validarYObtenerCampania(EntidadBeneficiaria entidad, UUID campaniaId) {
         return entidad.getCampanias().stream()
                 .filter(c -> c.getIdCampania().equals(campaniaId))

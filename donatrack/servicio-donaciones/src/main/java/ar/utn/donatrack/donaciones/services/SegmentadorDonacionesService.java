@@ -1,12 +1,11 @@
 package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
-import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
-import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
+import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
@@ -23,24 +22,19 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Orquesta la segmentación automática de bienes en múltiples Donaciones independientes,
- * agrupadas por subcategoría y, dentro de ella, por el criterio del tipo de bien:
- *   - BienPerecible  → una Donacion por fecha de vencimiento distinta
- *   - BienConEstado  → una Donacion por estado (nuevo / usado)
- *   - BienGenerico   → una única Donacion por subcategoría
- */
 @Service
 @RequiredArgsConstructor
 public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {
 
   private final DonacionesRepositoryInterface donacionesRepository;
-  private final DonacionMapper mapper;
   private final PersonaDonanteRepositoryInterface donanteRepository;
   private final IncentivosClient incentivosClient;
 
-  public List<Donacion> segmentar(List<BienRequestDTO> bienesDTO, UUID idDonante, String descripcion) {
-    List<Bien> bienes = bienesDTO.stream().map(mapper::toBien).toList();
+  public List<Donacion> segmentar(CargaDonacion carga) {
+    List<Bien> bienes = carga.getBienes();
+    UUID idDonante = carga.getIdDonante();
+    String descripcion = carga.getDescripcion();
+
     List<Donacion> resultado = new ArrayList<>();
 
     Map<Subcategoria, List<Bien>> porSubcategoria = bienes.stream()
@@ -103,7 +97,6 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
     }
 
     cargarDonaciones(resultado);
-
     notificarIncentivos(idDonante, bienes);
 
     return resultado;
@@ -113,12 +106,6 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
     donacionesRepository.cargarDonaciones(donaciones);
   }
 
-  /**
-   * Avisa a incentivos que el donante registró una donación (un único evento por
-   * registración, aunque la segmentación haya derivado en varias Donaciones).
-   * Se usa el email del donante como destinatario; si incentivos está caído, el
-   * cliente loguea el error sin frenar la registración.
-   */
   private void notificarIncentivos(UUID idDonante, List<Bien> bienes) {
     PersonaDonante donante = donanteRepository.obtenerPersona(idDonante);
     if (donante == null || donante.getEmail() == null) {

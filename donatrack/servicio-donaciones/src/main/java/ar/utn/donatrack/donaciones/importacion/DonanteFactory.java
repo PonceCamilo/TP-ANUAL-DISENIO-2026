@@ -5,9 +5,8 @@ import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
 
 /**
  * Factory que construye instancias de dominio a partir de los datos parciales
@@ -49,7 +48,7 @@ public class DonanteFactory {
 
         // Todo donante importado arranca ACTIVO y con interacción inicial registrada
         persona.setEstado(EstadoDonante.ACTIVO);
-        persona.setUltimaInteraccion(LocalDateTime.now());
+        persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
         return persona;
     }
 }

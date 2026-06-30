@@ -4,6 +4,7 @@ import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.NecesidadResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
@@ -82,9 +83,8 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
     }
 
     // ACTUALIZADO CON DTO
-    public UUID agregarNecesidadACampania(UUID entidadId, UUID campaniaId, NecesidadRequestDTO dto) {
-        validador.validarExistenciaEntidad(entidadId);
-        EntidadBeneficiaria entidad = repositorio.obtenerPorId(entidadId);
+    public NecesidadResponseDTO agregarNecesidadACampania(UUID entidadId, UUID campaniaId, NecesidadRequestDTO dto) {
+        EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
 
         Campania campaniaTarget = validador.validarYObtenerCampania(entidad, campaniaId);
 
@@ -94,6 +94,6 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
 
         repositorio.guardar(entidad);
 
-        return nuevaNecesidad.getId();
+        return mapper.toNecesidadDTO(nuevaNecesidad);
     }
 }

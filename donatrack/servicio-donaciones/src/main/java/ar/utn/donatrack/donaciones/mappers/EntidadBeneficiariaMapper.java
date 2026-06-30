@@ -7,6 +7,8 @@ import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadRecurrente;
+import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -92,15 +94,15 @@ public class EntidadBeneficiariaMapper {
             // Setear atributos propios de la recurrente
             necesidad.setPeriodo(recuDto.getPeriodo());
             // Como recién se crea, el período arranca hoy
-            necesidad.setFechaInicioPeriodo(java.time.LocalDate.now());
+            necesidad.setFechaInicioPeriodo(FechaHoraArgentina.hoy());
 
             return necesidad;
         }
-        throw new IllegalArgumentException("Tipo de Necesidad desconocido");
+        throw new TipoDesconocidoException("necesidad");
     }
 
     // Para cuando devuelva la info al frontend con un GET
-    private NecesidadResponseDTO toNecesidadDTO(Necesidad necesidad) {
+    public NecesidadResponseDTO toNecesidadDTO(Necesidad necesidad) {
         if (necesidad instanceof NecesidadExtraordinaria extra) {
             return NecesidadExtraordinariaResponseDTO.builder()
                     .id(extra.getId())
@@ -123,6 +125,6 @@ public class EntidadBeneficiariaMapper {
                     .fechaInicioPeriodo(recu.getFechaInicioPeriodo())
                     .build();
         }
-        throw new IllegalArgumentException("Tipo de Necesidad desconocido");
+        throw new TipoDesconocidoException("necesidad");
     }
 }
