@@ -3,66 +3,75 @@ package ar.utn.donatrack.incentivos.models;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
+import ar.utn.donatrack.incentivos.models.misiones.ProgresoMision;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
 public class Donante {
     private UUID id;
     private CategoriaDonante categoria;
-    private Mision misionActual;
-    private int progresoMisionActual;
     private List<InsigniaObtenida> insigniasObtenidas = new ArrayList<>();
-
-    // Métricas generales
-    private int totalDonacionesHistoricas;
-    private int donacionesMesActual;
-    private int organizacionesAyudadas;
-    private int posicionRanking;
-
-    // Métricas específicas para Misiones
-    private Set<String> categoriasHistorial = new HashSet<>();
-    private int donacionesExitosas;
-    private int recordBienesUnicaDonacion;
-    private int mesesConsecutivosDonando;
-
-    // Evolución por período (Key: "YYYY-MM", Value: cantidad)
-    private Map<String, Integer> evolucionPeriodo = new HashMap<>();
+    private MetricasDonante metricas = new MetricasDonante();
+    private ProgresoMision progresoMision = new ProgresoMision();
+    private RankingMensual rankingMensual;
 
     public void addInsignia(InsigniaObtenida insignia) {
         this.insigniasObtenidas.add(insignia);
     }
 
-    // ACÁ ESTÁ LA CORRECCIÓN: Ahora recibe la cantidad y la lista de categorías
     public void registrarDonacion(int cantidadBienes, List<String> categoriasDonadas) {
-        this.totalDonacionesHistoricas++;
-        this.donacionesMesActual++;
-
-        if (cantidadBienes > this.recordBienesUnicaDonacion) {
-            this.recordBienesUnicaDonacion = cantidadBienes;
-        }
-
-        // Registrar categorías únicas para la misión Completitud
-        if (categoriasDonadas != null) {
-            this.categoriasHistorial.addAll(categoriasDonadas);
-        }
-
-        // Registrar evolución mensual
-        String periodoActual = LocalDate.now().getYear() + "-" + String.format("%02d", LocalDate.now().getMonthValue());
-        this.evolucionPeriodo.put(periodoActual, this.evolucionPeriodo.getOrDefault(periodoActual, 0) + 1);
-    }
-
-    public int getCategoriasDistintasDonadas() {
-        return this.categoriasHistorial.size();
+        this.metricas.registrarDonacion(cantidadBienes, categoriasDonadas);
     }
 
     public void registrarOrganizacionAyudada() {
-        this.organizacionesAyudadas++;
-        this.donacionesExitosas++;
+        this.metricas.registrarDonacionExitosa();
+    }
+
+    public Mision misionActual() {
+        return progresoMision.getMisionActual();
+    }
+
+    public void asignarMisionActual(Mision misionActual) {
+        this.progresoMision.setMisionActual(misionActual);
+    }
+
+    public int categoriasDistintasDonadas() {
+        return metricas.categoriasDistintasDonadas();
+    }
+
+    public int totalDonacionesHistoricas() {
+        return metricas.totalDonacionesHistoricas();
+    }
+
+    public int donacionesDelMesActual() {
+        return metricas.donacionesMesActual();
+    }
+
+    public int organizacionesAyudadas() {
+        return metricas.organizacionesAyudadas();
+    }
+
+    public int donacionesExitosas() {
+        return metricas.donacionesExitosas();
+    }
+
+    public int mayorCantidadBienesEnUnaDonacion() {
+        return metricas.recordBienesUnicaDonacion();
+    }
+
+    public int mesesConsecutivosDonando() {
+        return metricas.mesesConsecutivosDonando(LocalDate.now());
+    }
+
+    public boolean perdioRachaPorMesCompletoSinDonar() {
+        return metricas.pasoUnMesCompletoSinDonaciones(LocalDate.now());
     }
 
     public boolean subirCategoria() {

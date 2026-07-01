@@ -16,8 +16,8 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
         </processorPath>
         <module name="servicio-logistica" />
-        <module name="servicio-donaciones" />
         <module name="servicio-notificaciones" />
+        <module name="servicio-donaciones" />
         <module name="servicio-incentivos" />
         <module name="servicio-autenticacion" />
       </profile>
