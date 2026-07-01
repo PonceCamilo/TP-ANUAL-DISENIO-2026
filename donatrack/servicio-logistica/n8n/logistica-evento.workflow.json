@@ -1,0 +1,112 @@
+{
+  "name": "DonaTrack - Evento Logistica",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "logistica-evento",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2a000000-0000-4a00-9aaa-000000000001",
+      "name": "Webhook - Evento Logistica",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-260, 0],
+      "webhookId": "logistica-evento"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "b1", "name": "tipo", "type": "string", "value": "={{ $json.body.tipo }}" },
+            { "id": "b2", "name": "entregaId", "type": "string", "value": "={{ $json.body.entregaId }}" },
+            { "id": "b3", "name": "idEntidadBeneficiaria", "type": "string", "value": "={{ $json.body.idEntidadBeneficiaria }}" },
+            { "id": "b4", "name": "idDonante", "type": "string", "value": "={{ $json.body.idDonante }}" },
+            { "id": "b5", "name": "motivo", "type": "string", "value": "={{ $json.body.motivo }}" },
+            { "id": "b6", "name": "requiereAvisoAdmin", "type": "boolean", "value": "={{ $json.body.requiereAvisoAdmin }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2a000000-0000-4a00-9aaa-000000000002",
+      "name": "Normalizar payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-40, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-aviso",
+              "leftValue": "={{ $json.requiereAvisoAdmin }}",
+              "rightValue": "",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2a000000-0000-4a00-9aaa-000000000003",
+      "name": "Requiere aviso admin?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [180, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "e1", "name": "emailSimulado", "type": "boolean", "value": true },
+            { "id": "e2", "name": "para", "type": "string", "value": "administracion@donatrack.org" },
+            { "id": "e3", "name": "asunto", "type": "string", "value": "=[DonaTrack] Entrega NO recibida - {{ $json.entregaId }}" },
+            { "id": "e4", "name": "cuerpo", "type": "string", "value": "=La entrega {{ $json.entregaId }} fue marcada como NO RECIBIDA. Entidad: {{ $json.idEntidadBeneficiaria }} | Donante: {{ $json.idDonante }} | Motivo: {{ $json.motivo }}. Requiere revision de un administrador." }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2a000000-0000-4a00-9aaa-000000000004",
+      "name": "Email aviso a administrador (simulado)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [420, -120],
+      "notes": "Simula el envio del correo al administrador. No requiere credenciales: deja el contenido del mail (para, asunto, cuerpo) como datos visibles en Executions. Para enviar un correo real, reemplazar por un nodo Send Email (SMTP) o Gmail y configurar la credencial."
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ok\", \"avisoAdmin\": $('Normalizar payload').item.json.requiereAvisoAdmin } }}"
+      },
+      "id": "2a000000-0000-4a00-9aaa-000000000005",
+      "name": "Responder al backend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 0]
+    }
+  ],
+  "connections": {
+    "Webhook - Evento Logistica": {
+      "main": [[{ "node": "Normalizar payload", "type": "main", "index": 0 }]]
+    },
+    "Normalizar payload": {
+      "main": [[{ "node": "Requiere aviso admin?", "type": "main", "index": 0 }]]
+    },
+    "Requiere aviso admin?": {
+      "main": [
+        [{ "node": "Email aviso a administrador (simulado)", "type": "main", "index": 0 }],
+        [{ "node": "Responder al backend", "type": "main", "index": 0 }]
+      ]
+    },
+    "Email aviso a administrador (simulado)": {
+      "main": [[{ "node": "Responder al backend", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
