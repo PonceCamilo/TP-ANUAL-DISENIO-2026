@@ -15,6 +15,7 @@ import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class LogisticaEventosService {
     private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
     private final PersonaDonanteRepositoryInterface donanteRepositorio;
     private final NotificacionClient notificacionClient;
+    private final IncentivosClient incentivosClient;
 
     // ── INICIO DE RUTA ─────────────────────────────────────────────────────────
 
@@ -112,8 +114,17 @@ public class LogisticaEventosService {
 
         notificarEntregaExitosaEntidad(donacion, comprobante);
         notificarEntregaExitosaDonante(donacion, comprobante);
-    }
 
+        // notificar a incentivos: DonacionesExitosas depende de entregas confirmadas por logística
+        PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
+        if (donante != null && donante.getEmail() != null) {
+            incentivosClient.notificarDonacionExitosa(
+                    donacion.getIdDonante(),
+                    donante.getEmail(),
+                    "EMAIL"
+            );
+        }
+    }
     private void notificarEntregaExitosaEntidad(Donacion donacion, String comprobante) {
         if (donacion.getIdEntidadBeneficiaria() == null) return;
 
