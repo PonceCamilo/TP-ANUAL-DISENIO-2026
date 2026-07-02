@@ -6,20 +6,11 @@ import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.PosicionRanking;
 import ar.utn.donatrack.incentivos.models.RankingMensual;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.Colaborador;
-import ar.utn.donatrack.incentivos.models.categoriasdonante.Sostenedor;
-import ar.utn.donatrack.incentivos.models.categoriasdonante.Transformador;
-import ar.utn.donatrack.incentivos.models.insignias.Insignia;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
-import ar.utn.donatrack.incentivos.models.misiones.Completitud;
-import ar.utn.donatrack.incentivos.models.misiones.DonacionesExitosas;
-import ar.utn.donatrack.incentivos.models.misiones.HabilDonador;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.misiones.Racha;
 import ar.utn.donatrack.incentivos.interfaces.services.IncentivosServiceInterface;
 import ar.utn.donatrack.incentivos.repositories.IncentivosRepositorioEnMemoria;
-import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -31,7 +22,6 @@ import java.util.UUID;
 @Service
 public class IncentivosService implements IncentivosServiceInterface {
 
-    private static final Logger log = LoggerFactory.getLogger(IncentivosService.class);
     private final IncentivosRepositorioEnMemoria repositorio;
     private final NotificacionClient notificacionClient;
     private final N8nWebhookClient n8nWebhookClient;
@@ -42,56 +32,6 @@ public class IncentivosService implements IncentivosServiceInterface {
         this.repositorio = repositorio;
         this.notificacionClient = notificacionClient;
         this.n8nWebhookClient = n8nWebhookClient;
-    }
-
-    @PostConstruct
-    public void inicializarMisiones() {
-        repositorio.guardarMision(new DonacionesExitosas(
-                "Primera donacion exitosa",
-                "Completar una donacion entregada a destino.",
-                new Colaborador(),
-                1,
-                Insignia.builder()
-                        .id(UUID.randomUUID())
-                        .nombre("Semilla de Solidaridad")
-                        .imagen("semilla.png")
-                        .build()
-        ));
-        repositorio.guardarMision(new Racha(
-                "Racha solidaria",
-                "Donar al menos una vez por mes durante tres meses seguidos.",
-                new Colaborador(),
-                3,
-                Insignia.builder()
-                        .id(UUID.randomUUID())
-                        .nombre("Constancia Solidaria")
-                        .imagen("racha.png")
-                        .build()
-        ));
-        repositorio.guardarMision(new HabilDonador(
-                "Gran Corazon",
-                "Donar diez bienes en una unica donacion.",
-                new Sostenedor(),
-                10,
-                Insignia.builder()
-                        .id(UUID.randomUUID())
-                        .nombre("Corazon de Plata")
-                        .imagen("plata.png")
-                        .build()
-        ));
-        repositorio.guardarMision(new Completitud(
-                "Ayuda Integral",
-                "Donar bienes de tres categorias distintas.",
-                new Transformador(),
-                3,
-                Insignia.builder()
-                        .id(UUID.randomUUID())
-                        .nombre("Estrella Dorada")
-                        .imagen("oro.png")
-                        .build()
-        ));
-
-        log.info("Misiones base del sistema cargadas correctamente.");
     }
 
     private Donante obtenerOCrearPerfilConInit(UUID donanteId) {
