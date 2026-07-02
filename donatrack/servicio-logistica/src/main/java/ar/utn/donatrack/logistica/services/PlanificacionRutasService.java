@@ -85,7 +85,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
         List<DonacionLote> donaciones = dto.getDonaciones().stream().map(this::aDonacionLote).toList();
 
         List<LotePlanificacion> lotes = particionar(donaciones, maxDonacionesPorLote).stream()
-                .map(batch -> crearYEnviarLote(batch, dto.getCamionesIds(), camiones))
+                .map(batch -> crearYEnviarLote(batch, camiones))
                 .toList();
 
         return lotes.stream().map(LoteResponseDTO::desde).toList();
@@ -136,7 +136,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
         ruta.setFechaInicio(LocalDateTime.now());
         rutaRepositorio.guardar(ruta);
 
-        Camion camion = camionRepositorio.buscarPorId(ruta.getCamionId());
+        Camion camion = ruta.getCamion();
         if (camion != null) {
             camion.setEstado(EstadoCamion.EN_RUTA);
             camionRepositorio.guardar(camion);
@@ -145,7 +145,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
         for (Entrega entrega : entregaRepositorio.buscarPorRutaId(rutaId)) {
             entregaValidator.validarTransicion(entrega.getEstado(), EstadoEntrega.EN_TRASLADO);
             entrega.registrarCambio(EstadoEntrega.EN_TRASLADO, "Inicio de ruta");
-            entrega.setCamionId(ruta.getCamionId());
+            entrega.setCamion(camion);
             entregaRepositorio.guardar(entrega);
 
             eventPublisher.publicar(EntregaEvento.builder()
@@ -154,7 +154,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                     .idDonacion(entrega.getIdDonacion())
                     .idEntidadBeneficiaria(entrega.getIdEntidadBeneficiaria())
                     .idDonante(entrega.getIdDonante())
-                    .camionId(ruta.getCamionId())
+                    .camionId(camion != null ? camion.getId() : null)
                     .rutaId(ruta.getId())
                     .build());
         }
@@ -162,10 +162,10 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private LotePlanificacion crearYEnviarLote(List<DonacionLote> batch, List<UUID> camionesIds, List<Camion> camiones) {
+    private LotePlanificacion crearYEnviarLote(List<DonacionLote> batch, List<Camion> camiones) {
         LotePlanificacion lote = LotePlanificacion.builder()
                 .id(UUID.randomUUID())
-                .camionesIds(camionesIds)
+                .camiones(camiones)
                 .donaciones(batch)
                 .estado(EstadoLote.ENVIADO)
                 .tokenCorrelacion(UUID.randomUUID().toString())
@@ -177,12 +177,27 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
     }
 
     private void crearRutaDesdeCallback(LotePlanificacion lote, CallbackVehiculoRutaDTO vehiculo, Map<UUID, DonacionLote> donacionesPorId) {
-        UUID rutaId = UUID.randomUUID();
         List<Parada> paradas = new ArrayList<>();
+        Camion camion = camionRepositorio.buscarPorId(vehiculo.getCamionId());
+
+        Ruta ruta = Ruta.builder()
+                .id(UUID.randomUUID())
+                .lote(lote)
+                .camion(camion)
+                .paradas(paradas)
+                .estado(EstadoRuta.PLANIFICADA)
+                .build();
 
         for (CallbackParadaDTO paradaDTO : vehiculo.getParadas()) {
-            UUID paradaId = UUID.randomUUID();
-            List<UUID> entregasIds = new ArrayList<>();
+            List<Entrega> entregas = new ArrayList<>();
+            Parada parada = Parada.builder()
+                    .id(UUID.randomUUID())
+                    .orden(paradaDTO.getOrden())
+                    .direccion(aDireccion(paradaDTO.getDireccion()))
+                    .idEntidadBeneficiaria(paradaDTO.getIdEntidadBeneficiaria())
+                    .entregas(entregas)
+                    .build();
+            paradas.add(parada);
 
             for (UUID idDonacion : paradaDTO.getDonacionesIds()) {
                 DonacionLote donacionLote = donacionesPorId.get(idDonacion);
@@ -191,29 +206,14 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                         .idDonacion(idDonacion)
                         .idEntidadBeneficiaria(paradaDTO.getIdEntidadBeneficiaria())
                         .idDonante(donacionLote != null ? donacionLote.getIdDonante() : null)
-                        .paradaId(paradaId)
-                        .rutaId(rutaId)
+                        .parada(parada)
+                        .ruta(ruta)
                         .build();
                 entregaRepositorio.guardar(entrega);
-                entregasIds.add(entrega.getId());
+                entregas.add(entrega);
             }
-
-            paradas.add(Parada.builder()
-                    .id(paradaId)
-                    .orden(paradaDTO.getOrden())
-                    .direccion(aDireccion(paradaDTO.getDireccion()))
-                    .idEntidadBeneficiaria(paradaDTO.getIdEntidadBeneficiaria())
-                    .entregasIds(entregasIds)
-                    .build());
         }
 
-        Ruta ruta = Ruta.builder()
-                .id(rutaId)
-                .loteId(lote.getId())
-                .camionId(vehiculo.getCamionId())
-                .paradas(paradas)
-                .estado(EstadoRuta.PLANIFICADA)
-                .build();
         rutaRepositorio.guardar(ruta);
     }
 

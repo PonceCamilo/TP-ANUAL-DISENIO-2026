@@ -1,5 +1,8 @@
 package ar.utn.donatrack.logistica.models.entrega;
 
+import ar.utn.donatrack.logistica.models.flota.Camion;
+import ar.utn.donatrack.logistica.models.planificacion.Parada;
+import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,9 +20,9 @@ public class Entrega {
     private UUID idDonacion;
     private UUID idEntidadBeneficiaria;
     private UUID idDonante;
-    private UUID paradaId;
-    private UUID rutaId;
-    private UUID camionId;
+    private Parada parada;
+    private Ruta ruta;
+    private Camion camion;
 
     @Builder.Default
     private EstadoEntrega estado = EstadoEntrega.PENDIENTE;

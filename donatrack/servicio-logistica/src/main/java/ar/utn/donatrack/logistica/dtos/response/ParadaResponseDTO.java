@@ -1,5 +1,6 @@
 package ar.utn.donatrack.logistica.dtos.response;
 
+import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.planificacion.Parada;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,7 +23,7 @@ public class ParadaResponseDTO {
                 .orden(parada.getOrden())
                 .direccion(DireccionResponseDTO.desde(parada.getDireccion()))
                 .idEntidadBeneficiaria(parada.getIdEntidadBeneficiaria())
-                .entregasIds(parada.getEntregasIds())
+                .entregasIds(parada.getEntregas().stream().map(Entrega::getId).toList())
                 .build();
     }
 }
