@@ -13,9 +13,9 @@ public class NotificacionClient {
         this.restClient = RestClient.create(baseUrl);
     }
 
-    public void enviarNotificacion(String destinatario, String mensaje, String medio, String evento) {
+    public void enviarNotificacion(String destinatario, String mensaje, String medio) {
         SolicitudNotificacionRequest body =
-                new SolicitudNotificacionRequest(destinatario, mensaje, medio, evento);
+                new SolicitudNotificacionRequest(destinatario, mensaje, medio);
 
         restClient.post()
                 .uri("/notificaciones")
@@ -25,5 +25,5 @@ public class NotificacionClient {
     }
 
     private record SolicitudNotificacionRequest(
-            String destinatario, String mensaje, String medio, String evento) {}
+            String destinatario, String mensaje, String medio) {}
 }

@@ -55,7 +55,7 @@ public class InactividadDonantesService {
         String mensaje = "¡Hace más de " + DIAS_LIMITE_INACTIVIDAD + " días que no realizas una donación! "
                 + "Tu ayuda hace la diferencia. Ingresá a DonaTrack y sumá tu aporte!!.";
 
-        notificacionClient.enviarNotificacion(medio.getValor(), mensaje, tipoMedio, "INACTIVIDAD_DONANTE");
+        notificacionClient.enviarNotificacion(medio.getValor(), mensaje, tipoMedio);
     }
 
     private String mapearTipoMedio(MedioDeContacto medio) {

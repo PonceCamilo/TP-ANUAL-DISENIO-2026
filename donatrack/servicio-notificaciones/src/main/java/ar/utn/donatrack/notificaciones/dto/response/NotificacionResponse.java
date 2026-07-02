@@ -2,7 +2,7 @@ package ar.utn.donatrack.notificaciones.dto.response;
 
 import ar.utn.donatrack.notificaciones.model.EstadoNotificacion;
 import ar.utn.donatrack.notificaciones.model.Notificacion;
-import ar.utn.donatrack.notificaciones.model.TipoEvento;
+//import ar.utn.donatrack.notificaciones.model.TipoEvento;
 import ar.utn.donatrack.notificaciones.model.TipoMedioNotificacion;
 
 import java.time.LocalDateTime;
@@ -17,7 +17,7 @@ public record NotificacionResponse(
         String destinatario,
         String mensaje,
         TipoMedioNotificacion medio,
-        TipoEvento evento,
+        //TipoEvento evento,
         EstadoNotificacion estado,
         LocalDateTime fechaCreacion,
         LocalDateTime fechaEnvio
@@ -28,7 +28,7 @@ public record NotificacionResponse(
                 n.getDestinatario(),
                 n.getMensaje(),
                 n.getMedio(),
-                n.getEvento(),
+                //n.getEvento(),
                 n.getEstado(),
                 n.getFechaCreacion(),
                 n.getFechaEnvio()

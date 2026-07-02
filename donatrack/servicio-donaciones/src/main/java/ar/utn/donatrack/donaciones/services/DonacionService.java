@@ -136,8 +136,7 @@ public class DonacionService implements DonacionServiceInterface {
       notificacionClient.enviarNotificacion(
               emailEntidad,
               "Se te asignó una nueva donación según tus necesidades registradas.",
-              "EMAIL",
-              "ASIGNACION_DONACION_ENTIDAD"
+              "EMAIL"
       );
     }
 
@@ -146,8 +145,7 @@ public class DonacionService implements DonacionServiceInterface {
       notificacionClient.enviarNotificacion(
               donante.getEmail(),
               "Tu donación fue asignada a " + entidad.getRazonSocial() + ".",
-              "EMAIL",
-              "ASIGNACION_DONACION_DONANTE"
+              "EMAIL"
       );
     }
   }

@@ -35,7 +35,7 @@ public class NotificacionService implements NotificacionServiceInterface {
                 .destinatario(solicitud.destinatario())
                 .mensaje(solicitud.mensaje())
                 .medio(solicitud.medio())
-                .evento(solicitud.evento())
+                //.evento(solicitud.evento())
                 .estado(EstadoNotificacion.PENDIENTE)
                 .fechaCreacion(LocalDateTime.now())
                 .build();
