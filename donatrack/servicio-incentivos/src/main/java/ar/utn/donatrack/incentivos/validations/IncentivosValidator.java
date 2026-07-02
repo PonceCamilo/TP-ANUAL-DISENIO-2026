@@ -1,7 +1,7 @@
 package ar.utn.donatrack.incentivos.validations;
 
-import ar.utn.donatrack.incentivos.exception.CategoriasDonadasInvalidasException;
-import ar.utn.donatrack.incentivos.exception.MisionNoEncontradaException;
+import ar.utn.donatrack.incentivos.exceptions.CategoriasDonadasInvalidasException;
+import ar.utn.donatrack.incentivos.exceptions.MisionNoEncontradaException;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import org.springframework.stereotype.Component;

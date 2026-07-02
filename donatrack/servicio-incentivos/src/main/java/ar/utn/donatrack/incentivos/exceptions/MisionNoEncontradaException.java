@@ -1,4 +1,4 @@
-package ar.utn.donatrack.incentivos.exception;
+package ar.utn.donatrack.incentivos.exceptions;
 
 public class MisionNoEncontradaException extends RuntimeException {
 

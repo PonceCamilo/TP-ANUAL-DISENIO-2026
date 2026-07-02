@@ -1,4 +1,4 @@
-package ar.utn.donatrack.incentivos.exception;
+package ar.utn.donatrack.incentivos.exceptions;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -25,7 +24,11 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<Map<String, Object>> construirRespuesta(HttpStatus status, String error, Exception ex) {
-        return new ResponseEntity<>(construirCuerpoError(status, error, ex.getMessage()), status);
+        return construirRespuesta(status, error, ex.getMessage());
+    }
+
+    private ResponseEntity<Map<String, Object>> construirRespuesta(HttpStatus status, String error, String mensaje) {
+        return new ResponseEntity<>(construirCuerpoError(status, error, mensaje), status);
     }
 
     @ExceptionHandler(CategoriasDonadasInvalidasException.class)
@@ -38,13 +41,8 @@ public class GlobalExceptionHandler {
         return construirRespuesta(HttpStatus.NOT_FOUND, "Not Found", ex);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> manejarIlegal(IllegalArgumentException ex) {
-        return construirRespuesta(HttpStatus.BAD_REQUEST, "Bad Request", ex);
-    }
-
-    @ExceptionHandler(NoSuchElementException.class)
-    public ResponseEntity<Map<String, Object>> manejarNoEncontrado(NoSuchElementException ex) {
+    @ExceptionHandler(DonanteNoEncontradoException.class)
+    public ResponseEntity<Map<String, Object>> manejarDonanteNoEncontrado(DonanteNoEncontradoException ex) {
         return construirRespuesta(HttpStatus.NOT_FOUND, "Not Found", ex);
     }
 
@@ -55,6 +53,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> manejarValidacion(MethodArgumentNotValidException ex) {
-        return construirRespuesta(HttpStatus.BAD_REQUEST, "Bad Request", ex);
+        String detalle = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> e.getField() + ": " + e.getDefaultMessage())
+                .reduce((a, b) -> a + "; " + b)
+                .orElse(ex.getMessage());
+        return construirRespuesta(HttpStatus.BAD_REQUEST, "Bad Request", detalle);
     }
 }
