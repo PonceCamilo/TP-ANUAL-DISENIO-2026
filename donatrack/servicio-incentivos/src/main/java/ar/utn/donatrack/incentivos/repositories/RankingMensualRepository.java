@@ -12,19 +12,16 @@ public class RankingMensualRepository implements RankingMensualRepositoryInterfa
 
     private final List<RankingMensual> historial = new ArrayList<>();
 
-    @Override
     public void guardar(RankingMensual ranking) {
         historial.add(ranking);
     }
 
-    @Override
     public Optional<RankingMensual> buscarPorPeriodo(int mes, int anio) {
         return historial.stream()
                 .filter(r -> r.getMes() == mes && r.getAnio() == anio)
                 .findFirst();
     }
 
-    @Override
     public List<RankingMensual> obtenerHistorial() {
         return historial;
     }

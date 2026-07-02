@@ -14,13 +14,11 @@ public class DonacionesExitosas extends Mision {
         super(nombre, descripcion, categoriaRequerida, objetivo, insignia);
     }
 
-    @Override
     public boolean estaCompletada(Donante donante) {    
         return progresoActual(donante) >= objetivo;
     }
 
-    @Override
     public int progresoActual(Donante donante) {
-        return donante.donacionesExitosas();
+        return donante.getMetricas().donacionesExitosas();
     }
 }

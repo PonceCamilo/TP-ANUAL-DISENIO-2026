@@ -16,9 +16,9 @@ public record MetricasDonanteResponse(
         return new MetricasDonanteResponse(
                 donante.getId(),
                 donante.getCategoria() != null ? donante.getCategoria().getClass().getSimpleName() : "Sin Categoria",
-                donante.totalDonacionesHistoricas(),
-                donante.donacionesDelMesActual(),
-                donante.organizacionesAyudadas(),
+                donante.getMetricas().totalDonacionesHistoricas(),
+                donante.getMetricas().donacionesMesActual(),
+                donante.getMetricas().organizacionesAyudadas(),
                 posicionRanking
         );
     }

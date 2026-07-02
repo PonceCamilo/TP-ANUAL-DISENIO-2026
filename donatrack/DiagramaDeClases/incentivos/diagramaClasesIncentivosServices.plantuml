@@ -1,57 +1,73 @@
 @startuml diagramaClasesIncentivosServices
 
 interface IncentivosServiceInterface {
-    + obtenerMetricas(): Donante
-    + obtenerMisiones(): List<Mision>
-    + obtenerInsignias(): List<InsigniaObtenida>
-    + obtenerRankingMensualActual(): RankingMensual
-    + obtenerPosicionRankingActual(): int
-    + procesarDonacion(): void
-    + procesarDonacionExitosa(): void
+    public obtenerMetricas(donante: UUID): Donante
+    public obtenerMisiones(donante: UUID): List<Mision>
+    public obtenerInsignias(donante: UUID): List<InsigniaObtenida>
+    public obtenerRankingMensualActual(): RankingMensual
+    public obtenerPosicionRankingActual(donante: UUID): int
+    public procesarDonacion(donante: UUID, destinatario: String, medio: String, cantidadBienes: int, categoriasDonadas: List<String>): void
+    public procesarDonacionExitosa(donante: UUID, destinatario: String, medio: String): void
 }
 
-class IncentivosService implements IncentivosServiceInterface {
+class IncentivosService {
+        
+    private repositorio: IncentivosRepositorioEnMemoria
+    private notificacionClient: NotificacionClient
+    private n8nWebhookClient: N8nWebhookClient
+    private validator: IncentivosValidator
     
-repositorio: IncentivosRepositorioEnMemoria
-notificacionClient: NotificacionClient
-n8nWebhookClient: N8nWebhookClient
-
-    + obtenerMetricas(): Donante
-    + obtenerMisiones(): List<Mision>
-    + obtenerInsignias(): List<InsigniaObtenida>
-    + obtenerRankingMensualActual(): RankingMensual
-    + obtenerPosicionRankingActual(): int
-    + procesarDonacion(): void
-    + procesarDonacionExitosa(): void
+    private obtenerOCrearPerfilConInit(donante: UUID): Donante
+    public obtenerMetricas(donante: UUID): Donante
+    public obtenerMisiones(donante: UUID): List<Mision>
+    public obtenerInsignias(donante: UUID): List<InsigniaObtenida>
+    public obtenerRankingMensualActual(): RankingMensual
+    public obtenerPosicionRankingActual(donante: UUID): int
+    public procesarDonacion(donante: UUID, destinatario: String, medio: String, cantidadBienes: int, categoriasDonadas: List<String>): void
+    public procesarDonacionExitosa(donante: UUID, destinatario: String, medio: String): void
+    private verificarMisionActiva(perfil: Donante, destinatario: String, medio: String): void
+    private avanzarMision(perfil: Donante, activa: Mision, destinatario: String, medio: String): void
+    private asignarPrimeraMisionDeCategoria(perfil: Donante): void
+    private revisarPerdidaMision(perfil: Donante): void
+    private misionesCompletadasEnPeriodo(donante: Donante, mes: int, anio: int): int
 }
 
 interface DonanteServiceInterface {
-    + procesarAvance(): void
-    + completarMision(): void
-    + subirDeCategoria(): void
-    + cambiarVisibilidadInsignia(): void
-    + obtenerProgresoMisionActual(): int
-    + obtenerDistanciaRestanteMisionActual(): int
+    public procesarAvance(donante: UUID): void
+    public completarMision(donante: Donante, mision: Mision): void
+    public subirDeCategoria(donante: Donante): void
+    public cambiarVisibilidadInsignia(donante: UUID, insigniaObtenida: UUID, visible: boolean): void
+    public obtenerProgresoMisionActual(donante: UUID): int
+    public obtenerDistanciaRestanteMisionActual(donante: UUID): int
 }
 
-class DonanteService implements DonanteServiceInterface {
+class DonanteService {
     
-repositoryInterface: DonanteRepositoryInterface
-incentivosRepositorio: IncentivosRepositorioEnMemoria
+private repositoryInterface: DonanteRepositoryInterface
+private incentivosRepositorio: IncentivosRepositorioEnMemoria
+private validator: IncentivosValidator
 
-    + procesarAvance(): void
-    + completarMision(): void
-    + subirDeCategoria(): void
-    + cambiarVisibilidadInsignia(): void
-    + obtenerProgresoMisionActual(): int
-    + obtenerDistanciaRestanteMisionActual(): int
+    public procesarAvance(donante: UUID): void
+    public completarMision(donante: Donante, mision: Mision): void
+    public subirDeCategoria(donante: Donante): void
+    public cambiarVisibilidadInsignia(donante: UUID, insignia: UUID, visible: boolean): void
+    public obtenerProgresoMisionActual(donante: UUID): int
+    public obtenerDistanciaRestanteMisionActual(donante: UUID): int
+    private obtenerDonante(donante: UUID): Donante
+    private primeraMisionDeCategoria(categoria: CategoriaDonante): Mision
+    private siguienteMisionDeCategoria(donante: Donante, misionActual: Mision): Mision
 }
 
-IncentivosService --> IncentivosRepositorioEnMemoria
-IncentivosService --> NotificacionClient
-IncentivosService --> N8nWebhookClient
+IncentivosService --|> IncentivosServiceInterface
+DonanteService --|> DonanteServiceInterface
 
-DonanteService --> DonanteRepositoryInterface
-DonanteService --> IncentivosRepositorioEnMemoria
+IncentivosService -- IncentivosRepositorioEnMemoria
+IncentivosService -- NotificacionClient
+IncentivosService -- N8nWebhookClient
+IncentivosService -- IncentivosValidator
+
+DonanteService -- DonanteRepositoryInterface
+DonanteService -- IncentivosRepositorioEnMemoria
+DonanteService -- IncentivosValidator
 
 @enduml

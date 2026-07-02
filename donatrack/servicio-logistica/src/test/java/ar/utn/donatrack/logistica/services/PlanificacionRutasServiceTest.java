@@ -189,6 +189,9 @@ class PlanificacionRutasServiceTest {
                     .build();
             when(loteRepositorio.buscarPorId(loteId)).thenReturn(lote);
 
+            Camion camion = Camion.builder().id(idCamion).build();
+            when(camionRepositorio.buscarPorId(idCamion)).thenReturn(camion);
+
             CallbackParadaDTO parada = new CallbackParadaDTO();
             parada.setOrden(1);
             parada.setIdEntidadBeneficiaria(idEntidad);
@@ -209,7 +212,7 @@ class PlanificacionRutasServiceTest {
             ArgumentCaptor<Ruta> rutaCaptor = ArgumentCaptor.forClass(Ruta.class);
             verify(rutaRepositorio).guardar(rutaCaptor.capture());
             Ruta rutaGuardada = rutaCaptor.getValue();
-            assertEquals(idCamion, rutaGuardada.getCamionId());
+            assertEquals(idCamion, rutaGuardada.getCamion().getId());
             assertEquals(EstadoRuta.PLANIFICADA, rutaGuardada.getEstado());
             assertEquals(1, rutaGuardada.getParadas().size());
 
@@ -237,21 +240,20 @@ class PlanificacionRutasServiceTest {
             UUID rutaId = UUID.randomUUID();
             UUID camionId = UUID.randomUUID();
 
+            Camion camion = Camion.builder().id(camionId).estado(EstadoCamion.DISPONIBLE).build();
+
             Ruta ruta = Ruta.builder()
                     .id(rutaId)
-                    .camionId(camionId)
+                    .camion(camion)
                     .estado(EstadoRuta.PLANIFICADA)
                     .paradas(List.of())
                     .build();
             when(rutaRepositorio.buscarPorId(rutaId)).thenReturn(ruta);
 
-            Camion camion = Camion.builder().id(camionId).estado(EstadoCamion.DISPONIBLE).build();
-            when(camionRepositorio.buscarPorId(camionId)).thenReturn(camion);
-
             Entrega entrega = Entrega.builder()
                     .id(UUID.randomUUID())
                     .idDonacion(UUID.randomUUID())
-                    .rutaId(rutaId)
+                    .ruta(ruta)
                     .estado(EstadoEntrega.PENDIENTE)
                     .build();
             when(entregaRepositorio.buscarPorRutaId(rutaId)).thenReturn(List.of(entrega));
@@ -265,7 +267,7 @@ class PlanificacionRutasServiceTest {
             verify(camionRepositorio).guardar(camion);
 
             assertEquals(EstadoEntrega.EN_TRASLADO, entrega.getEstado());
-            assertEquals(camionId, entrega.getCamionId());
+            assertEquals(camionId, entrega.getCamion().getId());
             verify(entregaRepositorio).guardar(entrega);
 
             ArgumentCaptor<EntregaEvento> eventoCaptor = ArgumentCaptor.forClass(EntregaEvento.class);
@@ -292,9 +294,10 @@ class PlanificacionRutasServiceTest {
         @DisplayName("Ignora rutas FINALIZADA y devuelve la vigente")
         void devuelveLaRutaVigenteIgnorandoFinalizadas() {
             UUID camionId = UUID.randomUUID();
-            Ruta finalizada = Ruta.builder().id(UUID.randomUUID()).camionId(camionId)
+            Camion camion = Camion.builder().id(camionId).build();
+            Ruta finalizada = Ruta.builder().id(UUID.randomUUID()).camion(camion)
                     .estado(EstadoRuta.FINALIZADA).paradas(List.of()).build();
-            Ruta vigente = Ruta.builder().id(UUID.randomUUID()).camionId(camionId)
+            Ruta vigente = Ruta.builder().id(UUID.randomUUID()).camion(camion)
                     .estado(EstadoRuta.INICIADA).paradas(List.of()).build();
             when(rutaRepositorio.buscarPorCamionId(camionId)).thenReturn(List.of(finalizada, vigente));
 

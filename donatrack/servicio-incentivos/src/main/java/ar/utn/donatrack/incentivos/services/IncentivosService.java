@@ -6,20 +6,12 @@ import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.PosicionRanking;
 import ar.utn.donatrack.incentivos.models.RankingMensual;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.Colaborador;
-import ar.utn.donatrack.incentivos.models.categoriasdonante.Sostenedor;
-import ar.utn.donatrack.incentivos.models.categoriasdonante.Transformador;
-import ar.utn.donatrack.incentivos.models.insignias.Insignia;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
-import ar.utn.donatrack.incentivos.models.misiones.Completitud;
-import ar.utn.donatrack.incentivos.models.misiones.DonacionesExitosas;
-import ar.utn.donatrack.incentivos.models.misiones.HabilDonador;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.misiones.Racha;
 import ar.utn.donatrack.incentivos.interfaces.services.IncentivosServiceInterface;
 import ar.utn.donatrack.incentivos.repositories.IncentivosRepositorioEnMemoria;
-import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import ar.utn.donatrack.incentivos.validations.IncentivosValidator;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -31,67 +23,19 @@ import java.util.UUID;
 @Service
 public class IncentivosService implements IncentivosServiceInterface {
 
-    private static final Logger log = LoggerFactory.getLogger(IncentivosService.class);
     private final IncentivosRepositorioEnMemoria repositorio;
     private final NotificacionClient notificacionClient;
     private final N8nWebhookClient n8nWebhookClient;
+    private final IncentivosValidator validator;
 
     public IncentivosService(IncentivosRepositorioEnMemoria repositorio,
                              NotificacionClient notificacionClient,
-                             N8nWebhookClient n8nWebhookClient) {
+                             N8nWebhookClient n8nWebhookClient,
+                             IncentivosValidator validator) {
         this.repositorio = repositorio;
         this.notificacionClient = notificacionClient;
         this.n8nWebhookClient = n8nWebhookClient;
-    }
-
-    @PostConstruct
-    public void inicializarMisiones() {
-        repositorio.guardarMision(new DonacionesExitosas(
-                "Primera donacion exitosa",
-                "Completar una donacion entregada a destino.",
-                new Colaborador(),
-                1,
-                Insignia.builder()
-                        .id(UUID.randomUUID())
-                        .nombre("Semilla de Solidaridad")
-                        .imagen("semilla.png")
-                        .build()
-        ));
-        repositorio.guardarMision(new Racha(
-                "Racha solidaria",
-                "Donar al menos una vez por mes durante tres meses seguidos.",
-                new Colaborador(),
-                3,
-                Insignia.builder()
-                        .id(UUID.randomUUID())
-                        .nombre("Constancia Solidaria")
-                        .imagen("racha.png")
-                        .build()
-        ));
-        repositorio.guardarMision(new HabilDonador(
-                "Gran Corazon",
-                "Donar diez bienes en una unica donacion.",
-                new Sostenedor(),
-                10,
-                Insignia.builder()
-                        .id(UUID.randomUUID())
-                        .nombre("Corazon de Plata")
-                        .imagen("plata.png")
-                        .build()
-        ));
-        repositorio.guardarMision(new Completitud(
-                "Ayuda Integral",
-                "Donar bienes de tres categorias distintas.",
-                new Transformador(),
-                3,
-                Insignia.builder()
-                        .id(UUID.randomUUID())
-                        .nombre("Estrella Dorada")
-                        .imagen("oro.png")
-                        .build()
-        ));
-
-        log.info("Misiones base del sistema cargadas correctamente.");
+        this.validator = validator;
     }
 
     private Donante obtenerOCrearPerfilConInit(UUID donanteId) {
@@ -99,7 +43,7 @@ public class IncentivosService implements IncentivosServiceInterface {
         if (perfil.getCategoria() == null) {
             perfil.setCategoria(new Colaborador());
         }
-        if (perfil.misionActual() == null) {
+        if (perfil.getProgresoMision().getMisionActual() == null) {
             asignarPrimeraMisionDeCategoria(perfil);
         }
         revisarPerdidaMision(perfil);
@@ -107,23 +51,19 @@ public class IncentivosService implements IncentivosServiceInterface {
         return perfil;
     }
 
-    @Override
     public Donante obtenerMetricas(UUID donanteId) {
         return obtenerOCrearPerfilConInit(donanteId);
     }
 
-    @Override
     public List<Mision> obtenerMisiones(UUID donanteId) {
         Donante perfil = obtenerOCrearPerfilConInit(donanteId);
         return repositorio.listarMisionesPorCategoria(perfil.getCategoria());
     }
 
-    @Override
     public List<InsigniaObtenida> obtenerInsignias(UUID donanteId) {
         return obtenerOCrearPerfilConInit(donanteId).getInsigniasObtenidas();
     }
 
-    @Override
     public RankingMensual obtenerRankingMensualActual() {
         LocalDate hoy = LocalDate.now();
         int mes = hoy.getMonthValue();
@@ -135,8 +75,8 @@ public class IncentivosService implements IncentivosServiceInterface {
                 .map(donante -> PosicionRanking.builder()
                         .donanteId(donante.getId())
                         .misionesCompletadas(misionesCompletadasEnPeriodo(donante, mes, anio))
-                        .donacionesMesActual(donante.donacionesDelMesActual())
-                        .totalDonacionesHistoricas(donante.totalDonacionesHistoricas())
+                        .donacionesMesActual(donante.getMetricas().donacionesMesActual())
+                        .totalDonacionesHistoricas(donante.getMetricas().totalDonacionesHistoricas())
                         .primerDiaDelMes(primerDiaDelMes)
                         .build())
                 .sorted(Comparator.comparingInt(PosicionRanking::getMisionesCompletadas).reversed()
@@ -156,21 +96,19 @@ public class IncentivosService implements IncentivosServiceInterface {
                 .build();
     }
 
-    @Override
     public int obtenerPosicionRankingActual(UUID donanteId) {
         obtenerOCrearPerfilConInit(donanteId);
         return obtenerRankingMensualActual().posicionDe(donanteId);
     }
 
-    @Override
     public void procesarDonacion(UUID donanteId, String destinatario, String medio, int cantidadBienes, List<String> categoriasDonadas) {
+        validator.validarCategoriasDonadas(categoriasDonadas);
         Donante perfil = obtenerOCrearPerfilConInit(donanteId);
         perfil.registrarDonacion(cantidadBienes, categoriasDonadas);
         repositorio.guardarPerfil(perfil);
         verificarMisionActiva(perfil, destinatario, medio);
     }
 
-    @Override
     public void procesarDonacionExitosa(UUID donanteId, String destinatario, String medio) {
         Donante perfil = obtenerOCrearPerfilConInit(donanteId);
         perfil.registrarOrganizacionAyudada();
@@ -179,7 +117,7 @@ public class IncentivosService implements IncentivosServiceInterface {
     }
 
     private void verificarMisionActiva(Donante perfil, String destinatario, String medio) {
-        Mision activa = perfil.misionActual();
+        Mision activa = perfil.getProgresoMision().getMisionActual();
         if (activa == null || !activa.estaCompletada(perfil)) {
             return;
         }
@@ -198,7 +136,7 @@ public class IncentivosService implements IncentivosServiceInterface {
         int index = misionesDeSuCategoria.indexOf(activa);
 
         if (index != -1 && index < misionesDeSuCategoria.size() - 1) {
-            perfil.asignarMisionActual(misionesDeSuCategoria.get(index + 1));
+            perfil.getProgresoMision().setMisionActual(misionesDeSuCategoria.get(index + 1));
             return;
         }
 
@@ -208,16 +146,18 @@ public class IncentivosService implements IncentivosServiceInterface {
             return;
         }
 
-        perfil.asignarMisionActual(null);
+        perfil.getProgresoMision().setMisionActual(null);
     }
 
     private void asignarPrimeraMisionDeCategoria(Donante perfil) {
         List<Mision> misiones = repositorio.listarMisionesPorCategoria(perfil.getCategoria());
-        perfil.asignarMisionActual(misiones.isEmpty() ? null : misiones.get(0));
+        validator.validarMisionesDisponibles(misiones, perfil.getCategoria());
+        perfil.getProgresoMision().setMisionActual(misiones.get(0));
     }
 
     private void revisarPerdidaMision(Donante perfil) {
-        if (perfil.misionActual() instanceof Racha && perfil.perdioRachaPorMesCompletoSinDonar()) {
+        if (perfil.getProgresoMision().getMisionActual() instanceof Racha
+                && perfil.getMetricas().pasoUnMesCompletoSinDonaciones(LocalDate.now())) {
             asignarPrimeraMisionDeCategoria(perfil);
         }
     }

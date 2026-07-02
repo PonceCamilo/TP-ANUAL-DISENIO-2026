@@ -14,13 +14,11 @@ public class Completitud extends Mision {
         super(nombre, descripcion, categoriaRequerida, categoriasRequeridas, insignia);
     }
 
-    @Override
     public boolean estaCompletada(Donante donante) {
         return progresoActual(donante) >= objetivo;
     }
 
-    @Override
     public int progresoActual(Donante donante) {
-        return donante.categoriasDistintasDonadas();
+        return donante.getMetricas().categoriasDistintasDonadas();
     }
 }

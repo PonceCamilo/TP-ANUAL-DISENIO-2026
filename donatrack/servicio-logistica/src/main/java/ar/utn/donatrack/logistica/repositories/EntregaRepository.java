@@ -27,7 +27,7 @@ public class EntregaRepository implements EntregaRepositoryInterface {
     @Override
     public List<Entrega> buscarPorRutaId(UUID rutaId) {
         return storage.values().stream()
-                .filter(e -> rutaId.equals(e.getRutaId()))
+                .filter(e -> e.getRuta() != null && rutaId.equals(e.getRuta().getId()))
                 .toList();
     }
 
