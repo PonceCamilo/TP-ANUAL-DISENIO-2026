@@ -24,10 +24,10 @@ public class NotificacionClient {
         this.restClient = RestClient.create(baseUrl);
     }
 
-    public void enviarNotificacion(String destinatario, String mensaje, String medio, String evento) {
+    public void enviarNotificacion(String destinatario, String mensaje, String medio) {
         try {
             SolicitudNotificacionRequest body =
-                    new SolicitudNotificacionRequest(destinatario, mensaje, medio, evento);
+                    new SolicitudNotificacionRequest(destinatario, mensaje, medio);
 
             restClient.post()
                     .uri("/notificaciones")
@@ -35,10 +35,10 @@ public class NotificacionClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (Exception e) {
-            log.error("[NotificacionClient] Error al enviar notificación '{}' a {}: {}", evento, destinatario, e.getMessage());
+            log.error("[NotificacionClient] Error al enviar notificación a {}: {}", destinatario, e.getMessage());
         }
     }
 
     private record SolicitudNotificacionRequest(
-            String destinatario, String mensaje, String medio, String evento) {}
+            String destinatario, String mensaje, String medio) {}
 }
