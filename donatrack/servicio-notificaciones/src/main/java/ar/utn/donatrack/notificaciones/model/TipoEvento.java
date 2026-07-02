@@ -5,6 +5,7 @@
  * - ENTREGA_EXITOSA: a la entidad y al donante cuando se confirma la recepción.
  * - ENTREGA_FALLIDA: a la entidad, al donante y a administradores cuando la entrega no se concretó.
  */
+
 public enum TipoEvento {
     INACTIVIDAD_DONANTE,
     ASIGNACION_DONACION_ENTIDAD,
