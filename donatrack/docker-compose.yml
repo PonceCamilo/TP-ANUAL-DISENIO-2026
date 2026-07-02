@@ -1,0 +1,33 @@
+services:
+
+  servicio-donaciones:
+    build:
+      context: ./servicio-donaciones
+      dockerfile: Dockerfile
+    container_name: donatrack-donaciones
+    ports:
+      - "8081:8081"
+    environment:
+      - notificaciones.url=http://servicio-notificaciones:8084
+      - servicios.incentivos.url=http://servicio-incentivos:8083
+      - spring.docker.compose.enabled=false
+    depends_on:
+      - servicio-notificaciones
+    networks:
+      - donatrack-net
+
+  servicio-notificaciones:
+    build:
+      context: ./servicio-notificaciones
+      dockerfile: Dockerfile
+    container_name: donatrack-notificaciones
+    ports:
+      - "8084:8084"
+    environment:
+      - spring.docker.compose.enabled=false
+    networks:
+      - donatrack-net
+
+networks:
+  donatrack-net:
+    driver: bridge
