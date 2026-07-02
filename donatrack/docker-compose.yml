@@ -29,6 +29,39 @@ services:
     networks:
       - donatrack-net
 
+  servicio-incentivos:
+    build:
+      context: .
+      dockerfile: servicio-incentivos/Dockerfile
+    container_name: donatrack-servicio-incentivos
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      SERVICIOS_NOTIFICACIONES_URL: http://servicio-notificaciones:8084
+      INTEGRACIONES_N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/insignia-obtenida
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+    depends_on:
+      - servicio-notificaciones
+    networks:
+      - donatrack-net
+
+  servicio-logistica:
+    build:
+      context: .
+      dockerfile: servicio-logistica/Dockerfile
+    container_name: donatrack-servicio-logistica
+    ports:
+      - "8085:8085"
+    environment:
+      SERVER_PORT: 8085
+      SERVICIO_LOGISTICA_BASE_URL: http://localhost:8085
+      INTEGRACIONES_PROVEEDOR_RUTEO_URL: http://localhost:8085/ruteo/planificar
+      INTEGRACIONES_N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/logistica-evento
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+    networks:
+      - donatrack-net
+
 networks:
   donatrack-net:
     driver: bridge
