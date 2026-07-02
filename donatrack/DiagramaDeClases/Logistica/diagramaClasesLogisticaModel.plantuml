@@ -1,0 +1,130 @@
+@startuml diagramaClasesLogisticaModel
+
+skinparam classAttributeIconSize 0
+
+class Direccion {
+    - calle : String
+    - numero : int
+    - localidad : String
+    - provincia : String
+    - codigoPostal : String
+}
+
+class Camion {
+    - id : UUID
+    - patente : String
+    - capacidadVolumenM3 : double
+    - alturaM : double
+    - capacidadCargaKg : double
+    - estado : EstadoCamion
+}
+
+enum EstadoCamion {
+    DISPONIBLE
+    EN_RUTA
+    MANTENIMIENTO
+}
+
+class LotePlanificacion {
+    - id : UUID
+    - camiones : List<Camion>
+    - donaciones : List<DonacionLote>
+    - estado : EstadoLote
+    - tokenCorrelacion : String
+    - fechaEnvio : LocalDateTime
+    - fechaRespuesta : LocalDateTime
+}
+
+enum EstadoLote {
+    ENVIADO
+    EN_PROCESO
+    COMPLETADO
+    ERROR
+}
+
+class DonacionLote {
+    - idDonacion : UUID
+    - idEntidadBeneficiaria : UUID
+    - idDonante : UUID
+    - direccionEntrega : Direccion
+}
+
+class Ruta {
+    - id : UUID
+    - lote : LotePlanificacion
+    - camion : Camion
+    - paradas : List<Parada>
+    - estado : EstadoRuta
+    - fechaInicio : LocalDateTime
+}
+
+enum EstadoRuta {
+    PLANIFICADA
+    INICIADA
+    FINALIZADA
+}
+
+class Parada {
+    - id : UUID
+    - orden : int
+    - direccion : Direccion
+    - idEntidadBeneficiaria : UUID
+    - entregas : List<Entrega>
+}
+
+class Entrega {
+    - id : UUID
+    - idDonacion : UUID
+    - idEntidadBeneficiaria : UUID
+    - idDonante : UUID
+    - parada : Parada
+    - ruta : Ruta
+    - camion : Camion
+    - estado : EstadoEntrega
+    - historial : List<CambioEstadoEntrega>
+    - fotosComprobante : List<String>
+    - observacion : String
+    - fechaEntrega : LocalDateTime
+    + registrarCambio(nuevoEstado : EstadoEntrega, observacion : String) : void
+}
+
+enum EstadoEntrega {
+    PENDIENTE
+    EN_TRASLADO
+    ENTREGADA
+    NO_RECIBIDA
+}
+
+class CambioEstadoEntrega {
+    - estado : EstadoEntrega
+    - observacion : String
+    - fechaHora : LocalDateTime
+}
+
+
+Camion --> EstadoCamion
+
+Entrega --> EstadoEntrega
+Entrega --> Camion
+Entrega --> Parada
+Entrega --> Ruta
+Entrega --> "*" CambioEstadoEntrega
+
+CambioEstadoEntrega --> EstadoEntrega
+
+Parada --> Direccion
+Parada --> "*" Entrega
+
+Ruta --> EstadoRuta
+Ruta --> Camion
+Ruta --> "*" Parada
+Ruta --> LotePlanificacion
+
+LotePlanificacion --> EstadoLote
+LotePlanificacion --> "*" Camion
+LotePlanificacion --> "*" DonacionLote
+
+DonacionLote --> Direccion
+
+
+@enduml

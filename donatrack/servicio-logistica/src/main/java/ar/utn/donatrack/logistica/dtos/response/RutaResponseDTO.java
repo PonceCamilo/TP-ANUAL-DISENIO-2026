@@ -21,7 +21,7 @@ public class RutaResponseDTO {
     public static RutaResponseDTO desde(Ruta ruta) {
         return RutaResponseDTO.builder()
                 .id(ruta.getId())
-                .camionId(ruta.getCamionId())
+                .camionId(ruta.getCamion() != null ? ruta.getCamion().getId() : null)
                 .estado(ruta.getEstado())
                 .fechaInicio(ruta.getFechaInicio())
                 .paradas(ruta.getParadas().stream().map(ParadaResponseDTO::desde).toList())

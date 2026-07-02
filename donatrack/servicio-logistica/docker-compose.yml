@@ -1,0 +1,14 @@
+services:
+  servicio-logistica:
+    build:
+      context: ..
+      dockerfile: servicio-logistica/Dockerfile
+    container_name: donatrack-servicio-logistica
+    ports:
+      - "8085:8085"
+    environment:
+      SERVER_PORT: 8085
+      SERVICIO_LOGISTICA_BASE_URL: http://localhost:8085
+      INTEGRACIONES_PROVEEDOR_RUTEO_URL: http://localhost:8085/ruteo/planificar
+      INTEGRACIONES_N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/logistica-evento
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"

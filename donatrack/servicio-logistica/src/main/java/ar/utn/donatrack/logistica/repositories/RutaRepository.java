@@ -26,7 +26,7 @@ public class RutaRepository implements RutaRepositoryInterface {
     @Override
     public List<Ruta> buscarPorCamionId(UUID camionId) {
         return storage.values().stream()
-                .filter(r -> camionId.equals(r.getCamionId()))
+                .filter(r -> r.getCamion() != null && camionId.equals(r.getCamion().getId()))
                 .toList();
     }
 }
