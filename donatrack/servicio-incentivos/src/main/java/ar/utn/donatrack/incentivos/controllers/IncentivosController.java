@@ -97,7 +97,7 @@ public class IncentivosController {
             summary = "Procesar donacion registrada",
             description = "Endpoint de integracion usado por servicio-donaciones cuando se registra una donacion. Actualiza el historial y el progreso de misiones.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Evento procesado",
+                    @ApiResponse(responseCode = "201", description = "Evento procesado",
                             content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "400", description = "Request invalido")
             }
@@ -111,14 +111,14 @@ public class IncentivosController {
                 request.cantidadBienes(),
                 request.categoriasDonadas()
         );
-        return ResponseEntity.ok("Donacion registrada en incentivos para el donante " + request.donanteId());
+        return ResponseEntity.status(201).body("Donacion registrada en incentivos para el donante " + request.donanteId());
     }
 
     @Operation(
             summary = "Procesar donacion exitosa",
             description = "Endpoint de integracion usado por servicio-donaciones cuando una donacion fue entregada. Puede completar misiones y disparar n8n.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Evento procesado",
+                    @ApiResponse(responseCode = "201", description = "Evento procesado",
                             content = @Content(schema = @Schema(implementation = String.class))),
                     @ApiResponse(responseCode = "400", description = "Request invalido")
             }
@@ -130,6 +130,6 @@ public class IncentivosController {
                 request.destinatario(),
                 request.medio()
         );
-        return ResponseEntity.ok("Donacion exitosa registrada en incentivos para el donante " + request.donanteId());
+        return ResponseEntity.status(201).body("Donacion exitosa registrada en incentivos para el donante " + request.donanteId());
     }
 }
