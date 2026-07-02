@@ -1,0 +1,24 @@
+# El build context ahora es la raíz del reactor. Excluimos todo lo que no
+# necesita el build de Maven para no inflar el contexto ni copiar artefactos viejos.
+
+# Artefactos de compilación
+**/target/
+
+# Control de versiones
+.git/
+.gitignore
+
+# IDE
+.idea/
+*.iml
+
+# Frontend (no es parte del reactor Maven)
+donatrack-Front/
+
+# Documentación y diagramas
+DiagramaDeClases/
+
+# Archivos Docker (los lee el daemon, no hacen falta dentro del contexto)
+**/Dockerfile*
+docker-compose*.yml
+.dockerignore

@@ -2,8 +2,9 @@ services:
 
   servicio-donaciones:
     build:
-      context: ./servicio-donaciones
-      dockerfile: Dockerfile
+      # El contexto es la raíz del reactor para que Maven encuentre el POM padre.
+      context: .
+      dockerfile: servicio-donaciones/Dockerfile
     container_name: donatrack-donaciones
     ports:
       - "8081:8081"
@@ -18,8 +19,8 @@ services:
 
   servicio-notificaciones:
     build:
-      context: ./servicio-notificaciones
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: servicio-notificaciones/Dockerfile
     container_name: donatrack-notificaciones
     ports:
       - "8084:8084"

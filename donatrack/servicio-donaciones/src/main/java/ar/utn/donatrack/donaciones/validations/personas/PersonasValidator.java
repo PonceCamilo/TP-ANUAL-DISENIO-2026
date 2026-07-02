@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.validations.personas;
 
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
@@ -53,13 +53,13 @@ public class PersonasValidator {
 
   public void validarEsPersonaJuridica(UUID id) {
     if (!(repositorio.obtenerPersona(id) instanceof PersonaJuridica)) {
-      throw new TipoPersonaIlegalException();
+      throw new TipoPersonaIlegalException(id);
     }
   }
 
   public void validarMedioContacto(MedioDeContacto medio) {
     if (medio == null || medio.getValor() == null || medio.getValor().isBlank()) {
-      throw new MedioContactoInvalidoException();
+      throw new MedioContactoInvalidoException(medio == null ? null : medio.getValor());
     }
   }
 
