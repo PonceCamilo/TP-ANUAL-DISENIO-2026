@@ -1,7 +1,7 @@
 package ar.utn.donatrack.notificaciones.dto;
 
-import ar.utn.donatrack.notificaciones.model.TipoEvento;
-import ar.utn.donatrack.notificaciones.model.TipoMedioNotificacion;
+//import ar.utn.donatrack.notificaciones.model.TipoEvento;
+import ar.utn.donatrack.notificaciones.model.medios.MedioNotificacion;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -13,6 +13,6 @@ import jakarta.validation.constraints.NotNull;
 public record SolicitudNotificacionDto(
         @NotBlank String destinatario,
         @NotBlank String mensaje,
-        @NotNull TipoMedioNotificacion medio
+        @NotNull MedioNotificacion medio
        // @NotNull TipoEvento evento
 ) {}

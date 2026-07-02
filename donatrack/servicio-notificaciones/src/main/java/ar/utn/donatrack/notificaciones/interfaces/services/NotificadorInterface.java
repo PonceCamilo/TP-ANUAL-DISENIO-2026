@@ -1,7 +1,7 @@
 package ar.utn.donatrack.notificaciones.interfaces.services;
 
 import ar.utn.donatrack.notificaciones.model.Notificacion;
-import ar.utn.donatrack.notificaciones.model.TipoMedioNotificacion;
+import ar.utn.donatrack.notificaciones.model.medios.MedioNotificacion;
 
 /**
  * ══════════════════════════════════════════════════════════════
@@ -20,5 +20,5 @@ public interface NotificadorInterface {
     void enviar(Notificacion notificacion);
 
     /** Indica qué medio maneja este notificador. */
-    TipoMedioNotificacion getMedio();
+    MedioNotificacion  getMedio();
 }

@@ -1,4 +1,5 @@
 package ar.utn.donatrack.notificaciones.model;
+import ar.utn.donatrack.notificaciones.model.medios.MedioNotificacion;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -18,7 +19,7 @@ public class Notificacion {
     private UUID id;
     private String destinatario;
     private String mensaje;
-    private TipoMedioNotificacion medio;
+    private MedioNotificacion medio;
    // private TipoEvento evento;
     private EstadoNotificacion estado;
     private LocalDateTime fechaCreacion;

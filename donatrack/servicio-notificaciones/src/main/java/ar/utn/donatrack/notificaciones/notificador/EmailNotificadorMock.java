@@ -1,6 +1,7 @@
 package ar.utn.donatrack.notificaciones.notificador;
 
-import ar.utn.donatrack.notificaciones.model.TipoMedioNotificacion;
+import ar.utn.donatrack.notificaciones.model.medios.Email;
+import ar.utn.donatrack.notificaciones.model.medios.MedioNotificacion;
 import org.springframework.stereotype.Component;
 
 /**
@@ -11,8 +12,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class EmailNotificadorMock extends NotificadorBase {
 
-    public TipoMedioNotificacion getMedio() {
-        return TipoMedioNotificacion.EMAIL;
+    public MedioNotificacion  getMedio() {
+        return new Email();
     }
 
     protected String getEtiqueta() {
