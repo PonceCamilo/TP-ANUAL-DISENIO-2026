@@ -1,0 +1,126 @@
+@startuml diagramaClasesLogisticaServices
+
+skinparam classAttributeIconSize 0
+
+' ============================ VALIDACIONES ============================
+
+class EntregaValidator {
+    + validarTransicion(estadoActual : EstadoEntrega, estadoNuevo : EstadoEntrega) : void
+}
+
+' ============================ SERVICIOS ============================
+
+interface CamionServiceInterface {
+    + registrar(dto : CamionRequestDTO) : CamionResponseDTO
+    + obtenerTodos() : List<CamionResponseDTO>
+    + obtenerPorId(id : UUID) : CamionResponseDTO
+}
+
+class CamionService implements CamionServiceInterface {
+    - repositorio : CamionRepositoryInterface
+    + registrar(dto : CamionRequestDTO) : CamionResponseDTO
+    + obtenerTodos() : List<CamionResponseDTO>
+    + obtenerPorId(id : UUID) : CamionResponseDTO
+}
+
+interface EntregaServiceInterface {
+    + obtenerPorId(id : UUID) : EntregaResponseDTO
+    + obtenerPorEstado(estado : EstadoEntrega) : List<EntregaResponseDTO>
+    + confirmar(id : UUID, dto : ConfirmarEntregaRequestDTO) : void
+    + marcarNoRecibida(id : UUID, dto : NoRecibidaRequestDTO) : void
+    + regresarADeposito(id : UUID) : void
+}
+
+class EntregaService implements EntregaServiceInterface {
+    - repositorio : EntregaRepositoryInterface
+    - validador : EntregaValidator
+    - eventPublisher : EntregaEventPublisher
+    + obtenerPorId(id : UUID) : EntregaResponseDTO
+    + obtenerPorEstado(estado : EstadoEntrega) : List<EntregaResponseDTO>
+    + confirmar(id : UUID, dto : ConfirmarEntregaRequestDTO) : void
+    + marcarNoRecibida(id : UUID, dto : NoRecibidaRequestDTO) : void
+    + regresarADeposito(id : UUID) : void
+}
+
+interface PlanificacionServiceInterface {
+    + planificar(dto : PlanificacionRequestDTO) : List<LoteResponseDTO>
+    + obtenerLote(loteId : UUID) : LoteResponseDTO
+    + registrarCallback(dto : CallbackRutaRequestDTO) : void
+    + obtenerRuta(rutaId : UUID) : RutaResponseDTO
+    + obtenerRutaVigentePorCamion(camionId : UUID) : RutaResponseDTO
+    + iniciarRuta(rutaId : UUID) : void
+}
+
+class PlanificacionRutasService implements PlanificacionServiceInterface {
+    - loteRepositorio : LotePlanificacionRepositoryInterface
+    - rutaRepositorio : RutaRepositoryInterface
+    - entregaRepositorio : EntregaRepositoryInterface
+    - camionRepositorio : CamionRepositoryInterface
+    - estrategiaRuteo : EstrategiaRuteoPort
+    - eventPublisher : EntregaEventPublisher
+    - entregaValidator : EntregaValidator
+    - maxDonacionesPorLote : int
+    + planificar(dto : PlanificacionRequestDTO) : List<LoteResponseDTO>
+    + obtenerLote(loteId : UUID) : LoteResponseDTO
+    + registrarCallback(dto : CallbackRutaRequestDTO) : void
+    + obtenerRuta(rutaId : UUID) : RutaResponseDTO
+    + obtenerRutaVigentePorCamion(camionId : UUID) : RutaResponseDTO
+    + iniciarRuta(rutaId : UUID) : void
+}
+
+' ============================ INTEGRACION / EVENTOS ============================
+
+interface EstrategiaRuteoPort {
+    + solicitarPlanificacion(lote : LotePlanificacion, camiones : List<Camion>) : void
+}
+
+class ProveedorRuteoExternoAdapter implements EstrategiaRuteoPort {
+    - httpClient : HttpClient
+    - objectMapper : ObjectMapper
+    - proveedorUrl : String
+    - callbackUrl : String
+    + solicitarPlanificacion(lote : LotePlanificacion, camiones : List<Camion>) : void
+}
+
+interface EntregaEventListener {
+    + onEvento(evento : EntregaEvento) : void
+}
+
+class EntregaEventPublisher {
+    - listeners : List<EntregaEventListener>
+    + publicar(evento : EntregaEvento) : void
+}
+
+class N8nLogisticaWebhookListener implements EntregaEventListener {
+    - httpClient : HttpClient
+    - objectMapper : ObjectMapper
+    - webhookUrl : String
+    + onEvento(evento : EntregaEvento) : void
+}
+
+' ============================ RELACIONES ============================
+
+CamionService ..> Camion
+EntregaService ..> Entrega
+EntregaService --> EntregaValidator
+EntregaService --> EntregaEventPublisher
+
+PlanificacionRutasService ..> LotePlanificacion
+PlanificacionRutasService ..> Ruta
+PlanificacionRutasService ..> Parada
+PlanificacionRutasService ..> DonacionLote
+PlanificacionRutasService --> EstrategiaRuteoPort
+PlanificacionRutasService --> EntregaEventPublisher
+PlanificacionRutasService --> EntregaValidator
+
+EntregaValidator ..> EstadoEntrega
+
+EntregaEventPublisher --> "*" EntregaEventListener
+EntregaEventPublisher ..> EntregaEvento
+
+N8nLogisticaWebhookListener ..> EntregaEvento
+
+ProveedorRuteoExternoAdapter ..> LotePlanificacion
+ProveedorRuteoExternoAdapter ..> Camion
+
+@enduml
