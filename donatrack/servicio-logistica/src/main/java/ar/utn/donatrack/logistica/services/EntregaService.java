@@ -53,8 +53,8 @@ public class EntregaService implements EntregaServiceInterface {
                 .idDonacion(entrega.getIdDonacion())
                 .idEntidadBeneficiaria(entrega.getIdEntidadBeneficiaria())
                 .idDonante(entrega.getIdDonante())
-                .camionId(entrega.getCamionId())
-                .rutaId(entrega.getRutaId())
+                .camionId(entrega.getCamion() != null ? entrega.getCamion().getId() : null)
+                .rutaId(entrega.getRuta() != null ? entrega.getRuta().getId() : null)
                 .fotosComprobante(entrega.getFotosComprobante())
                 .build());
     }
@@ -73,8 +73,8 @@ public class EntregaService implements EntregaServiceInterface {
                 .idDonacion(entrega.getIdDonacion())
                 .idEntidadBeneficiaria(entrega.getIdEntidadBeneficiaria())
                 .idDonante(entrega.getIdDonante())
-                .camionId(entrega.getCamionId())
-                .rutaId(entrega.getRutaId())
+                .camionId(entrega.getCamion() != null ? entrega.getCamion().getId() : null)
+                .rutaId(entrega.getRuta() != null ? entrega.getRuta().getId() : null)
                 .motivo(dto.getMotivo())
                 .build());
     }

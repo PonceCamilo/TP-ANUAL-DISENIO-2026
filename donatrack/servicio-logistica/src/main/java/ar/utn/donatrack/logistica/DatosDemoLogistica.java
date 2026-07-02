@@ -3,11 +3,15 @@ package ar.utn.donatrack.logistica;
 import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
+import ar.utn.donatrack.logistica.models.flota.Camion;
+import ar.utn.donatrack.logistica.models.planificacion.EstadoRuta;
+import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -33,13 +37,24 @@ public class DatosDemoLogistica implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        Camion camion = Camion.builder()
+                .id(UUID.fromString("66666666-6666-6666-6666-666666666666"))
+                .build();
+
+        Ruta ruta = Ruta.builder()
+                .id(UUID.fromString("55555555-5555-5555-5555-555555555555"))
+                .camion(camion)
+                .estado(EstadoRuta.INICIADA)
+                .paradas(List.of())
+                .build();
+
         Entrega entrega = Entrega.builder()
                 .id(ENTREGA_DEMO_ID)
                 .idDonacion(UUID.fromString("22222222-2222-2222-2222-222222222222"))
                 .idEntidadBeneficiaria(UUID.fromString("33333333-3333-3333-3333-333333333333"))
                 .idDonante(UUID.fromString("44444444-4444-4444-4444-444444444444"))
-                .rutaId(UUID.fromString("55555555-5555-5555-5555-555555555555"))
-                .camionId(UUID.fromString("66666666-6666-6666-6666-666666666666"))
+                .ruta(ruta)
+                .camion(camion)
                 .estado(EstadoEntrega.EN_TRASLADO)
                 .build();
         entregaRepositorio.guardar(entrega);
