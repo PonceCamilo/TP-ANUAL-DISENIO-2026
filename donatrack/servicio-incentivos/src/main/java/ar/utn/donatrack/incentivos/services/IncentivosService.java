@@ -11,6 +11,7 @@ import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.misiones.Racha;
 import ar.utn.donatrack.incentivos.interfaces.services.IncentivosServiceInterface;
 import ar.utn.donatrack.incentivos.repositories.IncentivosRepositorioEnMemoria;
+import ar.utn.donatrack.incentivos.validations.IncentivosValidator;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -25,13 +26,16 @@ public class IncentivosService implements IncentivosServiceInterface {
     private final IncentivosRepositorioEnMemoria repositorio;
     private final NotificacionClient notificacionClient;
     private final N8nWebhookClient n8nWebhookClient;
+    private final IncentivosValidator validator;
 
     public IncentivosService(IncentivosRepositorioEnMemoria repositorio,
                              NotificacionClient notificacionClient,
-                             N8nWebhookClient n8nWebhookClient) {
+                             N8nWebhookClient n8nWebhookClient,
+                             IncentivosValidator validator) {
         this.repositorio = repositorio;
         this.notificacionClient = notificacionClient;
         this.n8nWebhookClient = n8nWebhookClient;
+        this.validator = validator;
     }
 
     private Donante obtenerOCrearPerfilConInit(UUID donanteId) {
@@ -98,6 +102,7 @@ public class IncentivosService implements IncentivosServiceInterface {
     }
 
     public void procesarDonacion(UUID donanteId, String destinatario, String medio, int cantidadBienes, List<String> categoriasDonadas) {
+        validator.validarCategoriasDonadas(categoriasDonadas);
         Donante perfil = obtenerOCrearPerfilConInit(donanteId);
         perfil.registrarDonacion(cantidadBienes, categoriasDonadas);
         repositorio.guardarPerfil(perfil);
@@ -146,7 +151,8 @@ public class IncentivosService implements IncentivosServiceInterface {
 
     private void asignarPrimeraMisionDeCategoria(Donante perfil) {
         List<Mision> misiones = repositorio.listarMisionesPorCategoria(perfil.getCategoria());
-        perfil.getProgresoMision().setMisionActual(misiones.isEmpty() ? null : misiones.get(0));
+        validator.validarMisionesDisponibles(misiones, perfil.getCategoria());
+        perfil.getProgresoMision().setMisionActual(misiones.get(0));
     }
 
     private void revisarPerdidaMision(Donante perfil) {

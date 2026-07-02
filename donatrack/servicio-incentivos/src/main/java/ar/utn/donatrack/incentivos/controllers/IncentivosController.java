@@ -1,6 +1,7 @@
 package ar.utn.donatrack.incentivos.controllers;
 
 import ar.utn.donatrack.incentivos.dtos.request.ProcesarDonacionRequest;
+import ar.utn.donatrack.incentivos.dtos.request.ProcesarDonacionExitosaRequest;
 import ar.utn.donatrack.incentivos.dtos.response.InsigniaResponse;
 import ar.utn.donatrack.incentivos.dtos.response.MetricasDonanteResponse;
 import ar.utn.donatrack.incentivos.dtos.response.MisionResponse;
@@ -124,7 +125,7 @@ public class IncentivosController {
             }
     )
     @PostMapping("/donacion-exitosa")
-    public ResponseEntity<String> procesarDonacionExitosa(@Valid @RequestBody ProcesarDonacionRequest request) {
+    public ResponseEntity<String> procesarDonacionExitosa(@Valid @RequestBody ProcesarDonacionExitosaRequest request) {
         service.procesarDonacionExitosa(
                 request.donanteId(),
                 request.destinatario(),
