@@ -99,7 +99,7 @@ public class IncentivosService implements IncentivosServiceInterface {
         if (perfil.getCategoria() == null) {
             perfil.setCategoria(new Colaborador());
         }
-        if (perfil.misionActual() == null) {
+        if (perfil.getProgresoMision().getMisionActual() == null) {
             asignarPrimeraMisionDeCategoria(perfil);
         }
         revisarPerdidaMision(perfil);
@@ -107,23 +107,19 @@ public class IncentivosService implements IncentivosServiceInterface {
         return perfil;
     }
 
-    @Override
     public Donante obtenerMetricas(UUID donanteId) {
         return obtenerOCrearPerfilConInit(donanteId);
     }
 
-    @Override
     public List<Mision> obtenerMisiones(UUID donanteId) {
         Donante perfil = obtenerOCrearPerfilConInit(donanteId);
         return repositorio.listarMisionesPorCategoria(perfil.getCategoria());
     }
 
-    @Override
     public List<InsigniaObtenida> obtenerInsignias(UUID donanteId) {
         return obtenerOCrearPerfilConInit(donanteId).getInsigniasObtenidas();
     }
 
-    @Override
     public RankingMensual obtenerRankingMensualActual() {
         LocalDate hoy = LocalDate.now();
         int mes = hoy.getMonthValue();
@@ -135,8 +131,8 @@ public class IncentivosService implements IncentivosServiceInterface {
                 .map(donante -> PosicionRanking.builder()
                         .donanteId(donante.getId())
                         .misionesCompletadas(misionesCompletadasEnPeriodo(donante, mes, anio))
-                        .donacionesMesActual(donante.donacionesDelMesActual())
-                        .totalDonacionesHistoricas(donante.totalDonacionesHistoricas())
+                        .donacionesMesActual(donante.getMetricas().donacionesMesActual())
+                        .totalDonacionesHistoricas(donante.getMetricas().totalDonacionesHistoricas())
                         .primerDiaDelMes(primerDiaDelMes)
                         .build())
                 .sorted(Comparator.comparingInt(PosicionRanking::getMisionesCompletadas).reversed()
@@ -156,13 +152,11 @@ public class IncentivosService implements IncentivosServiceInterface {
                 .build();
     }
 
-    @Override
     public int obtenerPosicionRankingActual(UUID donanteId) {
         obtenerOCrearPerfilConInit(donanteId);
         return obtenerRankingMensualActual().posicionDe(donanteId);
     }
 
-    @Override
     public void procesarDonacion(UUID donanteId, String destinatario, String medio, int cantidadBienes, List<String> categoriasDonadas) {
         Donante perfil = obtenerOCrearPerfilConInit(donanteId);
         perfil.registrarDonacion(cantidadBienes, categoriasDonadas);
@@ -170,7 +164,6 @@ public class IncentivosService implements IncentivosServiceInterface {
         verificarMisionActiva(perfil, destinatario, medio);
     }
 
-    @Override
     public void procesarDonacionExitosa(UUID donanteId, String destinatario, String medio) {
         Donante perfil = obtenerOCrearPerfilConInit(donanteId);
         perfil.registrarOrganizacionAyudada();
@@ -179,7 +172,7 @@ public class IncentivosService implements IncentivosServiceInterface {
     }
 
     private void verificarMisionActiva(Donante perfil, String destinatario, String medio) {
-        Mision activa = perfil.misionActual();
+        Mision activa = perfil.getProgresoMision().getMisionActual();
         if (activa == null || !activa.estaCompletada(perfil)) {
             return;
         }
@@ -198,7 +191,7 @@ public class IncentivosService implements IncentivosServiceInterface {
         int index = misionesDeSuCategoria.indexOf(activa);
 
         if (index != -1 && index < misionesDeSuCategoria.size() - 1) {
-            perfil.asignarMisionActual(misionesDeSuCategoria.get(index + 1));
+            perfil.getProgresoMision().setMisionActual(misionesDeSuCategoria.get(index + 1));
             return;
         }
 
@@ -208,16 +201,17 @@ public class IncentivosService implements IncentivosServiceInterface {
             return;
         }
 
-        perfil.asignarMisionActual(null);
+        perfil.getProgresoMision().setMisionActual(null);
     }
 
     private void asignarPrimeraMisionDeCategoria(Donante perfil) {
         List<Mision> misiones = repositorio.listarMisionesPorCategoria(perfil.getCategoria());
-        perfil.asignarMisionActual(misiones.isEmpty() ? null : misiones.get(0));
+        perfil.getProgresoMision().setMisionActual(misiones.isEmpty() ? null : misiones.get(0));
     }
 
     private void revisarPerdidaMision(Donante perfil) {
-        if (perfil.misionActual() instanceof Racha && perfil.perdioRachaPorMesCompletoSinDonar()) {
+        if (perfil.getProgresoMision().getMisionActual() instanceof Racha
+                && perfil.getMetricas().pasoUnMesCompletoSinDonaciones(LocalDate.now())) {
             asignarPrimeraMisionDeCategoria(perfil);
         }
     }

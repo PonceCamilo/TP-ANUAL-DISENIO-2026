@@ -14,13 +14,11 @@ public class HabilDonador extends Mision {
         super(nombre, descripcion, categoriaRequerida, cantidadBienesRequerida, insignia);
     }
 
-    @Override
     public boolean estaCompletada(Donante donante) {     
         return progresoActual(donante) >= objetivo;
     }
 
-    @Override
     public int progresoActual(Donante donante) {     
-        return donante.mayorCantidadBienesEnUnaDonacion();
+        return donante.getMetricas().recordBienesUnicaDonacion();
     }
 }
