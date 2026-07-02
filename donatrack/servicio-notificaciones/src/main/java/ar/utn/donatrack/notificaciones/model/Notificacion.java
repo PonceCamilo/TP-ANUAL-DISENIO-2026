@@ -19,7 +19,7 @@ public class Notificacion {
     private String destinatario;
     private String mensaje;
     private TipoMedioNotificacion medio;
-    private TipoEvento evento;
+   // private TipoEvento evento;
     private EstadoNotificacion estado;
     private LocalDateTime fechaCreacion;
     private LocalDateTime fechaEnvio;

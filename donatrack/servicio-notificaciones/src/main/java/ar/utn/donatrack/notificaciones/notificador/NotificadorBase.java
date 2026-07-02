@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
  * Cada subclase concreta solo define dos cosas:
  *   - getMedio()   : a qué medio responde (para la factory)
  *   - getEtiqueta(): cómo se identifica en el log
- *
+
  * Mismo enfoque que AlgoritmoAsignacionBase en servicio-donaciones.
  */
 @Slf4j

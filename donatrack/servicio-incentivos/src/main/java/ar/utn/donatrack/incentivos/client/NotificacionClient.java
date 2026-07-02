@@ -15,7 +15,6 @@ import java.util.Map;
 /**
  * Cliente HTTP que llama al servicio-notificaciones (puerto 8084).
  * servicio-incentivos → POST /notificaciones → servicio-notificaciones
- *
  * Si el servicio de notificaciones no está levantado, loguea el error
  * pero NO frena el flujo de incentivos.
  */
@@ -42,15 +41,14 @@ public class NotificacionClient {
      * @param destinatario email, teléfono o número WA del donante
      * @param mensaje      texto de la notificación
      * @param medio        "EMAIL", "SMS" o "WHATSAPP"
-     * @param evento       tipo de evento ("MISION_CUMPLIDA", "CAMBIO_CATEGORIA", ...)
      */
-    public void enviarNotificacion(String destinatario, String mensaje, String medio, String evento) {
+    public void enviarNotificacion(String destinatario, String mensaje, String medio) {
         try {
             Map<String, String> payload = Map.of(
                     "destinatario", destinatario,
                     "mensaje", mensaje,
-                    "medio", medio,
-                    "evento", evento
+                    "medio", medio
+
             );
             String jsonBody = objectMapper.writeValueAsString(payload);
 
@@ -62,7 +60,7 @@ public class NotificacionClient {
 
             httpClient.send(request, HttpResponse.BodyHandlers.discarding());
 
-            log.info("[NotificacionClient] Notificación enviada a {} por {} ({})", destinatario, medio, evento);
+            log.info("[NotificacionClient] Notificación enviada a {} por {}", destinatario, medio);
 
         } catch (Exception e) {
             log.error("[NotificacionClient] No se pudo enviar notificación a {}: {}", destinatario, e.getMessage());

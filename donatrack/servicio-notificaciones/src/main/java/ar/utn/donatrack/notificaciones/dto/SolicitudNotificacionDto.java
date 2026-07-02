@@ -13,6 +13,6 @@ import jakarta.validation.constraints.NotNull;
 public record SolicitudNotificacionDto(
         @NotBlank String destinatario,
         @NotBlank String mensaje,
-        @NotNull TipoMedioNotificacion medio,
-        @NotNull TipoEvento evento
+        @NotNull TipoMedioNotificacion medio
+       // @NotNull TipoEvento evento
 ) {}

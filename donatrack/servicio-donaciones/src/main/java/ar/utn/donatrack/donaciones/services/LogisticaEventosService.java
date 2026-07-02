@@ -12,10 +12,12 @@ import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
-import ar.utn.donatrack.donaciones.models.donacion.EstadoDonacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
+import ar.utn.donatrack.donaciones.models.donacion.estado.EnTrasladoState;
+import ar.utn.donatrack.donaciones.models.donacion.estado.EntregadaState;
+import ar.utn.donatrack.donaciones.models.donacion.estado.EntregaFallidaState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -55,11 +57,8 @@ public class LogisticaEventosService {
         for (UUID idDonacion : dto.idsDonaciones()) {
             Donacion donacion = obtenerDonacionOFallar(idDonacion);
 
-            donacion.getHistorialEstados().add(CambioEstado.builder()
-                    .estado(EstadoDonacion.EN_TRASLADO)
-                    .justificacion("Chofer inició el recorrido. Ruta: " + dto.idRuta())
-                    .build());
-            donacion.setEstado(EstadoDonacion.EN_TRASLADO);
+            donacion.cambiarEstado("EN_TRASLADO", "Inicio de ruta", "Chofer inició el recorrido. Ruta: " + dto.idRuta());
+
 
             notificarInicioRutaEntidad(donacion, dto.urlMapaInteractivo());
             notificarInicioRutaDonante(donacion, dto.urlMapaInteractivo());
@@ -78,7 +77,7 @@ public class LogisticaEventosService {
         String mensaje = "El camión con tu donación está en camino. "
                 + "Podés seguir la entrega en tiempo real: " + urlMapa;
 
-        notificacionClient.enviarNotificacion(email, mensaje, "EMAIL", "INICIO_RUTA");
+        notificacionClient.enviarNotificacion(email, mensaje, "EMAIL");
     }
 
     private void notificarInicioRutaDonante(Donacion donacion, String urlMapa) {
@@ -88,7 +87,7 @@ public class LogisticaEventosService {
         String mensaje = "Tu donación está siendo entregada. "
                 + "Seguí el recorrido en tiempo real: " + urlMapa;
 
-        notificacionClient.enviarNotificacion(donante.getEmail(), mensaje, "EMAIL", "INICIO_RUTA");
+        notificacionClient.enviarNotificacion(donante.getEmail(), mensaje, "EMAIL");
     }
 
     // ── ENTREGA EXITOSA ────────────────────────────────────────────────────────
@@ -103,12 +102,7 @@ public class LogisticaEventosService {
 
         Donacion donacion = obtenerDonacionOFallar(dto.idDonacion());
 
-        donacion.getHistorialEstados().add(CambioEstado.builder()
-                .estado(EstadoDonacion.ENTREGADA)
-                .justificacion("Entrega confirmada. Camión: " + dto.patenteCamion()
-                        + " | Fecha: " + dto.fechaHoraEntrega())
-                .build());
-        donacion.setEstado(EstadoDonacion.ENTREGADA);
+        donacion.cambiarEstado("ENTREGADA", "Entrega confirmada", "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega());
 
         String comprobante = armarComprobante(dto);
 
@@ -136,7 +130,7 @@ public class LogisticaEventosService {
 
         String mensaje = "¡La donación fue recibida exitosamente! " + comprobante;
 
-        notificacionClient.enviarNotificacion(email, mensaje, "EMAIL", "ENTREGA_EXITOSA");
+        notificacionClient.enviarNotificacion(email, mensaje, "EMAIL");
     }
 
     private void notificarEntregaExitosaDonante(Donacion donacion, String comprobante) {
@@ -145,7 +139,7 @@ public class LogisticaEventosService {
 
         String mensaje = "¡Tu donación llegó a destino! " + comprobante;
 
-        notificacionClient.enviarNotificacion(donante.getEmail(), mensaje, "EMAIL", "ENTREGA_EXITOSA");
+        notificacionClient.enviarNotificacion(donante.getEmail(), mensaje, "EMAIL");
     }
 
     private String armarComprobante(EntregaExitosaCallbackDTO dto) {
@@ -168,11 +162,7 @@ public class LogisticaEventosService {
         String justificacion = dto.motivoFallo()
                 + (dto.replanificable() ? " | Puede ser replanificada." : " | No puede ser replanificada.");
 
-        donacion.getHistorialEstados().add(CambioEstado.builder()
-                .estado(EstadoDonacion.ENTREGA_FALLIDA)
-                .justificacion(justificacion)
-                .build());
-        donacion.setEstado(EstadoDonacion.ENTREGA_FALLIDA);
+        donacion.cambiarEstado("ENTREGA_FALLIDA", "Entrega fallida", justificacion);
 
         notificarEntregaFallidaEntidad(donacion, dto.motivoFallo(), dto.replanificable());
         notificarEntregaFallidaDonante(donacion, dto.motivoFallo(), dto.replanificable());
@@ -191,7 +181,7 @@ public class LogisticaEventosService {
         String mensaje = "La entrega de tu donación no pudo realizarse. Motivo: " + motivo
                 + (replanificable ? " Será replanificada próximamente." : "");
 
-        notificacionClient.enviarNotificacion(email, mensaje, "EMAIL", "ENTREGA_FALLIDA");
+        notificacionClient.enviarNotificacion(email, mensaje, "EMAIL");
     }
 
     private void notificarEntregaFallidaDonante(Donacion donacion, String motivo, boolean replanificable) {
@@ -201,7 +191,7 @@ public class LogisticaEventosService {
         String mensaje = "La entrega de tu donación no pudo concretarse. Motivo: " + motivo
                 + (replanificable ? " Se intentará nuevamente." : "");
 
-        notificacionClient.enviarNotificacion(donante.getEmail(), mensaje, "EMAIL", "ENTREGA_FALLIDA");
+        notificacionClient.enviarNotificacion(donante.getEmail(), mensaje, "EMAIL");
     }
 
     private void notificarEntregaFallidaAdmin(Donacion donacion, String motivo, boolean replanificable) {
@@ -213,7 +203,7 @@ public class LogisticaEventosService {
                 + ". Motivo: " + motivo
                 + (replanificable ? " | Replanificable." : " | No replanificable.");
 
-        notificacionClient.enviarNotificacion(emailAdmin, mensaje, "EMAIL", "ENTREGA_FALLIDA");
+        notificacionClient.enviarNotificacion(emailAdmin, mensaje, "EMAIL");
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

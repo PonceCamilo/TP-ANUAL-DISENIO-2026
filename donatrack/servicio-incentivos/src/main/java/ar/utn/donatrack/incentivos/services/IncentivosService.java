@@ -186,7 +186,7 @@ public class IncentivosService implements IncentivosServiceInterface {
 
         InsigniaObtenida nueva = activa.otorgarInsignia();
         perfil.addInsignia(nueva);
-        notificacionClient.enviarNotificacion(destinatario, "Mision cumplida: " + activa.getNombre(), medio, "MISION_CUMPLIDA");
+        notificacionClient.enviarNotificacion(destinatario, "Mision cumplida: " + activa.getNombre(), medio);
         n8nWebhookClient.notificarInsigniaObtenida(perfil.getId(), nueva, destinatario);
 
         avanzarMision(perfil, activa, destinatario, medio);
@@ -203,7 +203,7 @@ public class IncentivosService implements IncentivosServiceInterface {
         }
 
         if (perfil.subirCategoria()) {
-            notificacionClient.enviarNotificacion(destinatario, "Subiste a " + perfil.getCategoria().getClass().getSimpleName() + ".", medio, "CAMBIO_CATEGORIA");
+            notificacionClient.enviarNotificacion(destinatario, "Subiste a " + perfil.getCategoria().getClass().getSimpleName() + ".", medio);
             asignarPrimeraMisionDeCategoria(perfil);
             return;
         }
