@@ -6,6 +6,8 @@ import ar.utn.donatrack.incentivos.models.insignias.Insignia;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Getter
 @Setter
 public class Racha extends Mision {
@@ -14,13 +16,11 @@ public class Racha extends Mision {
         super(nombre, descripcion, categoriaRequerida, mesesRequeridos, insignia);
     }
 
-    @Override
     public boolean estaCompletada(Donante donante) {
         return progresoActual(donante) >= objetivo;
     }
 
-    @Override
     public int progresoActual(Donante donante) {
-        return donante.mesesConsecutivosDonando();
+        return donante.getMetricas().mesesConsecutivosDonando(LocalDate.now());
     }
 }

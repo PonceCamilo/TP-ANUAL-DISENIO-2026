@@ -1,5 +1,6 @@
 package ar.utn.donatrack.incentivos.services;
 
+import ar.utn.donatrack.incentivos.exceptions.DonanteNoEncontradoException;
 import ar.utn.donatrack.incentivos.interfaces.repositories.DonanteRepositoryInterface;
 import ar.utn.donatrack.incentivos.interfaces.services.DonanteServiceInterface;
 import ar.utn.donatrack.incentivos.models.Donante;
@@ -7,6 +8,7 @@ import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.repositories.IncentivosRepositorioEnMemoria;
+import ar.utn.donatrack.incentivos.validations.IncentivosValidator;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,32 +19,32 @@ public class DonanteService implements DonanteServiceInterface {
 
     private final DonanteRepositoryInterface repositoryInterface;
     private final IncentivosRepositorioEnMemoria incentivosRepositorio;
+    private final IncentivosValidator validator;
 
     public DonanteService(DonanteRepositoryInterface repositoryInterface,
-                          IncentivosRepositorioEnMemoria incentivosRepositorio) {
+                          IncentivosRepositorioEnMemoria incentivosRepositorio,
+                          IncentivosValidator validator) {
         this.repositoryInterface = repositoryInterface;
         this.incentivosRepositorio = incentivosRepositorio;
+        this.validator = validator;
     }
 
-    @Override
     public void procesarAvance(UUID idDonante) {
-        Donante donante = repositoryInterface.findById(idDonante)
-                .orElseThrow(() -> new RuntimeException("Donante no encontrado"));
+        Donante donante = obtenerDonante(idDonante);
 
-        Mision misionActual = donante.misionActual();
+        Mision misionActual = donante.getProgresoMision().getMisionActual();
         if (misionActual != null && misionActual.estaCompletada(donante)) {
             completarMision(donante, misionActual);
         }
     }
 
-    @Override
     public void completarMision(Donante donante, Mision mision) {
         InsigniaObtenida nuevaInsignia = new InsigniaObtenida(mision.getInsignia(), true);
         donante.addInsignia(nuevaInsignia);
 
         Mision siguienteMision = siguienteMisionDeCategoria(donante, mision);
         if (siguienteMision != null) {
-            donante.asignarMisionActual(siguienteMision);
+            donante.getProgresoMision().setMisionActual(siguienteMision);
         } else {
             subirDeCategoria(donante);
         }
@@ -50,20 +52,17 @@ public class DonanteService implements DonanteServiceInterface {
         repositoryInterface.save(donante);
     }
 
-    @Override
     public void subirDeCategoria(Donante donante) {
         CategoriaDonante categoriaSiguiente = donante.getCategoria().siguienteCategoria();
 
         if (categoriaSiguiente != null) {
             donante.setCategoria(categoriaSiguiente);
-            donante.asignarMisionActual(primeraMisionDeCategoria(categoriaSiguiente));
+            donante.getProgresoMision().setMisionActual(primeraMisionDeCategoria(categoriaSiguiente));
         }
     }
 
-    @Override
     public void cambiarVisibilidadInsignia(UUID idDonante, UUID idInsignia, boolean visible) {
-        Donante donante = repositoryInterface.findById(idDonante)
-                .orElseThrow(() -> new RuntimeException("Donante no encontrado"));
+        Donante donante = obtenerDonante(idDonante);
 
         donante.getInsigniasObtenidas().stream()
                 .filter(insignia -> insignia.getId().equals(idInsignia))
@@ -73,31 +72,33 @@ public class DonanteService implements DonanteServiceInterface {
         repositoryInterface.save(donante);
     }
 
-    @Override
     public int obtenerProgresoMisionActual(UUID idDonante) {
-        Donante donante = repositoryInterface.findById(idDonante)
-                .orElseThrow(() -> new RuntimeException("Donante no encontrado"));
+        Donante donante = obtenerDonante(idDonante);
 
-        Mision mision = donante.misionActual();
+        Mision mision = donante.getProgresoMision().getMisionActual();
         if (mision == null) return 0;
 
         return mision.progresoActual(donante);
     }
 
-    @Override
     public int obtenerDistanciaRestanteMisionActual(UUID idDonante) {
-        Donante donante = repositoryInterface.findById(idDonante)
-                .orElseThrow(() -> new RuntimeException("Donante no encontrado"));
+        Donante donante = obtenerDonante(idDonante);
 
-        Mision mision = donante.misionActual();
+        Mision mision = donante.getProgresoMision().getMisionActual();
         if (mision == null) return 0;
 
         return mision.restante(donante);
     }
 
+    private Donante obtenerDonante(UUID idDonante) {
+        return repositoryInterface.findById(idDonante)
+                .orElseThrow(() -> new DonanteNoEncontradoException(idDonante));
+    }
+
     private Mision primeraMisionDeCategoria(CategoriaDonante categoria) {
         List<Mision> misiones = incentivosRepositorio.listarMisionesPorCategoria(categoria);
-        return misiones.isEmpty() ? null : misiones.get(0);
+        validator.validarMisionesDisponibles(misiones, categoria);
+        return misiones.get(0);
     }
 
     private Mision siguienteMisionDeCategoria(Donante donante, Mision misionActual) {
