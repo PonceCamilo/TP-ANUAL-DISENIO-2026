@@ -100,27 +100,17 @@ class N8nLogisticaWebhookListener implements EntregaEventListener {
 
 ' ============================ RELACIONES ============================
 
-CamionService ..> Camion
-EntregaService ..> Entrega
+
 EntregaService --> EntregaValidator
 EntregaService --> EntregaEventPublisher
 
-PlanificacionRutasService ..> LotePlanificacion
-PlanificacionRutasService ..> Ruta
-PlanificacionRutasService ..> Parada
-PlanificacionRutasService ..> DonacionLote
 PlanificacionRutasService --> EstrategiaRuteoPort
 PlanificacionRutasService --> EntregaEventPublisher
 PlanificacionRutasService --> EntregaValidator
 
-EntregaValidator ..> EstadoEntrega
+
 
 EntregaEventPublisher --> "*" EntregaEventListener
-EntregaEventPublisher ..> EntregaEvento
 
-N8nLogisticaWebhookListener ..> EntregaEvento
-
-ProveedorRuteoExternoAdapter ..> LotePlanificacion
-ProveedorRuteoExternoAdapter ..> Camion
 
 @enduml
