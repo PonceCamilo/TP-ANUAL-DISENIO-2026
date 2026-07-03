@@ -11,6 +11,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,7 +40,12 @@ public class N8nWebhookClient {
             ObjectMapper objectMapper) {
         this.webhookUrl = webhookUrl;
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newHttpClient();
+        // HTTP/1.1 explícito: el default (HTTP/2) intenta un upgrade h2c que el
+        // servidor de n8n (Node.js) no maneja y deja la conexión colgada.
+        this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(Duration.ofSeconds(3))
+                .build();
     }
 
     /**
@@ -64,6 +70,7 @@ public class N8nWebhookClient {
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(webhookUrl))
+                    .timeout(Duration.ofSeconds(10))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();

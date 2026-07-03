@@ -3,7 +3,7 @@
 Configurar antes de levantar n8n:
 
 ```powershell
-$env:DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/..."
+$env:DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/...."
 n8n start
 ```
 
