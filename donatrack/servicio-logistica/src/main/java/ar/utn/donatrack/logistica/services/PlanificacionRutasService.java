@@ -51,6 +51,9 @@ import java.util.stream.Collectors;
 @Service
 public class PlanificacionRutasService implements PlanificacionServiceInterface {
 
+    // Link simulado al mapa de seguimiento en tiempo real; se completa con el id de ruta.
+    private static final String BASE_URL_MAPA_INTERACTIVO = "https://donatrack.org/tracking/ruta/";
+
     private final LotePlanificacionRepositoryInterface loteRepositorio;
     private final RutaRepositoryInterface rutaRepositorio;
     private final EntregaRepositoryInterface entregaRepositorio;
@@ -142,20 +145,23 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
             camionRepositorio.guardar(camion);
         }
 
+        List<UUID> idsDonaciones = new ArrayList<>();
         for (Entrega entrega : entregaRepositorio.buscarPorRutaId(rutaId)) {
             entregaValidator.validarTransicion(entrega.getEstado(), EstadoEntrega.EN_TRASLADO);
             entrega.registrarCambio(EstadoEntrega.EN_TRASLADO, "Inicio de ruta");
             entrega.setCamion(camion);
             entregaRepositorio.guardar(entrega);
+            idsDonaciones.add(entrega.getIdDonacion());
+        }
 
+        // Un solo evento por ruta agrupando todas sus donaciones: Donaciones
+        // resuelve los contactos de cada una y dispara el aviso con el link al mapa.
+        if (!idsDonaciones.isEmpty()) {
             eventPublisher.publicar(EntregaEvento.builder()
                     .tipo(TipoEventoLogistica.INICIO_RUTA)
-                    .entregaId(entrega.getId())
-                    .idDonacion(entrega.getIdDonacion())
-                    .idEntidadBeneficiaria(entrega.getIdEntidadBeneficiaria())
-                    .idDonante(entrega.getIdDonante())
-                    .camionId(camion != null ? camion.getId() : null)
                     .rutaId(ruta.getId())
+                    .idsDonaciones(idsDonaciones)
+                    .urlMapaInteractivo(BASE_URL_MAPA_INTERACTIVO + ruta.getId())
                     .build());
         }
     }

@@ -3,10 +3,15 @@
 Esta guía explica, paso a paso, cómo levantar el servicio de logística y n8n en una
 máquina local y probar dos flujos:
 
-- **Prueba A:** evento `ENTREGA_NO_RECIBIDA` -> webhook a n8n -> aviso al administrador
-  (bandera `requiereAvisoAdmin`).
+- **Prueba A:** evento `ENTREGA_NO_RECIBIDA` -> webhook a n8n -> n8n reenvía a Donaciones
+  (`/logistica/eventos/entrega-fallida`) -> Donaciones notifica a entidad, donante y admin.
 - **Prueba B:** flujo de planificación de rutas contra el proveedor externo *mock*
   (sin `Connection Refused`).
+
+> **Arquitectura (Diseño A):** n8n es un relay/enrutador puro. Recibe el evento de Logística,
+> mira `tipo` y reenvía el body a Donaciones. Es **Donaciones** quien resuelve los contactos y
+> dispara las notificaciones. Por eso la Prueba A ahora requiere **Donaciones corriendo en
+> `:8081`** (y, para ver mails, **Notificaciones en `:8084`** e **Incentivos en `:8083`**).
 ---
 
 ## 0. Requisitos previos
@@ -19,6 +24,15 @@ Instalar en la máquina:
 
 Clonar/abrir el repo del TP. Todos los comandos asumen que estás parado en la carpeta
 del servicio: `donatrack/servicio-logistica`.
+
+Para la Prueba A end-to-end, además de Logística tenés que levantar los servicios que
+orquestan la notificación:
+
+- **servicio-donaciones** (`:8081`) — recibe el evento reenviado por n8n y notifica.
+- **servicio-notificaciones** (`:8084`) — envía (simula) los mails/SMS.
+- **servicio-incentivos** (`:8083`) — recibe el aviso de donación exitosa.
+
+Cada uno se levanta igual que logística: `cd donatrack/servicio-<nombre>` y `mvn spring-boot:run`.
 
 ---
 
@@ -80,54 +94,65 @@ del servicio: `donatrack/servicio-logistica`.
 
 ### 3.1 (Opcional) Probar n8n de forma directa
 
-Sirve para confirmar que el workflow responde y para "calentarlo".
+Sirve para confirmar que el workflow enruta y reenvía a Donaciones. **Ojo:** como n8n ahora
+reenvía a Donaciones, `idDonacion` tiene que existir en Donaciones para no obtener un `404`.
 
 - Método: **POST**
 - URL: `http://localhost:5678/webhook/logistica-evento`
-- En Postman: pestaña **Body** -> **raw** -> **JSON**, y pegar:
+- En Postman: pestaña **Body** -> **raw** -> **JSON**, y pegar (usando una donación real de
+  Donaciones):
 
   ```json
   {
     "tipo": "ENTREGA_NO_RECIBIDA",
-    "entregaId": "11111111-1111-1111-1111-111111111111",
-    "idEntidadBeneficiaria": "33333333-3333-3333-3333-333333333333",
-    "idDonante": "44444444-4444-4444-4444-444444444444",
-    "motivo": "prueba directa",
-    "requiereAvisoAdmin": true
+    "rutaId": "55555555-5555-5555-5555-555555555555",
+    "idDonacion": "<id de una donación existente en Donaciones>",
+    "motivoFallo": "ENTIDAD_AUSENTE",
+    "replanificable": true
   }
   ```
 
-- Resultado esperado: respuesta `{"status":"ok","avisoAdmin":true}`.
+- Resultado esperado: respuesta `{"status":"ok"}`, y en Donaciones el log de la entrega fallida.
 
 ### 3.2 Probar el flujo real por el backend
 
 - Método: **POST**
 - URL: `http://localhost:8085/api/logistica/entregas/11111111-1111-1111-1111-111111111111/no-recibida`
 - Headers: agregar `Content-Type` = `application/json`
-- Body -> **raw** -> **JSON**:
+- Body -> **raw** -> **JSON** (el `motivo` es un valor del enum `MotivoFalloEntrega`):
 
   ```json
   {
-    "motivo": "La entidad beneficiaria no se encontraba en el domicilio"
+    "motivo": "ENTIDAD_AUSENTE"
   }
   ```
+
+  Valores válidos: `ENTIDAD_AUSENTE`, `DIRECCION_INCORRECTA`, `RECHAZADA_POR_ENTIDAD`
+  (replanificables) y `MERCADERIA_ROTA`, `MERCADERIA_PERDIDA`, `ROBO` (no replanificables).
+  Logística deriva el booleano `replanificable` a partir del motivo; el chofer solo manda el motivo.
 
 - Apretar **Send**.
 
 ### 3.3 Qué tenés que ver
 
 1. **En Postman:** código `200 OK` (rápido, no se cuelga). El body de respuesta va vacío.
-2. **En la consola de Java:**
+2. **En la consola de Logística:**
 
    ```text
    [N8nLogisticaWebhookListener] Evento ENTREGA_NO_RECIBIDA disparado para entrega 11111111-...
    ```
 
-3. **En n8n:** ir a la pestaña **Executions** del workflow (NO al lienzo/canvas) y
-   refrescar. Aparece una ejecución que entra por la rama **true** del nodo
-   "Requiere aviso admin?" y ejecuta "Email aviso a administrador (simulado)". Si abrís
-   ese nodo, ves los campos `para`, `asunto` y `cuerpo` del correo con los datos de la
-   entrega.
+3. **En n8n:** pestaña **Executions** del workflow (NO el lienzo/canvas), refrescar. Aparece una
+   ejecución que entra por la salida **ENTREGA_NO_RECIBIDA** del nodo "Enrutar por tipo" y ejecuta
+   el nodo "POST Donaciones /entrega-fallida" con `{"tipo":"ENTREGA_NO_RECIBIDA", ...}`.
+4. **En la consola de Donaciones:** el log de `LogisticaEventosService` procesando la entrega
+   fallida y disparando las notificaciones (entidad, donante y admin).
+5. **En la consola de Notificaciones:** los `Notificación ... registrada con estado: ENVIADA`.
+
+> Nota: la donación `22222222-2222-2222-2222-222222222222` de la entrega demo de Logística debe
+> existir en Donaciones para que el paso 4 no devuelva `404`. Si Donaciones no tiene esa donación,
+> vas a ver el evento reenviado (pasos 1-3) pero Donaciones responderá `404`; en ese caso probá con
+> el flujo directo 3.1 apuntando a una donación real.
 
 ### 3.4 Importante: la entrega de prueba es de un solo uso
 

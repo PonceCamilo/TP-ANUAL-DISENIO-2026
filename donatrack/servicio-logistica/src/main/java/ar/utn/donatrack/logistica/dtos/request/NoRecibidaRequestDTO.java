@@ -1,6 +1,7 @@
 package ar.utn.donatrack.logistica.dtos.request;
 
-import jakarta.validation.constraints.NotBlank;
+import ar.utn.donatrack.logistica.models.entrega.MotivoFalloEntrega;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -9,6 +10,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class NoRecibidaRequestDTO {
-    @NotBlank
-    private String motivo;
+    // El chofer solo informa el motivo; Logística deriva si es replanificable.
+    @NotNull
+    private MotivoFalloEntrega motivo;
 }

@@ -11,6 +11,7 @@ import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
+import ar.utn.donatrack.logistica.models.entrega.MotivoFalloEntrega;
 import ar.utn.donatrack.logistica.validations.EntregaValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -109,17 +110,18 @@ class EntregaServiceTest {
             when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
 
             NoRecibidaRequestDTO dto = new NoRecibidaRequestDTO();
-            dto.setMotivo("No había nadie en la entidad");
+            dto.setMotivo(MotivoFalloEntrega.ENTIDAD_AUSENTE);
 
             service.marcarNoRecibida(entrega.getId(), dto);
 
             assertEquals(EstadoEntrega.NO_RECIBIDA, entrega.getEstado());
-            assertEquals("No había nadie en la entidad", entrega.getObservacion());
+            assertEquals("ENTIDAD_AUSENTE", entrega.getObservacion());
 
             ArgumentCaptor<EntregaEvento> captor = ArgumentCaptor.forClass(EntregaEvento.class);
             verify(eventPublisher).publicar(captor.capture());
             assertEquals(TipoEventoLogistica.ENTREGA_NO_RECIBIDA, captor.getValue().getTipo());
-            assertEquals("No había nadie en la entidad", captor.getValue().getMotivo());
+            assertEquals("ENTIDAD_AUSENTE", captor.getValue().getMotivoFallo());
+            assertTrue(captor.getValue().getReplanificable());
         }
     }
 

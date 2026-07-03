@@ -1,7 +1,6 @@
 package ar.utn.donatrack.logistica.integracion;
 
 import ar.utn.donatrack.logistica.eventos.EntregaEvento;
-import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
 import ar.utn.donatrack.logistica.interfaces.integracion.EntregaEventListener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -22,9 +21,10 @@ import java.util.Map;
  * (mismo mecanismo que N8nWebhookClient en servicio-incentivos).
  *
  * Esto es lo que permite cumplir la restricción "logística no debe invocar
- * directamente a servicio-notificaciones": logística solo le avisa a n8n
- * que ocurrió un hecho; es el flujo de n8n el que arma la notificación y
- * llama a POST /notificaciones.
+ * directamente a Donaciones ni a Notificaciones": logística solo le avisa a n8n
+ * que ocurrió un hecho. n8n actúa como relay/enrutador: reenvía este payload al
+ * endpoint de Donaciones que corresponde según `tipo`, y es Donaciones quien
+ * resuelve los contactos y dispara las notificaciones (Diseño A).
  */
 @Component
 public class N8nLogisticaWebhookListener implements EntregaEventListener {
@@ -46,18 +46,10 @@ public class N8nLogisticaWebhookListener implements EntregaEventListener {
     @Override
     public void onEvento(EntregaEvento evento) {
         try {
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("tipo", evento.getTipo().name());
-            payload.put("entregaId", evento.getEntregaId());
-            payload.put("idDonacion", evento.getIdDonacion());
-            payload.put("idEntidadBeneficiaria", evento.getIdEntidadBeneficiaria());
-            payload.put("idDonante", evento.getIdDonante());
-            payload.put("camionId", evento.getCamionId());
-            payload.put("rutaId", evento.getRutaId());
-            payload.put("fotosComprobante", evento.getFotosComprobante());
-            payload.put("motivo", evento.getMotivo());
-            // Bandera para que el flujo de n8n elija si alerta a un administrador.
-            payload.put("requiereAvisoAdmin", evento.getTipo() == TipoEventoLogistica.ENTREGA_NO_RECIBIDA);
+            // n8n es un relay/enrutador: reenvía este body tal cual al endpoint
+            // de Donaciones que corresponda según `tipo`. Los nombres de campo
+            // coinciden con los DTOs de Donaciones para no transformar nada en n8n.
+            Map<String, Object> payload = construirPayload(evento);
 
             String jsonBody = objectMapper.writeValueAsString(payload);
 
@@ -85,5 +77,33 @@ public class N8nLogisticaWebhookListener implements EntregaEventListener {
             log.error("[N8nLogisticaWebhookListener] No se pudo preparar el evento {} para la entrega {}: {}",
                     evento.getTipo(), evento.getEntregaId(), e.getMessage());
         }
+    }
+
+    private Map<String, Object> construirPayload(EntregaEvento evento) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("tipo", evento.getTipo().name());
+
+        switch (evento.getTipo()) {
+            case INICIO_RUTA -> {
+                payload.put("idRuta", evento.getRutaId());
+                payload.put("idsDonaciones", evento.getIdsDonaciones());
+                payload.put("urlMapaInteractivo", evento.getUrlMapaInteractivo());
+            }
+            case ENTREGA_CONFIRMADA -> {
+                payload.put("rutaId", evento.getRutaId());
+                payload.put("idDonacion", evento.getIdDonacion());
+                payload.put("idCamion", evento.getIdCamion());
+                payload.put("patenteCamion", evento.getPatenteCamion());
+                payload.put("fechaHoraEntrega", evento.getFechaHoraEntrega());
+            }
+            case ENTREGA_NO_RECIBIDA -> {
+                payload.put("rutaId", evento.getRutaId());
+                payload.put("idDonacion", evento.getIdDonacion());
+                payload.put("motivoFallo", evento.getMotivoFallo());
+                payload.put("replanificable", evento.getReplanificable());
+            }
+        }
+
+        return payload;
     }
 }

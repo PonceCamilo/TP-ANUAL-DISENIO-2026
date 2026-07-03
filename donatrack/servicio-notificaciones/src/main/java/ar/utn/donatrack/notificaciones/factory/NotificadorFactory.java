@@ -1,7 +1,6 @@
 package ar.utn.donatrack.notificaciones.factory;
 
 import ar.utn.donatrack.notificaciones.interfaces.services.NotificadorInterface;
-import ar.utn.donatrack.notificaciones.model.medios.MedioNotificacion;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -32,11 +31,11 @@ public class NotificadorFactory {
                         Function.identity()));
     }
 
-    public NotificadorInterface obtenerPara(MedioNotificacion medio) {
-        NotificadorInterface notificador = notificadores.get(medio.getNombre());
+    public NotificadorInterface obtenerPara(String nombreMedio) {
+        NotificadorInterface notificador = notificadores.get(nombreMedio);
         if (notificador == null) {
             throw new IllegalArgumentException(
-                    "No existe un notificador registrado para el medio: " + medio);
+                    "No existe un notificador registrado para el medio: " + nombreMedio);
         }
         return notificador;
     }

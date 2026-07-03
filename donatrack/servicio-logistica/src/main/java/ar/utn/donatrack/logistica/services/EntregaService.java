@@ -11,6 +11,8 @@ import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInter
 import ar.utn.donatrack.logistica.interfaces.services.EntregaServiceInterface;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
+import ar.utn.donatrack.logistica.models.entrega.MotivoFalloEntrega;
+import ar.utn.donatrack.logistica.models.flota.Camion;
 import ar.utn.donatrack.logistica.validations.EntregaValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -47,13 +49,16 @@ public class EntregaService implements EntregaServiceInterface {
         entrega.registrarCambio(EstadoEntrega.ENTREGADA, null);
         repositorio.guardar(entrega);
 
+        Camion camion = entrega.getCamion();
         eventPublisher.publicar(EntregaEvento.builder()
                 .tipo(TipoEventoLogistica.ENTREGA_CONFIRMADA)
                 .entregaId(entrega.getId())
                 .idDonacion(entrega.getIdDonacion())
                 .idEntidadBeneficiaria(entrega.getIdEntidadBeneficiaria())
                 .idDonante(entrega.getIdDonante())
-                .camionId(entrega.getCamion() != null ? entrega.getCamion().getId() : null)
+                .idCamion(camion != null ? camion.getId() : null)
+                .patenteCamion(camion != null ? camion.getPatente() : null)
+                .fechaHoraEntrega(entrega.getFechaEntrega())
                 .rutaId(entrega.getRuta() != null ? entrega.getRuta().getId() : null)
                 .fotosComprobante(entrega.getFotosComprobante())
                 .build());
@@ -64,7 +69,8 @@ public class EntregaService implements EntregaServiceInterface {
         Entrega entrega = buscarOFallar(id);
         validador.validarTransicion(entrega.getEstado(), EstadoEntrega.NO_RECIBIDA);
 
-        entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, dto.getMotivo());
+        MotivoFalloEntrega motivo = dto.getMotivo();
+        entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, motivo.name());
         repositorio.guardar(entrega);
 
         eventPublisher.publicar(EntregaEvento.builder()
@@ -73,9 +79,9 @@ public class EntregaService implements EntregaServiceInterface {
                 .idDonacion(entrega.getIdDonacion())
                 .idEntidadBeneficiaria(entrega.getIdEntidadBeneficiaria())
                 .idDonante(entrega.getIdDonante())
-                .camionId(entrega.getCamion() != null ? entrega.getCamion().getId() : null)
                 .rutaId(entrega.getRuta() != null ? entrega.getRuta().getId() : null)
-                .motivo(dto.getMotivo())
+                .motivoFallo(motivo.name())
+                .replanificable(motivo.esReplanificable())
                 .build());
     }
 

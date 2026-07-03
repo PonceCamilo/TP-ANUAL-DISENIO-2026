@@ -77,7 +77,7 @@ public class EntregaController {
 
     @Operation(
             summary = "Marcar entrega como no recibida",
-            description = "La entidad informa que no recibió la entrega. Pasa a NO_RECIBIDA y n8n recibe el evento con requiereAvisoAdmin=true.",
+            description = "La entidad informa que no recibió la entrega. Pasa a NO_RECIBIDA y se publica el evento ENTREGA_NO_RECIBIDA a n8n, que lo reenvía a Donaciones. El motivo es un valor de MotivoFalloEntrega y Logística deriva si es replanificable.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Entrega marcada como no recibida"),
                     @ApiResponse(responseCode = "409", description = "Transición de estado inválida")

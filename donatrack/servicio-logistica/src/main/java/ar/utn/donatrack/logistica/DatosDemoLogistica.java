@@ -39,6 +39,7 @@ public class DatosDemoLogistica implements CommandLineRunner {
     public void run(String... args) {
         Camion camion = Camion.builder()
                 .id(UUID.fromString("66666666-6666-6666-6666-666666666666"))
+                .patente("AB123CD")
                 .build();
 
         Ruta ruta = Ruta.builder()

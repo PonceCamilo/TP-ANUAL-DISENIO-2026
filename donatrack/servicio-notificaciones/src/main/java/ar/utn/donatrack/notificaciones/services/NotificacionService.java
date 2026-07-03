@@ -30,12 +30,15 @@ public class NotificacionService implements NotificacionServiceInterface {
     private final NotificadorFactory notificadorFactory;
 
     public void enviar(SolicitudNotificacionDto solicitud) {
+        // La solicitud trae el medio como String; la factory lo traduce al
+        // MedioNotificacion concreto para que el dominio siga tipado (Strategy/Factory).
+        NotificadorInterface notificador = notificadorFactory.obtenerPara(solicitud.medio());
+
         Notificacion notificacion = Notificacion.builder()
                 .id(UUID.randomUUID())
                 .destinatario(solicitud.destinatario())
                 .mensaje(solicitud.mensaje())
-                .medio(solicitud.medio())
-                //.evento(solicitud.evento())
+                .medio(notificador.getMedio())
                 .estado(EstadoNotificacion.PENDIENTE)
                 .fechaCreacion(LocalDateTime.now())
                 .build();
@@ -43,7 +46,6 @@ public class NotificacionService implements NotificacionServiceInterface {
         repositorio.guardar(notificacion);
 
         // El notificador (Template Method) actualiza el estado a ENVIADA o FALLIDA.
-        NotificadorInterface notificador = notificadorFactory.obtenerPara(notificacion.getMedio());
         notificador.enviar(notificacion);
 
         repositorio.guardar(notificacion);
