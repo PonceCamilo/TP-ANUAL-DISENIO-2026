@@ -180,7 +180,6 @@ La propiedad `integraciones.proveedor-ruteo.url` ya apunta a `http://localhost:8
       {
         "idDonacion": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         "idEntidadBeneficiaria": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-        "idDonante": "cccccccc-cccc-cccc-cccc-cccccccccccc",
         "direccionEntrega": {
           "calle": "Av. Medrano",
           "numero": 951,

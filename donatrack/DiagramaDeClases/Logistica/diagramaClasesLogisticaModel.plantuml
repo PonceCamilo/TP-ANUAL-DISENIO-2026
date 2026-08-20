@@ -2,10 +2,8 @@
 
 skinparam classAttributeIconSize 0
 
-' ============================ CLASES EXTERNAS (definidas en el modelo de Donaciones) ============================
-' No se repiten sus atributos acá; se referencian para hilar Logística con Donaciones.
-class Donacion
-class EntidadBeneficiaria
+' Bounded context Logística: las entidades de Donaciones no se modelan acá.
+' Se referencian solo por identificadores primitivos (UUID).
 
 class Direccion {
     - calle : String
@@ -46,6 +44,8 @@ enum EstadoLote {
 }
 
 class DonacionLote {
+    - idDonacion : UUID
+    - idEntidadBeneficiaria : UUID
     - direccionEntrega : Direccion
 }
 
@@ -55,6 +55,8 @@ class Ruta {
     - paradas : List<Parada>
     - estado : EstadoRuta
     - fechaInicio : LocalDateTime
+    + obtenerEntregas() : List<Entrega>
+    + buscarParadaPorEntregaId(entregaId : UUID) : Optional<Parada>
 }
 
 enum EstadoRuta {
@@ -66,13 +68,13 @@ enum EstadoRuta {
 class Parada {
     - orden : int
     - direccion : Direccion
+    - idEntidadBeneficiaria : UUID
     - entregas : List<Entrega>
 }
 
 class Entrega {
     - parada : Parada
-    - ruta : Ruta
-    - camion : Camion
+    - idDonacion : UUID
     - estado : EstadoEntrega
     - historial : List<CambioEstadoEntrega>
     - fotosComprobante : List<String>
@@ -98,17 +100,13 @@ class CambioEstadoEntrega {
 Camion -- EstadoCamion
 
 Entrega -- EstadoEntrega
-Entrega --> Camion
-Entrega --> Parada
-Entrega --> Ruta
 Entrega --> "*" CambioEstadoEntrega
-Entrega --> Donacion
 
 CambioEstadoEntrega -- EstadoEntrega
 
 Parada --> Direccion
-Parada --> "*" Entrega
-Parada --> EntidadBeneficiaria
+Parada "1" --> "*" Entrega
+Entrega --> Parada
 
 Ruta -- EstadoRuta
 Ruta --> Camion
@@ -120,9 +118,5 @@ LotePlanificacion --> "*" Camion
 LotePlanificacion --> "*" DonacionLote
 
 DonacionLote --> Direccion
-DonacionLote --> Donacion
-DonacionLote --> EntidadBeneficiaria
-Entrega --> Donante
-Entrega --> EntidadBeneficiaria
 
 @enduml

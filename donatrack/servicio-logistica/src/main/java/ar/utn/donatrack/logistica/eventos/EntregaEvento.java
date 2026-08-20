@@ -12,6 +12,7 @@ import java.util.UUID;
  * tipo: no todos aplican a todos los tipos (INICIO_RUTA agrupa varias donaciones
  * en idsDonaciones; ENTREGA_CONFIRMADA/NO_RECIBIDA refieren a una sola donación).
  * El listener arma el payload según el tipo.
+ * rutaId y camionId viajan siempre en los eventos de entrega para trazabilidad.
  */
 @Getter
 @Builder
@@ -27,7 +28,6 @@ public class EntregaEvento {
     // ENTREGA_CONFIRMADA / ENTREGA_NO_RECIBIDA (una donación)
     private UUID idDonacion;
     private UUID idEntidadBeneficiaria;
-    private UUID idDonante;
     private UUID idCamion;
     private String patenteCamion;
     private LocalDateTime fechaHoraEntrega;

@@ -26,6 +26,7 @@ import ar.utn.donatrack.logistica.models.planificacion.DonacionLote;
 import ar.utn.donatrack.logistica.models.planificacion.EstadoLote;
 import ar.utn.donatrack.logistica.models.planificacion.EstadoRuta;
 import ar.utn.donatrack.logistica.models.planificacion.LotePlanificacion;
+import ar.utn.donatrack.logistica.models.planificacion.Parada;
 import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import ar.utn.donatrack.logistica.validations.EntregaValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -91,7 +93,6 @@ class PlanificacionRutasServiceTest {
         DonacionParaRutearRequestDTO donacion = new DonacionParaRutearRequestDTO();
         donacion.setIdDonacion(UUID.randomUUID());
         donacion.setIdEntidadBeneficiaria(idEntidad);
-        donacion.setIdDonante(UUID.randomUUID());
         donacion.setDireccionEntrega(direccionDTO());
         return donacion;
     }
@@ -169,12 +170,11 @@ class PlanificacionRutasServiceTest {
         }
 
         @Test
-        @DisplayName("Crea Ruta, Parada y Entrega a partir del callback, enriqueciendo con el donante del lote")
+        @DisplayName("Crea Ruta, Parada y Entrega a partir del callback; la entidad queda en la Parada")
         void creaRutaYEntregasDesdeElCallback() {
             UUID loteId = UUID.randomUUID();
             UUID idDonacion = UUID.randomUUID();
             UUID idEntidad = UUID.randomUUID();
-            UUID idDonante = UUID.randomUUID();
             UUID idCamion = UUID.randomUUID();
 
             LotePlanificacion lote = LotePlanificacion.builder()
@@ -184,7 +184,6 @@ class PlanificacionRutasServiceTest {
                     .donaciones(List.of(DonacionLote.builder()
                             .idDonacion(idDonacion)
                             .idEntidadBeneficiaria(idEntidad)
-                            .idDonante(idDonante)
                             .build()))
                     .build();
             when(loteRepositorio.buscarPorId(loteId)).thenReturn(lote);
@@ -215,13 +214,16 @@ class PlanificacionRutasServiceTest {
             assertEquals(idCamion, rutaGuardada.getCamion().getId());
             assertEquals(EstadoRuta.PLANIFICADA, rutaGuardada.getEstado());
             assertEquals(1, rutaGuardada.getParadas().size());
+            assertEquals(idEntidad, rutaGuardada.getParadas().getFirst().getIdEntidadBeneficiaria());
 
             ArgumentCaptor<Entrega> entregaCaptor = ArgumentCaptor.forClass(Entrega.class);
             verify(entregaRepositorio).guardar(entregaCaptor.capture());
             Entrega entregaGuardada = entregaCaptor.getValue();
             assertEquals(idDonacion, entregaGuardada.getIdDonacion());
-            assertEquals(idDonante, entregaGuardada.getIdDonante());
             assertEquals(EstadoEntrega.PENDIENTE, entregaGuardada.getEstado());
+            assertEquals(rutaGuardada.getParadas().getFirst(), entregaGuardada.getParada());
+            assertEquals(1, rutaGuardada.obtenerEntregas().size());
+            assertEquals(entregaGuardada.getId(), rutaGuardada.obtenerEntregas().getFirst().getId());
 
             ArgumentCaptor<LotePlanificacion> loteCaptor = ArgumentCaptor.forClass(LotePlanificacion.class);
             verify(loteRepositorio).guardar(loteCaptor.capture());
@@ -242,21 +244,25 @@ class PlanificacionRutasServiceTest {
 
             Camion camion = Camion.builder().id(camionId).estado(EstadoCamion.DISPONIBLE).build();
 
+            Parada parada = Parada.builder()
+                    .id(UUID.randomUUID())
+                    .orden(1)
+                    .entregas(new ArrayList<>())
+                    .build();
+            Entrega entrega = Entrega.builder()
+                    .id(UUID.randomUUID())
+                    .idDonacion(UUID.randomUUID())
+                    .parada(parada)
+                    .estado(EstadoEntrega.PENDIENTE)
+                    .build();
+            parada.getEntregas().add(entrega);
             Ruta ruta = Ruta.builder()
                     .id(rutaId)
                     .camion(camion)
                     .estado(EstadoRuta.PLANIFICADA)
-                    .paradas(List.of())
+                    .paradas(List.of(parada))
                     .build();
             when(rutaRepositorio.buscarPorId(rutaId)).thenReturn(ruta);
-
-            Entrega entrega = Entrega.builder()
-                    .id(UUID.randomUUID())
-                    .idDonacion(UUID.randomUUID())
-                    .ruta(ruta)
-                    .estado(EstadoEntrega.PENDIENTE)
-                    .build();
-            when(entregaRepositorio.buscarPorRutaId(rutaId)).thenReturn(List.of(entrega));
 
             service.iniciarRuta(rutaId);
 
@@ -267,7 +273,6 @@ class PlanificacionRutasServiceTest {
             verify(camionRepositorio).guardar(camion);
 
             assertEquals(EstadoEntrega.EN_TRASLADO, entrega.getEstado());
-            assertEquals(camionId, entrega.getCamion().getId());
             verify(entregaRepositorio).guardar(entrega);
 
             ArgumentCaptor<EntregaEvento> eventoCaptor = ArgumentCaptor.forClass(EntregaEvento.class);
