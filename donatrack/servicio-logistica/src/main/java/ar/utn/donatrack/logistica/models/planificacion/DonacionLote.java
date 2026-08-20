@@ -8,15 +8,14 @@ import java.util.UUID;
 
 /**
  * Snapshot de la donación tal como llegó en el pedido de planificación.
- * Se guarda dentro del LotePlanificacion para poder reconstruir, cuando
- * llega el callback del proveedor externo (que solo agrupa donacionesIds
- * por parada), a qué entidad y a qué donante pertenece cada una.
+ * Se guarda en el LotePlanificacion para enviarla al proveedor de ruteo
+ * (id, entidad destino y dirección). El donante no forma parte de logística:
+ * los camiones entregan en la entidad beneficiaria.
  */
 @Getter
 @Builder
 public class DonacionLote {
     private UUID idDonacion;
     private UUID idEntidadBeneficiaria;
-    private UUID idDonante;
     private Direccion direccionEntrega;
 }

@@ -6,14 +6,17 @@ import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
 import ar.utn.donatrack.logistica.eventos.EntregaEvento;
 import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
 import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
+import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
+import ar.utn.donatrack.logistica.interfaces.repositories.RutaRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.services.EntregaServiceInterface;
 import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
 import ar.utn.donatrack.logistica.models.entrega.MotivoFalloEntrega;
 import ar.utn.donatrack.logistica.models.flota.Camion;
+import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import ar.utn.donatrack.logistica.validations.EntregaValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,18 +30,22 @@ import java.util.UUID;
 public class EntregaService implements EntregaServiceInterface {
 
     private final EntregaRepositoryInterface repositorio;
+    private final RutaRepositoryInterface rutaRepositorio;
     private final EntregaValidator validador;
     private final EntregaEventPublisher eventPublisher;
     private final PlanificacionServiceInterface planificacionService;
 
     @Override
     public EntregaResponseDTO obtenerPorId(UUID id) {
-        return EntregaResponseDTO.desde(buscarOFallar(id));
+        Entrega entrega = buscarOFallar(id);
+        return EntregaResponseDTO.desde(entrega, rutaDe(entrega.getId()));
     }
 
     @Override
     public List<EntregaResponseDTO> obtenerPorEstado(EstadoEntrega estado) {
-        return repositorio.buscarPorEstado(estado).stream().map(EntregaResponseDTO::desde).toList();
+        return repositorio.buscarPorEstado(estado).stream()
+                .map(e -> EntregaResponseDTO.desde(e, rutaDe(e.getId())))
+                .toList();
     }
 
     @Override
@@ -51,21 +58,21 @@ public class EntregaService implements EntregaServiceInterface {
         entrega.registrarCambio(EstadoEntrega.ENTREGADA, null);
         repositorio.guardar(entrega);
 
-        Camion camion = entrega.getCamion();
+        Ruta ruta = buscarRutaDeEntregaOFallar(entrega.getId());
+        Camion camion = ruta.getCamion();
         eventPublisher.publicar(EntregaEvento.builder()
                 .tipo(TipoEventoLogistica.ENTREGA_CONFIRMADA)
                 .entregaId(entrega.getId())
                 .idDonacion(entrega.getIdDonacion())
-                .idEntidadBeneficiaria(entrega.getIdEntidadBeneficiaria())
-                .idDonante(entrega.getIdDonante())
+                .idEntidadBeneficiaria(idEntidadDe(entrega))
                 .idCamion(camion != null ? camion.getId() : null)
                 .patenteCamion(camion != null ? camion.getPatente() : null)
                 .fechaHoraEntrega(entrega.getFechaEntrega())
-                .rutaId(entrega.getRuta() != null ? entrega.getRuta().getId() : null)
+                .rutaId(ruta.getId())
                 .fotosComprobante(entrega.getFotosComprobante())
                 .build());
 
-        finalizarRutaSiCorresponde(entrega);
+        finalizarRutaSiCorresponde(ruta.getId());
     }
 
     @Override
@@ -77,18 +84,21 @@ public class EntregaService implements EntregaServiceInterface {
         entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, motivo.name());
         repositorio.guardar(entrega);
 
+        Ruta ruta = buscarRutaDeEntregaOFallar(entrega.getId());
+        Camion camion = ruta.getCamion();
         eventPublisher.publicar(EntregaEvento.builder()
                 .tipo(TipoEventoLogistica.ENTREGA_NO_RECIBIDA)
                 .entregaId(entrega.getId())
                 .idDonacion(entrega.getIdDonacion())
-                .idEntidadBeneficiaria(entrega.getIdEntidadBeneficiaria())
-                .idDonante(entrega.getIdDonante())
-                .rutaId(entrega.getRuta() != null ? entrega.getRuta().getId() : null)
+                .idEntidadBeneficiaria(idEntidadDe(entrega))
+                .idCamion(camion != null ? camion.getId() : null)
+                .patenteCamion(camion != null ? camion.getPatente() : null)
+                .rutaId(ruta.getId())
                 .motivoFallo(motivo.name())
                 .replanificable(motivo.esReplanificable())
                 .build());
 
-        finalizarRutaSiCorresponde(entrega);
+        finalizarRutaSiCorresponde(ruta.getId());
     }
 
     @Override
@@ -101,10 +111,8 @@ public class EntregaService implements EntregaServiceInterface {
 
     // Cuando esta entrega era la última EN_TRASLADO de su ruta, el camión
     // vuelve a estar DISPONIBLE para la planificación del día siguiente.
-    private void finalizarRutaSiCorresponde(Entrega entrega) {
-        if (entrega.getRuta() != null) {
-            planificacionService.finalizarRutaSiCorresponde(entrega.getRuta().getId());
-        }
+    private void finalizarRutaSiCorresponde(UUID rutaId) {
+        planificacionService.finalizarRutaSiCorresponde(rutaId);
     }
 
     private Entrega buscarOFallar(UUID id) {
@@ -113,5 +121,18 @@ public class EntregaService implements EntregaServiceInterface {
             throw new EntregaNoEncontradaException(id);
         }
         return entrega;
+    }
+
+    private Ruta buscarRutaDeEntregaOFallar(UUID entregaId) {
+        return rutaRepositorio.buscarPorEntregaId(entregaId)
+                .orElseThrow(() -> RutaNoEncontradaException.paraEntrega(entregaId));
+    }
+
+    private Ruta rutaDe(UUID entregaId) {
+        return rutaRepositorio.buscarPorEntregaId(entregaId).orElse(null);
+    }
+
+    private UUID idEntidadDe(Entrega entrega) {
+        return entrega.getParada() != null ? entrega.getParada().getIdEntidadBeneficiaria() : null;
     }
 }

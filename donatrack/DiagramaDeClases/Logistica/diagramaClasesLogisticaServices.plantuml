@@ -8,6 +8,21 @@ class EntregaValidator {
     + validarTransicion(estadoActual : EstadoEntrega, estadoNuevo : EstadoEntrega) : void
 }
 
+' ============================ REPOSITORIOS ============================
+
+interface EntregaRepositoryInterface {
+    + guardar(entrega : Entrega) : void
+    + buscarPorId(id : UUID) : Entrega
+    + buscarPorEstado(estado : EstadoEntrega) : List<Entrega>
+}
+
+interface RutaRepositoryInterface {
+    + guardar(ruta : Ruta) : void
+    + buscarPorId(id : UUID) : Ruta
+    + buscarPorCamionId(camionId : UUID) : List<Ruta>
+    + buscarPorEntregaId(entregaId : UUID) : Optional<Ruta>
+}
+
 ' ============================ SERVICIOS ============================
 
 interface CamionServiceInterface {
@@ -33,6 +48,7 @@ interface EntregaServiceInterface {
 
 class EntregaService implements EntregaServiceInterface {
     - repositorio : EntregaRepositoryInterface
+    - rutaRepositorio : RutaRepositoryInterface
     - validador : EntregaValidator
     - eventPublisher : EntregaEventPublisher
     - planificacionService : PlanificacionServiceInterface
@@ -103,18 +119,18 @@ class N8nLogisticaWebhookListener implements EntregaEventListener {
 
 ' ============================ RELACIONES ============================
 
-
 EntregaService --> EntregaValidator
 EntregaService --> EntregaEventPublisher
+EntregaService --> EntregaRepositoryInterface
+EntregaService --> RutaRepositoryInterface
 EntregaService --> PlanificacionServiceInterface
 
 PlanificacionRutasService --> EstrategiaRuteoPort
 PlanificacionRutasService --> EntregaEventPublisher
 PlanificacionRutasService --> EntregaValidator
-
-
+PlanificacionRutasService --> RutaRepositoryInterface
+PlanificacionRutasService --> EntregaRepositoryInterface
 
 EntregaEventPublisher --> "*" EntregaEventListener
-
 
 @enduml

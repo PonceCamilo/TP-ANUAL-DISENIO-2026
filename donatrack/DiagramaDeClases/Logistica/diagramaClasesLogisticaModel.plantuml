@@ -2,6 +2,9 @@
 
 skinparam classAttributeIconSize 0
 
+' Bounded context Logística: las entidades de Donaciones no se modelan acá.
+' Se referencian solo por identificadores primitivos (UUID).
+
 class Direccion {
     - calle : String
     - numero : int
@@ -45,7 +48,6 @@ enum EstadoLote {
 class DonacionLote {
     - idDonacion : UUID
     - idEntidadBeneficiaria : UUID
-    - idDonante : UUID
     - direccionEntrega : Direccion
 }
 
@@ -56,6 +58,8 @@ class Ruta {
     - paradas : List<Parada>
     - estado : EstadoRuta
     - fechaInicio : LocalDateTime
+    + obtenerEntregas() : List<Entrega>
+    + buscarParadaPorEntregaId(entregaId : UUID) : Optional<Parada>
 }
 
 enum EstadoRuta {
@@ -75,11 +79,7 @@ class Parada {
 class Entrega {
     - id : UUID
     - idDonacion : UUID
-    - idEntidadBeneficiaria : UUID
-    - idDonante : UUID
     - parada : Parada
-    - ruta : Ruta
-    - camion : Camion
     - estado : EstadoEntrega
     - historial : List<CambioEstadoEntrega>
     - fotosComprobante : List<String>
@@ -104,16 +104,14 @@ class CambioEstadoEntrega {
 
 Camion --> EstadoCamion
 
-Entrega --> EstadoEntrega
-Entrega --> Camion
-Entrega --> Parada
-Entrega --> Ruta
+Entrega -- EstadoEntrega
 Entrega --> "*" CambioEstadoEntrega
 
 CambioEstadoEntrega --> EstadoEntrega
 
 Parada --> Direccion
-Parada --> "*" Entrega
+Parada "1" --> "*" Entrega
+Entrega --> Parada
 
 Ruta --> EstadoRuta
 Ruta --> Camion
@@ -125,6 +123,5 @@ LotePlanificacion --> "*" Camion
 LotePlanificacion --> "*" DonacionLote
 
 DonacionLote --> Direccion
-
 
 @enduml

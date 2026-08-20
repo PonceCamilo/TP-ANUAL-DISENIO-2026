@@ -99,6 +99,8 @@ public class N8nLogisticaWebhookListener implements EntregaEventListener {
             case ENTREGA_NO_RECIBIDA -> {
                 payload.put("rutaId", evento.getRutaId());
                 payload.put("idDonacion", evento.getIdDonacion());
+                payload.put("idCamion", evento.getIdCamion());
+                payload.put("patenteCamion", evento.getPatenteCamion());
                 payload.put("motivoFallo", evento.getMotivoFallo());
                 payload.put("replanificable", evento.getReplanificable());
             }
