@@ -16,7 +16,6 @@ class Direccion {
 }
 
 class Camion {
-    - id : UUID
     - patente : String
     - capacidadVolumenM3 : double
     - alturaM : double
@@ -96,32 +95,34 @@ class CambioEstadoEntrega {
 }
 
 
-Camion --> EstadoCamion
+Camion -- EstadoCamion
 
-Entrega --> EstadoEntrega
+Entrega -- EstadoEntrega
 Entrega --> Camion
 Entrega --> Parada
 Entrega --> Ruta
 Entrega --> "*" CambioEstadoEntrega
-Entrega --> Donacion : donacion
+Entrega --> Donacion
 
-CambioEstadoEntrega --> EstadoEntrega
+CambioEstadoEntrega -- EstadoEntrega
 
 Parada --> Direccion
 Parada --> "*" Entrega
-Parada --> EntidadBeneficiaria : entidadBeneficiaria
+Parada --> EntidadBeneficiaria
 
-Ruta --> EstadoRuta
+Ruta -- EstadoRuta
 Ruta --> Camion
 Ruta --> "*" Parada
 Ruta --> LotePlanificacion
 
-LotePlanificacion --> EstadoLote
+LotePlanificacion -- EstadoLote
 LotePlanificacion --> "*" Camion
 LotePlanificacion --> "*" DonacionLote
 
 DonacionLote --> Direccion
-DonacionLote --> Donacion : donacion
-
+DonacionLote --> Donacion
+DonacionLote --> EntidadBeneficiaria
+Entrega --> Donante
+Entrega --> EntidadBeneficiaria
 
 @enduml
