@@ -21,7 +21,8 @@ interface AlgoritmoAsignacionInterface {
 }
 interface SegmentadorDonacionesServiceInterface {
   + segmentar(bienes, idDonante, descripcion) : List<Donacion>
-  + cargarDonaciones(List<Donacion>)
+  + donaciones(List<Donacion>) 
+  'creeria que solo es cambiarle el nombre (cargarDonaciones)
 }
 interface DonacionServiceInterface {
   + obtenerDonaciones(estado, idDonante, subcat)

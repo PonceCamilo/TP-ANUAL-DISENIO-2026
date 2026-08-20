@@ -2,6 +2,11 @@
 
 skinparam classAttributeIconSize 0
 
+' ============================ CLASES EXTERNAS (definidas en el modelo de Donaciones) ============================
+' No se repiten sus atributos acá; se referencian para hilar Logística con Donaciones.
+class Donacion
+class EntidadBeneficiaria
+
 class Direccion {
     - calle : String
     - numero : int
@@ -26,7 +31,6 @@ enum EstadoCamion {
 }
 
 class LotePlanificacion {
-    - id : UUID
     - camiones : List<Camion>
     - donaciones : List<DonacionLote>
     - estado : EstadoLote
@@ -43,14 +47,10 @@ enum EstadoLote {
 }
 
 class DonacionLote {
-    - idDonacion : UUID
-    - idEntidadBeneficiaria : UUID
-    - idDonante : UUID
     - direccionEntrega : Direccion
 }
 
 class Ruta {
-    - id : UUID
     - lote : LotePlanificacion
     - camion : Camion
     - paradas : List<Parada>
@@ -65,18 +65,12 @@ enum EstadoRuta {
 }
 
 class Parada {
-    - id : UUID
     - orden : int
     - direccion : Direccion
-    - idEntidadBeneficiaria : UUID
     - entregas : List<Entrega>
 }
 
 class Entrega {
-    - id : UUID
-    - idDonacion : UUID
-    - idEntidadBeneficiaria : UUID
-    - idDonante : UUID
     - parada : Parada
     - ruta : Ruta
     - camion : Camion
@@ -109,11 +103,13 @@ Entrega --> Camion
 Entrega --> Parada
 Entrega --> Ruta
 Entrega --> "*" CambioEstadoEntrega
+Entrega --> Donacion : donacion
 
 CambioEstadoEntrega --> EstadoEntrega
 
 Parada --> Direccion
 Parada --> "*" Entrega
+Parada --> EntidadBeneficiaria : entidadBeneficiaria
 
 Ruta --> EstadoRuta
 Ruta --> Camion
@@ -125,6 +121,7 @@ LotePlanificacion --> "*" Camion
 LotePlanificacion --> "*" DonacionLote
 
 DonacionLote --> Direccion
+DonacionLote --> Donacion : donacion
 
 
 @enduml
