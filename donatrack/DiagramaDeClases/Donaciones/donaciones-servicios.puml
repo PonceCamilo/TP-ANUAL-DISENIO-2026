@@ -1,191 +1,214 @@
 @startuml donaciones-servicios
 
-interface AlgoritmoAsignacionInterface {
-    public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
+left to right direction
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+skinparam nodesep 45
+skinparam ranksep 55
+hide empty members
+
+package interfaces.services {
+
+    interface AlgoritmoAsignacionInterface {
+        public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
+    }
+
+    interface SegmentadorDonacionesServiceInterface {
+        public segmentar(carga: CargaDonacion): List<Donacion>
+        public cargarDonaciones(donaciones: List<Donacion>): void
+    }
+
+    interface DonacionServiceInterface {
+        public obtenerDonaciones(estado: String, donante: PersonaDonante, subcategoria: String): List<DonacionResponseDTO>
+        public obtenerDonacion(donacion: Donacion): DonacionResponseDTO
+        public cambiarEstado(donacion: Donacion, dto: CambioEstadoRequestDTO): void
+        public modificarBien(donacion: Donacion, dto: BienRequestDTO): void
+        public eliminar(donacion: Donacion): void
+        public obtenerCandidatos(donacion: Donacion): CandidatosAsignacionResponseDTO
+        public asignarEntidadBeneficiaria(donacion: Donacion, dto: AsignacionRequestDTO): void
+    }
+
+    interface PersonaDonanteServiceInterface {
+        public registrar(dto: PersonaDonanteRequestDTO): PersonaDonante
+        public obtenerDonante(donante: PersonaDonante): PersonaDonanteResponseDTO
+        public obtenerDonantes(estado: EstadoDonante): List<PersonaDonanteResponseDTO>
+        public cambiarEstado(donante: PersonaDonante, dto: EstadoDonanteRequestDTO): void
+        public modificarContacto(donante: PersonaDonante, dto: MedioDeContactoRequestDTO): void
+        public modificarRepresentante(donante: PersonaDonante, dto: RepresentanteRequestDTO): void
+        public actualizar(donante: PersonaDonante, dto: PersonaDonanteUpdateRequestDTO): PersonaDonanteResponseDTO
+        public eliminar(donante: PersonaDonante): void
+    }
+
+    interface EntidadesBeneficiariasServiceInterface {
+        public guardar(dto: EntidadBeneficiariaRequestDTO): EntidadBeneficiaria
+        public obtenerTodas(): List<EntidadBeneficiariaResponseDTO>
+        public obtenerEntidad(entidad: EntidadBeneficiaria): EntidadBeneficiariaResponseDTO
+        public actualizar(entidad: EntidadBeneficiaria, dto: EntidadBeneficiariaRequestDTO): void
+        public eliminarEntidad(entidad: EntidadBeneficiaria): void
+        public agregarCampaniaAEntidad(entidad: EntidadBeneficiaria, dto: CampaniaRequestDTO): Campania
+        public agregarNecesidadACampania(entidad: EntidadBeneficiaria, campania: Campania, dto: NecesidadRequestDTO): NecesidadResponseDTO
+    }
 }
 
-interface SegmentadorDonacionesServiceInterface {
-    public segmentar(carga: CargaDonacion): List<Donacion>
-    public cargarDonaciones(donaciones: List<Donacion>): void
+package services {
+
+    class DonacionService {
+        private repositorio: DonacionesRepositoryInterface
+        private mapper: DonacionMapper
+        private asignacionService: AsignacionDonacionesService
+        private entidadesRepositorio: EntidadesBeneficiariasRepositoryInterface
+        private entidadMapper: EntidadBeneficiariaMapper
+        private donanteRepositorio: PersonaDonanteRepositoryInterface
+        private notificacionClient: NotificacionClient
+        private incentivosClient: IncentivosClient
+        private validador: DonacionesValidator
+        private entidadesValidator: EntidadesBeneficiariasValidator
+
+        public obtenerDonaciones(estado: String, donante: PersonaDonante, subcategoria: String): List<DonacionResponseDTO>
+        public obtenerDonacion(donacion: Donacion): DonacionResponseDTO
+        public cambiarEstado(donacion: Donacion, dto: CambioEstadoRequestDTO): void
+        public modificarBien(donacion: Donacion, dto: BienRequestDTO): void
+        public obtenerCandidatos(donacion: Donacion): CandidatosAsignacionResponseDTO
+        public asignarEntidadBeneficiaria(donacion: Donacion, dto: AsignacionRequestDTO): void
+        public eliminar(donacion: Donacion): void
+        private mapearRanking(ranking: List<ResultadoAsignacion>): List<EntidadBeneficiariaResponseDTO>
+    }
+
+    class SegmentadorDonacionesService {
+        private donacionesRepository: DonacionesRepositoryInterface
+        private donanteRepository: PersonaDonanteRepositoryInterface
+        private incentivosClient: IncentivosClient
+
+        public segmentar(carga: CargaDonacion): List<Donacion>
+        public cargarDonaciones(donaciones: List<Donacion>): void
+    }
+
+    class PersonaDonanteService {
+        private repositorio: PersonaDonanteRepositoryInterface
+        private validador: PersonasValidator
+        private mapper: PersonaDonanteMapper
+
+        public registrar(dto: PersonaDonanteRequestDTO): PersonaDonante
+        public obtenerDonante(donante: PersonaDonante): PersonaDonanteResponseDTO
+        public obtenerDonantes(estado: EstadoDonante): List<PersonaDonanteResponseDTO>
+        public cambiarEstado(donante: PersonaDonante, dto: EstadoDonanteRequestDTO): void
+        public modificarContacto(donante: PersonaDonante, dto: MedioDeContactoRequestDTO): void
+        public modificarRepresentante(donante: PersonaDonante, dto: RepresentanteRequestDTO): void
+        public actualizar(donante: PersonaDonante, dto: PersonaDonanteUpdateRequestDTO): PersonaDonanteResponseDTO
+        public eliminar(donante: PersonaDonante): void
+    }
+
+    class EntidadesBeneficiariasService {
+        private repositorio: EntidadesBeneficiariasRepositoryInterface
+        private validador: EntidadesBeneficiariasValidator
+        private mapper: EntidadBeneficiariaMapper
+        private dependenciasMapper: PersonaDonanteMapper
+
+        public guardar(dto: EntidadBeneficiariaRequestDTO): EntidadBeneficiaria
+        public obtenerTodas(): List<EntidadBeneficiariaResponseDTO>
+        public obtenerEntidad(entidad: EntidadBeneficiaria): EntidadBeneficiariaResponseDTO
+        public actualizar(entidad: EntidadBeneficiaria, dtoNueva: EntidadBeneficiariaRequestDTO): void
+        public eliminarEntidad(entidad: EntidadBeneficiaria): void
+        public agregarCampaniaAEntidad(entidad: EntidadBeneficiaria, dto: CampaniaRequestDTO): Campania
+        public agregarNecesidadACampania(entidad: EntidadBeneficiaria, campania: Campania, dto: NecesidadRequestDTO): NecesidadResponseDTO
+    }
+
+    class InactividadDonantesService {
+        private donanteRepository: PersonaDonanteRepositoryInterface
+        private notificacionClient: NotificacionClient
+
+        public notificarDonantesInactivos(): void
+    }
+
+    class CsvImportService {
+        private donanteRepository: PersonaDonanteRepositoryInterface
+        private parser: DonanteCsvRowParser
+        private factory: DonanteFactory
+
+        public importar(csvStream: InputStream): ImportReport
+    }
+
+    package asignacion {
+
+        abstract class AlgoritmoAsignacionBase {
+            private TOP_N: int
+
+            public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
+            private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+            private incluir(puntaje: double): boolean
+        }
+
+        class AlgoritmoCompatibilidadSemantica {
+            private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+            private incluir(puntaje: double): boolean
+        }
+
+        class AlgoritmoPrioridadSubAtendidos {
+            private donacionesRepository: DonacionesRepositoryInterface
+
+            private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+        }
+
+        class AsignacionDonacionesService {
+            private algoritmoSemantico: AlgoritmoCompatibilidadSemantica
+            private algoritmoSubAtendidos: AlgoritmoPrioridadSubAtendidos
+            private entidadesRepository: EntidadesBeneficiariasRepositoryInterface
+
+            public generarRanking(donacion: Donacion): ResultadoMatchmaking
+            private intersectar(a: List<ResultadoAsignacion>, b: List<ResultadoAsignacion>): List<ResultadoAsignacion>
+        }
+
+        class ResultadoMatchmaking {
+            private coincidencias: List<ResultadoAsignacion>
+            private rankingSemantico: List<ResultadoAsignacion>
+            private rankingSubAtendidos: List<ResultadoAsignacion>
+
+            public huboCoincidencias(): boolean
+        }
+    }
 }
 
-interface DonacionServiceInterface {
-    public obtenerDonaciones(estado: String, idDonante: UUID, subcategoria: String): List<DonacionResponseDTO>
-    public obtenerPorId(id: UUID): DonacionResponseDTO
-    public cambiarEstado(id: UUID, dto: CambioEstadoRequestDTO): void
-    public modificarBien(id: UUID, dto: BienRequestDTO): void
-    public eliminar(id: UUID): void
-    public obtenerCandidatos(idDonacion: UUID): CandidatosAsignacionResponseDTO
-    public asignar(idDonacion: UUID, dto: AsignacionRequestDTO): void
+package validations.donaciones {
+    class DonacionesValidator {
+        private repositorio: DonacionesRepositoryInterface
+
+        public validarExistencia(donacion: Donacion): void
+        public validarTieneBienes(donacion: Donacion): void
+    }
 }
 
-interface PersonaDonanteServiceInterface {
-    public registrar(dto: PersonaDonanteRequestDTO): UUID
-    public obtenerDonante(id: UUID): PersonaDonanteResponseDTO
-    public obtenerDonantes(estado: EstadoDonante): List<PersonaDonanteResponseDTO>
-    public cambiarEstado(id: UUID, dto: EstadoDonanteRequestDTO): void
-    public modificarContacto(id: UUID, dto: MedioDeContactoRequestDTO): void
-    public modificarRepresentante(id: UUID, dto: RepresentanteRequestDTO): void
-    public actualizar(id: UUID, dto: PersonaDonanteUpdateRequestDTO): PersonaDonanteResponseDTO
-    public eliminar(id: UUID): void
+package validations.entidades {
+    class EntidadesBeneficiariasValidator {
+        private repositorio: EntidadesBeneficiariasRepositoryInterface
+
+        public validarExistenciaEntidad(entidad: EntidadBeneficiaria): void
+        public validarCampaniaDeEntidad(entidad: EntidadBeneficiaria, campania: Campania): void
+        public validarFechasCampania(inicio: LocalDate, fin: LocalDate): void
+    }
 }
 
-interface EntidadesBeneficiariasServiceInterface {
-    public guardar(dto: EntidadBeneficiariaRequestDTO): UUID
-    public obtenerTodas(): List<EntidadBeneficiariaResponseDTO>
-    public obtenerPorId(id: UUID): EntidadBeneficiariaResponseDTO
-    public actualizar(id: UUID, dto: EntidadBeneficiariaRequestDTO): void
-    public eliminarEntidad(id: UUID): void
-    public agregarCampaniaAEntidad(idEntidad: UUID, dto: CampaniaRequestDTO): UUID
-    public agregarNecesidadACampania(entidadId: UUID, campaniaId: UUID, dto: NecesidadRequestDTO): NecesidadResponseDTO
+package validations.personas {
+    class PersonasValidator {
+        private repositorio: PersonaDonanteRepositoryInterface
+
+        public validarEmail(email: String): void
+        public validarExistenciaPersona(donante: PersonaDonante): void
+        public validarEsPersonaJuridica(donante: PersonaDonante): void
+        public validarMedioContacto(medio: MedioDeContacto): void
+        public validarCambioEstado(actual: EstadoDonante, nuevo: EstadoDonante, justificacion: String): void
+    }
 }
 
-abstract class AlgoritmoAsignacionBase {
-    private TOP_N: int
+package clientes {
 
-    public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
-    private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
-    private incluir(puntaje: double): boolean
-}
+    class NotificacionClient {
+        public enviarNotificacion(destinatario: String, mensaje: String, medio: String): void
+    }
 
-class AlgoritmoCompatibilidadSemantica {
-    private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
-    private incluir(puntaje: double): boolean
-    private contieneTexto(texto: String, objetivo: String): boolean
-}
-
-class AlgoritmoPrioridadSubAtendidos {
-    private donacionesRepository: DonacionesRepositoryInterface
-
-    private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
-}
-
-class AsignacionDonacionesService {
-    private algoritmoSemantico: AlgoritmoCompatibilidadSemantica
-    private algoritmoSubAtendidos: AlgoritmoPrioridadSubAtendidos
-    private entidadesRepository: EntidadesBeneficiariasRepositoryInterface
-
-    public generarRanking(donacion: Donacion): ResultadoMatchmaking
-    private intersectar(a: List<ResultadoAsignacion>, b: List<ResultadoAsignacion>): List<ResultadoAsignacion>
-}
-
-class ResultadoMatchmaking {
-    private coincidencias: List<ResultadoAsignacion>
-    private rankingSemantico: List<ResultadoAsignacion>
-    private rankingSubAtendidos: List<ResultadoAsignacion>
-
-    public huboCoincidencias(): boolean
-}
-
-class DonacionService {
-    private repositorio: DonacionesRepositoryInterface
-    private mapper: DonacionMapper
-    private asignacionService: AsignacionDonacionesService
-    private entidadesRepositorio: EntidadesBeneficiariasRepositoryInterface
-    private entidadMapper: EntidadBeneficiariaMapper
-    private donanteRepositorio: PersonaDonanteRepositoryInterface
-    private notificacionClient: NotificacionClient
-    private incentivosClient: IncentivosClient
-    private validador: DonacionesValidator
-    private entidadesValidator: EntidadesBeneficiariasValidator
-
-    public obtenerDonaciones(estado: String, idDonante: UUID, subcategoria: String): List<DonacionResponseDTO>
-    public obtenerPorId(id: UUID): DonacionResponseDTO
-    public cambiarEstado(id: UUID, dto: CambioEstadoRequestDTO): void
-    public modificarBien(id: UUID, dto: BienRequestDTO): void
-    public obtenerCandidatos(idDonacion: UUID): CandidatosAsignacionResponseDTO
-    public asignar(idDonacion: UUID, dto: AsignacionRequestDTO): void
-    public eliminar(id: UUID): void
-}
-
-class SegmentadorDonacionesService {
-    private donacionesRepository: DonacionesRepositoryInterface
-    private donanteRepository: PersonaDonanteRepositoryInterface
-    private incentivosClient: IncentivosClient
-
-    public segmentar(carga: CargaDonacion): List<Donacion>
-    public cargarDonaciones(donaciones: List<Donacion>): void
-}
-
-class PersonaDonanteService {
-    private repositorio: PersonaDonanteRepositoryInterface
-    private validador: PersonasValidator
-    private mapper: PersonaDonanteMapper
-
-    public registrar(dto: PersonaDonanteRequestDTO): UUID
-    public obtenerDonante(id: UUID): PersonaDonanteResponseDTO
-    public obtenerDonantes(estado: EstadoDonante): List<PersonaDonanteResponseDTO>
-    public cambiarEstado(id: UUID, dto: EstadoDonanteRequestDTO): void
-    public modificarContacto(id: UUID, dto: MedioDeContactoRequestDTO): void
-    public modificarRepresentante(id: UUID, dto: RepresentanteRequestDTO): void
-    public actualizar(id: UUID, dto: PersonaDonanteUpdateRequestDTO): PersonaDonanteResponseDTO
-    public eliminar(id: UUID): void
-}
-
-class EntidadesBeneficiariasService {
-    private repositorio: EntidadesBeneficiariasRepositoryInterface
-    private validador: EntidadesBeneficiariasValidator
-    private mapper: EntidadBeneficiariaMapper
-    private dependenciasMapper: PersonaDonanteMapper
-
-    public guardar(dto: EntidadBeneficiariaRequestDTO): UUID
-    public obtenerTodas(): List<EntidadBeneficiariaResponseDTO>
-    public obtenerPorId(id: UUID): EntidadBeneficiariaResponseDTO
-    public actualizar(id: UUID, dtoNueva: EntidadBeneficiariaRequestDTO): void
-    public eliminarEntidad(id: UUID): void
-    public agregarCampaniaAEntidad(idEntidad: UUID, dto: CampaniaRequestDTO): UUID
-    public agregarNecesidadACampania(entidadId: UUID, campaniaId: UUID, dto: NecesidadRequestDTO): NecesidadResponseDTO
-}
-
-class InactividadDonantesService {
-    private donanteRepository: PersonaDonanteRepositoryInterface
-    private notificacionClient: NotificacionClient
-
-    public notificarDonantesInactivos(): void
-}
-
-class CsvImportService {
-    private donanteRepository: PersonaDonanteRepositoryInterface
-    private parser: DonanteCsvRowParser
-    private factory: DonanteFactory
-
-    public importar(csvStream: InputStream): ImportReport
-}
-
-class DonacionesValidator {
-    private repositorio: DonacionesRepositoryInterface
-
-    public validarYObtenerDonacion(id: UUID): Donacion
-    public validarTieneBienes(donacion: Donacion): void
-}
-
-class EntidadesBeneficiariasValidator {
-    private repositorio: EntidadesBeneficiariasRepositoryInterface
-
-    public validarExistenciaEntidad(id: UUID): void
-    public validarYObtenerEntidad(id: UUID): EntidadBeneficiaria
-    public validarYObtenerCampania(entidad: EntidadBeneficiaria, campaniaId: UUID): Campania
-    public validarFechasCampania(inicio: LocalDate, fin: LocalDate): void
-}
-
-class PersonasValidator {
-    private repositorio: PersonaDonanteRepositoryInterface
-
-    public validarEmail(email: String): void
-    public validarExistenciaPersona(id: UUID): void
-    public validarYObtenerPersona(id: UUID): PersonaDonante
-    public validarEsPersonaJuridica(id: UUID): void
-    public validarMedioContacto(medio: MedioDeContacto): void
-    public validarCambioEstado(actual: EstadoDonante, nuevo: EstadoDonante, justificacion: String): void
-}
-
-class NotificacionClient {
-    public enviarNotificacion(destinatario: String, mensaje: String, medio: String): void
-}
-
-class IncentivosClient {
-    public notificarDonacionRegistrada(donanteId: UUID, destinatario: String, medio: String, cantidadBienes: int, categoriasDonadas: List<String>): void
-    public notificarDonacionExitosa(donanteId: UUID, destinatario: String, medio: String): void
+    class IncentivosClient {
+        public notificarDonacionRegistrada(donante: PersonaDonante, destinatario: String, medio: String, cantidadBienes: int, categoriasDonadas: List<String>): void
+        public notificarDonacionExitosa(donante: PersonaDonante, destinatario: String, medio: String): void
+    }
 }
 
 AlgoritmoAsignacionBase --|> AlgoritmoAsignacionInterface

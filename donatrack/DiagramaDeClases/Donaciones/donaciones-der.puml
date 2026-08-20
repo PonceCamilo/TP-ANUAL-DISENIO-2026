@@ -1,0 +1,211 @@
+@startuml donaciones-der
+
+hide circle
+skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 55
+
+' ─────────────── PERSONAS DONANTES ───────────────
+
+entity persona_donante {
+  * id : UUID <<PK>>
+  --
+  * email : varchar(255) <<UQ>>
+  * estado : varchar(20)
+  tipo_documento : varchar(10)
+  numero_documento : varchar(20)
+  ultima_interaccion : timestamp
+  direccion_id : UUID <<FK>>
+  medio_contacto_predeterminado_id : UUID <<FK>>
+}
+
+entity persona_humana {
+  * persona_donante_id : UUID <<PK, FK>>
+  --
+  * nombre : varchar(100)
+  * apellido : varchar(100)
+  fecha_nacimiento : date
+  genero : varchar(20)
+}
+
+entity persona_juridica {
+  * persona_donante_id : UUID <<PK, FK>>
+  --
+  * razon_social : varchar(200)
+  tipo : varchar(20)
+  rubro : varchar(100)
+}
+
+entity representante {
+  * id : UUID <<PK>>
+  --
+  * nombre : varchar(100)
+  * apellido : varchar(100)
+  email : varchar(255)
+  persona_juridica_id : UUID <<FK>>
+  entidad_beneficiaria_id : UUID <<FK>>
+}
+
+entity medio_contacto {
+  * id : UUID <<PK>>
+  --
+  * tipo : varchar(20)
+  * valor : varchar(255)
+  persona_donante_id : UUID <<FK>>
+  representante_id : UUID <<FK>>
+  entidad_beneficiaria_id : UUID <<FK>>
+}
+
+' ─────────────── UBICACION ───────────────
+
+entity direccion {
+  * id : UUID <<PK>>
+  --
+  * calle : varchar(150)
+  * numero : int
+  codigo_postal : varchar(20)
+  * localidad_id : UUID <<FK>>
+}
+
+entity localidad {
+  * id : UUID <<PK>>
+  --
+  * nombre : varchar(100)
+  * provincia_id : UUID <<FK>>
+}
+
+entity provincia {
+  * id : UUID <<PK>>
+  --
+  * nombre : varchar(100)
+}
+
+' ─────────────── ENTIDADES BENEFICIARIAS ───────────────
+
+entity entidad_beneficiaria {
+  * id : UUID <<PK>>
+  --
+  * razon_social : varchar(200)
+  direccion_id : UUID <<FK>>
+}
+
+entity campania {
+  * id : UUID <<PK>>
+  --
+  * entidad_beneficiaria_id : UUID <<FK>>
+  descripcion_general : text
+  fecha_inicio : date
+  fecha_fin : date
+}
+
+entity necesidad {
+  * id : UUID <<PK>>
+  --
+  * campania_id : UUID <<FK>>
+  * tipo : varchar(20)
+  * nombre : varchar(150)
+  descripcion : text
+  fecha_registro : date
+  * cantidad_objetivo : int
+  * cantidad_recibida : int
+  periodo : varchar(20)
+  fecha_inicio_periodo : date
+}
+
+' ─────────────── CATEGORIAS ───────────────
+
+entity categoria {
+  * id : UUID <<PK>>
+  --
+  * nombre : varchar(100)
+  * tipo_bien : varchar(20)
+}
+
+entity subcategoria {
+  * id : UUID <<PK>>
+  --
+  * categoria_id : UUID <<FK>>
+  * tipo : varchar(100)
+  * tipo_normalizado : varchar(100) <<UQ>>
+}
+
+' ─────────────── DONACIONES ───────────────
+
+entity carga_donacion {
+  * id : UUID <<PK>>
+  --
+  * persona_donante_id : UUID <<FK>>
+  descripcion : text
+  * fecha_carga : timestamp
+}
+
+entity donacion {
+  * id : UUID <<PK>>
+  --
+  * carga_donacion_id : UUID <<FK>>
+  * persona_donante_id : UUID <<FK>>
+  * subcategoria_id : UUID <<FK>>
+  entidad_beneficiaria_id : UUID <<FK>>
+  * estado : varchar(30)
+  descripcion : text
+  * fecha_donacion : timestamp
+  fecha_asignacion : date
+}
+
+entity bien {
+  * id : UUID <<PK>>
+  --
+  * donacion_id : UUID <<FK>>
+  * subcategoria_id : UUID <<FK>>
+  * tipo : varchar(20)
+  descripcion : text
+  foto : varchar(255)
+  * cantidad : int
+  * unidad : varchar(20)
+  es_nuevo : boolean
+  fecha_vencimiento : date
+}
+
+entity cambio_estado {
+  * id : UUID <<PK>>
+  --
+  * donacion_id : UUID <<FK>>
+  estado_previo : varchar(30)
+  * estado : varchar(30)
+  * nombre_transicion : varchar(50)
+  justificacion : text
+  * fecha_hora : timestamp
+}
+
+' ─────────────── RELACIONES ───────────────
+
+persona_donante ||--o| persona_humana
+persona_donante ||--o| persona_juridica
+persona_donante }o--|| direccion
+persona_donante ||--o{ medio_contacto
+persona_donante ||--o| medio_contacto
+
+persona_juridica ||--o{ representante
+entidad_beneficiaria ||--o{ representante
+representante ||--o{ medio_contacto
+entidad_beneficiaria ||--o{ medio_contacto
+
+direccion }o--|| localidad
+localidad }o--|| provincia
+
+entidad_beneficiaria }o--o| direccion
+entidad_beneficiaria ||--o{ campania
+campania ||--o{ necesidad
+
+categoria ||--o{ subcategoria
+
+persona_donante ||--o{ carga_donacion
+carga_donacion ||--|{ donacion
+persona_donante ||--o{ donacion
+entidad_beneficiaria ||--o{ donacion
+subcategoria ||--o{ donacion
+donacion ||--|{ bien
+subcategoria ||--o{ bien
+donacion ||--o{ cambio_estado
+
+@enduml
