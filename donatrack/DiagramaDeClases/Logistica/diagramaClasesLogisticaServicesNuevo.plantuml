@@ -1,21 +1,14 @@
 @startuml diagramaClasesLogisticaServices
 
 skinparam classAttributeIconSize 0
+skinparam linetype ortho
 
 ' ============================ VALIDACIONES ============================
-
 class EntregaValidator {
     + validarTransicion(estadoActual : EstadoEntrega, estadoNuevo : EstadoEntrega) : void
 }
 
-' ============================ REPOSITORIOS ============================
-
-interface EntregaRepositoryInterface {
-    + guardar(entrega : Entrega) : void
-    + buscarPorId(id : UUID) : Entrega
-    + buscarPorEstado(estado : EstadoEntrega) : List<Entrega>
-}
-
+' ============================ REPOSITORIOS (Interfaces) ============================
 interface RutaRepositoryInterface {
     + guardar(ruta : Ruta) : void
     + buscarPorId(id : UUID) : Ruta
@@ -23,8 +16,25 @@ interface RutaRepositoryInterface {
     + buscarPorEntregaId(entregaId : UUID) : Optional<Ruta>
 }
 
-' ============================ SERVICIOS ============================
+interface EntregaRepositoryInterface {
+    + guardar(entrega : Entrega) : void
+    + buscarPorId(id : UUID) : Entrega
+    + buscarPorEstado(estado : EstadoEntrega) : List<Entrega>
+}
 
+interface CamionRepositoryInterface {
+    + guardar(camion : Camion) : void
+    + buscarTodos() : List<Camion>
+    + buscarPorId(id : UUID) : Camion
+    + buscarPorIds(ids : List<UUID>) : List<Camion>
+}
+
+interface LotePlanificacionRepositoryInterface {
+    + guardar(lote : LotePlanificacion) : void
+    + buscarPorId(id : UUID) : LotePlanificacion
+}
+
+' ============================ SERVICIOS ============================
 interface CamionServiceInterface {
     + registrar(dto : CamionRequestDTO) : CamionResponseDTO
     + obtenerTodos() : List<CamionResponseDTO>
@@ -88,7 +98,6 @@ class PlanificacionRutasService implements PlanificacionServiceInterface {
 }
 
 ' ============================ INTEGRACION / EVENTOS ============================
-
 interface EstrategiaRuteoPort {
     + solicitarPlanificacion(lote : LotePlanificacion, camiones : List<Camion>) : void
 }
@@ -117,19 +126,23 @@ class N8nLogisticaWebhookListener implements EntregaEventListener {
     + onEvento(evento : EntregaEvento) : void
 }
 
-' ============================ RELACIONES ============================
-
+' ============================ RELACIONES DE SERVICIOS ============================
 EntregaService --> EntregaValidator
 EntregaService --> EntregaEventPublisher
-EntregaService --> EntregaRepositoryInterface
 EntregaService --> RutaRepositoryInterface
+
 EntregaService --> PlanificacionServiceInterface
+EntregaService --> EntregaRepositoryInterface
 
 PlanificacionRutasService --> EstrategiaRuteoPort
 PlanificacionRutasService --> EntregaEventPublisher
 PlanificacionRutasService --> EntregaValidator
+PlanificacionRutasService --> LotePlanificacionRepositoryInterface
 PlanificacionRutasService --> RutaRepositoryInterface
 PlanificacionRutasService --> EntregaRepositoryInterface
+PlanificacionRutasService --> CamionRepositoryInterface
+
+CamionService --> CamionRepositoryInterface
 
 EntregaEventPublisher --> "*" EntregaEventListener
 

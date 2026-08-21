@@ -1,10 +1,13 @@
 @startuml diagramaClasesLogisticaModel
 
 skinparam classAttributeIconSize 0
+skinparam linetype ortho
 
-' Bounded context Logística: las entidades de Donaciones no se modelan acá.
-' Se referencian solo por identificadores primitivos (UUID).
+' ============================ CLASES EXTERNAS ============================
+class Donacion <<External>>
+class EntidadBeneficiaria <<External>>
 
+' ============================ DOMINIO LOGÍSTICA ============================
 class Direccion {
     - calle : String
     - numero : int
@@ -46,8 +49,6 @@ enum EstadoLote {
 }
 
 class DonacionLote {
-    - idDonacion : UUID
-    - idEntidadBeneficiaria : UUID
     - direccionEntrega : Direccion
 }
 
@@ -72,13 +73,10 @@ class Parada {
     - id : UUID
     - orden : int
     - direccion : Direccion
-    - idEntidadBeneficiaria : UUID
     - entregas : List<Entrega>
 }
 
 class Entrega {
-    - id : UUID
-    - idDonacion : UUID
     - parada : Parada
     - estado : EstadoEntrega
     - historial : List<CambioEstadoEntrega>
@@ -101,21 +99,34 @@ class CambioEstadoEntrega {
     - fechaHora : LocalDateTime
 }
 
+enum MotivoFalloEntrega {
+    ENTIDAD_AUSENTE
+    DIRECCION_INCORRECTA
+    RECHAZADA_POR_ENTIDAD
+    MERCADERIA_ROTA
+    MERCADERIA_PERDIDA
+    ROBO
+    - replanificable : boolean
+    + esReplanificable() : boolean
+}
 
-Camion --> EstadoCamion
+' ============================ RELACIONES ============================
+Camion -- EstadoCamion
 
 Entrega -- EstadoEntrega
 Entrega --> "*" CambioEstadoEntrega
-
-CambioEstadoEntrega --> EstadoEntrega
-
-Parada --> Direccion
-Parada "1" --> "*" Entrega
+Entrega --> Donacion
 Entrega --> Parada
+
+CambioEstadoEntrega -- EstadoEntrega
+CambioEstadoEntrega -up- MotivoFalloEntrega
+Parada --> Direccion
+Parada --> "*" Entrega
+Parada --> EntidadBeneficiaria
 
 Ruta --> EstadoRuta
 Ruta --> Camion
-Ruta --> "*" Parada
+Ruta "1" -- "*" Parada
 Ruta --> LotePlanificacion
 
 LotePlanificacion --> EstadoLote
@@ -123,5 +134,7 @@ LotePlanificacion --> "*" Camion
 LotePlanificacion --> "*" DonacionLote
 
 DonacionLote --> Direccion
+DonacionLote --> Donacion
+DonacionLote --> EntidadBeneficiaria
 
 @enduml
