@@ -9,9 +9,11 @@ import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.TransicionEntregaIlegalException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
+import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
 import ar.utn.donatrack.logistica.models.entrega.MotivoFalloEntrega;
+import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import ar.utn.donatrack.logistica.validations.EntregaValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,11 +44,14 @@ class EntregaServiceTest {
     @Mock
     private EntregaEventPublisher eventPublisher;
 
+    @Mock
+    private PlanificacionServiceInterface planificacionService;
+
     private EntregaService service;
 
     @BeforeEach
     void setUp() {
-        service = new EntregaService(repositorio, new EntregaValidator(), eventPublisher);
+        service = new EntregaService(repositorio, new EntregaValidator(), eventPublisher, planificacionService);
     }
 
     private Entrega entregaEnEstado(EstadoEntrega estado) {
@@ -82,6 +87,36 @@ class EntregaServiceTest {
             verify(eventPublisher).publicar(captor.capture());
             assertEquals(TipoEventoLogistica.ENTREGA_CONFIRMADA, captor.getValue().getTipo());
             assertEquals(entrega.getIdDonante(), captor.getValue().getIdDonante());
+        }
+
+        @Test
+        @DisplayName("Entrega con ruta asignada consulta si la ruta debe finalizarse")
+        void consultaFinalizacionDeRutaCuandoHayRutaAsignada() {
+            UUID rutaId = UUID.randomUUID();
+            Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
+            entrega.setRuta(Ruta.builder().id(rutaId).build());
+            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
+
+            ConfirmarEntregaRequestDTO dto = new ConfirmarEntregaRequestDTO();
+            dto.setFotosComprobante(List.of("foto1.jpg"));
+
+            service.confirmar(entrega.getId(), dto);
+
+            verify(planificacionService).finalizarRutaSiCorresponde(rutaId);
+        }
+
+        @Test
+        @DisplayName("Entrega sin ruta asignada no consulta finalización de ruta")
+        void noConsultaFinalizacionDeRutaSinRutaAsignada() {
+            Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
+            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
+
+            ConfirmarEntregaRequestDTO dto = new ConfirmarEntregaRequestDTO();
+            dto.setFotosComprobante(List.of("foto1.jpg"));
+
+            service.confirmar(entrega.getId(), dto);
+
+            verify(planificacionService, never()).finalizarRutaSiCorresponde(any());
         }
 
         @Test
@@ -122,6 +157,22 @@ class EntregaServiceTest {
             assertEquals(TipoEventoLogistica.ENTREGA_NO_RECIBIDA, captor.getValue().getTipo());
             assertEquals("ENTIDAD_AUSENTE", captor.getValue().getMotivoFallo());
             assertTrue(captor.getValue().getReplanificable());
+        }
+
+        @Test
+        @DisplayName("Entrega con ruta asignada consulta si la ruta debe finalizarse")
+        void consultaFinalizacionDeRutaCuandoHayRutaAsignada() {
+            UUID rutaId = UUID.randomUUID();
+            Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
+            entrega.setRuta(Ruta.builder().id(rutaId).build());
+            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
+
+            NoRecibidaRequestDTO dto = new NoRecibidaRequestDTO();
+            dto.setMotivo(MotivoFalloEntrega.MERCADERIA_ROTA);
+
+            service.marcarNoRecibida(entrega.getId(), dto);
+
+            verify(planificacionService).finalizarRutaSiCorresponde(rutaId);
         }
     }
 
