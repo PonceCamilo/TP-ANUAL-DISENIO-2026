@@ -17,7 +17,6 @@ class Direccion {
 }
 
 class Camion {
-    - id : UUID
     - patente : String
     - capacidadVolumenM3 : double
     - alturaM : double
@@ -32,7 +31,6 @@ enum EstadoCamion {
 }
 
 class LotePlanificacion {
-    - id : UUID
     - camiones : List<Camion>
     - donaciones : List<DonacionLote>
     - estado : EstadoLote
@@ -53,7 +51,6 @@ class DonacionLote {
 }
 
 class Ruta {
-    - id : UUID
     - lote : LotePlanificacion
     - camion : Camion
     - paradas : List<Parada>
@@ -70,7 +67,6 @@ enum EstadoRuta {
 }
 
 class Parada {
-    - id : UUID
     - orden : int
     - direccion : Direccion
     - entregas : List<Entrega>
