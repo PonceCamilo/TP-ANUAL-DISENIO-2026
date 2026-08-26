@@ -6,6 +6,7 @@ import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.models.donacion.estado.EnDepositoState;
 import ar.utn.donatrack.donaciones.models.donacion.estado.EstadoDonacionBase;
+import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.Getter;
 import lombok.Setter;
@@ -47,5 +48,25 @@ public class Donacion {
 
     public boolean requiereEstado() {
         return !bienes.isEmpty() && bienes.getFirst() instanceof BienConEstado;
+    }
+
+    public void asignarA(EntidadBeneficiaria entidad) {
+        this.idEntidadBeneficiaria = entidad.getId();
+        this.fechaAsignacion = FechaHoraArgentina.hoy();
+        cambiarEstado("ASIGNACION_REALIZADA", "asignar", "Asignada a " + entidad.getRazonSocial());
+    }
+
+    public boolean estaEnEstado(String nombreEstado) {
+        return this.estado.nombre().equals(nombreEstado);
+    }
+
+    public boolean esDeSubcategoria(String subcategoria) {
+        return this.subcategoria != null
+                && this.subcategoria.getTipo() != null
+                && this.subcategoria.getTipo().equalsIgnoreCase(subcategoria);
+    }
+
+    public boolean fueEntregada() {
+        return estaEnEstado("ENTREGADA");
     }
 }

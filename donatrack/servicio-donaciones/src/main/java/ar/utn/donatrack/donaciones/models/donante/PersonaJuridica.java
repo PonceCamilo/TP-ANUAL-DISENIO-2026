@@ -19,4 +19,10 @@ public class PersonaJuridica extends PersonaDonante {
 
     @Builder.Default
     private List<Representante> representantes = new ArrayList<>();
+
+    public void agregarRepresentante(Representante representante) {
+        representantes.removeIf(rep -> rep.getEmail() != null
+                && rep.getEmail().equalsIgnoreCase(representante.getEmail()));
+        representantes.add(representante);
+    }
 }

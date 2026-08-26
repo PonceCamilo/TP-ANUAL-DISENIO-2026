@@ -27,4 +27,14 @@ public class Campania {
     private UUID idCampania;
 
     private List<Necesidad> necesidades = new ArrayList<>();
+
+    public void agregarNecesidad(Necesidad necesidad) {
+        necesidades.add(necesidad);
+    }
+
+    public List<Necesidad> necesidadesCompatiblesCon(String subcategoria) {
+        return necesidades.stream()
+                .filter(necesidad -> necesidad.esCompatibleCon(subcategoria))
+                .toList();
+    }
 }

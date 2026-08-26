@@ -15,12 +15,9 @@ import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
-import ar.utn.donatrack.donaciones.models.contacto.Email;
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.validations.donaciones.DonacionesValidator;
 import ar.utn.donatrack.donaciones.validations.entidades.EntidadesBeneficiariasValidator;
 import lombok.RequiredArgsConstructor;
@@ -49,17 +46,13 @@ public class DonacionService implements DonacionServiceInterface {
     List<Donacion> resultado = repositorio.obtenerTodas();
 
     if (estado != null && !estado.isBlank()) {
-      resultado = resultado.stream().filter(d -> d.getEstado().nombre().equals(estado)).toList();
+      resultado = resultado.stream().filter(d -> d.estaEnEstado(estado)).toList();
     }
     if (idDonante != null) {
       resultado = resultado.stream().filter(d -> idDonante.equals(d.getIdDonante())).toList();
     }
     if (subcategoria != null && !subcategoria.isBlank()) {
-      resultado = resultado.stream()
-          .filter(d -> d.getSubcategoria() != null
-              && d.getSubcategoria().getTipo() != null
-              && d.getSubcategoria().getTipo().equalsIgnoreCase(subcategoria))
-          .toList();
+      resultado = resultado.stream().filter(d -> d.esDeSubcategoria(subcategoria)).toList();
     }
     return mapper.toDTOList(resultado);
   }
@@ -72,7 +65,7 @@ public class DonacionService implements DonacionServiceInterface {
     Donacion donacion = validador.validarYObtenerDonacion(id);
     donacion.cambiarEstado(dto.getEstado(), dto.getNombreTransicion(), dto.getJustificacion());
 
-    if ("ENTREGADA".equals(donacion.getEstado().nombre())) {
+    if (donacion.fueEntregada()) {
       notificarDonacionExitosa(donacion);
     }
   }
@@ -99,9 +92,7 @@ public class DonacionService implements DonacionServiceInterface {
     Donacion donacion = validador.validarYObtenerDonacion(idDonacion);
     EntidadBeneficiaria entidad = entidadesValidator.validarYObtenerEntidad(dto.getIdEntidadBeneficiaria());
 
-    donacion.setIdEntidadBeneficiaria(entidad.getId());
-    donacion.setFechaAsignacion(FechaHoraArgentina.hoy());
-    donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", "Asignada a " + entidad.getRazonSocial());
+    donacion.asignarA(entidad);
 
     notificarAsignacion(donacion, entidad);
   }
@@ -125,13 +116,13 @@ public class DonacionService implements DonacionServiceInterface {
   /** Avisa a incentivos que la donación llegó a destino (actualiza donaciones exitosas / organizaciones ayudadas). */
   private void notificarDonacionExitosa(Donacion donacion) {
     PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
-    if (donante != null && donante.getEmail() != null) {
-      incentivosClient.notificarDonacionExitosa(donacion.getIdDonante(), donante.getEmail(), "EMAIL");
+    if (donante != null && donante.obtenerEmail() != null) {
+      incentivosClient.notificarDonacionExitosa(donacion.getIdDonante(), donante.obtenerEmail(), "EMAIL");
     }
   }
 
   private void notificarAsignacion(Donacion donacion, EntidadBeneficiaria entidad) {
-    String emailEntidad = obtenerEmail(entidad.getContactos());
+    String emailEntidad = entidad.obtenerEmail();
     if (emailEntidad != null) {
       notificacionClient.enviarNotificacion(
               emailEntidad,
@@ -142,24 +133,13 @@ public class DonacionService implements DonacionServiceInterface {
     }
 
     PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
-    if (donante != null && donante.getEmail() != null) {
+    if (donante != null && donante.obtenerEmail() != null) {
       notificacionClient.enviarNotificacion(
-              donante.getEmail(),
+              donante.obtenerEmail(),
               "Tu donación fue asignada a " + entidad.getRazonSocial() + ".",
               "EMAIL",
               "ASIGNACION_DONACION_DONANTE"
       );
     }
-  }
-
-  private String obtenerEmail(List<MedioDeContacto> contactos) {
-    if (contactos == null) {
-      return null;
-    }
-    return contactos.stream()
-            .filter(c -> c instanceof Email)
-            .map(MedioDeContacto::getValor)
-            .findFirst()
-            .orElse(null);
   }
 }

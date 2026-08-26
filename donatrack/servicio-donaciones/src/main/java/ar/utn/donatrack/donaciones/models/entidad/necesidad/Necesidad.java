@@ -26,5 +26,17 @@ public abstract class Necesidad {
         this.cantidadRecibida += cantidad;
     }
 
+    public boolean esCompatibleCon(String subcategoria) {
+        if (subcategoria == null || subcategoria.isBlank()) {
+            return false;
+        }
+        String objetivo = subcategoria.toLowerCase();
+        return contieneTexto(nombre, objetivo) || contieneTexto(descripcion, objetivo);
+    }
+
+    private boolean contieneTexto(String texto, String objetivo) {
+        return texto != null && texto.toLowerCase().contains(objetivo);
+    }
+
     public abstract boolean estaSatisfecha();
 }

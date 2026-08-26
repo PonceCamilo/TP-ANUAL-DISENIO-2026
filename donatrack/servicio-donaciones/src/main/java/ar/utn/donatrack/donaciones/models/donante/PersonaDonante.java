@@ -2,7 +2,9 @@ package ar.utn.donatrack.donaciones.models.donante;
 
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
+import ar.utn.donatrack.donaciones.models.donante.estado.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -40,4 +42,20 @@ public abstract class PersonaDonante {
 
     @Builder.Default
     protected List<MedioDeContacto> contactos = new ArrayList<>();
+
+    public void cambiarEstado(String estadoDestino, String justificacion) {
+        this.estado = this.estado.transicionarA(estadoDestino, justificacion);
+    }
+
+    public String obtenerEmail() {
+        return this.email;
+    }
+
+    public void registrarInteraccion() {
+        this.ultimaInteraccion = FechaHoraArgentina.ahora();
+    }
+
+    public boolean estaInactivoDesde(LocalDateTime fechaLimite) {
+        return this.ultimaInteraccion == null || this.ultimaInteraccion.isBefore(fechaLimite);
+    }
 }

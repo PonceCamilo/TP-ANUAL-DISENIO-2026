@@ -1,242 +1,402 @@
 @startuml donaciones-modelo
-title Servicio de Donaciones - Modelo de Dominio
 
+left to right direction
+skinparam linetype ortho
 skinparam classAttributeIconSize 0
+skinparam nodesep 40
+skinparam ranksep 50
+skinparam shadowing false
+skinparam defaultFontName Helvetica
 hide empty members
 
-' ============================ DONANTES ============================
+skinparam class {
+    BackgroundColor White
+    BorderColor #5A5A5A
+    ArrowColor #4A4A4A
+    FontSize 12
+    AttributeFontSize 11
+    BackgroundColor<<enum>> #F5DEB3
+    BorderColor<<enum>> #B8860B
+    BackgroundColor<<abstracta>> #EFEFEF
+    BorderColor<<abstracta>> #5A5A5A
+}
+
+skinparam package {
+    BackgroundColor #FBFBFB
+    BorderColor #9A9A9A
+    FontSize 13
+    FontStyle bold
+    FontColor #444444
+}
+
 package donante {
-  abstract class PersonaDonante {
-    - id: UUID
-    - tipoDocumento: String
-    - numeroDocumento: String
-    - email: String
-    - estado: EstadoDonante
-    - ultimaInteraccion: LocalDateTime
-  }
-  class PersonaHumana {
-    - nombre: String
-    - apellido: String
-    - fechaNacimiento: LocalDate
-    - genero: Genero
-  }
-  class PersonaJuridica {
-    - razonSocial: String
-    - tipo: TipoPersonaJuridica
-    - rubro: String
-  }
-  class Representante {
-    - nombre: String
-    - apellido: String
-    - email: String
-  }
-  enum EstadoDonante {
-    ACTIVO
-    INACTIVO
-    BLOQUEADO
-  }
-  enum Genero {
-    MASCULINO
-    FEMENINO
-    NO_BINARIO
-    OTRO
-    PREFIERO_NO_DECIR
-  }
-  enum TipoPersonaJuridica {
-    GUBERNAMENTAL
-    ONG
-    EMPRESA
-    INSTITUCION
-  }
+
+    abstract class PersonaDonante <<abstracta>> {
+        private tipoDocumento: String
+        private numeroDocumento: String
+        private direccion: Direccion
+        private estado: EstadoDonante
+        private medioContactoPredeterminado: MedioDeContacto
+        private ultimaInteraccion: LocalDateTime
+        private email: String
+        private contactos: List<MedioDeContacto>
+
+        public obtenerEmail(): String
+        public registrarInteraccion(): void
+        public estaInactivoDesde(fechaLimite: LocalDateTime): boolean
+        public cambiarEstado(estadoDestino: String, justificacion: String): void
+    }
+
+    class PersonaHumana {
+        private nombre: String
+        private apellido: String
+        private fechaNacimiento: LocalDate
+        private genero: Genero
+
+        public edad(hoy: LocalDate): int
+    }
+
+    class PersonaJuridica {
+        private razonSocial: String
+        private tipo: TipoPersonaJuridica
+        private rubro: String
+        private representantes: List<Representante>
+
+        public agregarRepresentante(representante: Representante): void
+    }
+
+    class Representante {
+        private nombre: String
+        private apellido: String
+        private email: String
+        private contactos: List<MedioDeContacto>
+    }
+
+    abstract class EstadoDonante <<abstracta>> {
+        private nombre: String
+        private transiciones: Map<String, Supplier<EstadoDonante>>
+
+        public transicionarA(estadoDestino: String, justificacion: String): EstadoDonante
+        public nombre(): String
+    }
+
+    class ActivoState {
+        public transicionarA(estadoDestino: String, justificacion: String): EstadoDonante
+    }
+
+    class InactivoState {
+    }
+
+    class BloqueadoState {
+    }
+
+    enum Genero <<enum>> {
+        MASCULINO
+        FEMENINO
+        NO_BINARIO
+        OTRO
+        PREFIERO_NO_DECIR
+    }
+
+    enum TipoPersonaJuridica <<enum>> {
+        GUBERNAMENTAL
+        ONG
+        EMPRESA
+        INSTITUCION
+    }
 }
 
-' ============================ CONTACTO ============================
 package contacto {
-  abstract class MedioDeContacto {
-    # valor: String
-  }
-  class Email
-  class Telefono
-  class Whatsapp
+
+    abstract class MedioDeContacto <<abstracta>> {
+        private valor: String
+
+        public tipoNotificacion(): String
+    }
+
+    class Email {
+        public tipoNotificacion(): String
+    }
+
+    class Telefono {
+        public tipoNotificacion(): String
+    }
+
+    class Whatsapp {
+        public tipoNotificacion(): String
+    }
 }
 
-' ============================ DONACION ============================
 package donacion {
-  class Donacion {
-    - id: UUID
-    - idDonante: UUID
-    - idEntidadBeneficiaria: UUID
-    - estado: EstadoDonacion
-    - descripcion: String
-    - fechaDonacion: LocalDateTime
-    - fechaAsignacion: LocalDate
-    + esPerecible(): boolean
-    + requiereEstado(): boolean
-  }
-  class CambioEstado {
-    - estado: EstadoDonacion
-    - justificacion: String
-    - fechaHora: LocalDateTime
-  }
-  enum EstadoDonacion {
-    EN_DEPOSITO
-    ASIGNACION_REALIZADA
-    LISTA_PARA_ENTREGAR
-    EN_TRASLADO
-    ENTREGADA
-    ENTREGA_FALLIDA
-    VENCIDA
-  }
-  abstract class Bien {
-    # subcategoria: Subcategoria
-    # descripcion: String
-    # foto: String
-    # cantidad: int
-    # unidad: String
-  }
-  class BienGenerico
-  class BienConEstado {
-    - esNuevo: boolean
-  }
-  class BienPerecible {
-    - fechaVencimiento: LocalDate
-  }
+
+    class Donacion {
+        private bienes: List<Bien>
+        private subcategoria: Subcategoria
+        private estado: EstadoDonacionBase
+        private historialEstados: List<CambioEstado>
+        private donante: PersonaDonante
+        private entidadBeneficiaria: EntidadBeneficiaria
+        private descripcion: String
+        private fechaDonacion: LocalDateTime
+        private fechaAsignacion: LocalDate
+
+        public cambiarEstado(estadoDestino: String, nombreTransicion: String, justificacion: String): void
+        public asignarA(entidad: EntidadBeneficiaria): void
+        public estaEnEstado(nombreEstado: String): boolean
+        public esDeSubcategoria(subcategoria: String): boolean
+        public fueEntregada(): boolean
+        public esPerecible(): boolean
+        public requiereEstado(): boolean
+    }
+
+    class CargaDonacion {
+        private donante: PersonaDonante
+        private descripcion: String
+        private bienes: List<Bien>
+
+        public segmentar(): List<Donacion>
+    }
+
+    class CambioEstado {
+        private estadoPrevio: EstadoDonacionBase
+        private estado: EstadoDonacionBase
+        private nombreTransicion: String
+        private justificacion: String
+        private fechaHora: LocalDateTime
+    }
+
+    package estado {
+
+        abstract class EstadoDonacionBase <<abstracta>> {
+            private nombre: String
+            private transiciones: Map<String, Supplier<EstadoDonacionBase>>
+
+            public transicionarA(estadoDestino: String, justificacion: String): EstadoDonacionBase
+            public nombre(): String
+        }
+
+        class EnDepositoState {
+        }
+
+        class AsignacionRealizadaState {
+        }
+
+        class ListaParaEntregarState {
+        }
+
+        class EnTrasladoState {
+            public transicionarA(estadoDestino: String, justificacion: String): EstadoDonacionBase
+        }
+
+        class EntregadaState {
+        }
+
+        class EntregaFallidaState {
+        }
+
+        class VencidaState {
+        }
+
+        class CambioEstadoDonacionIlegalException {
+        }
+
+        class FaltaJustificacionDonacionException {
+        }
+    }
+
+    package bien {
+
+        abstract class Bien <<abstracta>> {
+            private subcategoria: Subcategoria
+            private descripcion: String
+            private foto: String
+            private cantidad: int
+            private unidad: String
+
+            public claveDeSegmentacion(): String
+        }
+
+        class BienGenerico {
+            public claveDeSegmentacion(): String
+        }
+
+        class BienConEstado {
+            private esNuevo: boolean
+
+            public claveDeSegmentacion(): String
+        }
+
+        class BienPerecible {
+            private fechaVencimiento: LocalDate
+
+            public claveDeSegmentacion(): String
+        }
+    }
 }
 
-' ============================ CATEGORIA ============================
 package categoria {
-  class Categoria {
-    - id: UUID
-    - nombre: String
-    - tipoBien: TipoBien
-  }
-  class Subcategoria {
-    - tipo: String
-    - tipoNormalizado: String
-  }
-  enum TipoBien {
-    PERECIBLE
-    CON_ESTADO
-    GENERICO
-  }
+
+    class Categoria {
+        private nombre: String
+        private tipoBien: TipoBien
+        private subcategorias: List<Subcategoria>
+    }
+
+    class Subcategoria {
+        private tipo: String
+        private tipoNormalizado: String
+
+        public coincideCon(otroTipo: String): boolean
+        public toString(): String
+    }
+
+    enum TipoBien <<enum>> {
+        PERECIBLE
+        CON_ESTADO
+        GENERICO
+    }
 }
 
-' ============================ ENTIDAD ============================
 package entidad {
-  class EntidadBeneficiaria {
-    - id: UUID
-    - razonSocial: String
-    + agregarCampania(c: Campania): void
-    + agregarNecesidadACampania(c: Campania, n: Necesidad): void
-  }
-  class Direccion {
-    - calle: String
-    - numero: int
-    - codigoPostal: String
-  }
-  class Localidad {
-    - nombre: String
-  }
-  class Provincia {
-    - nombre: String
-  }
-  class Campania {
-    - idCampania: UUID
-    - idEntidad: UUID
-    - descripcionGeneral: String
-    - fechaInicio: LocalDate
-    - fechaFin: LocalDate
-  }
-  abstract class Necesidad {
-    - id: UUID
-    - nombre: String
-    - descripcion: String
-    - cantidadObjetivo: int
-    - cantidadRecibida: int
-    - fechaRegistro: LocalDate
-    + recibirDonacion(cantidad: int): void
-    + {abstract} estaSatisfecha(): boolean
-  }
-  class NecesidadExtraordinaria {
-    + estaSatisfecha(): boolean
-  }
-  class NecesidadRecurrente {
-    - periodo: Periodicidad
-    - fechaInicioPeriodo: LocalDate
-    + periodoVencido(ref: LocalDate): boolean
-    + obtenerOGenerarPeriodoActual(hoy: LocalDate): void
-    + estaSatisfecha(): boolean
-  }
-  enum Periodicidad {
-    SEMANAL
-    MENSUAL
-    CUATRIMESTRAL
-    ANUAL
-    --
-    + getDias(): int
-  }
+
+    class EntidadBeneficiaria {
+        private razonSocial: String
+        private direccion: Direccion
+        private contactos: List<MedioDeContacto>
+        private representantes: List<Representante>
+        private campanias: List<Campania>
+
+        public agregarCampania(campania: Campania): void
+        public agregarNecesidadACampania(campania: Campania, necesidad: Necesidad): void
+        public obtenerEmail(): String
+        public contarNecesidadesCompatiblesCon(subcategoria: String): int
+    }
+
+    class Direccion {
+        private calle: String
+        private numero: int
+        private localidad: Localidad
+        private codigoPostal: String
+    }
+
+    class Localidad {
+        private nombre: String
+        private provincia: Provincia
+    }
+
+    class Provincia {
+        private nombre: String
+    }
+
+    package necesidad {
+
+        class Campania {
+            private fechaInicio: LocalDate
+            private fechaFin: LocalDate
+            private descripcionGeneral: String
+            private necesidades: List<Necesidad>
+
+            public agregarNecesidad(necesidad: Necesidad): void
+            public necesidadesCompatiblesCon(subcategoria: String): List<Necesidad>
+        }
+
+        abstract class Necesidad <<abstracta>> {
+            private nombre: String
+            private descripcion: String
+            private fechaRegistro: LocalDate
+            private cantidadObjetivo: int
+            private cantidadRecibida: int
+
+            public recibirDonacion(cantidad: int): void
+            public esCompatibleCon(subcategoria: String): boolean
+            public estaSatisfecha(): boolean
+        }
+
+        class NecesidadExtraordinaria {
+            public estaSatisfecha(): boolean
+        }
+
+        class NecesidadRecurrente {
+            private periodo: Periodicidad
+            private fechaInicioPeriodo: LocalDate
+
+            public periodoVencido(referencia: LocalDate): boolean
+            public obtenerOGenerarPeriodoActual(hoy: LocalDate): void
+            public estaSatisfecha(): boolean
+        }
+
+        enum Periodicidad <<enum>> {
+            SEMANAL
+            MENSUAL
+            CUATRIMESTRAL
+            ANUAL
+
+            public getDias(): int
+        }
+    }
 }
 
-' ============================ ASIGNACION ============================
 package asignacion {
-  class ResultadoAsignacion {
-    - idEntidad: UUID
-    - puntaje: double
-  }
+
+    class ResultadoAsignacion {
+        private entidad: EntidadBeneficiaria
+        private puntaje: double
+    }
 }
 
-' ===================== Relaciones: donante =====================
-PersonaDonante <|-- PersonaHumana
-PersonaDonante <|-- PersonaJuridica
-PersonaDonante --> EstadoDonante
-PersonaDonante *-- Direccion
-PersonaDonante "1" *-- "0..*" MedioDeContacto : contactos
-PersonaDonante "1" --> "1" MedioDeContacto : predeterminado
-PersonaHumana --> Genero
-PersonaJuridica --> TipoPersonaJuridica
-PersonaJuridica "1" *-- "0..*" Representante
-Representante "1" o-- "0..*" MedioDeContacto
+PersonaHumana --|> PersonaDonante
+PersonaJuridica --|> PersonaDonante
+ActivoState --|> EstadoDonante
+InactivoState --|> EstadoDonante
+BloqueadoState --|> EstadoDonante
+Email --|> MedioDeContacto
+Telefono --|> MedioDeContacto
+Whatsapp --|> MedioDeContacto
+BienGenerico --|> Bien
+BienConEstado --|> Bien
+BienPerecible --|> Bien
+EnDepositoState --|> EstadoDonacionBase
+AsignacionRealizadaState --|> EstadoDonacionBase
+ListaParaEntregarState --|> EstadoDonacionBase
+EnTrasladoState --|> EstadoDonacionBase
+EntregadaState --|> EstadoDonacionBase
+EntregaFallidaState --|> EstadoDonacionBase
+VencidaState --|> EstadoDonacionBase
+NecesidadExtraordinaria --|> Necesidad
+NecesidadRecurrente --|> Necesidad
 
-MedioDeContacto <|-- Email
-MedioDeContacto <|-- Telefono
-MedioDeContacto <|-- Whatsapp
+PersonaDonante -- EstadoDonante
+PersonaDonante -- Direccion
+PersonaDonante -- MedioDeContacto
+PersonaHumana -- Genero
+PersonaJuridica -- TipoPersonaJuridica
+PersonaJuridica -- Representante
+Representante -- MedioDeContacto
 
-' ===================== Relaciones: donacion =====================
-Donacion "1" *-- "1..*" Bien : bienes
-Donacion "1" *-- "0..*" CambioEstado : historial
-Donacion --> EstadoDonacion
-Donacion --> Subcategoria
-CambioEstado --> EstadoDonacion
-Bien <|-- BienGenerico
-Bien <|-- BienConEstado
-Bien <|-- BienPerecible
-Bien --> Subcategoria
+Donacion -- Bien
+Donacion -- CambioEstado
+Donacion -- EstadoDonacionBase
+Donacion -- Subcategoria
+Donacion -- PersonaDonante
+Donacion -- EntidadBeneficiaria
+CargaDonacion -- Bien
+CargaDonacion -- PersonaDonante
+CargaDonacion -- Donacion
+CambioEstado -- EstadoDonacionBase
+Bien -- Subcategoria
 
-' ===================== Relaciones: categoria =====================
-Categoria "1" *-- "0..*" Subcategoria
-Categoria --> TipoBien
+Categoria -- Subcategoria
+Categoria -- TipoBien
 
-' ===================== Relaciones: entidad =====================
-EntidadBeneficiaria *-- Direccion
-EntidadBeneficiaria "1" o-- "0..*" MedioDeContacto
-EntidadBeneficiaria "1" *-- "0..*" Representante
-EntidadBeneficiaria "1" *-- "0..*" Campania
-Campania "1" *-- "0..*" Necesidad
-Necesidad <|-- NecesidadExtraordinaria
-Necesidad <|-- NecesidadRecurrente
-NecesidadRecurrente --> Periodicidad
-Direccion *-- Localidad
-Localidad *-- Provincia
+EntidadBeneficiaria -- Direccion
+EntidadBeneficiaria -- MedioDeContacto
+EntidadBeneficiaria -- Representante
+EntidadBeneficiaria -- Campania
+Campania -- Necesidad
+NecesidadRecurrente -- Periodicidad
+Direccion -- Localidad
+Localidad -- Provincia
 
-' ========= Asociaciones por id (no hay referencia directa de objeto) =========
-Donacion ..> PersonaDonante : idDonante
-Donacion ..> EntidadBeneficiaria : idEntidadBeneficiaria
-ResultadoAsignacion ..> EntidadBeneficiaria : idEntidad
-
-note as N1
-  Las flechas punteadas (..>) representan referencias por UUID,
-  no asociaciones por objeto: Donacion guarda idDonante e
-  idEntidadBeneficiaria, no las instancias.
-end note
+ResultadoAsignacion -- EntidadBeneficiaria
 
 @enduml

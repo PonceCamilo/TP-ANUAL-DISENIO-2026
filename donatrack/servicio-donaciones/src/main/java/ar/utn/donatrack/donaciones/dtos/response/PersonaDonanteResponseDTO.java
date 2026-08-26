@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.dtos.response;
 
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.AllArgsConstructor;
@@ -26,7 +25,7 @@ public abstract class PersonaDonanteResponseDTO {
   private String tipoDocumento;
   private String numeroDocumento;
   private String email;
-  private EstadoDonante estado;
+  private String estado;
   private MedioDeContactoResponseDTO medioContactoPredeterminado;
   private List<MedioDeContactoResponseDTO> contactos;
   private DireccionResponseDTO direccion;

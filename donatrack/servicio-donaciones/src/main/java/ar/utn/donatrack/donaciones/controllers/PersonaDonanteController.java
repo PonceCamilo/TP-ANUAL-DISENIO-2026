@@ -8,7 +8,6 @@ import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
 import ar.utn.donatrack.donaciones.importacion.ImportReport;
 import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.services.CsvImportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +41,7 @@ public class PersonaDonanteController {
 
   @GetMapping
   public ResponseEntity<List<PersonaDonanteResponseDTO>> obtenerDonantes(
-      @RequestParam(required = false) EstadoDonante estado
+      @RequestParam(required = false) String estado
   ) {
     return ResponseEntity.ok(personaDonanteService.obtenerDonantes(estado));
   }

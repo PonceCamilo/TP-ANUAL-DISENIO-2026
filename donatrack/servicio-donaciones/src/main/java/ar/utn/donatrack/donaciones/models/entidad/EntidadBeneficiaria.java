@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.entidad;
 
+import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
@@ -35,6 +36,23 @@ public class EntidadBeneficiaria {
         this.getCampanias().stream().filter(c -> c.getIdCampania()
                 .equals(campania.getIdCampania()))
             .findFirst()
-            .ifPresent(c -> c.getNecesidades().add(necesidad));
+            .ifPresent(c -> c.agregarNecesidad(necesidad));
+    }
+
+    public String obtenerEmail() {
+        if (contactos == null) {
+            return null;
+        }
+        return contactos.stream()
+                .filter(c -> c instanceof Email)
+                .map(MedioDeContacto::getValor)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public int contarNecesidadesCompatiblesCon(String subcategoria) {
+        return campanias.stream()
+                .mapToInt(campania -> campania.necesidadesCompatiblesCon(subcategoria).size())
+                .sum();
     }
 }

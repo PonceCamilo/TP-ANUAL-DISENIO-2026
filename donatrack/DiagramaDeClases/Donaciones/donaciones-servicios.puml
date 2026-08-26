@@ -1,129 +1,271 @@
-@startuml servicios-donaciones
-'  Diagrama de clases - SERVICIOS / PATRONES - servicio-donaciones
+@startuml donaciones-servicios
+
+left to right direction
 skinparam linetype ortho
 skinparam classAttributeIconSize 0
+skinparam nodesep 40
+skinparam ranksep 50
 skinparam shadowing false
+skinparam defaultFontName Helvetica
+hide empty members
+
 skinparam class {
-  BackgroundColor #E3F0FF
-  BorderColor #1565C0
-  ArrowColor #37474F
+    BackgroundColor White
+    BorderColor #5A5A5A
+    ArrowColor #4A4A4A
+    FontSize 12
+    AttributeFontSize 11
+    BackgroundColor<<abstracta>> #EFEFEF
+    BorderColor<<abstracta>> #5A5A5A
+    BackgroundColor<<externa>> #BFDFF2
+    BorderColor<<externa>> #2E6E9E
 }
+
 skinparam interface {
-  BackgroundColor #EFEBE9
-  BorderColor #4E342E
-}
-hide circle
-title Servicios y Patrones - Servicio de Donaciones
-
-' ===================== INTERFACES =====================
-interface AlgoritmoAsignacionInterface {
-  + evaluar(Donacion, List<EntidadBeneficiaria>) : List<ResultadoAsignacion>
-}
-interface SegmentadorDonacionesServiceInterface {
-  + segmentar(bienes, idDonante, descripcion) : List<Donacion>
-  + cargarDonaciones(List<Donacion>)
-}
-interface DonacionServiceInterface {
-  + obtenerDonaciones(estado, idDonante, subcat)
-  + obtenerPorId(id)
-  + cambiarEstado(id, dto)
-  + modificarBien(id, dto)
-  + asignar(id, dto)
-  + eliminar(id)
-  + obtenerCandidatos(id)
-}
-interface PersonaDonanteServiceInterface {
-  + registrar / actualizar / cambiarEstado
-}
-interface EntidadesBeneficiariasServiceInterface
-
-' ===================== TEMPLATE METHOD: ALGORITMOS =====================
-abstract class AlgoritmoAsignacionBase <<Template Method>> {
-  # TOP_N : int = 10
-  + {final} evaluar(Donacion, List<EB>) : List<ResultadoAsignacion>
-  # {abstract} calcularPuntaje(Donacion, EB) : double
-  # incluir(puntaje) : boolean  <<hook>>
-}
-class AlgoritmoCompatibilidadSemantica {
-  # calcularPuntaje(...) : double
-  # incluir(p) : p > 0
-}
-class AlgoritmoPrioridadSubAtendidos {
-  - donacionesRepository
-  # calcularPuntaje(...) : 1/(1+recibidas)
+    BackgroundColor #FDF6E3
+    BorderColor #8B7355
 }
 
-' ===================== ORQUESTADOR ASIGNACION =====================
-class AsignacionDonacionesService {
-  - algoritmoSemantico
-  - algoritmoSubAtendidos
-  - entidadesRepository
-  + generarRanking(Donacion) : ResultadoMatchmaking
-}
-class ResultadoMatchmaking {
-  - coincidencias
-  - rankingSemantico
-  - rankingSubAtendidos
-  + huboCoincidencias() : boolean
+skinparam package {
+    BackgroundColor #FBFBFB
+    BorderColor #9A9A9A
+    FontSize 13
+    FontStyle bold
+    FontColor #444444
 }
 
-' ===================== SERVICIOS PRINCIPALES =====================
-class DonacionService {
-  - repositorio
-  - validador
-  - asignacionService
-  - notificacionClient
-  - incentivosClient
-}
-class SegmentadorDonacionesService {
-  - donacionesRepository
-  - donanteRepository
-  - incentivosClient
-}
-class PersonaDonanteService {
-  - donanteRepository
-  - notificacionClient
-}
-class InactividadDonantesService <<@Scheduled>> {
-  - donanteRepository
-  - notificacionClient
-  .. inactividad > 20 dias ..
+package interfaces.services {
+
+    interface AlgoritmoAsignacionInterface {
+        public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
+    }
+
+    interface SegmentadorDonacionesServiceInterface {
+        public segmentar(carga: CargaDonacion): List<Donacion>
+        public cargarDonaciones(donaciones: List<Donacion>): void
+    }
+
+    interface DonacionServiceInterface {
+        public obtenerDonaciones(estado: String, donante: PersonaDonante, subcategoria: String): List<DonacionResponseDTO>
+        public obtenerDonacion(donacion: Donacion): DonacionResponseDTO
+        public cambiarEstado(donacion: Donacion, dto: CambioEstadoRequestDTO): void
+        public modificarBien(donacion: Donacion, dto: BienRequestDTO): void
+        public eliminar(donacion: Donacion): void
+        public obtenerCandidatos(donacion: Donacion): CandidatosAsignacionResponseDTO
+        public asignarEntidadBeneficiaria(donacion: Donacion, dto: AsignacionRequestDTO): void
+    }
+
+    interface PersonaDonanteServiceInterface {
+        public registrar(dto: PersonaDonanteRequestDTO): PersonaDonante
+        public obtenerDonante(donante: PersonaDonante): PersonaDonanteResponseDTO
+        public obtenerDonantes(estado: EstadoDonante): List<PersonaDonanteResponseDTO>
+        public cambiarEstado(donante: PersonaDonante, dto: EstadoDonanteRequestDTO): void
+        public modificarContacto(donante: PersonaDonante, dto: MedioDeContactoRequestDTO): void
+        public modificarRepresentante(donante: PersonaDonante, dto: RepresentanteRequestDTO): void
+        public actualizar(donante: PersonaDonante, dto: PersonaDonanteUpdateRequestDTO): PersonaDonanteResponseDTO
+        public eliminar(donante: PersonaDonante): void
+    }
+
+    interface EntidadesBeneficiariasServiceInterface {
+        public guardar(dto: EntidadBeneficiariaRequestDTO): EntidadBeneficiaria
+        public obtenerTodas(): List<EntidadBeneficiariaResponseDTO>
+        public obtenerEntidad(entidad: EntidadBeneficiaria): EntidadBeneficiariaResponseDTO
+        public actualizar(entidad: EntidadBeneficiaria, dto: EntidadBeneficiariaRequestDTO): void
+        public eliminarEntidad(entidad: EntidadBeneficiaria): void
+        public agregarCampaniaAEntidad(entidad: EntidadBeneficiaria, dto: CampaniaRequestDTO): Campania
+        public agregarNecesidadACampania(entidad: EntidadBeneficiaria, campania: Campania, dto: NecesidadRequestDTO): NecesidadResponseDTO
+    }
 }
 
-' ===================== CLIENTES HTTP =====================
-class NotificacionClient <<RestClient>> {
-  baseUrl : :8084
-  + enviarNotificacion(dest, msg, medio, evento)
-}
-class IncentivosClient <<RestClient>> {
-  baseUrl : :8083
-  + notificarDonacionRegistrada(...)
-  + notificarDonacionExitosa(...)
+package services {
+
+    class DonacionService {
+        private repositorio: DonacionesRepositoryInterface
+        private mapper: DonacionMapper
+        private asignacionService: AsignacionDonacionesService
+        private entidadesRepositorio: EntidadesBeneficiariasRepositoryInterface
+        private entidadMapper: EntidadBeneficiariaMapper
+        private donanteRepositorio: PersonaDonanteRepositoryInterface
+        private notificacionClient: NotificacionClient
+        private incentivosClient: IncentivosClient
+        private validador: DonacionesValidator
+        private entidadesValidator: EntidadesBeneficiariasValidator
+
+        public obtenerDonaciones(estado: String, donante: PersonaDonante, subcategoria: String): List<DonacionResponseDTO>
+        public obtenerDonacion(donacion: Donacion): DonacionResponseDTO
+        public cambiarEstado(donacion: Donacion, dto: CambioEstadoRequestDTO): void
+        public modificarBien(donacion: Donacion, dto: BienRequestDTO): void
+        public obtenerCandidatos(donacion: Donacion): CandidatosAsignacionResponseDTO
+        public asignarEntidadBeneficiaria(donacion: Donacion, dto: AsignacionRequestDTO): void
+        public eliminar(donacion: Donacion): void
+        private mapearRanking(ranking: List<ResultadoAsignacion>): List<EntidadBeneficiariaResponseDTO>
+    }
+
+    class SegmentadorDonacionesService {
+        private donacionesRepository: DonacionesRepositoryInterface
+        private donanteRepository: PersonaDonanteRepositoryInterface
+        private incentivosClient: IncentivosClient
+
+        public segmentar(carga: CargaDonacion): List<Donacion>
+        public cargarDonaciones(donaciones: List<Donacion>): void
+    }
+
+    class PersonaDonanteService {
+        private repositorio: PersonaDonanteRepositoryInterface
+        private validador: PersonasValidator
+        private mapper: PersonaDonanteMapper
+
+        public registrar(dto: PersonaDonanteRequestDTO): PersonaDonante
+        public obtenerDonante(donante: PersonaDonante): PersonaDonanteResponseDTO
+        public obtenerDonantes(estado: EstadoDonante): List<PersonaDonanteResponseDTO>
+        public cambiarEstado(donante: PersonaDonante, dto: EstadoDonanteRequestDTO): void
+        public modificarContacto(donante: PersonaDonante, dto: MedioDeContactoRequestDTO): void
+        public modificarRepresentante(donante: PersonaDonante, dto: RepresentanteRequestDTO): void
+        public actualizar(donante: PersonaDonante, dto: PersonaDonanteUpdateRequestDTO): PersonaDonanteResponseDTO
+        public eliminar(donante: PersonaDonante): void
+    }
+
+    class EntidadesBeneficiariasService {
+        private repositorio: EntidadesBeneficiariasRepositoryInterface
+        private validador: EntidadesBeneficiariasValidator
+        private mapper: EntidadBeneficiariaMapper
+        private dependenciasMapper: PersonaDonanteMapper
+
+        public guardar(dto: EntidadBeneficiariaRequestDTO): EntidadBeneficiaria
+        public obtenerTodas(): List<EntidadBeneficiariaResponseDTO>
+        public obtenerEntidad(entidad: EntidadBeneficiaria): EntidadBeneficiariaResponseDTO
+        public actualizar(entidad: EntidadBeneficiaria, dtoNueva: EntidadBeneficiariaRequestDTO): void
+        public eliminarEntidad(entidad: EntidadBeneficiaria): void
+        public agregarCampaniaAEntidad(entidad: EntidadBeneficiaria, dto: CampaniaRequestDTO): Campania
+        public agregarNecesidadACampania(entidad: EntidadBeneficiaria, campania: Campania, dto: NecesidadRequestDTO): NecesidadResponseDTO
+    }
+
+    class InactividadDonantesService {
+        private donanteRepository: PersonaDonanteRepositoryInterface
+        private notificacionClient: NotificacionClient
+
+        public notificarDonantesInactivos(): void
+    }
+
+    class CsvImportService {
+        private donanteRepository: PersonaDonanteRepositoryInterface
+        private parser: DonanteCsvRowParser
+        private factory: DonanteFactory
+
+        public importar(csvStream: InputStream): ImportReport
+    }
+
+    package asignacion {
+
+        abstract class AlgoritmoAsignacionBase <<abstracta>> {
+            private TOP_N: int
+
+            public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
+            private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+            private incluir(puntaje: double): boolean
+        }
+
+        class AlgoritmoCompatibilidadSemantica {
+            private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+            private incluir(puntaje: double): boolean
+        }
+
+        class AlgoritmoPrioridadSubAtendidos {
+            private donacionesRepository: DonacionesRepositoryInterface
+
+            private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+        }
+
+        class AsignacionDonacionesService {
+            private algoritmoSemantico: AlgoritmoCompatibilidadSemantica
+            private algoritmoSubAtendidos: AlgoritmoPrioridadSubAtendidos
+            private entidadesRepository: EntidadesBeneficiariasRepositoryInterface
+
+            public generarRanking(donacion: Donacion): ResultadoMatchmaking
+            private intersectar(a: List<ResultadoAsignacion>, b: List<ResultadoAsignacion>): List<ResultadoAsignacion>
+        }
+
+        class ResultadoMatchmaking {
+            private coincidencias: List<ResultadoAsignacion>
+            private rankingSemantico: List<ResultadoAsignacion>
+            private rankingSubAtendidos: List<ResultadoAsignacion>
+
+            public huboCoincidencias(): boolean
+        }
+    }
 }
 
-' ===================== RELACIONES =====================
-AlgoritmoAsignacionBase ..|> AlgoritmoAsignacionInterface
+package validations.donaciones {
+    class DonacionesValidator {
+        private repositorio: DonacionesRepositoryInterface
+
+        public validarExistencia(donacion: Donacion): void
+        public validarTieneBienes(donacion: Donacion): void
+    }
+}
+
+package validations.entidades {
+    class EntidadesBeneficiariasValidator {
+        private repositorio: EntidadesBeneficiariasRepositoryInterface
+
+        public validarExistenciaEntidad(entidad: EntidadBeneficiaria): void
+        public validarCampaniaDeEntidad(entidad: EntidadBeneficiaria, campania: Campania): void
+        public validarFechasCampania(inicio: LocalDate, fin: LocalDate): void
+    }
+}
+
+package validations.personas {
+    class PersonasValidator {
+        private repositorio: PersonaDonanteRepositoryInterface
+
+        public validarEmail(email: String): void
+        public validarExistenciaPersona(donante: PersonaDonante): void
+        public validarEsPersonaJuridica(donante: PersonaDonante): void
+        public validarMedioContacto(medio: MedioDeContacto): void
+        public validarCambioEstado(actual: EstadoDonante, nuevo: EstadoDonante, justificacion: String): void
+    }
+}
+
+package clientes {
+
+    class NotificacionClient {
+        public enviarNotificacion(destinatario: String, mensaje: String, medio: String): void
+    }
+
+    class IncentivosClient {
+        public notificarDonacionRegistrada(donante: PersonaDonante, destinatario: String, medio: String, cantidadBienes: int, categoriasDonadas: List<String>): void
+        public notificarDonacionExitosa(donante: PersonaDonante, destinatario: String, medio: String): void
+    }
+}
+
+AlgoritmoAsignacionBase --|> AlgoritmoAsignacionInterface
 AlgoritmoCompatibilidadSemantica --|> AlgoritmoAsignacionBase
 AlgoritmoPrioridadSubAtendidos --|> AlgoritmoAsignacionBase
 
-AsignacionDonacionesService o-- AlgoritmoCompatibilidadSemantica
-AsignacionDonacionesService o-- AlgoritmoPrioridadSubAtendidos
-AsignacionDonacionesService ..> ResultadoMatchmaking : crea
+DonacionService --|> DonacionServiceInterface
+SegmentadorDonacionesService --|> SegmentadorDonacionesServiceInterface
+PersonaDonanteService --|> PersonaDonanteServiceInterface
+EntidadesBeneficiariasService --|> EntidadesBeneficiariasServiceInterface
 
-DonacionService ..|> DonacionServiceInterface
-DonacionService o-- AsignacionDonacionesService
-DonacionService o-- NotificacionClient
-DonacionService o-- IncentivosClient
 
-SegmentadorDonacionesService ..|> SegmentadorDonacionesServiceInterface
-SegmentadorDonacionesService o-- IncentivosClient
+AsignacionDonacionesService -- AlgoritmoCompatibilidadSemantica
+AsignacionDonacionesService -- AlgoritmoPrioridadSubAtendidos
+AsignacionDonacionesService -- ResultadoMatchmaking
 
-PersonaDonanteService ..|> PersonaDonanteServiceInterface
-PersonaDonanteService ..> NotificacionClient
+DonacionService -- AsignacionDonacionesService
+DonacionService -- NotificacionClient
+DonacionService -- IncentivosClient
+DonacionService -- DonacionesValidator
+DonacionService -- EntidadesBeneficiariasValidator
 
-InactividadDonantesService ..> NotificacionClient
+SegmentadorDonacionesService -- IncentivosClient
 
-NotificacionClient ..> "POST :8084" : notificaciones
-IncentivosClient ..> "POST :8083" : incentivos
+PersonaDonanteService -- PersonasValidator
+
+EntidadesBeneficiariasService -- EntidadesBeneficiariasValidator
+
+InactividadDonantesService -- NotificacionClient
+
+
 
 @enduml
