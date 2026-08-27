@@ -46,6 +46,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -279,6 +280,71 @@ class PlanificacionRutasServiceTest {
             verify(eventPublisher).publicar(eventoCaptor.capture());
             assertEquals(TipoEventoLogistica.INICIO_RUTA, eventoCaptor.getValue().getTipo());
             assertEquals(rutaId, eventoCaptor.getValue().getRutaId());
+        }
+    }
+
+    @Nested
+    @DisplayName("finalizarRutaSiCorresponde()")
+    class FinalizarRutaSiCorresponde {
+
+        @Test
+        @DisplayName("Con entregas aún EN_TRASLADO, no finaliza la ruta ni libera el camión")
+        void noFinalizaSiQuedanEntregasEnTraslado() {
+            UUID rutaId = UUID.randomUUID();
+            Camion camion = Camion.builder().id(UUID.randomUUID()).estado(EstadoCamion.EN_RUTA).build();
+            Parada parada = Parada.builder()
+                    .id(UUID.randomUUID())
+                    .orden(1)
+                    .entregas(List.of(
+                            Entrega.builder().id(UUID.randomUUID()).estado(EstadoEntrega.ENTREGADA).build(),
+                            Entrega.builder().id(UUID.randomUUID()).estado(EstadoEntrega.EN_TRASLADO).build()))
+                    .build();
+            Ruta ruta = Ruta.builder().id(rutaId).camion(camion).estado(EstadoRuta.INICIADA).paradas(List.of(parada)).build();
+            when(rutaRepositorio.buscarPorId(rutaId)).thenReturn(ruta);
+
+            service.finalizarRutaSiCorresponde(rutaId);
+
+            assertEquals(EstadoRuta.INICIADA, ruta.getEstado());
+            assertEquals(EstadoCamion.EN_RUTA, camion.getEstado());
+            verify(rutaRepositorio, never()).guardar(any());
+            verify(camionRepositorio, never()).guardar(any());
+        }
+
+        @Test
+        @DisplayName("Con todas las entregas en estado terminal, finaliza la ruta y libera el camión")
+        void finalizaRutaYLiberaCamionCuandoNoQuedanEntregasEnTraslado() {
+            UUID rutaId = UUID.randomUUID();
+            Camion camion = Camion.builder().id(UUID.randomUUID()).estado(EstadoCamion.EN_RUTA).build();
+            Parada parada = Parada.builder()
+                    .id(UUID.randomUUID())
+                    .orden(1)
+                    .entregas(List.of(
+                            Entrega.builder().id(UUID.randomUUID()).estado(EstadoEntrega.ENTREGADA).build(),
+                            Entrega.builder().id(UUID.randomUUID()).estado(EstadoEntrega.NO_RECIBIDA).build()))
+                    .build();
+            Ruta ruta = Ruta.builder().id(rutaId).camion(camion).estado(EstadoRuta.INICIADA).paradas(List.of(parada)).build();
+            when(rutaRepositorio.buscarPorId(rutaId)).thenReturn(ruta);
+
+            service.finalizarRutaSiCorresponde(rutaId);
+
+            assertEquals(EstadoRuta.FINALIZADA, ruta.getEstado());
+            verify(rutaRepositorio).guardar(ruta);
+
+            assertEquals(EstadoCamion.DISPONIBLE, camion.getEstado());
+            verify(camionRepositorio).guardar(camion);
+        }
+
+        @Test
+        @DisplayName("Una ruta que no está INICIADA se ignora")
+        void ignoraRutasQueNoEstanIniciadas() {
+            UUID rutaId = UUID.randomUUID();
+            Ruta ruta = Ruta.builder().id(rutaId).estado(EstadoRuta.PLANIFICADA).paradas(List.of()).build();
+            when(rutaRepositorio.buscarPorId(rutaId)).thenReturn(ruta);
+
+            service.finalizarRutaSiCorresponde(rutaId);
+
+            assertEquals(EstadoRuta.PLANIFICADA, ruta.getEstado());
+            verify(rutaRepositorio, never()).guardar(any());
         }
     }
 

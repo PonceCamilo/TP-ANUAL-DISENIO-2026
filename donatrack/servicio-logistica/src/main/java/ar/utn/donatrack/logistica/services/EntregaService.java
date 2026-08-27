@@ -11,6 +11,7 @@ import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.RutaRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.services.EntregaServiceInterface;
+import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
 import ar.utn.donatrack.logistica.models.entrega.MotivoFalloEntrega;
@@ -32,6 +33,7 @@ public class EntregaService implements EntregaServiceInterface {
     private final RutaRepositoryInterface rutaRepositorio;
     private final EntregaValidator validador;
     private final EntregaEventPublisher eventPublisher;
+    private final PlanificacionServiceInterface planificacionService;
 
     @Override
     public EntregaResponseDTO obtenerPorId(UUID id) {
@@ -69,6 +71,8 @@ public class EntregaService implements EntregaServiceInterface {
                 .rutaId(ruta.getId())
                 .fotosComprobante(entrega.getFotosComprobante())
                 .build());
+
+        finalizarRutaSiCorresponde(ruta.getId());
     }
 
     @Override
@@ -93,6 +97,8 @@ public class EntregaService implements EntregaServiceInterface {
                 .motivoFallo(motivo.name())
                 .replanificable(motivo.esReplanificable())
                 .build());
+
+        finalizarRutaSiCorresponde(ruta.getId());
     }
 
     @Override
@@ -101,6 +107,12 @@ public class EntregaService implements EntregaServiceInterface {
         validador.validarTransicion(entrega.getEstado(), EstadoEntrega.PENDIENTE);
         entrega.registrarCambio(EstadoEntrega.PENDIENTE, "Regreso a depósito");
         repositorio.guardar(entrega);
+    }
+
+    // Cuando esta entrega era la última EN_TRASLADO de su ruta, el camión
+    // vuelve a estar DISPONIBLE para la planificación del día siguiente.
+    private void finalizarRutaSiCorresponde(UUID rutaId) {
+        planificacionService.finalizarRutaSiCorresponde(rutaId);
     }
 
     private Entrega buscarOFallar(UUID id) {

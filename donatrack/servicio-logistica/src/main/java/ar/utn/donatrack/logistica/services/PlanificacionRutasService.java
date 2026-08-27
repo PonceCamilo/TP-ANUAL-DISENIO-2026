@@ -160,6 +160,29 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
         }
     }
 
+    @Override
+    public void finalizarRutaSiCorresponde(UUID rutaId) {
+        Ruta ruta = buscarRutaOFallar(rutaId);
+        if (ruta.getEstado() != EstadoRuta.INICIADA) {
+            return;
+        }
+
+        boolean quedanEntregasEnCurso = ruta.obtenerEntregas().stream()
+                .anyMatch(entrega -> entrega.getEstado() == EstadoEntrega.EN_TRASLADO);
+        if (quedanEntregasEnCurso) {
+            return;
+        }
+
+        ruta.setEstado(EstadoRuta.FINALIZADA);
+        rutaRepositorio.guardar(ruta);
+
+        Camion camion = ruta.getCamion();
+        if (camion != null) {
+            camion.setEstado(EstadoCamion.DISPONIBLE);
+            camionRepositorio.guardar(camion);
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private LotePlanificacion crearYEnviarLote(List<DonacionLote> batch, List<Camion> camiones) {

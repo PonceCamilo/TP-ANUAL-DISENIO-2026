@@ -6,10 +6,12 @@ import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
 import ar.utn.donatrack.logistica.eventos.EntregaEvento;
 import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
 import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
+import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.TransicionEntregaIlegalException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.RutaRepositoryInterface;
+import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
 import ar.utn.donatrack.logistica.models.entrega.MotivoFalloEntrega;
@@ -50,11 +52,14 @@ class EntregaServiceTest {
     @Mock
     private EntregaEventPublisher eventPublisher;
 
+    @Mock
+    private PlanificacionServiceInterface planificacionService;
+
     private EntregaService service;
 
     @BeforeEach
     void setUp() {
-        service = new EntregaService(repositorio, rutaRepositorio, new EntregaValidator(), eventPublisher);
+        service = new EntregaService(repositorio, rutaRepositorio, new EntregaValidator(), eventPublisher, planificacionService);
     }
 
     private Entrega entregaEnEstado(EstadoEntrega estado) {
@@ -110,6 +115,38 @@ class EntregaServiceTest {
             assertEquals(camion.getId(), evento.getIdCamion());
             assertEquals("AB123CD", evento.getPatenteCamion());
             assertEquals(entrega.getParada().getIdEntidadBeneficiaria(), evento.getIdEntidadBeneficiaria());
+            verify(planificacionService).finalizarRutaSiCorresponde(ruta.getId());
+        }
+
+        @Test
+        @DisplayName("Consulta si la ruta debe finalizarse usando la query inversa")
+        void consultaFinalizacionDeRutaCuandoHayRutaAsignada() {
+            Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
+            Camion camion = Camion.builder().id(UUID.randomUUID()).patente("AB123CD").build();
+            Ruta ruta = rutaQueContiene(entrega, camion);
+            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
+
+            ConfirmarEntregaRequestDTO dto = new ConfirmarEntregaRequestDTO();
+            dto.setFotosComprobante(List.of("foto1.jpg"));
+
+            service.confirmar(entrega.getId(), dto);
+
+            verify(planificacionService).finalizarRutaSiCorresponde(ruta.getId());
+        }
+
+        @Test
+        @DisplayName("Si no hay ruta para la entrega, lanza RutaNoEncontradaException y no consulta finalización")
+        void noConsultaFinalizacionDeRutaSinRutaAsignada() {
+            Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
+            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.empty());
+
+            ConfirmarEntregaRequestDTO dto = new ConfirmarEntregaRequestDTO();
+            dto.setFotosComprobante(List.of("foto1.jpg"));
+
+            assertThrows(RutaNoEncontradaException.class, () -> service.confirmar(entrega.getId(), dto));
+            verify(planificacionService, never()).finalizarRutaSiCorresponde(any());
         }
 
         @Test
@@ -125,6 +162,7 @@ class EntregaServiceTest {
             verify(repositorio, never()).guardar(any());
             verify(eventPublisher, never()).publicar(any());
             verify(rutaRepositorio, never()).buscarPorEntregaId(any());
+            verify(planificacionService, never()).finalizarRutaSiCorresponde(any());
         }
     }
 
@@ -157,6 +195,24 @@ class EntregaServiceTest {
             assertTrue(evento.getReplanificable());
             assertEquals(ruta.getId(), evento.getRutaId());
             assertEquals(camion.getId(), evento.getIdCamion());
+            verify(planificacionService).finalizarRutaSiCorresponde(ruta.getId());
+        }
+
+        @Test
+        @DisplayName("Consulta si la ruta debe finalizarse usando la query inversa")
+        void consultaFinalizacionDeRutaCuandoHayRutaAsignada() {
+            Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
+            Camion camion = Camion.builder().id(UUID.randomUUID()).patente("AB123CD").build();
+            Ruta ruta = rutaQueContiene(entrega, camion);
+            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
+
+            NoRecibidaRequestDTO dto = new NoRecibidaRequestDTO();
+            dto.setMotivo(MotivoFalloEntrega.MERCADERIA_ROTA);
+
+            service.marcarNoRecibida(entrega.getId(), dto);
+
+            verify(planificacionService).finalizarRutaSiCorresponde(ruta.getId());
         }
     }
 
@@ -175,6 +231,7 @@ class EntregaServiceTest {
             assertEquals(EstadoEntrega.PENDIENTE, entrega.getEstado());
             verify(repositorio).guardar(entrega);
             verify(eventPublisher, never()).publicar(any());
+            verify(planificacionService, never()).finalizarRutaSiCorresponde(any());
         }
     }
 

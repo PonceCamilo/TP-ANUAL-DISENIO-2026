@@ -61,6 +61,7 @@ class EntregaService implements EntregaServiceInterface {
     - rutaRepositorio : RutaRepositoryInterface
     - validador : EntregaValidator
     - eventPublisher : EntregaEventPublisher
+    - planificacionService : PlanificacionServiceInterface
     + obtenerPorId(id : UUID) : EntregaResponseDTO
     + obtenerPorEstado(estado : EstadoEntrega) : List<EntregaResponseDTO>
     + confirmar(id : UUID, dto : ConfirmarEntregaRequestDTO) : void
@@ -75,6 +76,7 @@ interface PlanificacionServiceInterface {
     + obtenerRuta(rutaId : UUID) : RutaResponseDTO
     + obtenerRutaVigentePorCamion(camionId : UUID) : RutaResponseDTO
     + iniciarRuta(rutaId : UUID) : void
+    + finalizarRutaSiCorresponde(rutaId : UUID) : void
 }
 
 class PlanificacionRutasService implements PlanificacionServiceInterface {
@@ -92,6 +94,7 @@ class PlanificacionRutasService implements PlanificacionServiceInterface {
     + obtenerRuta(rutaId : UUID) : RutaResponseDTO
     + obtenerRutaVigentePorCamion(camionId : UUID) : RutaResponseDTO
     + iniciarRuta(rutaId : UUID) : void
+    + finalizarRutaSiCorresponde(rutaId : UUID) : void
 }
 
 ' ============================ INTEGRACION / EVENTOS ============================
@@ -127,6 +130,8 @@ class N8nLogisticaWebhookListener implements EntregaEventListener {
 EntregaService --> EntregaValidator
 EntregaService --> EntregaEventPublisher
 EntregaService --> RutaRepositoryInterface
+
+EntregaService --> PlanificacionServiceInterface
 EntregaService --> EntregaRepositoryInterface
 
 PlanificacionRutasService --> EstrategiaRuteoPort

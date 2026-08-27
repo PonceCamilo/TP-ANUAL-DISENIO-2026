@@ -81,14 +81,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.body) }}",
-        "options": {}
+        "options": { "timeout": 3000 }
       },
+      "onError": "continueRegularOutput",
       "id": "2a000000-0000-4a00-9aaa-000000000003",
       "name": "POST Donaciones /inicio-ruta",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [220, -180],
-      "notes": "Reenvía el body tal cual a Donaciones. Cambiar el host/puerto si Donaciones no corre en localhost:8081."
+      "notes": "Reenvía el body tal cual a Donaciones. Si Donaciones no está, el nodo falla en 3s y el flujo igual llega a Responder al backend."
     },
     {
       "parameters": {
@@ -97,8 +98,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.body) }}",
-        "options": {}
+        "options": { "timeout": 3000 }
       },
+      "onError": "continueRegularOutput",
       "id": "2a000000-0000-4a00-9aaa-000000000004",
       "name": "POST Donaciones /entrega-exitosa",
       "type": "n8n-nodes-base.httpRequest",
@@ -112,8 +114,9 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.body) }}",
-        "options": {}
+        "options": { "timeout": 3000 }
       },
+      "onError": "continueRegularOutput",
       "id": "2a000000-0000-4a00-9aaa-000000000005",
       "name": "POST Donaciones /entrega-fallida",
       "type": "n8n-nodes-base.httpRequest",
