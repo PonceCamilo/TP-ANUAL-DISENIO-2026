@@ -117,7 +117,7 @@ public class DonacionService implements DonacionServiceInterface {
   private void notificarDonacionExitosa(Donacion donacion) {
     PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
     if (donante != null && donante.obtenerEmail() != null) {
-      incentivosClient.notificarDonacionExitosa(donacion.getIdDonante(), donante.obtenerEmail(), "EMAIL");
+      incentivosClient.notificarDonacionExitosa(donacion, donante.obtenerEmail(), "EMAIL");
     }
   }
 

@@ -1,7 +1,7 @@
 package ar.utn.donatrack.incentivos.services;
 
 import ar.utn.donatrack.incentivos.interfaces.services.MisionesQueryPort;
-import ar.utn.donatrack.incentivos.repositories.impl.IncentivosRepositorioEnMemoria;
+import ar.utn.donatrack.incentivos.repositories.IncentivosRepositorioEnMemoria;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;

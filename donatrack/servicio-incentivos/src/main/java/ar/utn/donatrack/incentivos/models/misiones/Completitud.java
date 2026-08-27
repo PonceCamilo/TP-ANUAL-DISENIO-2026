@@ -1,6 +1,9 @@
 package ar.utn.donatrack.incentivos.models.misiones;
 
 import ar.utn.donatrack.incentivos.models.Donante;
+import ar.utn.donatrack.incentivos.models.MetricasDonante;
+import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
+import ar.utn.donatrack.incentivos.models.insignias.Insignia;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,13 +12,16 @@ import lombok.Setter;
 public class Completitud extends Mision {
     private int categoriasRequeridas;
 
-    @Override
-    public boolean estaCompletada(Donante donante) {
-        return progresoActual(donante) >= categoriasRequeridas;
+    public Completitud(String nombre, String descripcion, CategoriaDonante categoriaRequerida, int categoriasRequeridas, Insignia insignia) {
+        super(nombre, descripcion, categoriaRequerida, categoriasRequeridas, insignia);
+        this.categoriasRequeridas = categoriasRequeridas;
     }
 
-    @Override
+    public boolean estaCompletada(Donante donante) {
+        return progresoActual(donante) >= objetivo;
+    }
+
     public int progresoActual(Donante donante) {
-        return donante.getCategoriasDistintasDonadas();
+        return new MetricasDonante().categoriasDistintasDonadas(donante);
     }
 }

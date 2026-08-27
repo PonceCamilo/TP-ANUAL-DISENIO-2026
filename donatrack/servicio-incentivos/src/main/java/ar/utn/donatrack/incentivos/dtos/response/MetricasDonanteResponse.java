@@ -1,6 +1,7 @@
 package ar.utn.donatrack.incentivos.dtos.response;
 
 import ar.utn.donatrack.incentivos.models.Donante;
+import ar.utn.donatrack.incentivos.models.MetricasDonante;
 
 import java.util.UUID;
 
@@ -12,14 +13,15 @@ public record MetricasDonanteResponse(
         int organizacionesAyudadas,
         int posicionRanking
 ) {
-    public static MetricasDonanteResponse desde(Donante p) {
+    public static MetricasDonanteResponse desde(Donante donante, int posicionRanking) {
+        MetricasDonante metricas = new MetricasDonante();
         return new MetricasDonanteResponse(
-                p.getId(),
-                p.getCategoria() != null ? p.getCategoria().getClass().getSimpleName() : "Sin Categoria", // <-- Corrección
-                p.getTotalDonacionesHistoricas(),
-                p.getDonacionesMesActual(),
-                p.getOrganizacionesAyudadas(),
-                p.getPosicionRanking()
+                donante.getId(),
+                donante.getCategoria() != null ? donante.getCategoria().getClass().getSimpleName() : "Sin Categoria",
+                metricas.totalDonacionesHistoricas(donante),
+                metricas.donacionesMesActual(donante),
+                metricas.organizacionesAyudadas(donante),
+                posicionRanking
         );
     }
 }

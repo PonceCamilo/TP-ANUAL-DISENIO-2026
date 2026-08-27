@@ -1,4 +1,4 @@
-package ar.utn.donatrack.incentivos.repositories.impl;
+package ar.utn.donatrack.incentivos.repositories;
 
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
@@ -11,21 +11,20 @@ import java.util.concurrent.ConcurrentHashMap;
 @Repository
 public class IncentivosRepositorioEnMemoria {
 
-    private final Map<UUID, Mision> misiones = new ConcurrentHashMap<>();
+    private final List<Mision> misiones = new ArrayList<>();
     private final Map<UUID, Donante> perfiles = new ConcurrentHashMap<>();
 
     public void guardarMision(Mision mision) {
-        misiones.put(mision.getId(), mision);
+        misiones.add(mision);
     }
 
     public List<Mision> listarMisiones() {
-        return new ArrayList<>(misiones.values());
+        return new ArrayList<>(misiones);
     }
 
     public List<Mision> listarMisionesPorCategoria(CategoriaDonante categoria) {
-        return misiones.values().stream()
+        return misiones.stream()
                 .filter(m -> m.getCategoriaRequerida().getClass().equals(categoria.getClass()))
-                .sorted(Comparator.comparingInt(Mision::getOrden))
                 .toList();
     }
 
@@ -47,5 +46,9 @@ public class IncentivosRepositorioEnMemoria {
 
     public List<UUID> listarTodosLosDonanteIds() {
         return new ArrayList<>(perfiles.keySet());
+    }
+
+    public List<Donante> listarPerfiles() {
+        return new ArrayList<>(perfiles.values());
     }
 }

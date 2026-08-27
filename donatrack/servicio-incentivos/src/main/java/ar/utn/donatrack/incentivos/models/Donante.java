@@ -3,74 +3,69 @@ package ar.utn.donatrack.incentivos.models;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
+import ar.utn.donatrack.incentivos.models.misiones.ProgresoMision;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
 public class Donante {
     private UUID id;
-    private CategoriaDonante categoria;
-    private Mision misionActual;
-    private int progresoMisionActual;
+    private CategoriaDonante categoriaActual;
     private List<InsigniaObtenida> insigniasObtenidas = new ArrayList<>();
+    private List<DonacionRegistrada> donaciones = new ArrayList<>();
+    private ProgresoMision progresoMision = new ProgresoMision();
 
-    // Métricas generales
-    private int totalDonacionesHistoricas;
-    private int donacionesMesActual;
-    private int organizacionesAyudadas;
-    private int posicionRanking;
-
-    // Métricas específicas para Misiones
-    private Set<String> categoriasHistorial = new HashSet<>();
-    private int donacionesExitosas;
-    private int recordBienesUnicaDonacion;
-    private int mesesConsecutivosDonando;
-
-    // Evolución por período (Key: "YYYY-MM", Value: cantidad)
-    private Map<String, Integer> evolucionPeriodo = new HashMap<>();
-
-    public void addInsignia(InsigniaObtenida insignia) {
-        this.insigniasObtenidas.add(insignia);
+    public CategoriaDonante getCategoria() {
+        return categoriaActual;
     }
 
-    // ACÁ ESTÁ LA CORRECCIÓN: Ahora recibe la cantidad y la lista de categorías
-    public void registrarDonacion(int cantidadBienes, List<String> categoriasDonadas) {
-        this.totalDonacionesHistoricas++;
-        this.donacionesMesActual++;
-
-        if (cantidadBienes > this.recordBienesUnicaDonacion) {
-            this.recordBienesUnicaDonacion = cantidadBienes;
-        }
-
-        // Registrar categorías únicas para la misión Completitud
-        if (categoriasDonadas != null) {
-            this.categoriasHistorial.addAll(categoriasDonadas);
-        }
-
-        // Registrar evolución mensual
-        String periodoActual = LocalDate.now().getYear() + "-" + String.format("%02d", LocalDate.now().getMonthValue());
-        this.evolucionPeriodo.put(periodoActual, this.evolucionPeriodo.getOrDefault(periodoActual, 0) + 1);
+    public void setCategoria(CategoriaDonante categoria) {
+        this.categoriaActual = categoria;
     }
 
-    public int getCategoriasDistintasDonadas() {
-        return this.categoriasHistorial.size();
+    public void registrarDonacion(DonacionRegistrada donacion) {
+        this.donaciones.add(donacion);
     }
 
-    public void registrarOrganizacionAyudada() {
-        this.organizacionesAyudadas++;
-        this.donacionesExitosas++;
+    public void completarMision(Mision mision) {
+        agregarInsignia(mision.otorgarInsignia());
     }
 
     public boolean subirCategoria() {
-        CategoriaDonante siguiente = this.categoria.siguienteCategoria();
+        CategoriaDonante siguiente = this.categoriaActual.siguienteCategoria();
         if (siguiente != null) {
-            this.categoria = siguiente;
+            this.categoriaActual = siguiente;
+            cambiarMisionActual(siguiente.primeraMision());
             return true;
         }
         return false;
+    }
+
+    public void agregarInsignia(InsigniaObtenida insignia) {
+        this.insigniasObtenidas.add(insignia);
+    }
+
+    public void cambiarVisibilidadInsignia(UUID idInsignia, boolean visible) {
+        insigniasObtenidas.stream()
+                .filter(insignia -> insignia.getId().equals(idInsignia))
+                .findFirst()
+                .ifPresent(insignia -> insignia.setVisibilidad(visible));
+    }
+
+    public void cambiarMisionActual(Mision mision) {
+        this.progresoMision.cambiarMisionActual(mision);
+    }
+
+    public int misionesCompletadasEnPeriodo(int mes, int anio) {
+        return (int) insigniasObtenidas.stream()
+                .filter(insignia -> insignia.getFechaObtencion() != null)
+                .filter(insignia -> insignia.getFechaObtencion().getMonthValue() == mes)
+                .filter(insignia -> insignia.getFechaObtencion().getYear() == anio)
+                .count();
     }
 }
