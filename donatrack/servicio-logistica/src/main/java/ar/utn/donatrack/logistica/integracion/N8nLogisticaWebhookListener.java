@@ -40,7 +40,13 @@ public class N8nLogisticaWebhookListener implements EntregaEventListener {
             ObjectMapper objectMapper) {
         this.webhookUrl = webhookUrl;
         this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newHttpClient();
+        // Java 25 HttpClient habla HTTP/2 por defecto; n8n (Node) no completa
+        // ese handshake y el POST cuelga hasta el timeout. curl/Postman usan
+        // HTTP/1.1 y por eso sí responden.
+        this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(Duration.ofSeconds(3))
+                .build();
     }
 
     @Override
