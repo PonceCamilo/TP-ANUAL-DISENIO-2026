@@ -49,13 +49,13 @@ public class PersonasValidator {
 
   public void validarEsPersonaJuridica(UUID id) {
     if (!(repositorio.obtenerPersona(id) instanceof PersonaJuridica)) {
-      throw new TipoPersonaIlegalException();
+      throw new TipoPersonaIlegalException(id);
     }
   }
 
   public void validarMedioContacto(MedioDeContacto medio) {
     if (medio == null || medio.getValor() == null || medio.getValor().isBlank()) {
-      throw new MedioContactoInvalidoException();
+      throw new MedioContactoInvalidoException(medio == null ? null : medio.getValor());
     }
   }
 }

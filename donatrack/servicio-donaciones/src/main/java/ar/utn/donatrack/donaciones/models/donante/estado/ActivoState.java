@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donante.estado;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
 
 import java.util.Map;
 

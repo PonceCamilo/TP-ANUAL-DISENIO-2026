@@ -2,7 +2,7 @@ package ar.utn.donatrack.donaciones.exceptions;
 
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;

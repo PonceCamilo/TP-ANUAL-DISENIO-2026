@@ -45,14 +45,17 @@ public class NotificacionClient {
      * @param destinatario email, teléfono o número WA del donante
      * @param mensaje      texto de la notificación
      * @param medio        "EMAIL", "SMS" o "WHATSAPP"
+     * @param evento       tipo de evento que dispara la notificación
+     *                     ("MISION_CUMPLIDA", "CAMBIO_CATEGORIA", ...).
+     *                     servicio-notificaciones lo exige como obligatorio.
      */
-    public void enviarNotificacion(String destinatario, String mensaje, String medio) {
+    public void enviarNotificacion(String destinatario, String mensaje, String medio, String evento) {
         try {
             Map<String, String> payload = Map.of(
                     "destinatario", destinatario,
                     "mensaje", mensaje,
-                    "medio", medio
-
+                    "medio", medio,
+                    "evento", evento
             );
             String jsonBody = objectMapper.writeValueAsString(payload);
 

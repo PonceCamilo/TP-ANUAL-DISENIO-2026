@@ -113,7 +113,7 @@ public class LogisticaEventosService {
         PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
         if (donante != null && donante.getEmail() != null) {
             incentivosClient.notificarDonacionExitosa(
-                    donacion.getIdDonante(),
+                    donacion,
                     donante.getEmail(),
                     "EMAIL"
             );

@@ -7,7 +7,6 @@ import lombok.Setter;
 @Builder
 @Getter
 @Setter
-@Builder
 public class Insignia{
     private UUID id;
     private String nombre;
