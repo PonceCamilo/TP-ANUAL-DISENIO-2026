@@ -1,8 +1,6 @@
 package ar.utn.donatrack.logistica.models.entrega;
 
-import ar.utn.donatrack.logistica.models.flota.Camion;
 import ar.utn.donatrack.logistica.models.planificacion.Parada;
-import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,17 +10,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Una entrega pertenece a una parada física. No conoce Ruta ni
+ * Camión: esos se resuelven por query inversa sobre el agregado
+ * Ruta → Parada → Entrega. La donación ajena se referencia solo por id.
+ */
 @Getter
 @Setter
 @Builder
 public class Entrega {
     private UUID id;
     private UUID idDonacion;
-    private UUID idEntidadBeneficiaria;
-    private UUID idDonante;
     private Parada parada;
-    private Ruta ruta;
-    private Camion camion;
 
     @Builder.Default
     private EstadoEntrega estado = EstadoEntrega.PENDIENTE;

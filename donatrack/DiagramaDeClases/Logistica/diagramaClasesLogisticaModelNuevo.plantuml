@@ -1,7 +1,13 @@
 @startuml diagramaClasesLogisticaModel
 
 skinparam classAttributeIconSize 0
+skinparam linetype ortho
 
+' ============================ CLASES EXTERNAS ============================
+class Donacion <<External>>
+class EntidadBeneficiaria <<External>>
+
+' ============================ DOMINIO LOGÍSTICA ============================
 class Direccion {
     - calle : String
     - numero : int
@@ -11,7 +17,6 @@ class Direccion {
 }
 
 class Camion {
-    - id : UUID
     - patente : String
     - capacidadVolumenM3 : double
     - alturaM : double
@@ -26,7 +31,6 @@ enum EstadoCamion {
 }
 
 class LotePlanificacion {
-    - id : UUID
     - camiones : List<Camion>
     - donaciones : List<DonacionLote>
     - estado : EstadoLote
@@ -43,19 +47,17 @@ enum EstadoLote {
 }
 
 class DonacionLote {
-    - idDonacion : UUID
-    - idEntidadBeneficiaria : UUID
-    - idDonante : UUID
     - direccionEntrega : Direccion
 }
 
 class Ruta {
-    - id : UUID
     - lote : LotePlanificacion
     - camion : Camion
     - paradas : List<Parada>
     - estado : EstadoRuta
     - fechaInicio : LocalDateTime
+    + obtenerEntregas() : List<Entrega>
+    + buscarParadaPorEntregaId(entregaId : UUID) : Optional<Parada>
 }
 
 enum EstadoRuta {
@@ -65,21 +67,13 @@ enum EstadoRuta {
 }
 
 class Parada {
-    - id : UUID
     - orden : int
     - direccion : Direccion
-    - idEntidadBeneficiaria : UUID
     - entregas : List<Entrega>
 }
 
 class Entrega {
-    - id : UUID
-    - idDonacion : UUID
-    - idEntidadBeneficiaria : UUID
-    - idDonante : UUID
     - parada : Parada
-    - ruta : Ruta
-    - camion : Camion
     - estado : EstadoEntrega
     - historial : List<CambioEstadoEntrega>
     - fotosComprobante : List<String>
@@ -101,23 +95,34 @@ class CambioEstadoEntrega {
     - fechaHora : LocalDateTime
 }
 
+enum MotivoFalloEntrega {
+    ENTIDAD_AUSENTE
+    DIRECCION_INCORRECTA
+    RECHAZADA_POR_ENTIDAD
+    MERCADERIA_ROTA
+    MERCADERIA_PERDIDA
+    ROBO
+    - replanificable : boolean
+    + esReplanificable() : boolean
+}
 
-Camion --> EstadoCamion
+' ============================ RELACIONES ============================
+Camion -- EstadoCamion
 
-Entrega --> EstadoEntrega
-Entrega --> Camion
-Entrega --> Parada
-Entrega --> Ruta
+Entrega -- EstadoEntrega
 Entrega --> "*" CambioEstadoEntrega
+Entrega --> Donacion
+Entrega --> Parada
 
-CambioEstadoEntrega --> EstadoEntrega
-
+CambioEstadoEntrega -- EstadoEntrega
+CambioEstadoEntrega -up- MotivoFalloEntrega
 Parada --> Direccion
 Parada --> "*" Entrega
+Parada --> EntidadBeneficiaria
 
 Ruta --> EstadoRuta
 Ruta --> Camion
-Ruta --> "*" Parada
+Ruta "1" -- "*" Parada
 Ruta --> LotePlanificacion
 
 LotePlanificacion --> EstadoLote
@@ -125,6 +130,7 @@ LotePlanificacion --> "*" Camion
 LotePlanificacion --> "*" DonacionLote
 
 DonacionLote --> Direccion
-
+DonacionLote --> Donacion
+DonacionLote --> EntidadBeneficiaria
 
 @enduml

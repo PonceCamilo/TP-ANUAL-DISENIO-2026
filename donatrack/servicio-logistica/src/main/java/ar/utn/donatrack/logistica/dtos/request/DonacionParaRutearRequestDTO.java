@@ -11,7 +11,8 @@ import java.util.UUID;
 /**
  * Representa una donación en estado "Asignación Realizada" tal como la
  * envía quien dispara la planificación. No se reutiliza la clase Donacion
- * de servicio-donaciones: logística solo necesita estos campos.
+ * de servicio-donaciones: logística solo necesita el id, la entidad destino
+ * y la dirección de descarga. El donante no viaja en este contrato.
  */
 @Getter
 @Setter
@@ -21,7 +22,6 @@ public class DonacionParaRutearRequestDTO {
     private UUID idDonacion;
     @NotNull
     private UUID idEntidadBeneficiaria;
-    private UUID idDonante;
     @NotNull
     @Valid
     private DireccionRequestDTO direccionEntrega;

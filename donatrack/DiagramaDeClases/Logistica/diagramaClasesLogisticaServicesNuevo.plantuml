@@ -1,15 +1,40 @@
 @startuml diagramaClasesLogisticaServices
 
 skinparam classAttributeIconSize 0
+skinparam linetype ortho
 
 ' ============================ VALIDACIONES ============================
-
 class EntregaValidator {
     + validarTransicion(estadoActual : EstadoEntrega, estadoNuevo : EstadoEntrega) : void
 }
 
-' ============================ SERVICIOS ============================
+' ============================ REPOSITORIOS (Interfaces) ============================
+interface RutaRepositoryInterface {
+    + guardar(ruta : Ruta) : void
+    + buscarPorId(id : UUID) : Ruta
+    + buscarPorCamionId(camionId : UUID) : List<Ruta>
+    + buscarPorEntregaId(entregaId : UUID) : Optional<Ruta>
+}
 
+interface EntregaRepositoryInterface {
+    + guardar(entrega : Entrega) : void
+    + buscarPorId(id : UUID) : Entrega
+    + buscarPorEstado(estado : EstadoEntrega) : List<Entrega>
+}
+
+interface CamionRepositoryInterface {
+    + guardar(camion : Camion) : void
+    + buscarTodos() : List<Camion>
+    + buscarPorId(id : UUID) : Camion
+    + buscarPorIds(ids : List<UUID>) : List<Camion>
+}
+
+interface LotePlanificacionRepositoryInterface {
+    + guardar(lote : LotePlanificacion) : void
+    + buscarPorId(id : UUID) : LotePlanificacion
+}
+
+' ============================ SERVICIOS ============================
 interface CamionServiceInterface {
     + registrar(dto : CamionRequestDTO) : CamionResponseDTO
     + obtenerTodos() : List<CamionResponseDTO>
@@ -33,8 +58,10 @@ interface EntregaServiceInterface {
 
 class EntregaService implements EntregaServiceInterface {
     - repositorio : EntregaRepositoryInterface
+    - rutaRepositorio : RutaRepositoryInterface
     - validador : EntregaValidator
     - eventPublisher : EntregaEventPublisher
+    - planificacionService : PlanificacionServiceInterface
     + obtenerPorId(id : UUID) : EntregaResponseDTO
     + obtenerPorEstado(estado : EstadoEntrega) : List<EntregaResponseDTO>
     + confirmar(id : UUID, dto : ConfirmarEntregaRequestDTO) : void
@@ -49,6 +76,7 @@ interface PlanificacionServiceInterface {
     + obtenerRuta(rutaId : UUID) : RutaResponseDTO
     + obtenerRutaVigentePorCamion(camionId : UUID) : RutaResponseDTO
     + iniciarRuta(rutaId : UUID) : void
+    + finalizarRutaSiCorresponde(rutaId : UUID) : void
 }
 
 class PlanificacionRutasService implements PlanificacionServiceInterface {
@@ -66,10 +94,10 @@ class PlanificacionRutasService implements PlanificacionServiceInterface {
     + obtenerRuta(rutaId : UUID) : RutaResponseDTO
     + obtenerRutaVigentePorCamion(camionId : UUID) : RutaResponseDTO
     + iniciarRuta(rutaId : UUID) : void
+    + finalizarRutaSiCorresponde(rutaId : UUID) : void
 }
 
 ' ============================ INTEGRACION / EVENTOS ============================
-
 interface EstrategiaRuteoPort {
     + solicitarPlanificacion(lote : LotePlanificacion, camiones : List<Camion>) : void
 }
@@ -98,29 +126,24 @@ class N8nLogisticaWebhookListener implements EntregaEventListener {
     + onEvento(evento : EntregaEvento) : void
 }
 
-' ============================ RELACIONES ============================
-
-CamionService ..> Camion
-EntregaService ..> Entrega
+' ============================ RELACIONES DE SERVICIOS ============================
 EntregaService --> EntregaValidator
 EntregaService --> EntregaEventPublisher
+EntregaService --> RutaRepositoryInterface
 
-PlanificacionRutasService ..> LotePlanificacion
-PlanificacionRutasService ..> Ruta
-PlanificacionRutasService ..> Parada
-PlanificacionRutasService ..> DonacionLote
+EntregaService --> PlanificacionServiceInterface
+EntregaService --> EntregaRepositoryInterface
+
 PlanificacionRutasService --> EstrategiaRuteoPort
 PlanificacionRutasService --> EntregaEventPublisher
 PlanificacionRutasService --> EntregaValidator
+PlanificacionRutasService --> LotePlanificacionRepositoryInterface
+PlanificacionRutasService --> RutaRepositoryInterface
+PlanificacionRutasService --> EntregaRepositoryInterface
+PlanificacionRutasService --> CamionRepositoryInterface
 
-EntregaValidator ..> EstadoEntrega
+CamionService --> CamionRepositoryInterface
 
 EntregaEventPublisher --> "*" EntregaEventListener
-EntregaEventPublisher ..> EntregaEvento
-
-N8nLogisticaWebhookListener ..> EntregaEvento
-
-ProveedorRuteoExternoAdapter ..> LotePlanificacion
-ProveedorRuteoExternoAdapter ..> Camion
 
 @enduml

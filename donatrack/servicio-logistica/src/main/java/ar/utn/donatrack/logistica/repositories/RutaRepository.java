@@ -5,6 +5,7 @@ import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,5 +29,12 @@ public class RutaRepository implements RutaRepositoryInterface {
         return storage.values().stream()
                 .filter(r -> r.getCamion() != null && camionId.equals(r.getCamion().getId()))
                 .toList();
+    }
+
+    @Override
+    public Optional<Ruta> buscarPorEntregaId(UUID entregaId) {
+        return storage.values().stream()
+                .filter(ruta -> ruta.buscarParadaPorEntregaId(entregaId).isPresent())
+                .findFirst();
     }
 }

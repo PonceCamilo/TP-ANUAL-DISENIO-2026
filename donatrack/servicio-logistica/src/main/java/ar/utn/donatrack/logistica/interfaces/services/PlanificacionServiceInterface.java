@@ -15,4 +15,5 @@ public interface PlanificacionServiceInterface {
     RutaResponseDTO obtenerRuta(UUID rutaId);
     RutaResponseDTO obtenerRutaVigentePorCamion(UUID camionId);
     void iniciarRuta(UUID rutaId);
+    void finalizarRutaSiCorresponde(UUID rutaId);
 }
