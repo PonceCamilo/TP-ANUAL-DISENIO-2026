@@ -2,6 +2,7 @@ package ar.utn.donatrack.logistica.dtos.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -17,5 +18,5 @@ public class PlanificacionRequestDTO {
     @Valid
     private List<DonacionParaRutearRequestDTO> donaciones;
     @NotEmpty
-    private List<UUID> camionesIds;
+    private List<@NotNull UUID> camionesIds;
 }

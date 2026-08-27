@@ -31,6 +31,10 @@ public class CamionRepository implements CamionRepositoryInterface {
 
     @Override
     public List<Camion> buscarPorIds(List<UUID> ids) {
-        return ids.stream().map(storage::get).filter(java.util.Objects::nonNull).toList();
+        return ids.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(storage::get)
+                .filter(java.util.Objects::nonNull)
+                .toList();
     }
 }
