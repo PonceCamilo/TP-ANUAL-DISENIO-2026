@@ -11,10 +11,15 @@ import java.util.UUID;
 @Getter
 @Setter
 public class PosicionRanking {
-    private UUID donanteId;
+    private Donante donante;
     private int puesto;
     private int misionesCompletadas;
-    private int donacionesMesActual;
-    private int totalDonacionesHistoricas;
-    private LocalDateTime primerDiaDelMes;
+    private LocalDateTime diaDeCreacion;
+
+    public UUID getDonanteId() {
+        if(donante == null) {
+            return null;     // aca podria haber algo mejor
+        }
+        return donante.getId();
+    }
 }

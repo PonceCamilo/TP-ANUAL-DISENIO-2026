@@ -1,0 +1,130 @@
+// ==========================================
+// DBML para dbdiagram.io
+// Servicio de Incentivos
+// Donantes, Misiones, Insignias y Ranking
+// ==========================================
+
+
+Table donante {
+  id_donante uuid [pk]
+  id_categoria int [not null, ref: > categoria_donante.id_categoria]
+  created_at timestamp
+}
+
+
+Table categoria_donante {
+  id_categoria int [pk, increment]
+  nombre varchar(50) [not null, note: 'Colaborador, Sostenedor, Transformador']
+  orden int [not null]
+}
+
+
+Table insignia {
+  id_insignia int [pk, increment]
+  nombre varchar(100) [not null]
+  imagen varchar(255)
+}
+
+
+Table mision {
+  id_mision int [pk, increment]
+  id_categoria int [not null, ref: > categoria_donante.id_categoria]
+  id_insignia int [not null, ref: > insignia.id_insignia]
+  nombre varchar(100) [not null]
+  descripcion text
+  tipo_mision varchar(50) [not null, note: 'Racha, Completitud, HabilDonador, DonacionesExitosas']
+  objetivo int [not null]
+  orden int [not null]
+
+
+  meses_requeridos int [null, note: 'Solo para Racha']
+  categorias_requeridas int [null, note: 'Solo para Completitud']
+  cantidad_bienes_requerida int [null, note: 'Solo para HabilDonador']
+  cantidad_donaciones_requerida int [null, note: 'Solo para DonacionesExitosas']
+
+
+  indexes {
+    (id_categoria, orden) [unique]
+  }
+}
+
+
+Table progreso_mision {
+  id_progreso int [pk, increment]
+  id_donante uuid [not null, ref: > donante.id_donante]
+  id_mision int [not null, ref: > mision.id_mision]
+  progreso_actual int [default: 0]
+  esta_completada boolean [default: false]
+  actualizado_al timestamp
+
+
+  indexes {
+    (id_donante, id_mision) [unique]
+  }
+}
+
+
+Table insignia_obtenida {
+  id_insignia_obtenida int [pk, increment]
+  id_donante uuid [not null, ref: > donante.id_donante]
+  id_insignia int [not null, ref: > insignia.id_insignia]
+  visibilidad boolean [default: true]
+  fecha_obtencion date [not null]
+
+
+  indexes {
+    (id_donante, id_insignia) [unique]
+  }
+}
+
+
+Table donacion_registrada {
+  id_donacion uuid [pk]
+  id_donante uuid [not null, ref: > donante.id_donante]
+  id_entidad_beneficiaria uuid [not null]
+  fecha datetime [not null]
+  cantidad_bienes int [default: 0]
+  exitosa boolean [default: true]
+}
+
+
+Table donacion_categoria {
+  id_donacion uuid [not null, ref: > donacion_registrada.id_donacion]
+  categoria varchar(50) [not null]
+
+
+  indexes {
+    (id_donacion, categoria) [pk]
+  }
+}
+
+
+Table ranking_mensual {
+  id_ranking int [pk, increment]
+  periodo_inicio datetime [not null, note: 'Primer dia del mes a las 00:00:00']
+  fecha_calculo datetime [not null]
+
+
+  indexes {
+    periodo_inicio [unique]
+  }
+}
+
+
+Table posicion_ranking {
+  id_posicion int [pk, increment]
+  id_ranking int [not null, ref: > ranking_mensual.id_ranking]
+  id_donante uuid [not null, ref: > donante.id_donante]
+  puesto int [not null]
+  misiones_completadas int [default: 0]
+  periodo_inicio datetime [not null, note: 'Primer dia del mes a las 00:00:00']
+
+
+  indexes {
+    (id_ranking, id_donante) [unique]
+    (id_ranking, puesto) [unique]
+  }
+}
+
+
+

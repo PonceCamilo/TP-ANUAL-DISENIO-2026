@@ -2,6 +2,7 @@ package ar.utn.donatrack.incentivos.models;
 
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
+import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.misiones.ProgresoMision;
 import lombok.Getter;
 import lombok.Setter;
@@ -14,30 +15,57 @@ import java.util.UUID;
 @Setter
 public class Donante {
     private UUID id;
-    private CategoriaDonante categoria;
+    private CategoriaDonante categoriaActual;
     private List<InsigniaObtenida> insigniasObtenidas = new ArrayList<>();
-    private MetricasDonante metricas = new MetricasDonante();
+    private List<DonacionRegistrada> donaciones = new ArrayList<>();
     private ProgresoMision progresoMision = new ProgresoMision();
-    private RankingMensual rankingMensual;
 
-    public void addInsignia(InsigniaObtenida insignia) {
-        this.insigniasObtenidas.add(insignia);
+    public CategoriaDonante getCategoria() {
+        return categoriaActual;
     }
 
-    public void registrarDonacion(int cantidadBienes, List<String> categoriasDonadas) {
-        this.metricas.registrarDonacion(cantidadBienes, categoriasDonadas);
+    public void setCategoria(CategoriaDonante categoria) {
+        this.categoriaActual = categoria;
     }
 
-    public void registrarOrganizacionAyudada() {
-        this.metricas.registrarDonacionExitosa();
+    public void registrarDonacion(DonacionRegistrada donacion) {
+        this.donaciones.add(donacion);
+    }
+
+    public void completarMision(Mision mision) {
+        agregarInsignia(mision.otorgarInsignia());
     }
 
     public boolean subirCategoria() {
-        CategoriaDonante siguiente = this.categoria.siguienteCategoria();
+        CategoriaDonante siguiente = this.categoriaActual.siguienteCategoria();
         if (siguiente != null) {
-            this.categoria = siguiente;
+            this.categoriaActual = siguiente;
+            cambiarMisionActual(siguiente.primeraMision());
             return true;
         }
         return false;
+    }
+
+    public void agregarInsignia(InsigniaObtenida insignia) {
+        this.insigniasObtenidas.add(insignia);
+    }
+
+    public void cambiarVisibilidadInsignia(UUID idInsignia, boolean visible) {
+        insigniasObtenidas.stream()
+                .filter(insignia -> insignia.getId().equals(idInsignia))
+                .findFirst()
+                .ifPresent(insignia -> insignia.setVisibilidad(visible));
+    }
+
+    public void cambiarMisionActual(Mision mision) {
+        this.progresoMision.cambiarMisionActual(mision);
+    }
+
+    public int misionesCompletadasEnPeriodo(int mes, int anio) {
+        return (int) insigniasObtenidas.stream()
+                .filter(insignia -> insignia.getFechaObtencion() != null)
+                .filter(insignia -> insignia.getFechaObtencion().getMonthValue() == mes)
+                .filter(insignia -> insignia.getFechaObtencion().getYear() == anio)
+                .count();
     }
 }

@@ -1,104 +1,76 @@
 package ar.utn.donatrack.incentivos.models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-@Getter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class MetricasDonante {
-    @Builder.Default
-    private List<EvolucionPeriodo> donaciones = new ArrayList<>();
 
-    public void registrarDonacion(int cantidadBienes, List<String> categoriasDonadas) {
-        donaciones.add(EvolucionPeriodo.builder()
-                .fecha(LocalDate.now())
-                .cantidadBienes(cantidadBienes)
-                .categoriasDonadas(categoriasDonadas == null ? List.of() : List.copyOf(categoriasDonadas))
-                .exitosa(false)
-                .build());
+    public int totalDonacionesHistoricas(Donante donante) {
+        return (int) donante.getDonaciones().stream()
+                .filter(donacion -> !donacion.isExitosa())
+                .count();
     }
 
-    public void registrarDonacionExitosa() {
-        donaciones.add(EvolucionPeriodo.builder()
-                .fecha(LocalDate.now())
-                .cantidadBienes(0)
-                .categoriasDonadas(List.of())
-                .exitosa(true)
-                .build());
+    public int organizacionesAyudadas(Donante donante) {
+        return (int) donante.getDonaciones().stream()
+                .filter(DonacionRegistrada::isExitosa)
+                .map(DonacionRegistrada::getEntidadBeneficiaria)
+                .filter(entidad -> entidad != null && !entidad.isBlank())
+                .distinct()
+                .count();
     }
 
-    public int totalDonacionesHistoricas() {
-        return (int) donaciones.stream().filter(d -> !d.isExitosa()).count();
+    public List<EvolucionPeriodo> evolucionPorPeriodo(Donante donante) {
+        return donante.getDonaciones().stream()
+                .filter(donacion -> !donacion.isExitosa())
+                .collect(Collectors.groupingBy(
+                        donacion -> YearMonth.from(donacion.getFecha()),
+                        Collectors.counting()
+                ))
+                .entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> EvolucionPeriodo.builder()
+                        .anio(entry.getKey().getYear())
+                        .mes(entry.getKey().getMonthValue())
+                        .cantidadDonaciones(entry.getValue().intValue())
+                        .build())
+                .toList();
     }
 
-    public int donacionesExitosas() {
-        return (int) donaciones.stream().filter(EvolucionPeriodo::isExitosa).count();
+    public int donacionesMesActual(Donante donante) {
+        return donacionesEnPeriodo(donante, YearMonth.now());
     }
 
-    public int organizacionesAyudadas() {
-        return donacionesExitosas();
+    public int donacionesExitosas(Donante donante) {
+        return (int) donante.getDonaciones().stream()
+                .filter(DonacionRegistrada::isExitosa)
+                .count();
     }
 
-    public int recordBienesUnicaDonacion() {
-        return donaciones.stream()
-                .mapToInt(EvolucionPeriodo::getCantidadBienes)
+    public int recordBienesUnicaDonacion(Donante donante) {
+        return donante.getDonaciones().stream()
+                .filter(donacion -> !donacion.isExitosa())
+                .mapToInt(DonacionRegistrada::getCantidadBienes)
                 .max()
                 .orElse(0);
     }
 
-    public int categoriasDistintasDonadas() {
+    public int categoriasDistintasDonadas(Donante donante) {
         Set<String> categorias = new HashSet<>();
-        donaciones.forEach(d -> categorias.addAll(d.getCategoriasDonadas()));
+        donante.getDonaciones().stream()
+                .filter(donacion -> !donacion.isExitosa())
+                .forEach(donacion -> categorias.addAll(donacion.getCategorias()));
         return categorias.size();
     }
 
-    public int donacionesMesActual() {
-        YearMonth actual = YearMonth.now();
-        return donacionesEnPeriodo(actual);
-    }
-
-    public int mesesConsecutivosDonando(LocalDate fechaReferencia) {
-        YearMonth cursor = YearMonth.from(fechaReferencia);
-        int meses = 0;
-
-        while (donacionesEnPeriodo(cursor) > 0) {
-            meses++;
-            cursor = cursor.minusMonths(1);
-        }
-
-        return meses;
-    }
-
-    public boolean pasoUnMesCompletoSinDonaciones(LocalDate fechaReferencia) {
-        if (donaciones.isEmpty()) {
-            return false;
-        }
-        YearMonth mesAnterior = YearMonth.from(fechaReferencia).minusMonths(1);
-        YearMonth ultimoMesConDonacion = donaciones.stream()
-                .filter(d -> !d.isExitosa())
-                .map(d -> YearMonth.from(d.getFecha()))
-                .max(Comparator.naturalOrder())
-                .orElse(mesAnterior);
-
-        return ultimoMesConDonacion.isBefore(mesAnterior);
-    }
-
-    private int donacionesEnPeriodo(YearMonth periodo) {
-        return (int) donaciones.stream()
-                .filter(d -> !d.isExitosa())
-                .filter(d -> YearMonth.from(d.getFecha()).equals(periodo))
+    private int donacionesEnPeriodo(Donante donante, YearMonth periodo) {
+        return (int) donante.getDonaciones().stream()
+                .filter(donacion -> !donacion.isExitosa())
+                .filter(donacion -> YearMonth.from(donacion.getFecha()).equals(periodo))
                 .count();
     }
 }

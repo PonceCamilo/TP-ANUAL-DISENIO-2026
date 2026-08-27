@@ -10,11 +10,10 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteReposit
 import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
+import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
-import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,8 +37,8 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
 
     PersonaDonante persona = mapper.toModel(dto);
     persona.setId(UUID.randomUUID());
-    persona.setEstado(EstadoDonante.ACTIVO);
-    persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
+    persona.setEstado(new ActivoState());
+    persona.registrarInteraccion();
 
     repositorio.guardar(persona);
     return persona.getId();
@@ -51,8 +50,8 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
   }
 
   @Override
-  public List<PersonaDonanteResponseDTO> obtenerDonantes(EstadoDonante estado) {
-    List<PersonaDonante> donantes = (estado != null)
+  public List<PersonaDonanteResponseDTO> obtenerDonantes(String estado) {
+    List<PersonaDonante> donantes = (estado != null && !estado.isBlank())
         ? repositorio.obtenerPorEstado(estado)
         : repositorio.obtenerTodosDonantes();
     return donantes.stream().map(mapper::toDTO).toList();
@@ -61,9 +60,8 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
   @Override
   public void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto) {
     PersonaDonante persona = validador.validarYObtenerPersona(id);
-    validador.validarCambioEstado(persona.getEstado(), dto.getEstado(), dto.getJustificacion());
-    repositorio.cambiarEstado(id, dto.getEstado());
-    persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
+    persona.cambiarEstado(dto.getEstado(), dto.getJustificacion());
+    persona.registrarInteraccion();
   }
 
   @Override
@@ -72,7 +70,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     MedioDeContacto medio = mapper.toContacto(dto);
     validador.validarMedioContacto(medio);
     repositorio.modificarMedioContacto(id, medio);
-    persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
+    persona.registrarInteraccion();
   }
 
   @Override
@@ -103,7 +101,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
           .map(mapper::toContacto)
           .collect(Collectors.toCollection(ArrayList::new)));
     }
-    persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
+    persona.registrarInteraccion();
 
     repositorio.guardar(persona);
     return mapper.toDTO(persona);

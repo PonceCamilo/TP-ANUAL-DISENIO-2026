@@ -20,4 +20,8 @@ public class ProgresoMision {
     public int distanciaRestante(Donante donante) {
         return misionActual == null ? 0 : misionActual.restante(donante);
     }
+
+    public void cambiarMisionActual(Mision mision) {
+        this.misionActual = mision;
+    }
 }

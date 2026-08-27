@@ -11,9 +11,12 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class Racha extends Mision {
-    public Racha(String nombre, String descripcion, CategoriaDonante categoriaRequerida,
-                 int mesesRequeridos, Insignia insignia) {
+    private int mesesRequeridos;
+    private ProgresoRacha progresoRacha = new ProgresoRacha();
+
+    public Racha(String nombre, String descripcion, CategoriaDonante categoriaRequerida, int mesesRequeridos, Insignia insignia) {
         super(nombre, descripcion, categoriaRequerida, mesesRequeridos, insignia);
+        this.mesesRequeridos = mesesRequeridos;
     }
 
     public boolean estaCompletada(Donante donante) {
@@ -21,6 +24,10 @@ public class Racha extends Mision {
     }
 
     public int progresoActual(Donante donante) {
-        return donante.getMetricas().mesesConsecutivosDonando(LocalDate.now());
+        return progresoRacha.mesesConsecutivosDonando(donante, LocalDate.now());
+    }
+
+    public boolean perdioProgreso(Donante donante, LocalDate fechaReferencia) {
+        return progresoRacha.pasoUnMesCompletoSinDonaciones(donante, fechaReferencia);
     }
 }

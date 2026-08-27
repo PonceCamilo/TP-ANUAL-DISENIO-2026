@@ -1,16 +1,12 @@
 package ar.utn.donatrack.donaciones.validations.personas;
 
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import lombok.RequiredArgsConstructor;
@@ -53,33 +49,13 @@ public class PersonasValidator {
 
   public void validarEsPersonaJuridica(UUID id) {
     if (!(repositorio.obtenerPersona(id) instanceof PersonaJuridica)) {
-      throw new TipoPersonaIlegalException(id);
+      throw new TipoPersonaIlegalException();
     }
   }
 
   public void validarMedioContacto(MedioDeContacto medio) {
     if (medio == null || medio.getValor() == null || medio.getValor().isBlank()) {
-      throw new MedioContactoInvalidoException(medio == null ? null : medio.getValor());
-    }
-  }
-
-  public void validarCambioEstado(EstadoDonante actual, EstadoDonante nuevo, String justificacion) {
-    if (actual == nuevo) {
-      throw new PersonaConMismoEstadoException(nuevo);
-    }
-
-    if (nuevo == EstadoDonante.BLOQUEADO && (justificacion == null || justificacion.isBlank())) {
-      throw new FaltaJustificacionException("Es obligatorio proveer una justificación para bloquear al donante.");
-    }
-
-    boolean valida = switch (actual) {
-      case ACTIVO -> nuevo == EstadoDonante.INACTIVO || nuevo == EstadoDonante.BLOQUEADO;
-      case INACTIVO -> nuevo == EstadoDonante.ACTIVO;
-      case BLOQUEADO -> nuevo == EstadoDonante.ACTIVO;
-    };
-
-    if (!valida) {
-      throw new CambioEstadoPersonaIlegalException(actual, nuevo);
+      throw new MedioContactoInvalidoException();
     }
   }
 }

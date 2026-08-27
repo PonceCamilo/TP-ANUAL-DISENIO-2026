@@ -6,7 +6,6 @@ import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 
 import java.util.List;
 import java.util.UUID;
@@ -14,7 +13,7 @@ import java.util.UUID;
 public interface PersonaDonanteServiceInterface {
   UUID registrar(PersonaDonanteRequestDTO dto);
   PersonaDonanteResponseDTO obtenerDonante(UUID id);
-  List<PersonaDonanteResponseDTO> obtenerDonantes(EstadoDonante estado);
+  List<PersonaDonanteResponseDTO> obtenerDonantes(String estado);
   void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto);
   void modificarContacto(UUID id, MedioDeContactoRequestDTO dto);
   void modificarRepresentante(UUID id, RepresentanteRequestDTO dto);

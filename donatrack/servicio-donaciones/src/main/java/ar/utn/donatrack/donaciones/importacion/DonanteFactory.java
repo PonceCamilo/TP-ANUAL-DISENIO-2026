@@ -1,11 +1,10 @@
 package ar.utn.donatrack.donaciones.importacion;
 
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
+import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
-import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import org.springframework.stereotype.Component;
 
 /**
@@ -47,8 +46,8 @@ public class DonanteFactory {
         }
 
         // Todo donante importado arranca ACTIVO y con interacción inicial registrada
-        persona.setEstado(EstadoDonante.ACTIVO);
-        persona.setUltimaInteraccion(FechaHoraArgentina.ahora());
+        persona.setEstado(new ActivoState());
+        persona.registrarInteraccion();
         return persona;
     }
 }

@@ -1,7 +1,6 @@
 package ar.utn.donatrack.donaciones.dtos.request;
 
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,8 +8,8 @@ import lombok.Setter;
 @Setter
 public class EstadoDonanteRequestDTO {
 
-  @NotNull
-  private EstadoDonante estado;
+  @NotBlank
+  private String estado;
 
   // Opcional a nivel contrato: PersonasValidator la exige SOLO cuando el nuevo
   // estado es BLOQUEADO. Forzar @NotBlank aquí rechazaría transiciones válidas

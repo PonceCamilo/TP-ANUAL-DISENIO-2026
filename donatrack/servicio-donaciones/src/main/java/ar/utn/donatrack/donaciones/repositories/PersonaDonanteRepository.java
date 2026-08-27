@@ -2,14 +2,12 @@ package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
 import lombok.Getter;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -38,20 +36,6 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
         return almacenamiento.values().stream().toList();
     }
 
-    public void cambiarEstado(UUID id, EstadoDonante nuevoEstado) {
-        PersonaDonante persona = obtenerPersona(id);
-        if (persona != null) {
-            persona.setEstado(nuevoEstado);
-        }
-    }
-
-    public List<PersonaDonante> obtenerInactivosDesde(LocalDateTime fechaLimite) {
-        return almacenamiento.values().stream()
-                .filter(p -> p.getUltimaInteraccion() == null
-                        || p.getUltimaInteraccion().isBefore(fechaLimite))
-                .toList();
-    }
-
     public void modificarMedioContacto(UUID id, MedioDeContacto medio) {
         PersonaDonante persona = obtenerPersona(id);
         if (persona != null) {
@@ -64,10 +48,7 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
     public void modificarRepresentante(UUID idPersonaJuridica, Representante representante) {
         PersonaJuridica persona = (PersonaJuridica) obtenerPersona(idPersonaJuridica);
         if (persona != null) {
-            persona.getRepresentantes()
-                    .removeIf(rep -> rep.getEmail() != null
-                            && rep.getEmail().equalsIgnoreCase(representante.getEmail()));
-            persona.getRepresentantes().add(representante);
+            persona.agregarRepresentante(representante);
         }
     }
 
@@ -84,9 +65,9 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
         return id != null ? almacenamiento.get(id) : null;
     }
 
-    public List<PersonaDonante> obtenerPorEstado(EstadoDonante estado) {
+    public List<PersonaDonante> obtenerPorEstado(String estado) {
         return almacenamiento.values().stream()
-                .filter(p -> p.getEstado() == estado)
+                .filter(p -> p.getEstado().nombre().equals(estado))
                 .toList();
     }
 

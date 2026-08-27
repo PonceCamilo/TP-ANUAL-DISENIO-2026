@@ -5,6 +5,7 @@ import ar.utn.donatrack.incentivos.dtos.request.ProcesarDonacionExitosaRequest;
 import ar.utn.donatrack.incentivos.dtos.response.InsigniaResponse;
 import ar.utn.donatrack.incentivos.dtos.response.MetricasDonanteResponse;
 import ar.utn.donatrack.incentivos.dtos.response.MisionResponse;
+import ar.utn.donatrack.incentivos.models.DonacionRegistrada;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.interfaces.services.IncentivosServiceInterface;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,7 +54,7 @@ public class IncentivosController {
     public ResponseEntity<MetricasDonanteResponse> obtenerMetricas(
             @Parameter(description = "ID del donante", example = "11111111-1111-1111-1111-111111111111")
             @PathVariable UUID id) {
-        Donante donante = service.obtenerMetricas(id);
+        Donante donante = service.obtenerPerfil(id);
         return ResponseEntity.ok(MetricasDonanteResponse.desde(donante, service.obtenerPosicionRankingActual(id)));
     }
 
@@ -67,7 +70,7 @@ public class IncentivosController {
     public ResponseEntity<List<MisionResponse>> obtenerMisiones(
             @Parameter(description = "ID del donante", example = "11111111-1111-1111-1111-111111111111")
             @PathVariable UUID id) {
-        Donante donante = service.obtenerMetricas(id);
+        Donante donante = service.obtenerPerfil(id);
         List<MisionResponse> misiones = service.obtenerMisiones(id)
                 .stream()
                 .map(m -> MisionResponse.desde(m, donante))
@@ -107,10 +110,15 @@ public class IncentivosController {
     public ResponseEntity<String> procesarDonacion(@Valid @RequestBody ProcesarDonacionRequest request) {
         service.procesarDonacion(
                 request.donanteId(),
+                DonacionRegistrada.builder()
+                        .fecha(request.fecha() != null ? request.fecha() : LocalDateTime.now())
+                        .cantidadBienes(request.cantidadBienes())
+                        .categorias(Set.copyOf(request.categoriasDonadas()))
+                        .exitosa(false)
+                        .entidadBeneficiaria(request.entidadBeneficiaria())
+                        .build(),
                 request.destinatario(),
-                request.medio(),
-                request.cantidadBienes(),
-                request.categoriasDonadas()
+                request.medio()
         );
         return ResponseEntity.status(201).body("Donacion registrada en incentivos para el donante " + request.donanteId());
     }
@@ -128,6 +136,13 @@ public class IncentivosController {
     public ResponseEntity<String> procesarDonacionExitosa(@Valid @RequestBody ProcesarDonacionExitosaRequest request) {
         service.procesarDonacionExitosa(
                 request.donanteId(),
+                DonacionRegistrada.builder()
+                        .fecha(request.fecha() != null ? request.fecha() : LocalDateTime.now())
+                        .cantidadBienes(request.cantidadBienes())
+                        .categorias(request.categoriasDonadas() != null ? Set.copyOf(request.categoriasDonadas()) : Set.of())
+                        .exitosa(true)
+                        .entidadBeneficiaria(request.entidadBeneficiaria())
+                        .build(),
                 request.destinatario(),
                 request.medio()
         );

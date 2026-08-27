@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,5 +30,11 @@ public record ProcesarDonacionRequest(
 
         @Schema(description = "Categorias de los bienes donados", example = "[\"ALIMENTOS\", \"ABRIGO\"]")
         @NotEmpty(message = "Debe indicar al menos una categoria donada")
-        List<String> categoriasDonadas
+        List<String> categoriasDonadas,
+
+        @Schema(description = "Fecha de registro de la donacion", example = "2026-06-24T19:07:54")
+        LocalDateTime fecha,
+
+        @Schema(description = "Entidad beneficiaria asociada si ya existe", example = "Comedor Los Pibes")
+        String entidadBeneficiaria
 ) {}

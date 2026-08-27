@@ -1,152 +1,181 @@
-@startuml diagramaClasesIncentivosModel
+@startuml
 
 class Donante {
-    private categoria: CategoriaDonante
-    private insigniasObtenidas: List<InsigniaObtenida>
-    private metricas: MetricasDonante
-    private progresoMision: ProgresoMision
-    private rankingMensual: RankingMensual
-
-    public addInsignia(insignia: InsigniaObtenida): void
-    public registrarDonacion(cantidadBienes: int, categoriasDonadas: List<String>): void
-    public registrarOrganizacionAyudada(): void
-    public subirCategoria(): boolean
-}
-
-
-class MetricasDonante {
-    private donaciones: List<EvolucionPeriodo>
-
-    public registrarDonacion(cantidadBienes: int, categoriasDonadas: List<String>): void
-    public registrarDonacionExitosa(): void
-    public totalDonacionesHistoricas(): int
-    public donacionesExitosas(): int
-    public organizacionesAyudadas(): int
-    public recordBienesUnicaDonacion(): int
-    public categoriasDistintasDonadas(): int
-    public donacionesMesActual(): int
-    public mesesConsecutivosDonando(fechaReferencia: LocalDate): int
-    public pasoUnMesCompletoSinDonaciones(fechaReferencia: LocalDate): boolean
-    private donacionesEnPeriodo(periodo: YearMonth): int
-}
-
-class EvolucionPeriodo {
-    private fecha: LocalDate
-    private cantidadBienes: int
-    private categoriasDonadas: List<String>
-    private exitosa: boolean
-}
-
-class ProgresoMision {
-    private misionActual: Mision
-
-    public completadaPor(donante: Donante): boolean
-    public progresoActual(donante: Donante): int
-    public distanciaRestante(donante: Donante): int
+  - categoriaActual: CategoriaDonante
+  - insigniasObtenidas: List<InsigniaObtenida>
+  - donaciones: List<DonacionRegistrada>
+  - progresoMision: ProgresoMision
+  + registrarDonacion(donacion: DonacionRegistrada): void
+  + completarMision(mision: Mision): void
+  + subirCategoria(): boolean
+  + agregarInsignia(insignia: InsigniaObtenida): void
+  + cambiarVisibilidadInsignia(idInsignia, visible: boolean): void
+  + cambiarMisionActual(mision: Mision): void
+  + misionesCompletadasEnPeriodo(mes: int, anio: int): int
 }
 
 abstract class CategoriaDonante {
-    private nombre: String
-
-    public siguienteCategoria(): CategoriaDonante
+  - nombre: String
+  - orden: int
+  - misiones: List<Mision>
+  + primeraMision(): Mision
+  + siguienteMision(misionActual: Mision): Mision
+  + siguienteCategoria(): CategoriaDonante
 }
 
 class Colaborador {
-    public siguienteCategoria(): CategoriaDonante
+  + siguienteCategoria(): CategoriaDonante
 }
 
 class Sostenedor {
-    public siguienteCategoria(): CategoriaDonante
+  + siguienteCategoria(): CategoriaDonante
 }
 
 class Transformador {
-    public siguienteCategoria(): CategoriaDonante
+  + siguienteCategoria(): CategoriaDonante
 }
 
 abstract class Mision {
-    private nombre: String
-    private descripcion: String
-    private categoriaRequerida: CategoriaDonante
-    private objetivo: int
-    private insignia: Insignia
-
-    public otorgarInsignia(): InsigniaObtenida
-    public progresoActual(donante: Donante): int
-    public restante(donante: Donante): int
-    public estaCompletada(donante: Donante): boolean
+  - nombre: String
+  - descripcion: String
+  - categoriaRequerida: CategoriaDonante
+  - orden: int
+  - insignia: Insignia
+  + otorgarInsignia(): InsigniaObtenida
+  + progresoActual(donante: Donante): int
+  + restante(donante: Donante): int
+  + estaCompletada(donante: Donante): boolean
 }
 
-class DonacionesExitosas {
-    public estaCompletada(donante: Donante): boolean
-    public progresoActual(donante: Donante): int
+class ProgresoMision {
+  - misionActual: Mision
+  + completadaPor(donante: Donante): boolean
+  + progresoActual(donante: Donante): int
+  + distanciaRestante(donante: Donante): int
+  + cambiarMisionActual(mision: Mision): void
 }
 
 class Racha {
-    public estaCompletada(donante: Donante): boolean
-    public progresoActual(donante: Donante): int
+  - mesesRequeridos: int
+  - progresoRacha: ProgresoRacha
+  + progresoActual(donante: Donante): int
+  + estaCompletada(donante: Donante): boolean
+  + perdioProgreso(donante: Donante, fechaReferencia: LocalDate): boolean
 }
 
-class HabilDonador {
-    public estaCompletada(donante: Donante): boolean
-    public progresoActual(donante: Donante): int
+class ProgresoRacha {
+  + mesesConsecutivosDonando(donante: Donante, fechaReferencia: LocalDate): int
+  + pasoUnMesCompletoSinDonaciones(donante: Donante, fechaReferencia: LocalDate): boolean
 }
 
 class Completitud {
-    public estaCompletada(donante: Donante): boolean
-    public progresoActual(donante: Donante): int
+  - categoriasRequeridas: int
+  + progresoActual(donante: Donante): int
+  + estaCompletada(donante: Donante): boolean
+}
+
+class HabilDonador {
+  - cantidadBienesRequerida: int
+  + progresoActual(donante: Donante): int
+  + estaCompletada(donante: Donante): boolean
+}
+
+class DonacionesExitosas {
+  - cantidadDonacionesRequerida: int
+  + progresoActual(donante: Donante): int
+  + estaCompletada(donante: Donante): boolean
 }
 
 class Insignia {
-    private nombre: String
-    private imagen: String
+  - nombre: String
+  - imagen: String
+}
+
+class InsigniaBuilder {
+  - nombre: String
+  - imagen: String
+  + conNombre(nombre: String): InsigniaBuilder
+  + conImagen(imagen: String): InsigniaBuilder
+  + build(): Insignia
 }
 
 class InsigniaObtenida {
-    private insignia: Insignia
-    private visibilidad: boolean
-    private fechaObtencion: LocalDate
+  - insignia: Insignia
+  - visibilidad: boolean
+  - fechaObtencion: LocalDate
 }
 
-class PosicionRanking {
-    private puesto: int
-    private misionesCompletadas: int
-    private donacionesMesActual: int
-    private totalDonacionesHistoricas: int
-    private primerDiaDelMes: LocalDateTime
+class DonacionRegistrada {
+  - fecha: LocalDateTime
+  - categorias: Set<String>
+  - cantidadBienes: int
+  - exitosa: boolean
+  - entidadBeneficiaria: String
 }
 
 class RankingMensual {
-    private mes: int
-    private anio: int
-    private fechaCalculo: LocalDate
-    private posiciones: List<PosicionRanking>
-
-    public top3(): List<PosicionRanking>
-    public posicionDe(donante: UUID): int
+  - periodoInicio: LocalDateTime
+  - fechaCalculo: LocalDateTime
+  - posiciones: List<PosicionRanking>
+  + calcular(donantes: List<Donante>, fechaCalculo: LocalDateTime): RankingMensual
+  + topTres(): List<PosicionRanking>
+  + top3(): List<PosicionRanking>
+  + posicionDe(donanteId): int
 }
 
+class PosicionRanking {
+  - donante: Donante
+  - puesto: int
+  - misionesCompletadas: int
+  - diaDeCreacion: LocalDateTime
+}
+
+class MetricasDonante {
+  + totalDonacionesHistoricas(donante: Donante): int
+  + organizacionesAyudadas(donante: Donante): int
+  + evolucionPorPeriodo(donante: Donante): List<EvolucionPeriodo>
+  + donacionesMesActual(donante: Donante): int
+  + donacionesExitosas(donante: Donante): int
+  + recordBienesUnicaDonacion(donante: Donante): int
+  + categoriasDistintasDonadas(donante: Donante): int
+}
+
+class EvolucionPeriodo {
+  - mes: int
+  - anio: int
+  - cantidadDonaciones: int
+  + incrementarDonaciones(): void
+}
+
+Donante -- CategoriaDonante
+Donante -- ProgresoMision
+Donante -- InsigniaObtenida
+Donante -- DonacionRegistrada
+
+CategoriaDonante -- Mision
 Colaborador --|> CategoriaDonante
 Sostenedor --|> CategoriaDonante
 Transformador --|> CategoriaDonante
 
-DonacionesExitosas --|> Mision
-Racha --|> Mision
-HabilDonador --|> Mision
-Completitud --|> Mision
-
-Donante -- CategoriaDonante
-Donante -- InsigniaObtenida
-Donante -- MetricasDonante
-Donante -- ProgresoMision
-Donante -- RankingMensual
-
-MetricasDonante -- EvolucionPeriodo
 ProgresoMision -- Mision
 
-Mision -- CategoriaDonante
+Racha --|> Mision
+Completitud --|> Mision
+HabilDonador --|> Mision
+DonacionesExitosas --|> Mision
+
 Mision -- Insignia
+
+Racha -- ProgresoRacha
+ProgresoRacha -- Donante
+
+InsigniaBuilder -- Insignia
 InsigniaObtenida -- Insignia
 
 RankingMensual -- PosicionRanking
+PosicionRanking -- Donante
+
+MetricasDonante -- Donante
+MetricasDonante -- EvolucionPeriodo
 
 @enduml

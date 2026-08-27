@@ -37,7 +37,7 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
   public List<Donacion> obtenerPorEstado(String estado) {
     synchronized (donaciones) {
       return donaciones.stream()
-          .filter(d -> d.getEstado().nombre().equals(estado))
+          .filter(d -> d.estaEnEstado(estado))
           .toList();
     }
   }

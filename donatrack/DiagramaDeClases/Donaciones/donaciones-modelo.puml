@@ -3,13 +3,35 @@
 left to right direction
 skinparam linetype ortho
 skinparam classAttributeIconSize 0
-skinparam nodesep 45
-skinparam ranksep 55
+skinparam nodesep 40
+skinparam ranksep 50
+skinparam shadowing false
+skinparam defaultFontName Helvetica
 hide empty members
+
+skinparam class {
+    BackgroundColor White
+    BorderColor #5A5A5A
+    ArrowColor #4A4A4A
+    FontSize 12
+    AttributeFontSize 11
+    BackgroundColor<<enum>> #F5DEB3
+    BorderColor<<enum>> #B8860B
+    BackgroundColor<<abstracta>> #EFEFEF
+    BorderColor<<abstracta>> #5A5A5A
+}
+
+skinparam package {
+    BackgroundColor #FBFBFB
+    BorderColor #9A9A9A
+    FontSize 13
+    FontStyle bold
+    FontColor #444444
+}
 
 package donante {
 
-    abstract class PersonaDonante {
+    abstract class PersonaDonante <<abstracta>> {
         private tipoDocumento: String
         private numeroDocumento: String
         private direccion: Direccion
@@ -50,7 +72,7 @@ package donante {
         private contactos: List<MedioDeContacto>
     }
 
-    abstract class EstadoDonante {
+    abstract class EstadoDonante <<abstracta>> {
         private nombre: String
         private transiciones: Map<String, Supplier<EstadoDonante>>
 
@@ -68,7 +90,7 @@ package donante {
     class BloqueadoState {
     }
 
-    enum Genero {
+    enum Genero <<enum>> {
         MASCULINO
         FEMENINO
         NO_BINARIO
@@ -76,7 +98,7 @@ package donante {
         PREFIERO_NO_DECIR
     }
 
-    enum TipoPersonaJuridica {
+    enum TipoPersonaJuridica <<enum>> {
         GUBERNAMENTAL
         ONG
         EMPRESA
@@ -86,7 +108,7 @@ package donante {
 
 package contacto {
 
-    abstract class MedioDeContacto {
+    abstract class MedioDeContacto <<abstracta>> {
         private valor: String
 
         public tipoNotificacion(): String
@@ -145,7 +167,7 @@ package donacion {
 
     package estado {
 
-        abstract class EstadoDonacionBase {
+        abstract class EstadoDonacionBase <<abstracta>> {
             private nombre: String
             private transiciones: Map<String, Supplier<EstadoDonacionBase>>
 
@@ -184,7 +206,7 @@ package donacion {
 
     package bien {
 
-        abstract class Bien {
+        abstract class Bien <<abstracta>> {
             private subcategoria: Subcategoria
             private descripcion: String
             private foto: String
@@ -228,7 +250,7 @@ package categoria {
         public toString(): String
     }
 
-    enum TipoBien {
+    enum TipoBien <<enum>> {
         PERECIBLE
         CON_ESTADO
         GENERICO
@@ -278,7 +300,7 @@ package entidad {
             public necesidadesCompatiblesCon(subcategoria: String): List<Necesidad>
         }
 
-        abstract class Necesidad {
+        abstract class Necesidad <<abstracta>> {
             private nombre: String
             private descripcion: String
             private fechaRegistro: LocalDate
@@ -303,7 +325,7 @@ package entidad {
             public estaSatisfecha(): boolean
         }
 
-        enum Periodicidad {
+        enum Periodicidad <<enum>> {
             SEMANAL
             MENSUAL
             CUATRIMESTRAL

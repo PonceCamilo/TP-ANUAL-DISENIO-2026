@@ -12,21 +12,25 @@ public abstract class Mision {
     private UUID id = UUID.randomUUID();
     private String nombre;
     private String descripcion;
-    private CategoriaDonante categoriaRequerida;
+    private CategoriaDonante categoriaRequerida; // falto agregar esto al diagrama.
     protected int objetivo;
+    private int orden;  // esto se podria sacar.
     protected Insignia insignia;
 
-    // el constructor esta hecho asi porque al parecer los builders no se llevan muy bien con la herencia
-    protected Mision(String nombre, String descripcion, CategoriaDonante categoriaRequerida,
-                     int objetivo, Insignia insignia) {
+    protected Mision(String nombre, String descripcion, CategoriaDonante categoriaRequerida, int objetivo, Insignia insignia) {
+        this(nombre, descripcion, categoriaRequerida, objetivo, 0, insignia);
+    }
+
+    protected Mision(String nombre, String descripcion, CategoriaDonante categoriaRequerida, int objetivo, int orden, Insignia insignia) {
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.categoriaRequerida = categoriaRequerida;
         this.objetivo = objetivo;
+        this.orden = orden;
         this.insignia = insignia;
     }
 
-    public InsigniaObtenida otorgarInsignia() {
+    public InsigniaObtenida otorgarInsignia() {           // esto falto en el diagrama 
         return new InsigniaObtenida(insignia, true);
     }
 

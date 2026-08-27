@@ -3,9 +3,36 @@
 left to right direction
 skinparam linetype ortho
 skinparam classAttributeIconSize 0
-skinparam nodesep 45
-skinparam ranksep 55
+skinparam nodesep 40
+skinparam ranksep 50
+skinparam shadowing false
+skinparam defaultFontName Helvetica
 hide empty members
+
+skinparam class {
+    BackgroundColor White
+    BorderColor #5A5A5A
+    ArrowColor #4A4A4A
+    FontSize 12
+    AttributeFontSize 11
+    BackgroundColor<<abstracta>> #EFEFEF
+    BorderColor<<abstracta>> #5A5A5A
+    BackgroundColor<<externa>> #BFDFF2
+    BorderColor<<externa>> #2E6E9E
+}
+
+skinparam interface {
+    BackgroundColor #FDF6E3
+    BorderColor #8B7355
+}
+
+skinparam package {
+    BackgroundColor #FBFBFB
+    BorderColor #9A9A9A
+    FontSize 13
+    FontStyle bold
+    FontColor #444444
+}
 
 package interfaces.services {
 
@@ -130,7 +157,7 @@ package services {
 
     package asignacion {
 
-        abstract class AlgoritmoAsignacionBase {
+        abstract class AlgoritmoAsignacionBase <<abstracta>> {
             private TOP_N: int
 
             public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
@@ -220,46 +247,25 @@ SegmentadorDonacionesService --|> SegmentadorDonacionesServiceInterface
 PersonaDonanteService --|> PersonaDonanteServiceInterface
 EntidadesBeneficiariasService --|> EntidadesBeneficiariasServiceInterface
 
-AlgoritmoPrioridadSubAtendidos -- DonacionesRepositoryInterface
 
 AsignacionDonacionesService -- AlgoritmoCompatibilidadSemantica
 AsignacionDonacionesService -- AlgoritmoPrioridadSubAtendidos
 AsignacionDonacionesService -- ResultadoMatchmaking
-AsignacionDonacionesService -- EntidadesBeneficiariasRepositoryInterface
 
 DonacionService -- AsignacionDonacionesService
 DonacionService -- NotificacionClient
 DonacionService -- IncentivosClient
 DonacionService -- DonacionesValidator
 DonacionService -- EntidadesBeneficiariasValidator
-DonacionService -- DonacionesRepositoryInterface
-DonacionService -- DonacionMapper
-DonacionService -- EntidadesBeneficiariasRepositoryInterface
-DonacionService -- EntidadBeneficiariaMapper
-DonacionService -- PersonaDonanteRepositoryInterface
 
 SegmentadorDonacionesService -- IncentivosClient
-SegmentadorDonacionesService -- DonacionesRepositoryInterface
-SegmentadorDonacionesService -- PersonaDonanteRepositoryInterface
 
 PersonaDonanteService -- PersonasValidator
-PersonaDonanteService -- PersonaDonanteRepositoryInterface
-PersonaDonanteService -- PersonaDonanteMapper
 
 EntidadesBeneficiariasService -- EntidadesBeneficiariasValidator
-EntidadesBeneficiariasService -- EntidadesBeneficiariasRepositoryInterface
-EntidadesBeneficiariasService -- EntidadBeneficiariaMapper
-EntidadesBeneficiariasService -- PersonaDonanteMapper
 
 InactividadDonantesService -- NotificacionClient
-InactividadDonantesService -- PersonaDonanteRepositoryInterface
 
-DonacionesValidator -- DonacionesRepositoryInterface
-EntidadesBeneficiariasValidator -- EntidadesBeneficiariasRepositoryInterface
-PersonasValidator -- PersonaDonanteRepositoryInterface
 
-CsvImportService -- PersonaDonanteRepositoryInterface
-CsvImportService -- DonanteCsvRowParser
-CsvImportService -- DonanteFactory
 
 @enduml

@@ -2,6 +2,7 @@ package ar.utn.donatrack.donaciones.exceptions;
 
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
@@ -12,7 +13,6 @@ import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInva
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
@@ -91,7 +91,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(DonacionSinBienesException.class)
   public ResponseEntity<Map<String, Object>> manejarDonacionSinBienes(DonacionSinBienesException ex) {
-    return new ResponseEntity<>(construirCuerpoError(HttpStatus.UNPROCESSABLE_ENTITY, "Unprocessable Entity", ex.getMessage()), HttpStatus.UNPROCESSABLE_ENTITY);
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.CONFLICT, "Conflict", ex.getMessage()), HttpStatus.CONFLICT);
   }
 
   @ExceptionHandler(TipoDesconocidoException.class)
@@ -105,12 +105,12 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(EntidadBeneficiariaNoEncontradaException.class)
-  public ResponseEntity<Map<String, Object>> manejarEntidadBeneficiariaNoEncontrada(EntidadBeneficiariaNoEncontradaException ex) {
+  public ResponseEntity<Map<String, Object>> manejarEntidadBeneficiariaNoEncontrada(ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage()), HttpStatus.NOT_FOUND);
   }
 
   @ExceptionHandler(CampaniaNoEncontradaException.class)
-  public ResponseEntity<Map<String, Object>> manejarCampaniaNoEncontrada(CampaniaNoEncontradaException ex) {
+  public ResponseEntity<Map<String, Object>> manejarCampaniaNoEncontrada(ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage()), HttpStatus.NOT_FOUND);
   }
 
