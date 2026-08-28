@@ -1,0 +1,2658 @@
+{
+  "info": {
+    "name": "DonaTrack - Todos los Servicios - Swagger Completo",
+    "description": "Coleccion unificada para mostrar todos los endpoints expuestos en Swagger, incluyendo CRUD completo de necesidades materiales.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Incentivos",
+      "item": [
+        {
+          "name": "Procesar donacion registrada",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlIncentivos}}/api/incentivos/donantes/donacion",
+              "host": [
+                "{{baseUrlIncentivos}}"
+              ],
+              "path": [
+                "api",
+                "incentivos",
+                "donantes",
+                "donacion"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"donanteId\": \"{{incentivosDonanteId}}\",\n  \"destinatario\": \"{{destinatario}}\",\n  \"medio\": \"EMAIL\",\n  \"cantidadBienes\": 3,\n  \"categoriasDonadas\": [\n    \"ALIMENTOS\",\n    \"ABRIGO\"\n  ],\n  \"fecha\": \"2026-06-24T19:07:54\",\n  \"entidadBeneficiaria\": \"Comedor Los Pibes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener metricas del donante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlIncentivos}}/api/incentivos/donantes/{{incentivosDonanteId}}/metricas",
+              "host": [
+                "{{baseUrlIncentivos}}"
+              ],
+              "path": [
+                "api",
+                "incentivos",
+                "donantes",
+                "{{incentivosDonanteId}}",
+                "metricas"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener misiones del donante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlIncentivos}}/api/incentivos/donantes/{{incentivosDonanteId}}/misiones",
+              "host": [
+                "{{baseUrlIncentivos}}"
+              ],
+              "path": [
+                "api",
+                "incentivos",
+                "donantes",
+                "{{incentivosDonanteId}}",
+                "misiones"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener insignias del donante",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlIncentivos}}/api/incentivos/donantes/{{incentivosDonanteId}}/insignias",
+              "host": [
+                "{{baseUrlIncentivos}}"
+              ],
+              "path": [
+                "api",
+                "incentivos",
+                "donantes",
+                "{{incentivosDonanteId}}",
+                "insignias"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Procesar donacion exitosa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlIncentivos}}/api/incentivos/donantes/donacion-exitosa",
+              "host": [
+                "{{baseUrlIncentivos}}"
+              ],
+              "path": [
+                "api",
+                "incentivos",
+                "donantes",
+                "donacion-exitosa"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"donanteId\": \"{{incentivosDonanteId}}\",\n  \"destinatario\": \"{{destinatario}}\",\n  \"medio\": \"EMAIL\",\n  \"cantidadBienes\": 3,\n  \"categoriasDonadas\": [\n    \"ALIMENTOS\",\n    \"ABRIGO\"\n  ],\n  \"fecha\": \"2026-06-24T19:07:54\",\n  \"entidadBeneficiaria\": \"Comedor Los Pibes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Donaciones",
+      "item": [
+        {
+          "name": "Donantes",
+          "item": [
+            {
+              "name": "Crear donante",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tipo\": \"HUMANA\",\n  \"tipoDocumento\": \"DNI\",\n  \"numeroDocumento\": \"40111222\",\n  \"email\": \"demo{{$timestamp}}@donatrack.com\",\n  \"direccion\": {\n    \"calle\": \"Av Siempre Viva\",\n    \"numero\": 123,\n    \"codigoPostal\": \"1405\",\n    \"localidad\": {\n      \"nombre\": \"CABA\",\n      \"provincia\": {\n        \"nombre\": \"Buenos Aires\"\n      }\n    }\n  },\n  \"medioContactoPredeterminado\": {\n    \"tipo\": \"EMAIL\",\n    \"valor\": \"demo{{$timestamp}}@donatrack.com\"\n  },\n  \"nombre\": \"Demo\",\n  \"apellido\": \"Donante\",\n  \"fechaNacimiento\": \"1999-01-01\",\n  \"genero\": \"FEMENINO\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "const location = pm.response.headers.get('Location');",
+                      "if (location) {",
+                      "  pm.collectionVariables.set('donanteId', location.split('/').filter(Boolean).pop());",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener donantes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  if (Array.isArray(json) && json.length > 0 && json[0].id) pm.collectionVariables.set('donanteId', json[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener donantes por estado",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes?estado=ACTIVO",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes"
+                  ],
+                  "query": [
+                    {
+                      "key": "estado",
+                      "value": "ACTIVO"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener donante por id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes/{{donanteId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes",
+                    "{{donanteId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Actualizar donante",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes/{{donanteId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes",
+                    "{{donanteId}}"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"direccion\": {\n    \"calle\": \"Av Siempre Viva\",\n    \"numero\": 123,\n    \"codigoPostal\": \"1405\",\n    \"localidad\": {\n      \"nombre\": \"CABA\",\n      \"provincia\": {\n        \"nombre\": \"Buenos Aires\"\n      }\n    }\n  },\n  \"contactos\": [\n    {\n      \"tipo\": \"EMAIL\",\n      \"valor\": \"demo{{$timestamp}}@donatrack.com\"\n    }\n  ],\n  \"nombre\": \"Demo Actualizada\",\n  \"apellido\": \"Donante\",\n  \"fechaNacimiento\": \"1999-01-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  const item = Array.isArray(json) ? json[0] : json;",
+                      "  if (item && item.id) pm.collectionVariables.set('donanteId', item.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cambiar estado del donante",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes/{{donanteId}}/estado",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes",
+                    "{{donanteId}}",
+                    "estado"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"estado\": \"ACTIVO\",\n  \"justificacion\": \"Demo Postman\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Modificar contacto del donante",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes/{{donanteId}}/contactos",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes",
+                    "{{donanteId}}",
+                    "contactos"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tipo\": \"EMAIL\",\n  \"valor\": \"demo{{$timestamp}}@donatrack.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Modificar representante del donante",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes/{{donanteId}}/representantes",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes",
+                    "{{donanteId}}",
+                    "representantes"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"apellido\": \"Perez\",\n  \"email\": \"ana.perez@donatrack.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Importar donantes por CSV",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes/import",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes",
+                    "import"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Seleccionar un archivo CSV de donantes antes de ejecutar."
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Eliminar donante",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donantes/{{donanteId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donantes",
+                    "{{donanteId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Entidades Beneficiarias",
+          "item": [
+            {
+              "name": "Crear entidad beneficiaria",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"razonSocial\": \"Comedor Los Pibes\",\n  \"direccion\": {\n    \"calle\": \"Medrano\",\n    \"numero\": 951,\n    \"codigoPostal\": \"C1179\",\n    \"localidad\": {\n      \"nombre\": \"CABA\",\n      \"provincia\": {\n        \"nombre\": \"Buenos Aires\"\n      }\n    }\n  },\n  \"contactos\": [\n    {\n      \"tipo\": \"EMAIL\",\n      \"valor\": \"comedor@donatrack.com\"\n    }\n  ],\n  \"representantes\": [\n    {\n      \"nombre\": \"Ana\",\n      \"apellido\": \"Perez\",\n      \"email\": \"ana.perez@donatrack.com\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "const location = pm.response.headers.get('Location');",
+                      "if (location) {",
+                      "  pm.collectionVariables.set('entidadId', location.split('/').filter(Boolean).pop());",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener entidades beneficiarias",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  if (Array.isArray(json) && json.length > 0 && json[0].id) pm.collectionVariables.set('entidadId', json[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener entidad beneficiaria por id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Actualizar entidad beneficiaria",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"razonSocial\": \"Comedor Los Pibes\",\n  \"direccion\": {\n    \"calle\": \"Medrano\",\n    \"numero\": 951,\n    \"codigoPostal\": \"C1179\",\n    \"localidad\": {\n      \"nombre\": \"CABA\",\n      \"provincia\": {\n        \"nombre\": \"Buenos Aires\"\n      }\n    }\n  },\n  \"contactos\": [\n    {\n      \"tipo\": \"EMAIL\",\n      \"valor\": \"comedor@donatrack.com\"\n    }\n  ],\n  \"representantes\": [\n    {\n      \"nombre\": \"Ana\",\n      \"apellido\": \"Perez\",\n      \"email\": \"ana.perez@donatrack.com\"\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Crear campaña para entidad",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}/campanias",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}",
+                    "campanias"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"descripcionGeneral\": \"Campania alimentos invierno\",\n  \"fechaInicio\": \"2026-08-27\",\n  \"fechaFin\": \"2026-12-31\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "const location = pm.response.headers.get('Location');",
+                      "if (location) {",
+                      "  pm.collectionVariables.set('campaniaId', location.split('/').filter(Boolean).pop());",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Agregar necesidad extraordinaria a campaña",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}/campanias/{{campaniaId}}/necesidades",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}",
+                    "campanias",
+                    "{{campaniaId}}",
+                    "necesidades"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tipo\": \"EXTRAORDINARIA\",\n  \"nombre\": \"Alimentos\",\n  \"descripcion\": \"Necesidad de alimentos no perecederos\",\n  \"cantidadObjetivo\": 20\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  const item = Array.isArray(json) ? json[0] : json;",
+                      "  if (item && item.id) pm.collectionVariables.set('necesidadId', item.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Agregar necesidad recurrente a campaña",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}/campanias/{{campaniaId}}/necesidades",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}",
+                    "campanias",
+                    "{{campaniaId}}",
+                    "necesidades"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tipo\": \"RECURRENTE\",\n  \"nombre\": \"Leche mensual\",\n  \"descripcion\": \"Necesidad mensual de leche larga vida\",\n  \"cantidadObjetivo\": 12,\n  \"periodo\": \"MENSUAL\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  const item = Array.isArray(json) ? json[0] : json;",
+                      "  if (item && item.id) pm.collectionVariables.set('necesidadId', item.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar necesidades de campania",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}/campanias/{{campaniaId}}/necesidades",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}",
+                    "campanias",
+                    "{{campaniaId}}",
+                    "necesidades"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  if (Array.isArray(json) && json.length > 0 && json[0].id) pm.collectionVariables.set('necesidadId', json[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener necesidad por id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}/campanias/{{campaniaId}}/necesidades/{{necesidadId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}",
+                    "campanias",
+                    "{{campaniaId}}",
+                    "necesidades",
+                    "{{necesidadId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Actualizar necesidad",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}/campanias/{{campaniaId}}/necesidades/{{necesidadId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}",
+                    "campanias",
+                    "{{campaniaId}}",
+                    "necesidades",
+                    "{{necesidadId}}"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"tipo\": \"EXTRAORDINARIA\",\n  \"nombre\": \"Alimentos actualizados\",\n  \"descripcion\": \"Necesidad actualizada desde Postman\",\n  \"cantidadObjetivo\": 30\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  const item = Array.isArray(json) ? json[0] : json;",
+                      "  if (item && item.id) pm.collectionVariables.set('necesidadId', item.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Eliminar necesidad",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}/campanias/{{campaniaId}}/necesidades/{{necesidadId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}",
+                    "campanias",
+                    "{{campaniaId}}",
+                    "necesidades",
+                    "{{necesidadId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Eliminar entidad beneficiaria",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/entidades/{{entidadId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "entidades",
+                    "{{entidadId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Donaciones",
+          "item": [
+            {
+              "name": "Registrar donacion",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idDonante\": \"{{donanteId}}\",\n  \"descripcion\": \"Donacion demo integrada\",\n  \"bienes\": [\n    {\n      \"subcategoria\": \"Alimentos\",\n      \"descripcion\": \"Fideos secos\",\n      \"foto\": \"fideos.png\",\n      \"cantidad\": 1,\n      \"unidad\": \"paquete\",\n      \"esNuevo\": true\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  const item = Array.isArray(json) ? json[0] : json;",
+                      "  if (item && item.id) pm.collectionVariables.set('donacionId', item.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar donaciones",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  if (Array.isArray(json) && json.length > 0 && json[0].id) pm.collectionVariables.set('donacionId', json[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar donaciones por estado",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones?estado=EN_DEPOSITO",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones"
+                  ],
+                  "query": [
+                    {
+                      "key": "estado",
+                      "value": "EN_DEPOSITO"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar donaciones por donante",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones?idDonante={{donanteId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones"
+                  ],
+                  "query": [
+                    {
+                      "key": "idDonante",
+                      "value": "{{donanteId}}"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar donaciones por subcategoria",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones?subcategoria=Alimentos",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones"
+                  ],
+                  "query": [
+                    {
+                      "key": "subcategoria",
+                      "value": "Alimentos"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener donacion por id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones/{{donacionId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones",
+                    "{{donacionId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Modificar bien de donacion",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones/{{donacionId}}/bien",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones",
+                    "{{donacionId}}",
+                    "bien"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"subcategoria\": \"Alimentos\",\n  \"descripcion\": \"Arroz actualizado\",\n  \"foto\": \"arroz.png\",\n  \"cantidad\": 2,\n  \"unidad\": \"paquete\",\n  \"esNuevo\": true,\n  \"fechaVencimiento\": \"2027-01-31\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener candidatos para asignacion",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones/{{donacionId}}/candidatos",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones",
+                    "{{donacionId}}",
+                    "candidatos"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Asignar donacion a entidad",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones/{{donacionId}}/asignar",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones",
+                    "{{donacionId}}",
+                    "asignar"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idEntidadBeneficiaria\": \"{{entidadId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cambiar estado a lista para entregar",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones/{{donacionId}}/estado",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones",
+                    "{{donacionId}}",
+                    "estado"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"estado\": \"LISTA_PARA_ENTREGAR\",\n  \"nombreTransicion\": \"Asignacion confirmada\",\n  \"justificacion\": \"Demo Postman\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cambiar estado a en traslado",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones/{{donacionId}}/estado",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones",
+                    "{{donacionId}}",
+                    "estado"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"estado\": \"EN_TRASLADO\",\n  \"nombreTransicion\": \"Ruta iniciada\",\n  \"justificacion\": \"Demo Postman\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cambiar estado a entregada",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones/{{donacionId}}/estado",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones",
+                    "{{donacionId}}",
+                    "estado"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"estado\": \"ENTREGADA\",\n  \"nombreTransicion\": \"Entrega exitosa\",\n  \"justificacion\": \"Demo Postman\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Eliminar donacion",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones/{{donacionId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones",
+                    "{{donacionId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Eventos Logistica",
+          "item": [
+            {
+              "name": "Recibir inicio de ruta",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/logistica/eventos/inicio-ruta",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "logistica",
+                    "eventos",
+                    "inicio-ruta"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idRuta\": \"{{rutaId}}\",\n  \"idsDonaciones\": [\n    \"{{donacionId}}\"\n  ],\n  \"urlMapaInteractivo\": \"https://maps.example.com/ruta-demo\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Recibir entrega exitosa",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/logistica/eventos/entrega-exitosa",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "logistica",
+                    "eventos",
+                    "entrega-exitosa"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idDonacion\": \"{{donacionId}}\",\n  \"idCamion\": \"{{camionId}}\",\n  \"patenteCamion\": \"AB123CD\",\n  \"fechaHoraEntrega\": \"2026-08-27T12:00:00\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Recibir entrega fallida",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/logistica/eventos/entrega-fallida",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "logistica",
+                    "eventos",
+                    "entrega-fallida"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"idDonacion\": \"{{donacionId}}\",\n  \"motivoFallo\": \"Entidad ausente\",\n  \"replanificable\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Logistica",
+      "item": [
+        {
+          "name": "Camiones",
+          "item": [
+            {
+              "name": "Registrar camion",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/camiones",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "camiones"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"patente\": \"AB123CD\",\n  \"capacidadVolumenM3\": 30,\n  \"alturaM\": 3.2,\n  \"capacidadCargaKg\": 2500\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  const item = Array.isArray(json) ? json[0] : json;",
+                      "  if (item && item.id) pm.collectionVariables.set('camionId', item.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener camiones",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/camiones",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "camiones"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  if (Array.isArray(json) && json.length > 0 && json[0].id) pm.collectionVariables.set('camionId', json[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener camion por id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/camiones/{{camionId}}",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "camiones",
+                    "{{camionId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener ruta asignada a camion",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/camiones/{{camionId}}/ruta",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "camiones",
+                    "{{camionId}}",
+                    "ruta"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Planificaciones",
+          "item": [
+            {
+              "name": "Planificar rutas",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/planificaciones",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "planificaciones"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"donaciones\": [\n    {\n      \"idDonacion\": \"{{logisticaDonacionId}}\",\n      \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n      \"direccionEntrega\": {\n        \"calle\": \"Medrano\",\n        \"numero\": 951,\n        \"localidad\": \"CABA\",\n        \"provincia\": \"Buenos Aires\",\n        \"codigoPostal\": \"C1179\"\n      }\n    }\n  ],\n  \"camionesIds\": [\n    \"{{camionId}}\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  const item = Array.isArray(json) ? json[0] : json;",
+                      "  if (item && item.id) pm.collectionVariables.set('loteId', item.id);",
+                      "  if (item && item.rutas && item.rutas.length && item.rutas[0].id) pm.collectionVariables.set('rutaId', item.rutas[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Obtener lote de planificacion",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/planificaciones/{{loteId}}",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "planificaciones",
+                    "{{loteId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Callback proveedor externo",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/planificaciones/callback",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "planificaciones",
+                    "callback"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"loteId\": \"{{loteId}}\",\n  \"tokenCorrelacion\": \"{{tokenCorrelacion}}\",\n  \"rutas\": [\n    {\n      \"camionId\": \"{{camionId}}\",\n      \"paradas\": [\n        {\n          \"orden\": 1,\n          \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n          \"direccion\": {\n            \"calle\": \"Medrano\",\n            \"numero\": 951,\n            \"localidad\": \"CABA\",\n            \"provincia\": \"Buenos Aires\",\n            \"codigoPostal\": \"C1179\"\n          },\n          \"donacionesIds\": [\n            \"{{logisticaDonacionId}}\"\n          ]\n        }\n      ]\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Rutas",
+          "item": [
+            {
+              "name": "Obtener ruta por id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaId}}",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "rutas",
+                    "{{rutaId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Iniciar ruta",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaId}}/iniciar",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "rutas",
+                    "{{rutaId}}",
+                    "iniciar"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Entregas",
+          "item": [
+            {
+              "name": "Obtener entrega por id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaId}}",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "entregas",
+                    "{{entregaId}}"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar entregas",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/entregas",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "entregas"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Listar entregas por estado",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/entregas?estado=NO_RECIBIDA",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "entregas"
+                  ],
+                  "query": [
+                    {
+                      "key": "estado",
+                      "value": "NO_RECIBIDA"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Confirmar entrega",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaId}}/confirmar",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "entregas",
+                    "{{entregaId}}",
+                    "confirmar"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"fotosComprobante\": [\n    \"https://example.com/comprobante-entrega.jpg\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Marcar entrega no recibida",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaId}}/no-recibida",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "entregas",
+                    "{{entregaId}}",
+                    "no-recibida"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"motivo\": \"ENTIDAD_AUSENTE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Registrar regreso a deposito",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaId}}/regreso-deposito",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "entregas",
+                    "{{entregaId}}",
+                    "regreso-deposito"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Proveedor Ruteo Mock",
+          "item": [
+            {
+              "name": "Planificar en proveedor mock",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/ruteo/planificar",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "ruteo",
+                    "planificar"
+                  ]
+                },
+                "description": "",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"loteId\": \"{{loteId}}\",\n  \"tokenCorrelacion\": \"{{tokenCorrelacion}}\",\n  \"donaciones\": [\n    {\n      \"idDonacion\": \"{{logisticaDonacionId}}\",\n      \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n      \"direccionEntrega\": {\n        \"calle\": \"Medrano\",\n        \"numero\": 951,\n        \"localidad\": \"CABA\",\n        \"provincia\": \"Buenos Aires\",\n        \"codigoPostal\": \"C1179\"\n      }\n    }\n  ],\n  \"camiones\": [\n    {\n      \"id\": \"{{camionId}}\",\n      \"patente\": \"AB123CD\",\n      \"capacidadVolumenM3\": 30,\n      \"alturaM\": 3.2,\n      \"capacidadCargaKg\": 2500\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones",
+      "item": [
+        {
+          "name": "Enviar notificacion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlNotificaciones}}/notificaciones",
+              "host": [
+                "{{baseUrlNotificaciones}}"
+              ],
+              "path": [
+                "notificaciones"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destinatario\": \"test@donatrack.com\",\n  \"mensaje\": \"Notificacion de prueba desde Postman\",\n  \"medio\": \"EMAIL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotificaciones}}/notificaciones",
+              "host": [
+                "{{baseUrlNotificaciones}}"
+              ],
+              "path": [
+                "notificaciones"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});",
+                  "if (pm.response.text()) {",
+                  "  const json = pm.response.json();",
+                  "  if (Array.isArray(json) && json.length > 0 && json[0].id) pm.collectionVariables.set('notificacionId', json[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener notificacion por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotificaciones}}/notificaciones/{{notificacionId}}",
+              "host": [
+                "{{baseUrlNotificaciones}}"
+              ],
+              "path": [
+                "notificaciones",
+                "{{notificacionId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrlIncentivos",
+      "value": "http://localhost:8083"
+    },
+    {
+      "key": "incentivosDonanteId",
+      "value": "11111111-1111-1111-1111-111111111111"
+    },
+    {
+      "key": "destinatario",
+      "value": "test@donatrack.com"
+    },
+    {
+      "key": "baseUrlDonaciones",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "donanteId",
+      "value": "11111111-1111-1111-1111-111111111111"
+    },
+    {
+      "key": "entidadId",
+      "value": "33333333-3333-3333-3333-333333333333"
+    },
+    {
+      "key": "campaniaId",
+      "value": ""
+    },
+    {
+      "key": "necesidadId",
+      "value": ""
+    },
+    {
+      "key": "donacionId",
+      "value": "22222222-2222-2222-2222-222222222222"
+    },
+    {
+      "key": "baseUrlLogistica",
+      "value": "http://localhost:8085"
+    },
+    {
+      "key": "camionId",
+      "value": "66666666-6666-6666-6666-666666666666"
+    },
+    {
+      "key": "loteId",
+      "value": ""
+    },
+    {
+      "key": "tokenCorrelacion",
+      "value": "PEGAR_TOKEN_DESDE_LOGS"
+    },
+    {
+      "key": "rutaId",
+      "value": "55555555-5555-5555-5555-555555555555"
+    },
+    {
+      "key": "entregaId",
+      "value": "11111111-1111-1111-1111-111111111111"
+    },
+    {
+      "key": "logisticaDonacionId",
+      "value": "22222222-2222-2222-2222-222222222222"
+    },
+    {
+      "key": "logisticaEntidadId",
+      "value": "33333333-3333-3333-3333-333333333333"
+    },
+    {
+      "key": "baseUrlNotificaciones",
+      "value": "http://localhost:8084"
+    },
+    {
+      "key": "notificacionId",
+      "value": ""
+    }
+  ]
+}
