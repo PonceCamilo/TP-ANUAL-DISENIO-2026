@@ -8,6 +8,7 @@ import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadRecurrente;
 import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CambioTipoNecesidadException;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -59,7 +60,7 @@ public class EntidadBeneficiariaMapper {
         return campania;
     }
 
-    private CampaniaResponseDTO toCampaniaDTO(Campania campania) {
+    public CampaniaResponseDTO toCampaniaDTO(Campania campania) {
         return CampaniaResponseDTO.builder()
                 .idCampania(campania.getIdCampania())
                 .idEntidad(campania.getIdEntidad())
@@ -97,6 +98,43 @@ public class EntidadBeneficiariaMapper {
             necesidad.setFechaInicioPeriodo(FechaHoraArgentina.hoy());
 
             return necesidad;
+        }
+        throw new TipoDesconocidoException("necesidad");
+    }
+
+    /**
+     * Aplica los datos del DTO sobre una necesidad ya existente (PUT).
+     *
+     * No se permite cambiar el tipo: si el DTO no corresponde a la clase concreta
+     * de la necesidad, se rechaza. Tampoco se toca cantidadRecibida (la registra
+     * el flujo de donaciones, no una edición) ni fechaInicioPeriodo, para no
+     * reiniciar el período en curso de una recurrente.
+     */
+    public void actualizarNecesidadDesde(Necesidad necesidad, NecesidadRequestDTO dto) {
+        if (necesidad instanceof NecesidadExtraordinaria && dto instanceof NecesidadExtraordinariaRequestDTO) {
+            aplicarCamposComunes(necesidad, dto);
+
+        } else if (necesidad instanceof NecesidadRecurrente recu && dto instanceof NecesidadRecurrenteRequestDTO recuDto) {
+            aplicarCamposComunes(recu, recuDto);
+            recu.setPeriodo(recuDto.getPeriodo());
+
+        } else {
+            throw new CambioTipoNecesidadException(nombreTipo(necesidad), nombreTipo(dto));
+        }
+    }
+
+    private void aplicarCamposComunes(Necesidad necesidad, NecesidadRequestDTO dto) {
+        necesidad.setNombre(dto.getNombre());
+        necesidad.setDescripcion(dto.getDescripcion());
+        necesidad.setCantidadObjetivo(dto.getCantidadObjetivo());
+    }
+
+    private String nombreTipo(Object necesidadODto) {
+        if (necesidadODto instanceof NecesidadExtraordinaria || necesidadODto instanceof NecesidadExtraordinariaRequestDTO) {
+            return "EXTRAORDINARIA";
+        }
+        if (necesidadODto instanceof NecesidadRecurrente || necesidadODto instanceof NecesidadRecurrenteRequestDTO) {
+            return "RECURRENTE";
         }
         throw new TipoDesconocidoException("necesidad");
     }

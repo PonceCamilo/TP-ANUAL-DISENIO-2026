@@ -6,9 +6,11 @@ import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificac
 import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CambioTipoNecesidadException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
@@ -112,6 +114,16 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(CampaniaNoEncontradaException.class)
   public ResponseEntity<Map<String, Object>> manejarCampaniaNoEncontrada(ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage()), HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(NecesidadNoEncontradaException.class)
+  public ResponseEntity<Map<String, Object>> manejarNecesidadNoEncontrada(NecesidadNoEncontradaException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage()), HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(CambioTipoNecesidadException.class)
+  public ResponseEntity<Map<String, Object>> manejarCambioTipoNecesidad(CambioTipoNecesidadException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
   }
 
   @ExceptionHandler(FechasCampaniaInvalidasException.class)

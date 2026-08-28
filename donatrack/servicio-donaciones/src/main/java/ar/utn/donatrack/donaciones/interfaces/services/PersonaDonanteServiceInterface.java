@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface PersonaDonanteServiceInterface {
-  UUID registrar(PersonaDonanteRequestDTO dto);
+  PersonaDonanteResponseDTO registrar(PersonaDonanteRequestDTO dto);
   PersonaDonanteResponseDTO obtenerDonante(UUID id);
   List<PersonaDonanteResponseDTO> obtenerDonantes(String estado);
   void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto);

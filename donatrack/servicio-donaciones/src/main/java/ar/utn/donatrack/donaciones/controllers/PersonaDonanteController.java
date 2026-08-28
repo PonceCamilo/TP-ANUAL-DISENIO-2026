@@ -54,12 +54,12 @@ public class PersonaDonanteController {
   }
 
   @PostMapping
-  public ResponseEntity<Void> registrarDonante(
+  public ResponseEntity<PersonaDonanteResponseDTO> registrarDonante(
       @RequestBody @Valid PersonaDonanteRequestDTO dto
   ) {
-    UUID id = personaDonanteService.registrar(dto);
-    URI location = URI.create("/donantes/" + id);
-    return ResponseEntity.created(location).build();
+    PersonaDonanteResponseDTO donanteCreado = personaDonanteService.registrar(dto);
+    URI location = URI.create("/donantes/" + donanteCreado.getId());
+    return ResponseEntity.created(location).body(donanteCreado);
   }
 
   @PutMapping("/{id}")

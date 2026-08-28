@@ -32,7 +32,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
   private final PersonaDonanteMapper mapper;
 
   @Override
-  public UUID registrar(PersonaDonanteRequestDTO dto) {
+  public PersonaDonanteResponseDTO registrar(PersonaDonanteRequestDTO dto) {
     validador.validarEmail(dto.getEmail());
 
     PersonaDonante persona = mapper.toModel(dto);
@@ -41,7 +41,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     persona.registrarInteraccion();
 
     repositorio.guardar(persona);
-    return persona.getId();
+    return mapper.toDTO(persona);
   }
 
   @Override

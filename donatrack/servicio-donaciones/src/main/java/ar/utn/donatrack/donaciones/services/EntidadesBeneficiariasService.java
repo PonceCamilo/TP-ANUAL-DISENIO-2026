@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.services;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.CampaniaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.NecesidadResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
@@ -29,10 +30,10 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
     private final EntidadBeneficiariaMapper mapper;
     private final PersonaDonanteMapper dependenciasMapper;
 
-    public UUID guardar(EntidadBeneficiariaRequestDTO dto) {
+    public EntidadBeneficiariaResponseDTO guardar(EntidadBeneficiariaRequestDTO dto) {
         EntidadBeneficiaria entidad = mapper.toModel(dto);
         repositorio.guardar(entidad);
-        return entidad.getId();
+        return mapper.toDTO(entidad);
     }
 
     public List<EntidadBeneficiariaResponseDTO> obtenerTodas() {
@@ -69,7 +70,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
     }
 
     // NUEVO REQUERIDO: Crear Campaña dentro de Entidad
-    public UUID agregarCampaniaAEntidad(UUID idEntidad, CampaniaRequestDTO dto) {
+    public CampaniaResponseDTO agregarCampaniaAEntidad(UUID idEntidad, CampaniaRequestDTO dto) {
         validador.validarExistenciaEntidad(idEntidad);
         validador.validarFechasCampania(dto.getFechaInicio(), dto.getFechaFin());
 
@@ -79,7 +80,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         entidad.agregarCampania(nuevaCampania);
         repositorio.guardar(entidad);
 
-        return nuevaCampania.getIdCampania();
+        return mapper.toCampaniaDTO(nuevaCampania);
     }
 
     // ACTUALIZADO CON DTO
@@ -90,10 +91,49 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
 
         // Transformamos el DTO a la Necesidad real de forma segura
         Necesidad nuevaNecesidad = mapper.toNecesidadModel(dto);
-        campaniaTarget.getNecesidades().add(nuevaNecesidad);
+        campaniaTarget.agregarNecesidad(nuevaNecesidad);
 
         repositorio.guardar(entidad);
 
         return mapper.toNecesidadDTO(nuevaNecesidad);
+    }
+
+    public List<NecesidadResponseDTO> obtenerNecesidadesDeCampania(UUID entidadId, UUID campaniaId) {
+        EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
+        Campania campania = validador.validarYObtenerCampania(entidad, campaniaId);
+
+        return campania.getNecesidades().stream().map(mapper::toNecesidadDTO).toList();
+    }
+
+    public NecesidadResponseDTO obtenerNecesidad(UUID entidadId, UUID campaniaId, UUID necesidadId) {
+        EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
+        Campania campania = validador.validarYObtenerCampania(entidad, campaniaId);
+
+        return mapper.toNecesidadDTO(validador.validarYObtenerNecesidad(campania, necesidadId));
+    }
+
+    public NecesidadResponseDTO actualizarNecesidad(UUID entidadId, UUID campaniaId, UUID necesidadId,
+                                                    NecesidadRequestDTO dto) {
+        EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
+        Campania campania = validador.validarYObtenerCampania(entidad, campaniaId);
+        Necesidad necesidad = validador.validarYObtenerNecesidad(campania, necesidadId);
+
+        // Rechaza el cambio de tipo (EXTRAORDINARIA <-> RECURRENTE)
+        mapper.actualizarNecesidadDesde(necesidad, dto);
+
+        repositorio.guardar(entidad);
+
+        return mapper.toNecesidadDTO(necesidad);
+    }
+
+    public void eliminarNecesidad(UUID entidadId, UUID campaniaId, UUID necesidadId) {
+        EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
+        Campania campania = validador.validarYObtenerCampania(entidad, campaniaId);
+
+        // Valida primero para responder 404 si no existe, en vez de un borrado silencioso
+        validador.validarYObtenerNecesidad(campania, necesidadId);
+        campania.eliminarNecesidad(necesidadId);
+
+        repositorio.guardar(entidad);
     }
 }

@@ -6,6 +6,7 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -30,6 +31,17 @@ public class Campania {
 
     public void agregarNecesidad(Necesidad necesidad) {
         necesidades.add(necesidad);
+    }
+
+    public Optional<Necesidad> buscarNecesidad(UUID necesidadId) {
+        return necesidades.stream()
+                .filter(necesidad -> necesidad.getId().equals(necesidadId))
+                .findFirst();
+    }
+
+    /** Devuelve true si la necesidad existía y fue eliminada. */
+    public boolean eliminarNecesidad(UUID necesidadId) {
+        return necesidades.removeIf(necesidad -> necesidad.getId().equals(necesidadId));
     }
 
     public List<Necesidad> necesidadesCompatiblesCon(String subcategoria) {

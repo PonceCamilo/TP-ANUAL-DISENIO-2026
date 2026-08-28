@@ -3,9 +3,11 @@ package ar.utn.donatrack.donaciones.validations.entidades;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -38,6 +40,12 @@ public class EntidadesBeneficiariasValidator {
                 .filter(c -> c.getIdCampania().equals(campaniaId))
                 .findFirst()
                 .orElseThrow(() -> new CampaniaNoEncontradaException(campaniaId, entidad.getId()));
+    }
+
+    /** Recupera la necesidad dentro de la campaña o lanza la excepción de dominio si no existe. */
+    public Necesidad validarYObtenerNecesidad(Campania campania, UUID necesidadId) {
+        return campania.buscarNecesidad(necesidadId)
+                .orElseThrow(() -> new NecesidadNoEncontradaException(necesidadId, campania.getIdCampania()));
     }
 
     public void validarFechasCampania(LocalDate inicio, LocalDate fin) {
