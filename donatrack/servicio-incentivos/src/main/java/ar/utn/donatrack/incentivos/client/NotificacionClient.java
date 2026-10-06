@@ -1,54 +1,33 @@
 package ar.utn.donatrack.incentivos.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import ar.utn.donatrack.incentivos.config.RabbitMQConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Map;
 
 /**
- * Cliente HTTP que llama al servicio-notificaciones (puerto 8084).
- * servicio-incentivos → POST /notificaciones → servicio-notificaciones
- * Si el servicio de notificaciones no está levantado, loguea el error
- * pero NO frena el flujo de incentivos.
+ * Publica solicitudes de notificación en la cola de RabbitMQ.
+ * servicio-incentivos → cola RabbitMQ → servicio-notificaciones consume.
+ *
+ * Cambio respecto a la entrega anterior: en vez de llamar directamente
+ * por HTTP (acoplamiento sincrónico), se publica el mensaje en la cola
+ * de forma asíncrona. Si notificaciones está caído, el mensaje queda
+ * en la cola y se procesa cuando vuelve — nadie pierde el aviso.
  */
 @Component
 public class NotificacionClient {
 
     private static final Logger log = LoggerFactory.getLogger(NotificacionClient.class);
 
-    private final HttpClient httpClient;
-    private final ObjectMapper objectMapper;
-    private final String baseUrl;
+    private final RabbitTemplate rabbitTemplate;
 
-    public NotificacionClient(
-            @Value("${servicios.notificaciones.url:http://localhost:8084}") String baseUrl,
-            ObjectMapper objectMapper) {
-        this.baseUrl = baseUrl;
-        this.objectMapper = objectMapper;
-        this.httpClient = HttpClient.newBuilder()
-                .version(HttpClient.Version.HTTP_1_1)
-                .connectTimeout(Duration.ofSeconds(3))
-                .build();
+    public NotificacionClient(RabbitTemplate rabbitTemplate) {
+        this.rabbitTemplate = rabbitTemplate;
     }
 
-    /**
-     * Envía una notificación al donante por el medio indicado.
-     *
-     * @param destinatario email, teléfono o número WA del donante
-     * @param mensaje      texto de la notificación
-     * @param medio        "EMAIL", "SMS" o "WHATSAPP"
-     * @param evento       tipo de evento que dispara la notificación
-     *                     ("MISION_CUMPLIDA", "CAMBIO_CATEGORIA", ...).
-     *                     servicio-notificaciones lo exige como obligatorio.
-     */
     public void enviarNotificacion(String destinatario, String mensaje, String medio, String evento) {
         try {
             Map<String, String> payload = Map.of(
@@ -57,21 +36,13 @@ public class NotificacionClient {
                     "medio", medio,
                     "evento", evento
             );
-            String jsonBody = objectMapper.writeValueAsString(payload);
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/notificaciones"))
-                    .timeout(Duration.ofSeconds(10))
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-                    .build();
+            rabbitTemplate.convertAndSend(RabbitMQConfig.QUEUE, payload);
 
-            httpClient.send(request, HttpResponse.BodyHandlers.discarding());
-
-            log.info("[NotificacionClient] Notificación enviada a {} por {}", destinatario, medio);
+            log.info("[NotificacionClient] Notificación publicada en cola para {} por {}", destinatario, medio);
 
         } catch (Exception e) {
-            log.error("[NotificacionClient] No se pudo enviar notificación a {}: {}", destinatario, e.getMessage());
+            log.error("[NotificacionClient] No se pudo publicar notificación para {}: {}", destinatario, e.getMessage());
         }
     }
 }
