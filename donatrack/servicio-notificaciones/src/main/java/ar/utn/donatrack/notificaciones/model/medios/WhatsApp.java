@@ -4,3 +4,4 @@ public class WhatsApp extends MedioNotificacion {
     @Override
     public String getNombre() { return "WHATSAPP"; }
 }
+

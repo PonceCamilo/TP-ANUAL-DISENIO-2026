@@ -11,9 +11,16 @@ import jakarta.validation.constraints.NotBlank;
  * Incentivos) no conocen la jerarquía MedioNotificacion de este servicio, y así
  * Jackson deserializa sin necesitar type info sobre una clase abstracta. La
  * NotificadorFactory resuelve el MedioNotificacion concreto a partir del nombre.
+ *
+ * `evento` es opcional: identifica qué disparó la notificación (ej.
+ * "MISION_CUMPLIDA", "CAMBIO_CATEGORIA"). Se agregó porque el cliente
+ * de Incentivos ya lo enviaba y este servicio lo descartaba sin más
+ * — quedaba una inconsistencia entre ambos lados del contrato. Al no
+ * ser obligatorio, servicio-donaciones puede seguir sin mandarlo.
  */
 public record SolicitudNotificacionDto(
         @NotBlank String destinatario,
         @NotBlank String mensaje,
-        @NotBlank String medio
+        @NotBlank String medio,
+        String evento
 ) {}

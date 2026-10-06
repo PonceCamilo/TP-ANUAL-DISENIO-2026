@@ -41,3 +41,4 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(cuerpo, status);
     }
 }
+

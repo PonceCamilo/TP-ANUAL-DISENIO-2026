@@ -4,3 +4,4 @@ public class Sms extends MedioNotificacion {
     @Override
     public String getNombre() { return "SMS"; }
 }
+
