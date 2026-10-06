@@ -4,6 +4,7 @@ import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
@@ -29,6 +30,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -480,6 +482,58 @@ class DonacionesControllerTest {
 
             mockMvc.perform(delete("/donaciones/{id}", idDonacion))
                     .andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /donaciones/candidatos - bandeja del matchmaking nocturno")
+    class CandidatosPendientes {
+
+        @Test
+        @DisplayName("Devuelve 200 con las donaciones pendientes de confirmar destino")
+        void bandejaOk() throws Exception {
+            when(donacionService.obtenerCandidatosPendientes()).thenReturn(List.of(
+                    CandidatosPendientesResponseDTO.builder()
+                            .idDonacion(idDonacion)
+                            .fechaCalculo(LocalDateTime.of(2026, 3, 15, 3, 30))
+                            .huboCoincidencias(true)
+                            .coincidencias(List.of())
+                            .porCompatibilidad(List.of())
+                            .porSubatendidos(List.of())
+                            .build()));
+
+            mockMvc.perform(get("/donaciones/candidatos"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$[0].idDonacion").value(idDonacion.toString()))
+                    .andExpect(jsonPath("$[0].huboCoincidencias").value(true))
+                    .andExpect(jsonPath("$[0].fechaCalculo").exists());
+        }
+
+        @Test
+        @DisplayName("Devuelve 200 con lista vacía si el proceso nocturno todavía no corrió")
+        void bandejaVacia() throws Exception {
+            when(donacionService.obtenerCandidatosPendientes()).thenReturn(List.of());
+
+            mockMvc.perform(get("/donaciones/candidatos"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(0)));
+        }
+
+        @Test
+        @DisplayName("La ruta /candidatos NO colisiona con /donaciones/{id}")
+        void noColisionaConElDetalle() throws Exception {
+            // Riesgo real: "candidatos" podría interpretarse como un {id} mal
+            // formado y caer en obtenerDonacion(). Spring prioriza el patrón
+            // literal sobre el de plantilla, y este test lo deja fijado: si
+            // alguien reordena los mappings, falla acá.
+            when(donacionService.obtenerCandidatosPendientes()).thenReturn(List.of());
+
+            mockMvc.perform(get("/donaciones/candidatos"))
+                    .andExpect(status().isOk());
+
+            verify(donacionService).obtenerCandidatosPendientes();
+            verify(donacionService, never()).obtenerPorId(any());
         }
     }
 }

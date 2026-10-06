@@ -6,8 +6,10 @@ import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
+import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
@@ -41,6 +43,7 @@ public class DonacionService implements DonacionServiceInterface {
   private final IncentivosClient incentivosClient;
   private final DonacionesValidator validador;
   private final EntidadesBeneficiariasValidator entidadesValidator;
+  private final CandidatosAsignacionRepositoryInterface candidatosRepositorio;
 
   public List<DonacionResponseDTO> obtenerDonaciones(String estado, UUID idDonante, String subcategoria) {
     List<Donacion> resultado = repositorio.obtenerTodas();
@@ -88,11 +91,32 @@ public class DonacionService implements DonacionServiceInterface {
         .build();
   }
 
+  /**
+   * Devuelve las donaciones en depósito con las entidades que les recomendó el
+   * último matchmaking nocturno (AsignacionBatchService), para que una persona
+   * administradora confirme el destino final.
+   */
+  public List<CandidatosPendientesResponseDTO> obtenerCandidatosPendientes() {
+    return candidatosRepositorio.obtenerTodos().stream()
+        .map(ranking -> CandidatosPendientesResponseDTO.builder()
+            .idDonacion(ranking.getIdDonacion())
+            .fechaCalculo(ranking.getFechaCalculo())
+            .huboCoincidencias(ranking.huboCoincidencias())
+            .coincidencias(mapearRanking(ranking.getCoincidencias()))
+            .porCompatibilidad(mapearRanking(ranking.getRankingSemantico()))
+            .porSubatendidos(mapearRanking(ranking.getRankingSubAtendidos()))
+            .build())
+        .toList();
+  }
+
   public void asignar(UUID idDonacion, AsignacionRequestDTO dto) {
     Donacion donacion = validador.validarYObtenerDonacion(idDonacion);
     EntidadBeneficiaria entidad = entidadesValidator.validarYObtenerEntidad(dto.getIdEntidadBeneficiaria());
 
     donacion.asignarA(entidad);
+
+    // Ya tiene destino: sale de la bandeja de pendientes del administrador.
+    candidatosRepositorio.eliminar(idDonacion);
 
     notificarAsignacion(donacion, entidad);
   }

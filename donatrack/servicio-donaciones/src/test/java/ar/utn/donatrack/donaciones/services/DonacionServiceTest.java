@@ -11,7 +11,10 @@ import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEsta
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
+import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
+import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
@@ -38,6 +41,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -90,6 +94,9 @@ class DonacionServiceTest {
     @Mock
     private IncentivosClient incentivosClient;
 
+    @Mock
+    private CandidatosAsignacionRepositoryInterface candidatosRepositorio;
+
     private DonacionService servicio;
 
     private Donacion donacion;
@@ -111,7 +118,8 @@ class DonacionServiceTest {
                 notificacionClient,
                 incentivosClient,
                 new DonacionesValidator(repositorio),
-                new EntidadesBeneficiariasValidator(entidadesRepositorio));
+                new EntidadesBeneficiariasValidator(entidadesRepositorio),
+                candidatosRepositorio);
 
         donacion = donacionDe("arroz", idDonante);
     }
@@ -403,6 +411,21 @@ class DonacionServiceTest {
         }
 
         @Test
+        @DisplayName("Asignar saca la donación de la bandeja de pendientes del administrador")
+        void asignarLimpiaElRankingPrecalculado() {
+            // Una vez confirmado el destino, el ranking que calculó el proceso
+            // nocturno ya no sirve: la donación no vuelve a estar en depósito.
+            EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+
+            servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
+
+            verify(candidatosRepositorio).eliminar(donacion.getId());
+        }
+
+        @Test
         @DisplayName("Lanza 404 si la entidad destino no existe, y la donación queda sin asignar")
         void entidadInexistente() {
             // La validación corre ANTES de tocar la donación: si la entidad no
@@ -471,6 +494,61 @@ class DonacionServiceTest {
 
             assertThatThrownBy(() -> servicio.obtenerCandidatos(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Bandeja de pendientes del matchmaking nocturno")
+    class CandidatosPendientes {
+
+        @Test
+        @DisplayName("Devuelve los rankings que dejó el proceso nocturno, con su fecha de cálculo")
+        void devuelveLosRankingsDelBatch() {
+            EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
+            LocalDateTime calculadoA = LocalDateTime.of(2026, 3, 15, 3, 30);
+
+            when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of(
+                    RankingPrecalculado.builder()
+                            .idDonacion(donacion.getId())
+                            .coincidencias(List.of(new ResultadoAsignacion(entidad.getId(), 3.0)))
+                            .rankingSemantico(List.of(new ResultadoAsignacion(entidad.getId(), 3.0)))
+                            .rankingSubAtendidos(List.of(new ResultadoAsignacion(entidad.getId(), 1.0)))
+                            .fechaCalculo(calculadoA)
+                            .build()));
+            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+
+            List<CandidatosPendientesResponseDTO> pendientes = servicio.obtenerCandidatosPendientes();
+
+            assertThat(pendientes).hasSize(1);
+            assertThat(pendientes.getFirst().getIdDonacion()).isEqualTo(donacion.getId());
+            assertThat(pendientes.getFirst().getFechaCalculo()).isEqualTo(calculadoA);
+            assertThat(pendientes.getFirst().isHuboCoincidencias()).isTrue();
+            assertThat(pendientes.getFirst().getCoincidencias()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Marca huboCoincidencias en false cuando los algoritmos no se pusieron de acuerdo")
+        void sinCoincidencias() {
+            // Es la señal para el administrador de que tiene que mirar las dos
+            // listas y decidir, en lugar de aceptar una recomendación de consenso.
+            when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of(
+                    RankingPrecalculado.builder()
+                            .idDonacion(donacion.getId())
+                            .coincidencias(List.of())
+                            .rankingSemantico(List.of())
+                            .rankingSubAtendidos(List.of())
+                            .fechaCalculo(LocalDateTime.now())
+                            .build()));
+
+            assertThat(servicio.obtenerCandidatosPendientes().getFirst().isHuboCoincidencias()).isFalse();
+        }
+
+        @Test
+        @DisplayName("Devuelve lista vacía si el proceso nocturno todavía no corrió")
+        void sinCorridaPrevia() {
+            when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of());
+
+            assertThat(servicio.obtenerCandidatosPendientes()).isEmpty();
         }
     }
 

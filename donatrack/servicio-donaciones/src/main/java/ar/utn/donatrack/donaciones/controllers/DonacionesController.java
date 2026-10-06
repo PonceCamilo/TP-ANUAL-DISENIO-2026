@@ -6,6 +6,7 @@ import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
 import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
@@ -140,6 +141,19 @@ public class DonacionesController {
   ) {
     donacionService.modificarBien(id, dto);
     return ResponseEntity.noContent().build();
+  }
+
+  @Operation(
+      summary = "Listar las donaciones pendientes de confirmar destino",
+      description = "Devuelve el resultado del matchmaking nocturno: las donaciones que siguen en depósito junto con las entidades beneficiarias que les recomendaron los algoritmos. Es la bandeja desde la que una persona administradora confirma el destino final.",
+      responses = {
+          @ApiResponse(responseCode = "200", description = "Candidatas pendientes de confirmación",
+              content = @Content(array = @ArraySchema(schema = @Schema(implementation = CandidatosPendientesResponseDTO.class))))
+      }
+  )
+  @GetMapping("/candidatos")
+  public ResponseEntity<List<CandidatosPendientesResponseDTO>> obtenerCandidatosPendientes() {
+    return ResponseEntity.ok(donacionService.obtenerCandidatosPendientes());
   }
 
   @Operation(
