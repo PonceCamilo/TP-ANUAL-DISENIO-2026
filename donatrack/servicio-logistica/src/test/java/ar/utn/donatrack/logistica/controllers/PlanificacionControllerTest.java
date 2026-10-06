@@ -4,6 +4,7 @@ import ar.utn.donatrack.logistica.dtos.response.LoteResponseDTO;
 import ar.utn.donatrack.logistica.exceptions.LoteCallbackInvalidoException;
 import ar.utn.donatrack.logistica.exceptions.LoteNoEncontradoException;
 import ar.utn.donatrack.logistica.exceptions.ProveedorRuteoIndisponibleException;
+import ar.utn.donatrack.logistica.exceptions.SinCamionesDisponiblesException;
 import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
 import ar.utn.donatrack.logistica.models.planificacion.EstadoLote;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -132,6 +133,33 @@ class PlanificacionControllerTest {
         void proveedorIndisponible() throws Exception {
             when(planificacionService.planificar(any()))
                     .thenThrow(new ProveedorRuteoIndisponibleException(idCamion, new RuntimeException("timeout")));
+
+            mockMvc.perform(post("/api/logistica/planificaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpoPlanificar()))
+                    .andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.status").value(503));
+        }
+
+        @Test
+        @DisplayName("Acepta el pedido sin camionesIds (los resuelve logística)")
+        void planificarSinCamiones() throws Exception {
+            when(planificacionService.planificar(any())).thenReturn(List.of(respuestaLote()));
+
+            mockMvc.perform(post("/api/logistica/planificaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of(
+                                    "donaciones", List.of(Map.of(
+                                            "idDonacion", idDonacion,
+                                            "idEntidadBeneficiaria", idEntidad,
+                                            "direccionEntrega", direccion()))))))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("Devuelve 503 si no hay camiones disponibles")
+        void sinCamionesDisponibles() throws Exception {
+            when(planificacionService.planificar(any())).thenThrow(new SinCamionesDisponiblesException());
 
             mockMvc.perform(post("/api/logistica/planificaciones")
                             .contentType(MediaType.APPLICATION_JSON)

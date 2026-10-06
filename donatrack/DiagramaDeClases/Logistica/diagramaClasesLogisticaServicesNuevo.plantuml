@@ -119,7 +119,7 @@ class EntregaEventPublisher {
     + publicar(evento : EntregaEvento) : void
 }
 
-class N8nLogisticaWebhookListener implements EntregaEventListener {
+class BrokerEventosListener implements EntregaEventListener {
     - httpClient : HttpClient
     - objectMapper : ObjectMapper
     - webhookUrl : String

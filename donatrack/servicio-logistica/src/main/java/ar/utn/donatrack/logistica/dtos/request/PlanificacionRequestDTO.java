@@ -17,6 +17,10 @@ public class PlanificacionRequestDTO {
     @NotEmpty
     @Valid
     private List<DonacionParaRutearRequestDTO> donaciones;
-    @NotEmpty
+    /**
+     * Opcional: si no se envía (o viene vacía), logística usa todos los
+     * camiones en estado DISPONIBLE. Así quien pide la planificación (el
+     * broker de Donaciones) no necesita conocer la flota.
+     */
     private List<@NotNull UUID> camionesIds;
 }
