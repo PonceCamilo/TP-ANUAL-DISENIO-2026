@@ -15,6 +15,7 @@ import ar.utn.donatrack.logistica.exceptions.CamionNoEncontradoException;
 import ar.utn.donatrack.logistica.exceptions.LoteCallbackInvalidoException;
 import ar.utn.donatrack.logistica.exceptions.LoteNoEncontradoException;
 import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
+import ar.utn.donatrack.logistica.exceptions.SinCamionesDisponiblesException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.integracion.EstrategiaRuteoPort;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
@@ -87,7 +88,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
 
     @Override
     public List<LoteResponseDTO> planificar(PlanificacionRequestDTO dto) {
-        List<Camion> camiones = buscarCamionesOFallar(dto.getCamionesIds());
+        List<Camion> camiones = resolverCamiones(dto.getCamionesIds());
         List<DonacionLote> donaciones = dto.getDonaciones().stream().map(this::aDonacionLote).toList();
 
         return particionar(donaciones, maxDonacionesPorLote).stream()
@@ -303,6 +304,20 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .provincia(dto.getProvincia())
                 .codigoPostal(dto.getCodigoPostal())
                 .build();
+    }
+
+    /** Si no se indicaron camiones, se planifica con toda la flota DISPONIBLE. */
+    private List<Camion> resolverCamiones(List<UUID> camionesIds) {
+        if (camionesIds != null && !camionesIds.isEmpty()) {
+            return buscarCamionesOFallar(camionesIds);
+        }
+        List<Camion> disponibles = camionRepositorio.buscarTodos().stream()
+                .filter(camion -> camion.getEstado() == EstadoCamion.DISPONIBLE)
+                .toList();
+        if (disponibles.isEmpty()) {
+            throw new SinCamionesDisponiblesException();
+        }
+        return disponibles;
     }
 
     private List<Camion> buscarCamionesOFallar(List<UUID> camionesIds) {

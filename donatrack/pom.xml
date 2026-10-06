@@ -27,6 +27,8 @@
         <module>servicio-autenticacion</module>
         <module>servicio-incentivos</module>
         <module>servicio-logistica</module>
+        <module>servicio-logistica-externa</module>
+        <module>servicio-broker-logistica</module>
         <module>servicio-notificaciones</module>
     </modules>
 

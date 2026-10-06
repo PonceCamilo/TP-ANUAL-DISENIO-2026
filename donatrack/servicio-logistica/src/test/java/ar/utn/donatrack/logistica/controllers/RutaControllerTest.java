@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Tests de la capa REST de rutas (consulta e inicio).
  *
- * El inicio de ruta es el disparador del evento INICIO_RUTA hacia n8n: acá
+ * El inicio de ruta es el disparador del evento INICIO_RUTA hacia el broker: acá
  * solo se verifica que el verbo y el código HTTP coincidan; la publicación
  * está cubierta en PlanificacionRutasServiceTest.
  */

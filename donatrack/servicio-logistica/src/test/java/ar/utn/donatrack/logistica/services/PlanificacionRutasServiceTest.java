@@ -16,6 +16,7 @@ import ar.utn.donatrack.logistica.exceptions.LoteCallbackInvalidoException;
 import ar.utn.donatrack.logistica.exceptions.LoteNoEncontradoException;
 import ar.utn.donatrack.logistica.exceptions.ProveedorRuteoIndisponibleException;
 import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
+import ar.utn.donatrack.logistica.exceptions.SinCamionesDisponiblesException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.integracion.EstrategiaRuteoPort;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
@@ -262,6 +263,47 @@ class PlanificacionRutasServiceTest {
 
             assertThatThrownBy(() -> servicio.planificar(dto))
                     .isInstanceOf(ProveedorRuteoIndisponibleException.class);
+        }
+
+        @Test
+        @DisplayName("Sin camionesIds usa solo los camiones DISPONIBLE de la flota")
+        void sinCamionesUsaLosDisponibles() {
+            UUID idDisponible = UUID.randomUUID();
+            UUID idEntidad = UUID.randomUUID();
+            Camion disponible = camion(idDisponible, "AA111AA");
+            Camion enRuta = camion(UUID.randomUUID(), "BB222BB");
+            enRuta.setEstado(EstadoCamion.EN_RUTA);
+            when(camionRepositorio.buscarTodos()).thenReturn(List.of(disponible, enRuta));
+
+            DonacionParaRutearRequestDTO donacion = donacionDTO(idEntidad);
+            when(estrategiaRuteo.planificarParaCamion(any(), eq(disponible), anyList()))
+                    .thenReturn(rutaPlanificadaPara(idDisponible, idEntidad, List.of(donacion.getIdDonacion())));
+
+            PlanificacionRequestDTO dto = new PlanificacionRequestDTO();
+            dto.setDonaciones(List.of(donacion));
+
+            List<LoteResponseDTO> lotes = servicio.planificar(dto);
+
+            assertThat(lotes).hasSize(1);
+            verify(estrategiaRuteo).planificarParaCamion(any(), eq(disponible), anyList());
+            verify(estrategiaRuteo, never()).planificarParaCamion(any(), eq(enRuta), anyList());
+            verify(camionRepositorio, never()).buscarPorIds(anyList());
+        }
+
+        @Test
+        @DisplayName("Sin camionesIds y sin camiones DISPONIBLE lanza SinCamionesDisponiblesException")
+        void sinCamionesDisponibles() {
+            Camion enMantenimiento = camion(UUID.randomUUID(), "CC333CC");
+            enMantenimiento.setEstado(EstadoCamion.MANTENIMIENTO);
+            when(camionRepositorio.buscarTodos()).thenReturn(List.of(enMantenimiento));
+
+            PlanificacionRequestDTO dto = new PlanificacionRequestDTO();
+            dto.setCamionesIds(List.of());
+            dto.setDonaciones(List.of(donacionDTO(UUID.randomUUID())));
+
+            assertThatThrownBy(() -> servicio.planificar(dto))
+                    .isInstanceOf(SinCamionesDisponiblesException.class);
+            verifyNoInteractions(estrategiaRuteo);
         }
     }
 

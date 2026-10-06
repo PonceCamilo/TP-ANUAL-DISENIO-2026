@@ -61,7 +61,7 @@ public class EntregaController {
 
     @Operation(
             summary = "Confirmar recepción de la entrega",
-            description = "La entidad beneficiaria confirma la recepción. La entrega pasa a ENTREGADA y se publica el evento a n8n.",
+            description = "La entidad beneficiaria confirma la recepción. La entrega pasa a ENTREGADA y se publica el evento al broker de logística.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Entrega confirmada"),
                     @ApiResponse(responseCode = "409", description = "Transición de estado inválida")
@@ -77,7 +77,7 @@ public class EntregaController {
 
     @Operation(
             summary = "Marcar entrega como no recibida",
-            description = "La entidad informa que no recibió la entrega. Pasa a NO_RECIBIDA y se publica el evento ENTREGA_NO_RECIBIDA a n8n, que lo reenvía a Donaciones. El motivo es un valor de MotivoFalloEntrega y Logística deriva si es replanificable.",
+            description = "La entidad informa que no recibió la entrega. Pasa a NO_RECIBIDA y se publica el evento ENTREGA_NO_RECIBIDA al broker de logística, que lo reenvía a Donaciones. El motivo es un valor de MotivoFalloEntrega y Logística deriva si es replanificable.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Entrega marcada como no recibida"),
                     @ApiResponse(responseCode = "409", description = "Transición de estado inválida")

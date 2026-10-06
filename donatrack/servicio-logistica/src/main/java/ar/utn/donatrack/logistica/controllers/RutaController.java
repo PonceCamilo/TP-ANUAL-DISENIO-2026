@@ -40,7 +40,7 @@ public class RutaController {
 
     @Operation(
             summary = "Iniciar ruta",
-            description = "El chofer indica el inicio de la ruta: todas sus entregas pasan a EN_TRASLADO y se publica el evento a n8n.",
+            description = "El chofer indica el inicio de la ruta: todas sus entregas pasan a EN_TRASLADO y se publica el evento al broker de logística.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Ruta iniciada"),
                     @ApiResponse(responseCode = "404", description = "Ruta no encontrada")

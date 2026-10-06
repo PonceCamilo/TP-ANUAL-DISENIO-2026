@@ -19,8 +19,8 @@ import static org.mockito.Mockito.verify;
 /**
  * Tests del Observer que reenvía hechos de logística a los listeners.
  *
- * El publisher no conoce n8n: recorre la lista de EntregaEventListener y
- * les entrega el mismo evento. El webhook HTTP concreto (N8nLogisticaWebhookListener)
+ * El publisher no conoce al broker: recorre la lista de EntregaEventListener y
+ * les entrega el mismo evento. El webhook HTTP concreto (BrokerEventosListener)
  * no se prueba acá.
  */
 @ExtendWith(MockitoExtension.class)
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
 class EntregaEventPublisherTest {
 
     @Mock
-    private EntregaEventListener listenerN8n;
+    private EntregaEventListener listenerBroker;
 
     @Mock
     private EntregaEventListener otroListener;
@@ -40,7 +40,7 @@ class EntregaEventPublisherTest {
         @Test
         @DisplayName("Notifica a todos los listeners suscriptos con el mismo evento")
         void notificaATodos() {
-            EntregaEventPublisher publisher = new EntregaEventPublisher(List.of(listenerN8n, otroListener));
+            EntregaEventPublisher publisher = new EntregaEventPublisher(List.of(listenerBroker, otroListener));
             EntregaEvento evento = EntregaEvento.builder()
                     .tipo(TipoEventoLogistica.INICIO_RUTA)
                     .entregaId(UUID.randomUUID())
@@ -48,7 +48,7 @@ class EntregaEventPublisherTest {
 
             publisher.publicar(evento);
 
-            verify(listenerN8n).onEvento(evento);
+            verify(listenerBroker).onEvento(evento);
             verify(otroListener).onEvento(evento);
         }
 

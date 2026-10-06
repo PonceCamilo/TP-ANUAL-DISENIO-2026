@@ -46,7 +46,7 @@ import static org.mockito.Mockito.when;
  *
  * Cubre consulta, confirmación de recepción, marca de no recibida y regreso
  * a depósito. Por cada cambio de estado se verifica por separado: (1) que el
- * modelo quede bien, (2) que se publique el evento hacia n8n. La lógica de
+ * modelo quede bien, (2) que se publique el evento hacia el broker. La lógica de
  * qué transiciones son válidas está en EntregaValidatorTest; acá se comprueba
  * que el service la respete y no dispare efectos colaterales si falla.
  *

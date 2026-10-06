@@ -36,7 +36,8 @@ public class PlanificacionController {
 
     @Operation(
             summary = "Planificar rutas",
-            description = "Recibe donaciones disponibles y camiones disponibles, particiona en lotes de <=100 donaciones y, "
+            description = "Recibe donaciones disponibles y, opcionalmente, los camiones a usar "
+                    + "(si no se envían camionesIds se usan todos los camiones DISPONIBLE). Particiona en lotes de <=100 donaciones y, "
                     + "para cada uno, le pide al proveedor externo de ruteo (una llamada síncrona por camión) que planifique su ruta. "
                     + "Devuelve, para cada lote, la lista de camiones con los destinos y las entregas a realizar en cada uno; "
                     + "las entregas creadas quedan en estado LISTO_PARA_ENTREGAR.",
@@ -44,7 +45,8 @@ public class PlanificacionController {
                     @ApiResponse(responseCode = "200", description = "Lotes planificados, con sus rutas ya armadas",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = LoteResponseDTO.class)))),
                     @ApiResponse(responseCode = "400", description = "Request inválido"),
-                    @ApiResponse(responseCode = "503", description = "El proveedor externo de ruteo no respondió")
+                    @ApiResponse(responseCode = "404", description = "Algún camión indicado no existe"),
+                    @ApiResponse(responseCode = "503", description = "El proveedor externo de ruteo no respondió o no hay camiones disponibles")
             }
     )
     @PostMapping
