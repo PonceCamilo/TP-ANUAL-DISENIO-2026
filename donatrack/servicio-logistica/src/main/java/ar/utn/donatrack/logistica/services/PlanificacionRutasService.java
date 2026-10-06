@@ -130,7 +130,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .filter(r -> r.getEstado() != EstadoRuta.FINALIZADA)
                 .findFirst()
                 .map(RutaResponseDTO::desde)
-                .orElseThrow(() -> new RutaNoEncontradaException(camionId));
+                .orElseThrow(() -> RutaNoEncontradaException.paraCamion(camionId));
     }
 
     @Override
