@@ -24,8 +24,8 @@ import java.util.UUID;
  * (id, entidad destino y dirección). El donante no forma parte de logística:
  * los camiones entregan en la entidad beneficiaria.
  *
- * idDonacion e idEntidadBeneficiaria son ids de servicio-donaciones; en la base
- * apuntan a las tablas de referencia donacion y entidad_beneficiaria.
+ * idDonacion e idEntidadBeneficiaria son ids de servicio-donaciones, guardados
+ * sin foreign key.
  */
 @Entity
 @Table(name = "donacion_lote")

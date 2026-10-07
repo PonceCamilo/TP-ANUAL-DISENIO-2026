@@ -37,8 +37,7 @@ public class Parada {
     @JoinColumn(name = "id_direccion", nullable = false)
     private Direccion direccion;
 
-    // Id de la entidad beneficiaria de servicio-donaciones; en la base apunta
-    // a la tabla de referencia entidad_beneficiaria.
+    // Id de la entidad beneficiaria de servicio-donaciones (sin foreign key).
     @Column(nullable = false)
     private UUID idEntidadBeneficiaria;
 

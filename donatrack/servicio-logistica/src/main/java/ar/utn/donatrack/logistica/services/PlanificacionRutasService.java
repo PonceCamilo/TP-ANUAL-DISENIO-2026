@@ -275,10 +275,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 Entrega entrega = Entrega.builder()
                         .id(UUID.randomUUID())
                         .idDonacion(idDonacion)
-                        .idEntidadBeneficiaria(paradaDTO.getIdEntidadBeneficiaria())
                         .parada(parada)
-                        .ruta(ruta)
-                        .camion(camion)
                         .build();
                 entregas.add(entrega);
                 entregasDeLaRuta.add(entrega);

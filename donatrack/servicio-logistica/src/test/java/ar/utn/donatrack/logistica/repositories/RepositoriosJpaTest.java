@@ -4,6 +4,7 @@ import ar.utn.donatrack.logistica.models.comun.Direccion;
 import ar.utn.donatrack.logistica.models.entrega.CambioEstadoEntrega;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
+import ar.utn.donatrack.logistica.models.entrega.MotivoFalloEntrega;
 import ar.utn.donatrack.logistica.models.flota.Camion;
 import ar.utn.donatrack.logistica.models.flota.EstadoCamion;
 import ar.utn.donatrack.logistica.models.planificacion.DonacionLote;
@@ -12,8 +13,6 @@ import ar.utn.donatrack.logistica.models.planificacion.EstadoRuta;
 import ar.utn.donatrack.logistica.models.planificacion.LotePlanificacion;
 import ar.utn.donatrack.logistica.models.planificacion.Parada;
 import ar.utn.donatrack.logistica.models.planificacion.Ruta;
-import ar.utn.donatrack.logistica.models.referencias.Donacion;
-import ar.utn.donatrack.logistica.models.referencias.EntidadBeneficiaria;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,7 +85,14 @@ class RepositoriosJpaTest {
      * PlanificacionRutasService: la ruta (que guarda en cascada paradas y
      * entregas) y después la entrega en su repositorio.
      */
+    private record EntregaYRuta(Entrega entrega, Ruta ruta) {
+    }
+
     private Entrega entregaEnRutaNueva(Camion camion) {
+        return entregaYRutaNuevas(camion).entrega();
+    }
+
+    private EntregaYRuta entregaYRutaNuevas(Camion camion) {
         UUID idDonacion = UUID.randomUUID();
         UUID idEntidad = UUID.randomUUID();
         LotePlanificacion lote = lote(camion, idDonacion, idEntidad);
@@ -103,13 +109,12 @@ class RepositoriosJpaTest {
                 .build();
         paradas.add(parada);
         Entrega entrega = Entrega.builder()
-                .id(UUID.randomUUID()).idDonacion(idDonacion).idEntidadBeneficiaria(idEntidad)
-                .parada(parada).ruta(ruta).camion(camion)
+                .id(UUID.randomUUID()).idDonacion(idDonacion).parada(parada)
                 .build();
         entregasParada.add(entrega);
         rutas.guardar(ruta);
         entregas.guardar(entrega);
-        return entrega;
+        return new EntregaYRuta(entrega, ruta);
     }
 
     private void sincronizar() {
@@ -121,8 +126,9 @@ class RepositoriosJpaTest {
     @DisplayName("guarda el agregado Ruta → Parada → Entrega y lo encuentra por entrega y por camión")
     void guardaAgregadoYLoEncuentraPorEntregaYCamion() {
         Camion camion = camion("AB123CD");
-        Entrega entrega = entregaEnRutaNueva(camion);
-        UUID idRuta = entrega.getRuta().getId();
+        EntregaYRuta creadas = entregaYRutaNuevas(camion);
+        Entrega entrega = creadas.entrega();
+        UUID idRuta = creadas.ruta().getId();
         sincronizar();
 
         Ruta porEntrega = rutas.buscarPorEntregaId(entrega.getId()).orElseThrow();
@@ -132,21 +138,10 @@ class RepositoriosJpaTest {
         assertThat(porEntrega.getParadas().get(0).getDireccion().getCalle()).isEqualTo("Av. Medrano");
 
         Entrega leida = entregas.buscarPorId(entrega.getId());
-        assertThat(leida.getRuta().getId()).isEqualTo(idRuta);
-        assertThat(leida.getCamion().getId()).isEqualTo(camion.getId());
+        assertThat(leida.getParada().getId()).isEqualTo(porEntrega.getParadas().get(0).getId());
 
         assertThat(rutas.buscarPorCamionId(camion.getId())).extracting(Ruta::getId).containsExactly(idRuta);
         assertThat(rutas.buscarPorEntregaId(UUID.randomUUID())).isEmpty();
-    }
-
-    @Test
-    @DisplayName("registra la donación y la entidad en las tablas de referencia")
-    void registraReferenciasExternas() {
-        Entrega entrega = entregaEnRutaNueva(camion("AC456EF"));
-        sincronizar();
-
-        assertThat(tem.find(Donacion.class, entrega.getIdDonacion())).isNotNull();
-        assertThat(tem.find(EntidadBeneficiaria.class, entrega.getIdEntidadBeneficiaria())).isNotNull();
     }
 
     @Test
@@ -158,7 +153,7 @@ class RepositoriosJpaTest {
         Entrega entrega = entregas.buscarPorId(creada.getId());
         entrega.registrarCambio(EstadoEntrega.EN_TRASLADO, "Inicio de ruta");
         entrega.getFotosComprobante().addAll(List.of("https://fotos/1.jpg", "https://fotos/2.jpg"));
-        entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, "ENTIDAD_AUSENTE");
+        entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, MotivoFalloEntrega.ENTIDAD_AUSENTE, null);
         entregas.guardar(entrega);
         sincronizar();
 
@@ -166,8 +161,10 @@ class RepositoriosJpaTest {
         assertThat(leida.getEstado()).isEqualTo(EstadoEntrega.NO_RECIBIDA);
         assertThat(leida.getHistorial()).extracting(CambioEstadoEntrega::getEstado)
                 .containsExactly(EstadoEntrega.EN_TRASLADO, EstadoEntrega.NO_RECIBIDA);
+        assertThat(leida.getHistorial()).extracting(CambioEstadoEntrega::getMotivoFallo)
+                .containsExactly(null, MotivoFalloEntrega.ENTIDAD_AUSENTE);
         assertThat(leida.getHistorial()).extracting(CambioEstadoEntrega::getObservacion)
-                .containsExactly("Inicio de ruta", "ENTIDAD_AUSENTE");
+                .containsExactly("Inicio de ruta", null);
         assertThat(leida.getFotosComprobante()).containsExactly("https://fotos/1.jpg", "https://fotos/2.jpg");
 
         assertThat(entregas.buscarPorEstado(EstadoEntrega.NO_RECIBIDA)).extracting(Entrega::getId)

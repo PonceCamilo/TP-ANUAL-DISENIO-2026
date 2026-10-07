@@ -160,10 +160,7 @@ public class DatosDemoLogistica implements CommandLineRunner {
         Entrega entrega = Entrega.builder()
                 .id(ENTREGA_DEMO_ID)
                 .idDonacion(idDonacion)
-                .idEntidadBeneficiaria(idEntidad)
                 .parada(parada)
-                .ruta(ruta)
-                .camion(camion)
                 .estado(EstadoEntrega.EN_TRASLADO)
                 .build();
         entrega.getHistorial().add(CambioEstadoEntrega.builder()

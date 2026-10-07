@@ -84,7 +84,7 @@ public class EntregaService implements EntregaServiceInterface {
         validador.validarTransicion(entrega.getEstado(), EstadoEntrega.NO_RECIBIDA);
 
         MotivoFalloEntrega motivo = dto.getMotivo();
-        entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, motivo.name());
+        entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, motivo, null);
         repositorio.guardar(entrega);
 
         Ruta ruta = buscarRutaDeEntregaOFallar(entrega.getId());

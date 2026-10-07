@@ -16,9 +16,6 @@ public class LotePlanificacionRepository extends RepositorioJpa<LotePlanificacio
 
     @Override
     public void guardar(LotePlanificacion lote) {
-        if (lote.getDonaciones() != null) {
-            lote.getDonaciones().forEach(d -> registrarReferencias(d.getIdDonacion(), d.getIdEntidadBeneficiaria()));
-        }
         guardarEntidad(lote, lote.getId());
     }
 

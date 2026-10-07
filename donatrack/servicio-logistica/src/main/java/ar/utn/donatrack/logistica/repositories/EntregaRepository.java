@@ -17,7 +17,6 @@ public class EntregaRepository extends RepositorioJpa<Entrega> implements Entreg
 
     @Override
     public void guardar(Entrega entrega) {
-        registrarReferencias(entrega.getIdDonacion(), entrega.getIdEntidadBeneficiaria());
         guardarEntidad(entrega, entrega.getId());
     }
 

@@ -1,8 +1,6 @@
 package ar.utn.donatrack.logistica.models.entrega;
 
-import ar.utn.donatrack.logistica.models.flota.Camion;
 import ar.utn.donatrack.logistica.models.planificacion.Parada;
-import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -31,10 +29,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Una entrega pertenece a una parada física. Además de la parada, guarda la
- * ruta y el camión que la llevan (como en el DER), que se completan al armar
- * la ruta. La donación y la entidad beneficiaria son de servicio-donaciones:
- * se referencian solo por id (tablas de referencia donacion y entidad_beneficiaria).
+ * Una entrega pertenece a una parada física; la ruta, el camión y la entidad
+ * beneficiaria se obtienen a través de ella. La donación es de
+ * servicio-donaciones: se referencia solo por id, sin foreign key.
  */
 @Entity
 @Table(name = "entrega")
@@ -51,20 +48,9 @@ public class Entrega {
     @Column(nullable = false)
     private UUID idDonacion;
 
-    @Column(nullable = false)
-    private UUID idEntidadBeneficiaria;
-
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "id_parada", nullable = false)
     private Parada parada;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_ruta", nullable = false)
-    private Ruta ruta;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_camion", nullable = false)
-    private Camion camion;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
@@ -77,12 +63,11 @@ public class Entrega {
     @OrderBy("fechaHora")
     private List<CambioEstadoEntrega> historial = new ArrayList<>();
 
-    // No está en el DER: las fotos de comprobante de la confirmación.
     @Builder.Default
     @ElementCollection
-    @CollectionTable(name = "entrega_foto", joinColumns = @JoinColumn(name = "id_entrega"))
+    @CollectionTable(name = "foto_comprobante_entrega", joinColumns = @JoinColumn(name = "id_entrega"))
     @OrderColumn(name = "posicion")
-    @Column(name = "url", nullable = false, length = 2048)
+    @Column(name = "url_foto", nullable = false, length = 2048)
     private List<String> fotosComprobante = new ArrayList<>();
 
     @Column(columnDefinition = "text")
@@ -91,10 +76,15 @@ public class Entrega {
     private LocalDateTime fechaEntrega;
 
     public void registrarCambio(EstadoEntrega nuevoEstado, String observacion) {
+        registrarCambio(nuevoEstado, null, observacion);
+    }
+
+    public void registrarCambio(EstadoEntrega nuevoEstado, MotivoFalloEntrega motivoFallo, String observacion) {
         this.estado = nuevoEstado;
         this.observacion = observacion;
         this.historial.add(CambioEstadoEntrega.builder()
                 .estado(nuevoEstado)
+                .motivoFallo(motivoFallo)
                 .observacion(observacion)
                 .build());
     }

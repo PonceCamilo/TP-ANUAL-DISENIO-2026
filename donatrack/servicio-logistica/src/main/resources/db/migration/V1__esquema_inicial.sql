@@ -1,28 +1,16 @@
 -- Esquema inicial de logistica_db (base propia de servicio-logistica),
 -- según el DER de Logística, con claves primarias UUID.
 --
--- donacion y entidad_beneficiaria son tablas de referencia: guardan solo el id
--- de datos que viven en servicio-donaciones, para que las foreign keys de
--- logística apunten a algo. Logística las completa al recibir cada donación.
+-- id_donacion e id_entidad_beneficiaria son referencias lógicas a datos de
+-- servicio-donaciones: se guardan como UUID sin foreign key, porque esos datos
+-- viven en otra base (database per service).
 --
--- Los enums (estado_*) se guardan como texto con un CHECK de los valores
--- válidos. Si se agrega un valor a un enum de Java, hay que agregarlo también
--- al CHECK en una migración nueva.
+-- Los enums (estado_*, motivo_fallo) se guardan como texto con un CHECK de los
+-- valores válidos. Si se agrega un valor a un enum de Java, hay que agregarlo
+-- también al CHECK en una migración nueva.
 --
 -- Una vez aplicada, esta migración no se modifica: los cambios de esquema van
 -- en un archivo nuevo (V2__..., V3__...).
-
--- ── Referencias a servicio-donaciones ────────────────────────────────────────
-
-CREATE TABLE donacion (
-    id_donacion UUID PRIMARY KEY
-);
-
-CREATE TABLE entidad_beneficiaria (
-    id_entidad_beneficiaria UUID PRIMARY KEY
-);
-
--- ── Datos propios de logística ───────────────────────────────────────────────
 
 CREATE TABLE direccion (
     id_direccion  UUID         PRIMARY KEY,
@@ -61,8 +49,8 @@ CREATE TABLE lote_camion (
 -- Snapshot de cada donación enviada al proveedor de ruteo en el lote.
 CREATE TABLE donacion_lote (
     id_donacion_lote        UUID PRIMARY KEY,
-    id_donacion             UUID NOT NULL REFERENCES donacion (id_donacion),
-    id_entidad_beneficiaria UUID NOT NULL REFERENCES entidad_beneficiaria (id_entidad_beneficiaria),
+    id_donacion             UUID NOT NULL,
+    id_entidad_beneficiaria UUID NOT NULL,
     id_lote                 UUID NOT NULL REFERENCES lote_planificacion (id_lote),
     id_direccion_entrega    UUID NOT NULL REFERENCES direccion (id_direccion)
 );
@@ -78,41 +66,41 @@ CREATE TABLE ruta (
 
 CREATE TABLE parada (
     id_parada               UUID    PRIMARY KEY,
-    id_entidad_beneficiaria UUID    NOT NULL REFERENCES entidad_beneficiaria (id_entidad_beneficiaria),
+    id_entidad_beneficiaria UUID    NOT NULL,
     id_direccion            UUID    NOT NULL REFERENCES direccion (id_direccion),
     id_ruta                 UUID    NOT NULL REFERENCES ruta (id_ruta),
     orden                   INTEGER NOT NULL
 );
 
+-- La ruta, el camión y la entidad de una entrega se obtienen a través de su parada.
 CREATE TABLE entrega (
-    id_entrega              UUID        PRIMARY KEY,
-    id_camion               UUID        NOT NULL REFERENCES camion (id_camion),
-    id_donacion             UUID        NOT NULL REFERENCES donacion (id_donacion),
-    id_entidad_beneficiaria UUID        NOT NULL REFERENCES entidad_beneficiaria (id_entidad_beneficiaria),
-    id_parada               UUID        NOT NULL REFERENCES parada (id_parada),
-    id_ruta                 UUID        NOT NULL REFERENCES ruta (id_ruta),
-    estado                  VARCHAR(30) NOT NULL
+    id_entrega    UUID        PRIMARY KEY,
+    id_donacion   UUID        NOT NULL,
+    id_parada     UUID        NOT NULL REFERENCES parada (id_parada),
+    estado        VARCHAR(30) NOT NULL
         CHECK (estado IN ('LISTO_PARA_ENTREGAR', 'EN_TRASLADO', 'ENTREGADA', 'NO_RECIBIDA')),
-    observacion             TEXT,
-    fecha_entrega           TIMESTAMP
+    observacion   TEXT,
+    fecha_entrega TIMESTAMP
 );
 
 -- Historial de estados de cada entrega.
 CREATE TABLE cambio_estado_entrega (
-    id_cambio   UUID        PRIMARY KEY,
-    id_entrega  UUID        NOT NULL REFERENCES entrega (id_entrega),
-    estado      VARCHAR(30) NOT NULL
+    id_cambio    UUID        PRIMARY KEY,
+    id_entrega   UUID        NOT NULL REFERENCES entrega (id_entrega),
+    estado       VARCHAR(30) NOT NULL
         CHECK (estado IN ('LISTO_PARA_ENTREGAR', 'EN_TRASLADO', 'ENTREGADA', 'NO_RECIBIDA')),
-    observacion TEXT,
-    fecha_hora  TIMESTAMP   NOT NULL
+    motivo_fallo VARCHAR(30)
+        CHECK (motivo_fallo IN ('ENTIDAD_AUSENTE', 'DIRECCION_INCORRECTA', 'RECHAZADA_POR_ENTIDAD',
+                                'MERCADERIA_ROTA', 'MERCADERIA_PERDIDA', 'ROBO')),
+    observacion  TEXT,
+    fecha_hora   TIMESTAMP   NOT NULL
 );
 
--- No está en el DER: guarda las fotos de comprobante que recibe la
--- confirmación de una entrega (la API y el evento ENTREGA_CONFIRMADA las devuelven).
-CREATE TABLE entrega_foto (
+-- Fotos de comprobante de la confirmación de una entrega, en orden.
+CREATE TABLE foto_comprobante_entrega (
     id_entrega UUID          NOT NULL REFERENCES entrega (id_entrega),
     posicion   INTEGER       NOT NULL,
-    url        VARCHAR(2048) NOT NULL,
+    url_foto   VARCHAR(2048) NOT NULL,
     PRIMARY KEY (id_entrega, posicion)
 );
 

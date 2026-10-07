@@ -17,16 +17,7 @@ public class RutaRepository extends RepositorioJpa<Ruta> implements RutaReposito
 
     @Override
     public void guardar(Ruta ruta) {
-        // Las paradas y entregas se guardan en cascada con la ruta: primero se
-        // registran las donaciones y entidades que referencian.
-        if (ruta.getParadas() != null) {
-            ruta.getParadas().forEach(parada -> {
-                registrarReferencias(null, parada.getIdEntidadBeneficiaria());
-                if (parada.getEntregas() != null) {
-                    parada.getEntregas().forEach(e -> registrarReferencias(e.getIdDonacion(), e.getIdEntidadBeneficiaria()));
-                }
-            });
-        }
+        // Las paradas y entregas se guardan en cascada con la ruta.
         guardarEntidad(ruta, ruta.getId());
     }
 

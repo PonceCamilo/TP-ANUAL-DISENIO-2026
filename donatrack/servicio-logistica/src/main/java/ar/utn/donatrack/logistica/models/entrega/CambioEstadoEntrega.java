@@ -37,6 +37,11 @@ public class CambioEstadoEntrega {
     @Column(nullable = false, length = 30)
     private EstadoEntrega estado;
 
+    // Solo en los cambios a NO_RECIBIDA.
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private MotivoFalloEntrega motivoFallo;
+
     @Column(columnDefinition = "text")
     private String observacion;
 
