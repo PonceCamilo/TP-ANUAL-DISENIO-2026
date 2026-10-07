@@ -1,5 +1,7 @@
 package ar.utn.donatrack.logistica.integracion;
 
+import ar.utn.donatrack.logistica.dtos.response.RutaPlanificadaProveedorDTO;
+import ar.utn.donatrack.logistica.exceptions.ProveedorRuteoIndisponibleException;
 import ar.utn.donatrack.logistica.interfaces.integracion.EstrategiaRuteoPort;
 import ar.utn.donatrack.logistica.models.flota.Camion;
 import ar.utn.donatrack.logistica.models.planificacion.DonacionLote;
@@ -19,14 +21,10 @@ import java.util.Map;
 
 /**
  * Strategy + Adapter: traduce el modelo interno al contrato del proveedor
- * externo de ruteo y dispara la solicitud. El proveedor procesa de forma
- * asíncrona y devuelve el resultado a callbackUrl
- * (POST /api/logistica/planificaciones/callback).
- *
- * Mismo estilo "fire and forget con logging" que N8nWebhookClient en
- * servicio-incentivos: si el proveedor no responde al disparo inicial,
- * se loguea pero no se frena el flujo (el lote queda en ENVIADO y puede
- * reintentarse).
+ * externo de ruteo y pide, de a un camión por vez, que planifique su ruta.
+ * El proveedor procesa esa solicitud en el momento y devuelve la ruta
+ * planificada como response HTTP síncrona (no hay callback de por medio
+ * para este flujo).
  */
 @Component
 public class ProveedorRuteoExternoAdapter implements EstrategiaRuteoPort {
@@ -36,27 +34,22 @@ public class ProveedorRuteoExternoAdapter implements EstrategiaRuteoPort {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final String proveedorUrl;
-    private final String callbackUrl;
 
     public ProveedorRuteoExternoAdapter(
             @Value("${integraciones.proveedor-ruteo.url}") String proveedorUrl,
-            @Value("${servicio-logistica.base-url}") String baseUrl,
             ObjectMapper objectMapper) {
         this.proveedorUrl = proveedorUrl;
-        this.callbackUrl = baseUrl + "/api/logistica/planificaciones/callback";
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newHttpClient();
     }
 
     @Override
-    public void solicitarPlanificacion(LotePlanificacion lote, List<Camion> camiones) {
+    public RutaPlanificadaProveedorDTO planificarParaCamion(LotePlanificacion lote, Camion camion, List<DonacionLote> donaciones) {
         try {
             Map<String, Object> payload = Map.of(
                     "loteId", lote.getId().toString(),
-                    "tokenCorrelacion", lote.getTokenCorrelacion(),
-                    "callbackUrl", callbackUrl,
-                    "camiones", camiones.stream().map(this::camionAPayload).toList(),
-                    "donaciones", lote.getDonaciones().stream().map(this::donacionAPayload).toList()
+                    "camion", camionAPayload(camion),
+                    "donaciones", donaciones.stream().map(this::donacionAPayload).toList()
             );
             String jsonBody = objectMapper.writeValueAsString(payload);
 
@@ -66,13 +59,17 @@ public class ProveedorRuteoExternoAdapter implements EstrategiaRuteoPort {
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
-            httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            RutaPlanificadaProveedorDTO rutaPlanificada = objectMapper.readValue(response.body(), RutaPlanificadaProveedorDTO.class);
 
-            log.info("[ProveedorRuteoExternoAdapter] Lote {} enviado al proveedor externo ({} donaciones, {} camiones)",
-                    lote.getId(), lote.getDonaciones().size(), camiones.size());
+            log.info("[ProveedorRuteoExternoAdapter] Lote {} - camión {} planificado ({} donaciones -> {} paradas)",
+                    lote.getId(), camion.getId(), donaciones.size(), rutaPlanificada.getParadas().size());
+
+            return rutaPlanificada;
         } catch (Exception e) {
-            log.error("[ProveedorRuteoExternoAdapter] No se pudo enviar el lote {} al proveedor externo: {}",
-                    lote.getId(), e.getMessage());
+            log.error("[ProveedorRuteoExternoAdapter] No se pudo planificar el camión {} del lote {}: {}",
+                    camion.getId(), lote.getId(), e.getMessage());
+            throw new ProveedorRuteoIndisponibleException(camion.getId(), e);
         }
     }
 

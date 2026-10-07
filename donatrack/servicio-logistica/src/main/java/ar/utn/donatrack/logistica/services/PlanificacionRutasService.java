@@ -7,12 +7,15 @@ import ar.utn.donatrack.logistica.dtos.request.DireccionRequestDTO;
 import ar.utn.donatrack.logistica.dtos.request.DonacionParaRutearRequestDTO;
 import ar.utn.donatrack.logistica.dtos.request.PlanificacionRequestDTO;
 import ar.utn.donatrack.logistica.dtos.response.LoteResponseDTO;
+import ar.utn.donatrack.logistica.dtos.response.RutaPlanificadaProveedorDTO;
 import ar.utn.donatrack.logistica.dtos.response.RutaResponseDTO;
 import ar.utn.donatrack.logistica.eventos.EntregaEvento;
 import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
+import ar.utn.donatrack.logistica.exceptions.CamionNoEncontradoException;
 import ar.utn.donatrack.logistica.exceptions.LoteCallbackInvalidoException;
 import ar.utn.donatrack.logistica.exceptions.LoteNoEncontradoException;
 import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
+import ar.utn.donatrack.logistica.exceptions.SinCamionesDisponiblesException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.integracion.EstrategiaRuteoPort;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
@@ -37,14 +40,17 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * Facade: oculta detrás de planificar()/registrarCallback() el particionado
- * en lotes de ≤100 donaciones, la consulta de la flota y la traducción
- * de la respuesta del proveedor externo (Strategy: EstrategiaRuteoPort)
- * en Ruta/Parada/Entrega.
+ * en lotes de ≤100 donaciones, el reparto de esas donaciones entre los
+ * camiones disponibles, la planificación síncrona (una llamada al proveedor
+ * externo por camión) y la traducción de su respuesta (Strategy:
+ * EstrategiaRuteoPort) en Ruta/Parada/Entrega.
  */
 @Service
 public class PlanificacionRutasService implements PlanificacionServiceInterface {
@@ -82,14 +88,13 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
 
     @Override
     public List<LoteResponseDTO> planificar(PlanificacionRequestDTO dto) {
-        List<Camion> camiones = camionRepositorio.buscarPorIds(dto.getCamionesIds());
+        List<Camion> camiones = resolverCamiones(dto.getCamionesIds());
         List<DonacionLote> donaciones = dto.getDonaciones().stream().map(this::aDonacionLote).toList();
 
-        List<LotePlanificacion> lotes = particionar(donaciones, maxDonacionesPorLote).stream()
-                .map(batch -> crearYEnviarLote(batch, camiones))
+        return particionar(donaciones, maxDonacionesPorLote).stream()
+                .map(batch -> crearYPlanificarLote(batch, camiones))
+                .map(resultado -> LoteResponseDTO.desde(resultado.lote(), resultado.rutas()))
                 .toList();
-
-        return lotes.stream().map(LoteResponseDTO::desde).toList();
     }
 
     @Override
@@ -98,14 +103,15 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
     }
 
     @Override
-    public void registrarCallback(CallbackRutaRequestDTO dto) {
+    public void registrarCallback(CallbackRutaRequestDTO dto, String tokenCorrelacion) {
         LotePlanificacion lote = buscarLoteOFallar(dto.getLoteId());
-        if (!lote.getTokenCorrelacion().equals(dto.getTokenCorrelacion())) {
+        if (!lote.getTokenCorrelacion().equals(tokenCorrelacion)) {
             throw new LoteCallbackInvalidoException(lote.getId());
         }
 
         for (CallbackVehiculoRutaDTO vehiculo : dto.getRutas()) {
-            crearRutaDesdeCallback(lote, vehiculo);
+            Camion camion = camionRepositorio.buscarPorId(vehiculo.getCamionId());
+            crearRuta(lote, camion, vehiculo.getParadas());
         }
 
         lote.setEstado(EstadoLote.COMPLETADO);
@@ -185,7 +191,17 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private LotePlanificacion crearYEnviarLote(List<DonacionLote> batch, List<Camion> camiones) {
+    private record ResultadoLote(LotePlanificacion lote, List<Ruta> rutas) {
+    }
+
+    /**
+     * Crea el lote y, de a un camión por vez, le pide al proveedor externo
+     * (Strategy: EstrategiaRuteoPort) que planifique la porción de donaciones
+     * que le corresponde. Cada llamada es síncrona: el proveedor devuelve la
+     * ruta planificada en el mismo response, así que al terminar el lote ya
+     * tiene todas sus rutas armadas y queda COMPLETADO.
+     */
+    private ResultadoLote crearYPlanificarLote(List<DonacionLote> batch, List<Camion> camiones) {
         LotePlanificacion lote = LotePlanificacion.builder()
                 .id(UUID.randomUUID())
                 .camiones(camiones)
@@ -195,13 +211,40 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .fechaEnvio(LocalDateTime.now())
                 .build();
         loteRepositorio.guardar(lote);
-        estrategiaRuteo.solicitarPlanificacion(lote, camiones);
-        return lote;
+
+        Map<Camion, List<DonacionLote>> donacionesPorCamion = distribuirEntreCamiones(batch, camiones);
+        List<Ruta> rutas = new ArrayList<>();
+        for (Camion camion : camiones) {
+            List<DonacionLote> donacionesDelCamion = donacionesPorCamion.get(camion);
+            if (donacionesDelCamion.isEmpty()) {
+                continue;
+            }
+            RutaPlanificadaProveedorDTO rutaPlanificada = estrategiaRuteo.planificarParaCamion(lote, camion, donacionesDelCamion);
+            rutas.add(crearRuta(lote, camion, rutaPlanificada.getParadas()));
+        }
+
+        lote.setEstado(EstadoLote.COMPLETADO);
+        lote.setFechaRespuesta(LocalDateTime.now());
+        loteRepositorio.guardar(lote);
+
+        return new ResultadoLote(lote, rutas);
     }
 
-    private void crearRutaDesdeCallback(LotePlanificacion lote, CallbackVehiculoRutaDTO vehiculo) {
+    /** Reparto simple round-robin: cada donación va al camión (índice % cantidad de camiones). */
+    private Map<Camion, List<DonacionLote>> distribuirEntreCamiones(List<DonacionLote> donaciones, List<Camion> camiones) {
+        Map<Camion, List<DonacionLote>> porCamion = new LinkedHashMap<>();
+        for (Camion camion : camiones) {
+            porCamion.put(camion, new ArrayList<>());
+        }
+        for (int i = 0; i < donaciones.size(); i++) {
+            Camion camion = camiones.get(i % camiones.size());
+            porCamion.get(camion).add(donaciones.get(i));
+        }
+        return porCamion;
+    }
+
+    private Ruta crearRuta(LotePlanificacion lote, Camion camion, List<CallbackParadaDTO> paradasDTO) {
         List<Parada> paradas = new ArrayList<>();
-        Camion camion = camionRepositorio.buscarPorId(vehiculo.getCamionId());
 
         Ruta ruta = Ruta.builder()
                 .id(UUID.randomUUID())
@@ -211,7 +254,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .estado(EstadoRuta.PLANIFICADA)
                 .build();
 
-        for (CallbackParadaDTO paradaDTO : vehiculo.getParadas()) {
+        for (CallbackParadaDTO paradaDTO : paradasDTO) {
             List<Entrega> entregas = new ArrayList<>();
             Parada parada = Parada.builder()
                     .id(UUID.randomUUID())
@@ -234,6 +277,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
         }
 
         rutaRepositorio.guardar(ruta);
+        return ruta;
     }
 
     private List<List<DonacionLote>> particionar(List<DonacionLote> donaciones, int tamanioMaximo) {
@@ -260,6 +304,32 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .provincia(dto.getProvincia())
                 .codigoPostal(dto.getCodigoPostal())
                 .build();
+    }
+
+    /** Si no se indicaron camiones, se planifica con toda la flota DISPONIBLE. */
+    private List<Camion> resolverCamiones(List<UUID> camionesIds) {
+        if (camionesIds != null && !camionesIds.isEmpty()) {
+            return buscarCamionesOFallar(camionesIds);
+        }
+        List<Camion> disponibles = camionRepositorio.buscarTodos().stream()
+                .filter(camion -> camion.getEstado() == EstadoCamion.DISPONIBLE)
+                .toList();
+        if (disponibles.isEmpty()) {
+            throw new SinCamionesDisponiblesException();
+        }
+        return disponibles;
+    }
+
+    private List<Camion> buscarCamionesOFallar(List<UUID> camionesIds) {
+        List<Camion> camiones = camionRepositorio.buscarPorIds(camionesIds);
+        UUID idFaltante = camionesIds.stream()
+                .filter(id -> camiones.stream().noneMatch(camion -> camion.getId().equals(id)))
+                .findFirst()
+                .orElse(null);
+        if (idFaltante != null) {
+            throw new CamionNoEncontradoException(idFaltante);
+        }
+        return camiones;
     }
 
     private LotePlanificacion buscarLoteOFallar(UUID id) {

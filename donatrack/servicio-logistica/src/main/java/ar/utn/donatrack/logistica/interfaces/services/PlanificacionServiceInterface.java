@@ -11,7 +11,7 @@ import java.util.UUID;
 public interface PlanificacionServiceInterface {
     List<LoteResponseDTO> planificar(PlanificacionRequestDTO dto);
     LoteResponseDTO obtenerLote(UUID loteId);
-    void registrarCallback(CallbackRutaRequestDTO dto);
+    void registrarCallback(CallbackRutaRequestDTO dto, String tokenCorrelacion);
     RutaResponseDTO obtenerRuta(UUID rutaId);
     RutaResponseDTO obtenerRutaVigentePorCamion(UUID camionId);
     void iniciarRuta(UUID rutaId);

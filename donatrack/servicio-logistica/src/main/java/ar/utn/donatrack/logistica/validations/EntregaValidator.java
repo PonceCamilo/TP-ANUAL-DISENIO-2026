@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
  * en servicio-donaciones: un enum simple + validación explícita, en vez de
  * una jerarquía de clases State completa).
  *
- * PENDIENTE -> EN_TRASLADO              (inicio de ruta)
+ * LISTO_PARA_ENTREGAR -> EN_TRASLADO    (inicio de ruta)
  * EN_TRASLADO -> ENTREGADA | NO_RECIBIDA
- * NO_RECIBIDA -> PENDIENTE              (regreso a depósito)
+ * NO_RECIBIDA -> LISTO_PARA_ENTREGAR    (regreso a depósito)
  * ENTREGADA es terminal.
  */
 @Component
@@ -19,9 +19,9 @@ public class EntregaValidator {
 
     public void validarTransicion(EstadoEntrega estadoActual, EstadoEntrega estadoNuevo) {
         boolean valida = switch (estadoActual) {
-            case PENDIENTE -> estadoNuevo == EstadoEntrega.EN_TRASLADO;
+            case LISTO_PARA_ENTREGAR -> estadoNuevo == EstadoEntrega.EN_TRASLADO;
             case EN_TRASLADO -> estadoNuevo == EstadoEntrega.ENTREGADA || estadoNuevo == EstadoEntrega.NO_RECIBIDA;
-            case NO_RECIBIDA -> estadoNuevo == EstadoEntrega.PENDIENTE;
+            case NO_RECIBIDA -> estadoNuevo == EstadoEntrega.LISTO_PARA_ENTREGAR;
             case ENTREGADA -> false;
         };
 

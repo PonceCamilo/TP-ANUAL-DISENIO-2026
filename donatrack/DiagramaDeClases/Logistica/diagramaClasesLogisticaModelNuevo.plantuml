@@ -83,7 +83,7 @@ class Entrega {
 }
 
 enum EstadoEntrega {
-    PENDIENTE
+    LISTO_PARA_ENTREGAR
     EN_TRASLADO
     ENTREGADA
     NO_RECIBIDA

@@ -55,10 +55,44 @@ services:
       - "8085:8085"
     environment:
       SERVER_PORT: 8085
-      SERVICIO_LOGISTICA_BASE_URL: http://localhost:8085
       INTEGRACIONES_PROVEEDOR_RUTEO_URL: http://localhost:8085/ruteo/planificar
-      INTEGRACIONES_N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/logistica-evento
+      INTEGRACIONES_BROKER_EVENTOS_URL: http://servicio-broker-logistica:8087/api/broker/eventos/donatrack
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
+    networks:
+      - donatrack-net
+
+  # Segundo proveedor de logistica (de terceros), independiente de
+  # servicio-logistica: el broker elige entre ambos.
+  servicio-logistica-externa:
+    build:
+      context: .
+      dockerfile: servicio-logistica-externa/Dockerfile
+    container_name: donatrack-servicio-logistica-externa
+    ports:
+      - "8086:8086"
+    environment:
+      SERVER_PORT: 8086
+      LOGISTICA_EXTERNA_WEBHOOK_URL: http://servicio-broker-logistica:8087/api/broker/eventos/externa
+      LOGISTICA_EXTERNA_TRACKING_BASE_URL: http://localhost:8086/api/v1/envios/
+    networks:
+      - donatrack-net
+
+  # Broker de integracion Donaciones <-> logistica: elige el proveedor para
+  # cada pedido y reenvia a Donaciones los eventos de ambos (reemplaza al
+  # relay de n8n de logistica).
+  servicio-broker-logistica:
+    build:
+      context: .
+      dockerfile: servicio-broker-logistica/Dockerfile
+    container_name: donatrack-servicio-broker-logistica
+    ports:
+      - "8087:8087"
+    environment:
+      SERVER_PORT: 8087
+      BROKER_DONACIONES_URL: http://servicio-donaciones:8081
+      BROKER_PROVEEDORES_DONATRACK_URL: http://servicio-logistica:8085
+      BROKER_PROVEEDORES_EXTERNA_URL: http://servicio-logistica-externa:8086
+      BROKER_PROVEEDORES_PRIORIDAD: DONATRACK,EXTERNA
     networks:
       - donatrack-net
 

@@ -37,6 +37,16 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
     }
 
+    @ExceptionHandler(ProveedorRuteoIndisponibleException.class)
+    public ResponseEntity<Map<String, Object>> manejarProveedorRuteoIndisponible(ProveedorRuteoIndisponibleException ex) {
+        return construir(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", ex.getMessage());
+    }
+
+    @ExceptionHandler(SinCamionesDisponiblesException.class)
+    public ResponseEntity<Map<String, Object>> manejarSinCamionesDisponibles(SinCamionesDisponiblesException ex) {
+        return construir(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", ex.getMessage());
+    }
+
     @ExceptionHandler({
             CamionNoEncontradoException.class,
             LoteNoEncontradoException.class,

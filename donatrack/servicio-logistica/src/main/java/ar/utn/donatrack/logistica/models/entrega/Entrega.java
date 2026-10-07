@@ -24,7 +24,7 @@ public class Entrega {
     private Parada parada;
 
     @Builder.Default
-    private EstadoEntrega estado = EstadoEntrega.PENDIENTE;
+    private EstadoEntrega estado = EstadoEntrega.LISTO_PARA_ENTREGAR;
 
     @Builder.Default
     private List<CambioEstadoEntrega> historial = new ArrayList<>();

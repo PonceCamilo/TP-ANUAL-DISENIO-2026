@@ -23,6 +23,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        <!-- Health check (GET /actuator/health): lo consulta el broker de Donaciones
+             para saber si este servicio de logística está disponible. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
         <!--
             El parent declara spring-core en scope test (override de seguridad
             CVE-2025-41249). Cada servicio que se ejecuta debe re-declararlo en

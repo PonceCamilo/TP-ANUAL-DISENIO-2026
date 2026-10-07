@@ -2019,6 +2019,58 @@
               ]
             },
             {
+              "name": "Planificar rutas sin camiones (usa los DISPONIBLE)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlLogistica}}/api/logistica/planificaciones",
+                  "host": [
+                    "{{baseUrlLogistica}}"
+                  ],
+                  "path": [
+                    "api",
+                    "logistica",
+                    "planificaciones"
+                  ]
+                },
+                "description": "Sin camionesIds: logistica usa todos los camiones DISPONIBLE (503 si no hay ninguno).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"donaciones\": [\n    {\n      \"idDonacion\": \"{{logisticaDonacionId}}\",\n      \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n      \"direccionEntrega\": {\n        \"calle\": \"Medrano\",\n        \"numero\": 951,\n        \"localidad\": \"CABA\",\n        \"provincia\": \"Buenos Aires\",\n        \"codigoPostal\": \"C1179\"\n      }\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status correcto', function () {",
+                      "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  const item = Array.isArray(json) ? json[0] : json;",
+                      "  if (item && item.id) pm.collectionVariables.set('loteId', item.id);",
+                      "  if (item && item.rutas && item.rutas.length && item.rutas[0].id) pm.collectionVariables.set('rutaId', item.rutas[0].id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
               "name": "Obtener lote de planificacion",
               "request": {
                 "method": "GET",
@@ -2059,6 +2111,10 @@
                   {
                     "key": "Content-Type",
                     "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "{{tokenCorrelacion}}"
                   }
                 ],
                 "url": {
@@ -2073,10 +2129,10 @@
                     "callback"
                   ]
                 },
-                "description": "",
+                "description": "El token de correlación va en el header Authorization, no en el body.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"loteId\": \"{{loteId}}\",\n  \"tokenCorrelacion\": \"{{tokenCorrelacion}}\",\n  \"rutas\": [\n    {\n      \"camionId\": \"{{camionId}}\",\n      \"paradas\": [\n        {\n          \"orden\": 1,\n          \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n          \"direccion\": {\n            \"calle\": \"Medrano\",\n            \"numero\": 951,\n            \"localidad\": \"CABA\",\n            \"provincia\": \"Buenos Aires\",\n            \"codigoPostal\": \"C1179\"\n          },\n          \"donacionesIds\": [\n            \"{{logisticaDonacionId}}\"\n          ]\n        }\n      ]\n    }\n  ]\n}",
+                  "raw": "{\n  \"loteId\": \"{{loteId}}\",\n  \"rutas\": [\n    {\n      \"camionId\": \"{{camionId}}\",\n      \"paradas\": [\n        {\n          \"orden\": 1,\n          \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n          \"direccion\": {\n            \"calle\": \"Medrano\",\n            \"numero\": 951,\n            \"localidad\": \"CABA\",\n            \"provincia\": \"Buenos Aires\",\n            \"codigoPostal\": \"C1179\"\n          },\n          \"donacionesIds\": [\n            \"{{logisticaDonacionId}}\"\n          ]\n        }\n      ]\n    }\n  ]\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2433,10 +2489,10 @@
                     "planificar"
                   ]
                 },
-                "description": "",
+                "description": "Solicitud síncrona de un solo camión: el mock responde en el mismo request/response con su ruta planificada.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"loteId\": \"{{loteId}}\",\n  \"tokenCorrelacion\": \"{{tokenCorrelacion}}\",\n  \"donaciones\": [\n    {\n      \"idDonacion\": \"{{logisticaDonacionId}}\",\n      \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n      \"direccionEntrega\": {\n        \"calle\": \"Medrano\",\n        \"numero\": 951,\n        \"localidad\": \"CABA\",\n        \"provincia\": \"Buenos Aires\",\n        \"codigoPostal\": \"C1179\"\n      }\n    }\n  ],\n  \"camiones\": [\n    {\n      \"id\": \"{{camionId}}\",\n      \"patente\": \"AB123CD\",\n      \"capacidadVolumenM3\": 30,\n      \"alturaM\": 3.2,\n      \"capacidadCargaKg\": 2500\n    }\n  ]\n}",
+                  "raw": "{\n  \"loteId\": \"{{loteId}}\",\n  \"camion\": {\n    \"id\": \"{{camionId}}\",\n    \"patente\": \"AB123CD\",\n    \"capacidadVolumenM3\": 30,\n    \"alturaM\": 3.2,\n    \"capacidadCargaKg\": 2500\n  },\n  \"donaciones\": [\n    {\n      \"idDonacion\": \"{{logisticaDonacionId}}\",\n      \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n      \"direccionEntrega\": {\n        \"calle\": \"Medrano\",\n        \"numero\": 951,\n        \"localidad\": \"CABA\",\n        \"provincia\": \"Buenos Aires\",\n        \"codigoPostal\": \"C1179\"\n      }\n    }\n  ]\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -2457,6 +2513,627 @@
                   }
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Broker Logistica",
+      "item": [
+        {
+          "name": "Ver proveedores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlBroker}}/api/broker/proveedores",
+              "host": [
+                "{{baseUrlBroker}}"
+              ],
+              "path": [
+                "api",
+                "broker",
+                "proveedores"
+              ]
+            },
+            "description": "Proveedores en orden de prioridad, con su health check actual."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Solicitar envio (por prioridad)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlBroker}}/api/broker/envios",
+              "host": [
+                "{{baseUrlBroker}}"
+              ],
+              "path": [
+                "api",
+                "broker",
+                "envios"
+              ]
+            },
+            "description": "Sin proveedor: se ofrece segun broker.proveedores.prioridad, con fallback si uno no esta disponible.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"donaciones\": [\n    {\n      \"idDonacion\": \"{{brokerDonacionId}}\",\n      \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n      \"nombreEntidad\": \"Comedor Los Pibes\",\n      \"direccionEntrega\": {\n        \"calle\": \"Medrano\",\n        \"numero\": 951,\n        \"localidad\": \"CABA\",\n        \"provincia\": \"Buenos Aires\",\n        \"codigoPostal\": \"C1179\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status esperado', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([201]);",
+                  "});",
+                  "if (pm.response.text()) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.envios && json.envios.length) {",
+                  "    pm.collectionVariables.set('brokerProveedorElegido', json.proveedor);",
+                  "    if (json.proveedor === 'EXTERNA') pm.collectionVariables.set('trackingId', json.envios[0].idSeguimiento);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Solicitar envio a EXTERNA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlBroker}}/api/broker/envios",
+              "host": [
+                "{{baseUrlBroker}}"
+              ],
+              "path": [
+                "api",
+                "broker",
+                "envios"
+              ]
+            },
+            "description": "Con proveedor explicito: se usa solo ese, sin fallback (503 si esta caido).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proveedor\": \"EXTERNA\",\n  \"donaciones\": [\n    {\n      \"idDonacion\": \"{{brokerDonacionId}}\",\n      \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n      \"nombreEntidad\": \"Comedor Los Pibes\",\n      \"direccionEntrega\": {\n        \"calle\": \"Medrano\",\n        \"numero\": 951,\n        \"localidad\": \"CABA\",\n        \"provincia\": \"Buenos Aires\",\n        \"codigoPostal\": \"C1179\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status esperado', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([201]);",
+                  "});",
+                  "if (pm.response.text()) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.envios && json.envios.length) {",
+                  "    pm.collectionVariables.set('brokerProveedorElegido', json.proveedor);",
+                  "    if (json.proveedor === 'EXTERNA') pm.collectionVariables.set('trackingId', json.envios[0].idSeguimiento);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Solicitar envio a DONATRACK",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlBroker}}/api/broker/envios",
+              "host": [
+                "{{baseUrlBroker}}"
+              ],
+              "path": [
+                "api",
+                "broker",
+                "envios"
+              ]
+            },
+            "description": "Con proveedor explicito: se usa solo ese, sin fallback (503 si esta caido).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"proveedor\": \"DONATRACK\",\n  \"donaciones\": [\n    {\n      \"idDonacion\": \"{{brokerDonacionId}}\",\n      \"idEntidadBeneficiaria\": \"{{logisticaEntidadId}}\",\n      \"nombreEntidad\": \"Comedor Los Pibes\",\n      \"direccionEntrega\": {\n        \"calle\": \"Medrano\",\n        \"numero\": 951,\n        \"localidad\": \"CABA\",\n        \"provincia\": \"Buenos Aires\",\n        \"codigoPostal\": \"C1179\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status esperado', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([201]);",
+                  "});",
+                  "if (pm.response.text()) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.envios && json.envios.length) {",
+                  "    pm.collectionVariables.set('brokerProveedorElegido', json.proveedor);",
+                  "    if (json.proveedor === 'EXTERNA') pm.collectionVariables.set('trackingId', json.envios[0].idSeguimiento);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar envio de una donacion",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlBroker}}/api/broker/envios/{{brokerDonacionId}}",
+              "host": [
+                "{{baseUrlBroker}}"
+              ],
+              "path": [
+                "api",
+                "broker",
+                "envios",
+                "{{brokerDonacionId}}"
+              ]
+            },
+            "description": "Que proveedor tomo la donacion y con que id de seguimiento."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Evento de servicio-logistica (directo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlBroker}}/api/broker/eventos/donatrack",
+              "host": [
+                "{{baseUrlBroker}}"
+              ],
+              "path": [
+                "api",
+                "broker",
+                "eventos",
+                "donatrack"
+              ]
+            },
+            "description": "Simula el webhook que publica servicio-logistica. El broker lo reenvia a Donaciones (502 si Donaciones lo rechaza).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"ENTREGA_NO_RECIBIDA\",\n  \"rutaId\": \"{{rutaId}}\",\n  \"idDonacion\": \"{{donacionId}}\",\n  \"motivoFallo\": \"ENTIDAD_AUSENTE\",\n  \"replanificable\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Evento de logistica externa (directo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlBroker}}/api/broker/eventos/externa",
+              "host": [
+                "{{baseUrlBroker}}"
+              ],
+              "path": [
+                "api",
+                "broker",
+                "eventos",
+                "externa"
+              ]
+            },
+            "description": "Simula el webhook del proveedor externo. El broker lo traduce al callback de Donaciones.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"trackingId\": \"{{trackingId}}\",\n  \"shipmentRef\": \"{{brokerDonacionId}}\",\n  \"status\": \"ENTREGADO\",\n  \"vehiculo\": \"ZZ999ZZ\",\n  \"trackingUrl\": \"{{baseUrlLogisticaExterna}}/api/v1/envios/{{trackingId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Logistica Externa",
+      "item": [
+        {
+          "name": "Crear envio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlLogisticaExterna}}/api/v1/envios",
+              "host": [
+                "{{baseUrlLogisticaExterna}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "envios"
+              ]
+            },
+            "description": "Normalmente lo crea el broker; este request sirve para probar el proveedor solo.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentRef\": \"{{brokerDonacionId}}\",\n  \"destinatario\": \"Comedor Los Pibes\",\n  \"domicilio\": \"Medrano 951, CABA, Buenos Aires, C1179\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status esperado', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([201]);",
+                  "});",
+                  "if (pm.response.text()) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.trackingId) pm.collectionVariables.set('trackingId', json.trackingId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar envios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlLogisticaExterna}}/api/v1/envios",
+              "host": [
+                "{{baseUrlLogisticaExterna}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "envios"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar envio",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlLogisticaExterna}}/api/v1/envios/{{trackingId}}",
+              "host": [
+                "{{baseUrlLogisticaExterna}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "envios",
+                "{{trackingId}}"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Despachar envio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlLogisticaExterna}}/api/v1/envios/{{trackingId}}/despacho",
+              "host": [
+                "{{baseUrlLogisticaExterna}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "envios",
+                "{{trackingId}}",
+                "despacho"
+              ]
+            },
+            "description": "ACEPTADO o FALLIDO -> EN_CAMINO. Avisa al broker, que lo reenvia a Donaciones como inicio de ruta.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculo\": \"ZZ999ZZ\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Informar entrega fallida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlLogisticaExterna}}/api/v1/envios/{{trackingId}}/fallo",
+              "host": [
+                "{{baseUrlLogisticaExterna}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "envios",
+                "{{trackingId}}",
+                "fallo"
+              ]
+            },
+            "description": "EN_CAMINO -> FALLIDO. Se puede volver a despachar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"Destinatario ausente\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reintentar despacho",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlLogisticaExterna}}/api/v1/envios/{{trackingId}}/despacho",
+              "host": [
+                "{{baseUrlLogisticaExterna}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "envios",
+                "{{trackingId}}",
+                "despacho"
+              ]
+            },
+            "description": "FALLIDO -> EN_CAMINO. Vuelve a avisar inicio de ruta.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehiculo\": \"ZZ999ZZ\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirmar entrega",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlLogisticaExterna}}/api/v1/envios/{{trackingId}}/entrega",
+              "host": [
+                "{{baseUrlLogisticaExterna}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "envios",
+                "{{trackingId}}",
+                "entrega"
+              ]
+            },
+            "description": "EN_CAMINO -> ENTREGADO."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status correcto', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
+                  "});"
+                ]
+              }
             }
           ]
         }
@@ -2620,7 +3297,7 @@
     },
     {
       "key": "camionId",
-      "value": "66666666-6666-6666-6666-666666666666"
+      "value": "88888888-8888-8888-8888-888888888888"
     },
     {
       "key": "loteId",
@@ -2645,6 +3322,26 @@
     {
       "key": "logisticaEntidadId",
       "value": "33333333-3333-3333-3333-333333333333"
+    },
+    {
+      "key": "baseUrlBroker",
+      "value": "http://localhost:8087"
+    },
+    {
+      "key": "baseUrlLogisticaExterna",
+      "value": "http://localhost:8086"
+    },
+    {
+      "key": "brokerDonacionId",
+      "value": "44444444-4444-4444-4444-444444444444"
+    },
+    {
+      "key": "brokerProveedorElegido",
+      "value": ""
+    },
+    {
+      "key": "trackingId",
+      "value": ""
     },
     {
       "key": "baseUrlNotificaciones",

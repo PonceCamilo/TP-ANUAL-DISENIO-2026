@@ -104,8 +104,8 @@ public class EntregaService implements EntregaServiceInterface {
     @Override
     public void regresarADeposito(UUID id) {
         Entrega entrega = buscarOFallar(id);
-        validador.validarTransicion(entrega.getEstado(), EstadoEntrega.PENDIENTE);
-        entrega.registrarCambio(EstadoEntrega.PENDIENTE, "Regreso a depósito");
+        validador.validarTransicion(entrega.getEstado(), EstadoEntrega.LISTO_PARA_ENTREGAR);
+        entrega.registrarCambio(EstadoEntrega.LISTO_PARA_ENTREGAR, "Regreso a depósito");
         repositorio.guardar(entrega);
     }
 

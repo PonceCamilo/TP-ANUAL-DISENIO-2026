@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Hecho de logística publicado hacia n8n. Es un evento único con campos por
+ * Hecho de logística publicado hacia el broker de logística. Es un evento único con campos por
  * tipo: no todos aplican a todos los tipos (INICIO_RUTA agrupa varias donaciones
  * en idsDonaciones; ENTREGA_CONFIRMADA/NO_RECIBIDA refieren a una sola donación).
  * El listener arma el payload según el tipo.
