@@ -37,6 +37,7 @@ import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import ar.utn.donatrack.logistica.validations.EntregaValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -53,6 +54,7 @@ import java.util.UUID;
  * EstrategiaRuteoPort) en Ruta/Parada/Entrega.
  */
 @Service
+@Transactional
 public class PlanificacionRutasService implements PlanificacionServiceInterface {
 
     // Link simulado al mapa de seguimiento en tiempo real; se completa con el id de ruta.
@@ -111,6 +113,9 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
 
         for (CallbackVehiculoRutaDTO vehiculo : dto.getRutas()) {
             Camion camion = camionRepositorio.buscarPorId(vehiculo.getCamionId());
+            if (camion == null) {
+                throw new CamionNoEncontradoException(vehiculo.getCamionId());
+            }
             crearRuta(lote, camion, vehiculo.getParadas());
         }
 
@@ -253,6 +258,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .paradas(paradas)
                 .estado(EstadoRuta.PLANIFICADA)
                 .build();
+        List<Entrega> entregasDeLaRuta = new ArrayList<>();
 
         for (CallbackParadaDTO paradaDTO : paradasDTO) {
             List<Entrega> entregas = new ArrayList<>();
@@ -271,12 +277,15 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                         .idDonacion(idDonacion)
                         .parada(parada)
                         .build();
-                entregaRepositorio.guardar(entrega);
                 entregas.add(entrega);
+                entregasDeLaRuta.add(entrega);
             }
         }
 
+        // Primero la ruta: guarda en cascada sus paradas y las entregas de cada
+        // parada. Una entrega no puede guardarse antes que la parada a la que pertenece.
         rutaRepositorio.guardar(ruta);
+        entregasDeLaRuta.forEach(entregaRepositorio::guardar);
         return ruta;
     }
 

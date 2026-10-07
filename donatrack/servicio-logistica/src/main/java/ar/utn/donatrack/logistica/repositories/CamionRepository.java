@@ -4,37 +4,62 @@ import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterf
 import ar.utn.donatrack.logistica.models.flota.Camion;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Repository
-public class CamionRepository implements CamionRepositoryInterface {
+public class CamionRepository extends RepositorioJpa<Camion> implements CamionRepositoryInterface {
 
-    private final ConcurrentHashMap<UUID, Camion> storage = new ConcurrentHashMap<>();
+    public CamionRepository() {
+        super(Camion.class);
+    }
 
     @Override
     public void guardar(Camion camion) {
-        storage.put(camion.getId(), camion);
+        guardarEntidad(camion, camion.getId());
     }
 
     @Override
     public List<Camion> buscarTodos() {
-        return new ArrayList<>(storage.values());
+        return em.createQuery("SELECT c FROM Camion c ORDER BY c.patente", Camion.class)
+                .getResultList();
     }
 
     @Override
     public Camion buscarPorId(UUID id) {
-        return storage.get(id);
+        return buscarEntidad(id);
     }
 
     @Override
+    public Camion buscarPorPatente(String patente) {
+        return em.createQuery("SELECT c FROM Camion c WHERE c.patente = :patente", Camion.class)
+                .setParameter("patente", patente)
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Devuelve los camiones encontrados respetando el orden de los ids pedidos,
+     * sin repetir (un camión aparece una sola vez por lote en lote_camion).
+     */
+    @Override
     public List<Camion> buscarPorIds(List<UUID> ids) {
-        return ids.stream()
-                .filter(java.util.Objects::nonNull)
-                .map(storage::get)
-                .filter(java.util.Objects::nonNull)
+        List<UUID> idsValidos = ids.stream().filter(Objects::nonNull).distinct().toList();
+        if (idsValidos.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, Camion> porId = em.createQuery("SELECT c FROM Camion c WHERE c.id IN :ids", Camion.class)
+                .setParameter("ids", idsValidos)
+                .getResultStream()
+                .collect(Collectors.toMap(Camion::getId, Function.identity()));
+        return idsValidos.stream()
+                .map(porId::get)
+                .filter(Objects::nonNull)
                 .toList();
     }
 }

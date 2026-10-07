@@ -10,4 +10,5 @@ public interface CamionRepositoryInterface {
     List<Camion> buscarTodos();
     Camion buscarPorId(UUID id);
     List<Camion> buscarPorIds(List<UUID> ids);
+    Camion buscarPorPatente(String patente);
 }

@@ -44,14 +44,24 @@ También se puede levantar todo junto con `docker compose up --build` desde `don
 
 ## 1. Levantar el backend de logística
 
-1. En una terminal:
+1. Levantar la base de datos de logística (PostgreSQL, publicada en `localhost:5433`):
+
+   ```bash
+   cd donatrack
+   docker compose up -d logistica-db
+   ```
+
+   Al arrancar, el servicio crea las tablas con las migraciones de Flyway
+   (`src/main/resources/db/migration`).
+
+2. En una terminal:
 
    ```bash
    cd donatrack/servicio-logistica
    mvn spring-boot:run
    ```
 
-2. Esperar en la consola estas líneas:
+3. Esperar en la consola estas líneas:
 
    ```text
    Escuchando en el puerto: 8085
@@ -60,10 +70,12 @@ También se puede levantar todo junto con `docker compose up --build` desde `don
    ```
 
    Confirman que hay una entrega de prueba lista para "fallar" (su camión, `AB123CD`, queda
-   `EN_RUTA`) y dos camiones `DISPONIBLE` para planificar. Los repositorios son en memoria,
-   así que estos datos se recrean en cada arranque.
+   `EN_RUTA`) y dos camiones `DISPONIBLE` para planificar. Los datos quedan guardados en la
+   base: en los arranques siguientes no se recrean (se ve "ya existente, no se recarga"),
+   así que los cambios de estado de una prueba persisten. Para empezar de cero:
+   `docker compose down -v` (borra el volumen `logistica-db-data`).
 
-3. En otra terminal, levantar el broker:
+4. En otra terminal, levantar el broker:
 
    ```bash
    cd donatrack/servicio-broker-logistica
