@@ -1,5 +1,5 @@
 -- Esquema inicial de logistica_db (base propia de servicio-logistica),
--- según el DER de Logística del Grupo 2, con claves primarias UUID.
+-- según el DER de Logística, con claves primarias UUID.
 --
 -- donacion y entidad_beneficiaria son tablas de referencia: guardan solo el id
 -- de datos que viven en servicio-donaciones, para que las foreign keys de
