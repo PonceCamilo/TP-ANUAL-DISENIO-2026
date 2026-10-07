@@ -1,80 +1,84 @@
 package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
-import lombok.Getter;
+import ar.utn.donatrack.donaciones.repositories.jpa.PersonaDonanteJpaRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Persistencia de personas donantes en base relacional (Entrega 4).
+ *
+ * Reemplaza al ConcurrentHashMap con índice por email que había antes. Dos cosas
+ * que mejoran con el cambio:
+ *   - La unicidad del email la garantiza la base, no un Map que se vacía al
+ *     reiniciar el proceso.
+ *   - La búsqueda por email ya no depende de mantener un índice a mano y en
+ *     sincronía con el almacenamiento principal.
+ *
+ * La interfaz no cambió, así que los services y sus tests siguen igual.
+ */
 @Repository
-@Getter
+@RequiredArgsConstructor
 public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterface {
 
-    private final Map<UUID, PersonaDonante> almacenamiento = new ConcurrentHashMap<>();
-    private final Map<String, UUID> indicePorEmail = new ConcurrentHashMap<>();
+    private final PersonaDonanteJpaRepository jpa;
 
+    @Transactional
     public void guardar(PersonaDonante personaDonante) {
         if (personaDonante.getId() == null) {
             personaDonante.setId(UUID.randomUUID());
         }
-        almacenamiento.put(personaDonante.getId(), personaDonante);
-        indicePorEmail.put(personaDonante.getEmail().toLowerCase(), personaDonante.getId());
+        jpa.save(personaDonante);
     }
 
+    @Transactional(readOnly = true)
     public PersonaDonante obtenerPersona(UUID id) {
-        return almacenamiento.get(id);
+        return jpa.findById(id).orElse(null);
     }
 
+    @Transactional(readOnly = true)
     public List<PersonaDonante> obtenerTodosDonantes() {
-        return almacenamiento.values().stream().toList();
+        return jpa.findAll();
     }
 
-    public void modificarMedioContacto(UUID id, MedioDeContacto medio) {
-        PersonaDonante persona = obtenerPersona(id);
-        if (persona != null) {
-            Class<?> tipoNuevo = medio.getClass();
-            persona.getContactos().removeIf(mc -> mc.getClass().equals(tipoNuevo));
-            persona.getContactos().add(medio);
-        }
-    }
-
+    @Transactional
     public void modificarRepresentante(UUID idPersonaJuridica, Representante representante) {
-        PersonaJuridica persona = (PersonaJuridica) obtenerPersona(idPersonaJuridica);
-        if (persona != null) {
-            persona.agregarRepresentante(representante);
+        PersonaDonante persona = obtenerPersona(idPersonaJuridica);
+        if (persona instanceof PersonaJuridica juridica) {
+            juridica.agregarRepresentante(representante);
+            jpa.save(juridica);
         }
     }
 
+    @Transactional(readOnly = true)
     public boolean existePorId(UUID id) {
-        return almacenamiento.containsKey(id);
+        return jpa.existsById(id);
     }
 
+    @Transactional(readOnly = true)
     public boolean existePorEmail(String email) {
-        return indicePorEmail.containsKey(email.toLowerCase());
+        return email != null && jpa.existsByEmailIgnoreCase(email);
     }
 
+    @Transactional(readOnly = true)
     public PersonaDonante obtenerPorEmail(String email) {
-        UUID id = indicePorEmail.get(email.toLowerCase());
-        return id != null ? almacenamiento.get(id) : null;
+        return email == null ? null : jpa.findByEmailIgnoreCase(email).orElse(null);
     }
 
+    @Transactional(readOnly = true)
     public List<PersonaDonante> obtenerPorEstado(String estado) {
-        return almacenamiento.values().stream()
-                .filter(p -> p.getEstado().nombre().equals(estado))
-                .toList();
+        return jpa.findByEstadoNombre(estado);
     }
 
+    @Transactional
     public void eliminar(UUID id) {
-        PersonaDonante persona = almacenamiento.remove(id);
-        if (persona != null && persona.getEmail() != null) {
-            indicePorEmail.remove(persona.getEmail().toLowerCase());
-        }
+        jpa.deleteById(id);
     }
 }

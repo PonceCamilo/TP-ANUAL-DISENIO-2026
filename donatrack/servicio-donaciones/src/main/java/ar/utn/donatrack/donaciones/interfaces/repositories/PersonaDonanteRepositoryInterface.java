@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.interfaces.repositories;
 
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
 
@@ -14,7 +13,6 @@ public interface PersonaDonanteRepositoryInterface {
     List<PersonaDonante> obtenerTodosDonantes();
     void guardar(PersonaDonante donante);
     void modificarRepresentante(UUID idDonante, Representante representante);
-    void modificarMedioContacto(UUID idDonante, MedioDeContacto medio);
     boolean existePorId(UUID id);
     boolean existePorEmail(String email);
     PersonaDonante obtenerPersona(UUID id);

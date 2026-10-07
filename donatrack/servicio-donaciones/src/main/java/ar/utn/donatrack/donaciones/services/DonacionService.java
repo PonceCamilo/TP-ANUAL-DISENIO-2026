@@ -67,6 +67,7 @@ public class DonacionService implements DonacionServiceInterface {
   public void cambiarEstado(UUID id, CambioEstadoRequestDTO dto) {
     Donacion donacion = validador.validarYObtenerDonacion(id);
     donacion.cambiarEstado(dto.getEstado(), dto.getNombreTransicion(), dto.getJustificacion());
+    repositorio.guardar(donacion);
 
     if (donacion.fueEntregada()) {
       notificarDonacionExitosa(donacion);
@@ -77,6 +78,7 @@ public class DonacionService implements DonacionServiceInterface {
     Donacion donacion = validador.validarYObtenerDonacion(id);
     validador.validarTieneBienes(donacion);
     donacion.getBienes().set(0, mapper.toBien(dto));
+    repositorio.guardar(donacion);
   }
 
   public CandidatosAsignacionResponseDTO obtenerCandidatos(UUID idDonacion) {
@@ -114,6 +116,7 @@ public class DonacionService implements DonacionServiceInterface {
     EntidadBeneficiaria entidad = entidadesValidator.validarYObtenerEntidad(dto.getIdEntidadBeneficiaria());
 
     donacion.asignarA(entidad);
+    repositorio.guardar(donacion);
 
     // Ya tiene destino: sale de la bandeja de pendientes del administrador.
     candidatosRepositorio.eliminar(idDonacion);

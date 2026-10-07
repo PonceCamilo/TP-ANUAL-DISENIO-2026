@@ -37,8 +37,14 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConfig {
 
     public static final String EXCHANGE = "donatrack.notificaciones";
-    public static final String QUEUE = "notificaciones.pendientes";
     public static final String ROUTING_KEY = "notificacion.enviar";
+
+    /**
+     * Tiene que coincidir con la cola que escucha el NotificacionListener de
+     * servicio-notificaciones. Si los nombres se desalinean, los mensajes se
+     * acumulan en una cola que nadie lee y nada falla a la vista.
+     */
+    public static final String QUEUE = "notificaciones.queue";
 
     /** Exchange durable: sobrevive al reinicio del broker. */
     @Bean

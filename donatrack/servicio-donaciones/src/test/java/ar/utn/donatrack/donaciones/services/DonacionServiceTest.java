@@ -272,6 +272,31 @@ class DonacionServiceTest {
         }
 
         @Test
+        @DisplayName("PERSISTE el cambio de estado")
+        void persisteElCambioDeEstado() {
+            // Sin este guardado el cambio se pierde: con JPA la entidad que
+            // devuelve el repositorio queda detached al cerrar la transacción de
+            // lectura. Es el bug que los tests con mock NO detectaban y que
+            // apareció recién al probar contra PostgreSQL real.
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+
+            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ASIGNACION_REALIZADA", null));
+
+            verify(repositorio).guardar(donacion);
+        }
+
+        @Test
+        @DisplayName("Un cambio ilegal NO persiste nada")
+        void cambioIlegalNoPersiste() {
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+
+            assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
+                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+
+            verify(repositorio, never()).guardar(any());
+        }
+
+        @Test
         @DisplayName("Un cambio ilegal se propaga como excepción de dominio (422)")
         void cambioIlegal() {
             when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
@@ -408,6 +433,19 @@ class DonacionServiceTest {
             assertThatThrownBy(() -> servicio.asignar(idInexistente, dtoAsignacion(UUID.randomUUID())))
                     .isInstanceOf(DonacionNoEncontradaException.class);
             verifyNoInteractions(notificacionClient);
+        }
+
+        @Test
+        @DisplayName("PERSISTE la asignación")
+        void persisteLaAsignacion() {
+            EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+
+            servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
+
+            verify(repositorio).guardar(donacion);
         }
 
         @Test

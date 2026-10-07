@@ -18,6 +18,10 @@ import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
+import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
+import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
+import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.LogisticaNoDisponibleException;
+import ar.utn.donatrack.donaciones.services.PlanificacionEntregasService;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -83,6 +87,9 @@ class DonacionesControllerTest {
 
     @MockitoBean
     private PersonasValidator personasValidator;
+
+    @MockitoBean
+    private PlanificacionEntregasService planificacionEntregasService;
 
     private final UUID idDonacion = UUID.randomUUID();
     private final UUID idDonante = UUID.randomUUID();
@@ -534,6 +541,124 @@ class DonacionesControllerTest {
 
             verify(donacionService).obtenerCandidatosPendientes();
             verify(donacionService, never()).obtenerPorId(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /donaciones/envios - despacho al broker de logística")
+    class DespachoALogistica {
+
+        private String cuerpo(String proveedor) throws Exception {
+            return proveedor == null
+                    ? objectMapper.writeValueAsString(Map.of("idsDonaciones", List.of(idDonacion)))
+                    : objectMapper.writeValueAsString(Map.of(
+                            "idsDonaciones", List.of(idDonacion), "proveedor", proveedor));
+        }
+
+        private EnvioLogisticaResponseDTO respuestaDespacho(String proveedor, List<String> descartados) {
+            return EnvioLogisticaResponseDTO.builder()
+                    .proveedor(proveedor)
+                    .proveedoresDescartados(descartados)
+                    .envios(List.of(EnvioLogisticaResponseDTO.EnvioDonacionDTO.builder()
+                            .idDonacion(idDonacion)
+                            .proveedor(proveedor)
+                            .idSeguimiento("SEG-ABC123")
+                            .fechaAsignacion(LocalDateTime.of(2026, 10, 7, 11, 26))
+                            .build()))
+                    .build();
+        }
+
+        @Test
+        @DisplayName("Devuelve 201 con el proveedor y el id de seguimiento de cada envío")
+        void despachoOk() throws Exception {
+            when(planificacionEntregasService.despachar(any(), isNull()))
+                    .thenReturn(respuestaDespacho("DONATRACK", List.of()));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(null)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.proveedor").value("DONATRACK"))
+                    .andExpect(jsonPath("$.envios[0].idDonacion").value(idDonacion.toString()))
+                    .andExpect(jsonPath("$.envios[0].idSeguimiento").value("SEG-ABC123"));
+        }
+
+        @Test
+        @DisplayName("Expone los proveedores descartados, que es el fallback en acción")
+        void muestraElFallback() throws Exception {
+            when(planificacionEntregasService.despachar(any(), isNull()))
+                    .thenReturn(respuestaDespacho("EXTERNA", List.of("DONATRACK")));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(null)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.proveedor").value("EXTERNA"))
+                    .andExpect(jsonPath("$.proveedoresDescartados[0]").value("DONATRACK"));
+        }
+
+        @Test
+        @DisplayName("Permite forzar un proveedor puntual")
+        void proveedorForzado() throws Exception {
+            when(planificacionEntregasService.despachar(any(), eq("EXTERNA")))
+                    .thenReturn(respuestaDespacho("EXTERNA", List.of()));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("EXTERNA")))
+                    .andExpect(status().isCreated());
+
+            verify(planificacionEntregasService).despachar(any(), eq("EXTERNA"));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si la donación no está en condiciones de despacharse")
+        void donacionNoDespachable() throws Exception {
+            when(planificacionEntregasService.despachar(any(), isNull()))
+                    .thenThrow(new DonacionNoDespachableException("La donación está en EN_DEPOSITO"));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(null)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400));
+        }
+
+        @Test
+        @DisplayName("Devuelve 503 cuando no hay proveedores disponibles, para que se reintente")
+        void sinProveedores() throws Exception {
+            // 503 y no 500: el pedido era válido, el problema es transitorio y
+            // las donaciones quedaron intactas en ASIGNACION_REALIZADA.
+            when(planificacionEntregasService.despachar(any(), isNull()))
+                    .thenThrow(new LogisticaNoDisponibleException("Ningún proveedor disponible"));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(null)))
+                    .andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.status").value(503));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si no se indica ninguna donación")
+        void sinDonaciones() throws Exception {
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("idsDonaciones", List.of()))))
+                    .andExpect(status().isBadRequest());
+
+            verify(planificacionEntregasService, never()).despachar(any(), any());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el proveedor no es DONATRACK ni EXTERNA")
+        void proveedorInvalido() throws Exception {
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("CORREO_ARGENTINO")))
+                    .andExpect(status().isBadRequest());
+
+            verify(planificacionEntregasService, never()).despachar(any(), any());
         }
     }
 }

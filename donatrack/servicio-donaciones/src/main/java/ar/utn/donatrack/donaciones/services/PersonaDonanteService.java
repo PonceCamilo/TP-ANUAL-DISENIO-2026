@@ -62,6 +62,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     PersonaDonante persona = validador.validarYObtenerPersona(id);
     persona.cambiarEstado(dto.getEstado(), dto.getJustificacion());
     persona.registrarInteraccion();
+    repositorio.guardar(persona);
   }
 
   @Override
@@ -69,8 +70,13 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     PersonaDonante persona = validador.validarYObtenerPersona(id);
     MedioDeContacto medio = mapper.toContacto(dto);
     validador.validarMedioContacto(medio);
-    repositorio.modificarMedioContacto(id, medio);
+
+    // Todo sobre la MISMA instancia y un solo guardado: delegar el reemplazo en
+    // el repositorio haría que trabajara sobre otra instancia, y este guardado
+    // pisaría el cambio de contacto.
+    persona.reemplazarContacto(medio);
     persona.registrarInteraccion();
+    repositorio.guardar(persona);
   }
 
   @Override

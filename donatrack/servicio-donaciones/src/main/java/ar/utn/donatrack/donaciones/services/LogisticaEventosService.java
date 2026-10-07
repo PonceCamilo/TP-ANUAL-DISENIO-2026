@@ -58,6 +58,7 @@ public class LogisticaEventosService {
             Donacion donacion = obtenerDonacionOFallar(idDonacion);
 
             donacion.cambiarEstado("EN_TRASLADO", "Inicio de ruta", "Chofer inició el recorrido. Ruta: " + dto.idRuta());
+            donacionesRepositorio.guardar(donacion);
 
 
             notificarInicioRutaEntidad(donacion, dto.urlMapaInteractivo());
@@ -103,6 +104,7 @@ public class LogisticaEventosService {
         Donacion donacion = obtenerDonacionOFallar(dto.idDonacion());
 
         donacion.cambiarEstado("ENTREGADA", "Entrega confirmada", "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega());
+        donacionesRepositorio.guardar(donacion);
 
         String comprobante = armarComprobante(dto);
 
@@ -163,6 +165,7 @@ public class LogisticaEventosService {
                 + (dto.replanificable() ? " | Puede ser replanificada." : " | No puede ser replanificada.");
 
         donacion.cambiarEstado("ENTREGA_FALLIDA", "Entrega fallida", justificacion);
+        donacionesRepositorio.guardar(donacion);
 
         notificarEntregaFallidaEntidad(donacion, dto.motivoFallo(), dto.replanificable());
         notificarEntregaFallidaDonante(donacion, dto.motivoFallo(), dto.replanificable());

@@ -476,20 +476,40 @@ class PersonaDonanteServiceTest {
     class ContactosYRepresentantes {
 
         @Test
-        @DisplayName("Modificar el contacto lo delega al repositorio y registra la interacción")
+        @DisplayName("Modificar el contacto reemplaza el del mismo tipo, registra la interacción y PERSISTE")
         void modificaContacto() {
+            // El guardado es lo esencial: con JPA la instancia que trae el
+            // validador queda detached, así que sin guardar no pasa nada.
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
             when(repositorio.obtenerPersona(id)).thenReturn(donante);
 
             servicio.modificarContacto(id, EmailRequestDTO.builder().valor("nuevo@example.com").build());
 
-            verify(repositorio).modificarMedioContacto(eq(id), any());
+            assertThat(donante.getContactos())
+                    .hasSize(1)
+                    .allMatch(c -> c.getValor().equals("nuevo@example.com"));
             assertThat(donante.getUltimaInteraccion()).isNotNull();
+            verify(repositorio).guardar(donante);
         }
 
         @Test
-        @DisplayName("Rechaza un contacto con valor en blanco")
+        @DisplayName("Un contacto nuevo del mismo tipo reemplaza al anterior en lugar de sumarse")
+        void reemplazaElContactoDelMismoTipo() {
+            UUID id = UUID.randomUUID();
+            PersonaHumana donante = humanaGuardada(id);
+            donante.getContactos().add(
+                    ar.utn.donatrack.donaciones.models.contacto.Email.builder().valor("viejo@example.com").build());
+            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+
+            servicio.modificarContacto(id, EmailRequestDTO.builder().valor("nuevo@example.com").build());
+
+            assertThat(donante.getContactos()).hasSize(1);
+            assertThat(donante.getContactos().getFirst().getValor()).isEqualTo("nuevo@example.com");
+        }
+
+        @Test
+        @DisplayName("Rechaza un contacto con valor en blanco sin guardar nada")
         void rechazaContactoEnBlanco() {
             UUID id = UUID.randomUUID();
             when(repositorio.obtenerPersona(id)).thenReturn(humanaGuardada(id));
@@ -497,7 +517,7 @@ class PersonaDonanteServiceTest {
             assertThatThrownBy(() -> servicio.modificarContacto(
                     id, EmailRequestDTO.builder().valor("   ").build()))
                     .isInstanceOf(MedioContactoInvalidoException.class);
-            verify(repositorio, never()).modificarMedioContacto(any(), any());
+            verify(repositorio, never()).guardar(any());
         }
 
         @Test

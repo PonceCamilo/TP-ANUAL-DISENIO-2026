@@ -65,11 +65,11 @@ class SchedulingHabilitadoTest {
     }
 
     @Test
-    @DisplayName("La planificación de entregas del día siguiente está programada")
-    void planificacionEntregasProgramada() {
+    @DisplayName("El barrido nocturno que despacha a logística está programado")
+    void despachoALogisticaProgramado() {
         // Requisito de Entrega 3: generar los planes de ruta para la siguiente
-        // jornada operativa en horarios de baja carga. Es lo que dispara el
-        // broker de logística que pide la Entrega 4.
-        assertThat(tareasRegistradas()).contains("planificarEntregasDelDiaSiguiente");
+        // jornada operativa en horarios de baja carga. Complementa al endpoint
+        // POST /donaciones/envios, que despacha a demanda.
+        assertThat(tareasRegistradas()).contains("despacharPendientesDelDia");
     }
 }

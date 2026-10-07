@@ -4,14 +4,17 @@ import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.EnvioLogisticaRequestDTO;
 import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.services.PlanificacionEntregasService;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,6 +50,7 @@ public class DonacionesController {
 
   private final DonacionServiceInterface donacionService;
   private final SegmentadorDonacionesServiceInterface segmentadorDonacionesService;
+  private final PlanificacionEntregasService planificacionEntregasService;
   private final PersonasValidator personasValidator;
   private final DonacionMapper mapper;
 
@@ -187,6 +191,26 @@ public class DonacionesController {
   ) {
     donacionService.asignar(id, dto);
     return ResponseEntity.noContent().build();
+  }
+
+  @Operation(
+      summary = "Despachar donaciones a logística",
+      description = "Envía al broker de logística un lote de donaciones en ASIGNACION_REALIZADA. El broker elige el proveedor (o se puede forzar uno) y devuelve el id de seguimiento de cada envío. Las donaciones aceptadas pasan a LISTA_PARA_ENTREGAR.",
+      responses = {
+          @ApiResponse(responseCode = "201", description = "Donaciones despachadas",
+              content = @Content(schema = @Schema(implementation = EnvioLogisticaResponseDTO.class))),
+          @ApiResponse(responseCode = "400", description = "Alguna donación no existe, no está en ASIGNACION_REALIZADA o su entidad no tiene dirección"),
+          @ApiResponse(responseCode = "404", description = "Donación no encontrada"),
+          @ApiResponse(responseCode = "503", description = "Ningún proveedor de logística disponible; reintentar más tarde")
+      }
+  )
+  @PostMapping("/envios")
+  public ResponseEntity<EnvioLogisticaResponseDTO> despacharALogistica(
+      @RequestBody @Valid EnvioLogisticaRequestDTO dto
+  ) {
+    EnvioLogisticaResponseDTO resultado =
+        planificacionEntregasService.despachar(dto.getIdsDonaciones(), dto.getProveedor());
+    return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
   }
 
   @Operation(

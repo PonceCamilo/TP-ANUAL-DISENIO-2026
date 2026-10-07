@@ -17,6 +17,11 @@ public class DonacionResponseDTO {
   private LocalDateTime fechaDonacion;
   private String subcategoria;
   private String estado;
+
+  /** Proveedor de logística que tomó la entrega y su id de seguimiento; null si todavía no se despachó. */
+  private String proveedorLogistica;
+  private String idSeguimientoLogistica;
+
   private List<BienResponseDTO> bienes;
   private List<CambioEstadoResponseDTO> historialEstados;
 }

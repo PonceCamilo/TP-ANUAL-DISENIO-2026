@@ -2,64 +2,64 @@ package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
-import lombok.Getter;
+import ar.utn.donatrack.donaciones.repositories.jpa.DonacionJpaRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Persistencia de donaciones en base relacional (Entrega 4).
+ *
+ * Antes de esta entrega el almacenamiento era una List sincronizada en memoria.
+ * La interfaz DonacionesRepositoryInterface no cambió ni una línea, así que el
+ * reemplazo fue invisible para los services y para los 501 tests, que mockean
+ * la interfaz y no la implementación. Esa es la razón de ser de la interfaz.
+ *
+ * Esta clase es un adapter delgado: traduce el vocabulario del dominio
+ * ("obtener por estado") al de Spring Data ("findByEstadoNombre").
+ */
 @Repository
-@Getter
+@RequiredArgsConstructor
 public class DonacionesRepository implements DonacionesRepositoryInterface {
 
-  /**
-   * CORRECCIÓN: la lista original era un ArrayList sin sincronización.
-   * PersonaDonanteRepository usa ConcurrentHashMap (thread-safe) pero este repositorio
-   * usaba ArrayList, inconsistente y potencialmente corrupto bajo acceso concurrente.
-   *
-   * Se reemplaza por Collections.synchronizedList para mantener thread-safety
-   * con una API idéntica a la original.
-   */
-  private final List<Donacion> donaciones = Collections.synchronizedList(new ArrayList<>());
+  private final DonacionJpaRepository jpa;
 
+  @Transactional
   public void cargarDonaciones(List<Donacion> cargaDonaciones) {
-    donaciones.addAll(cargaDonaciones);
+    jpa.saveAll(cargaDonaciones);
   }
 
+  @Transactional
+  public void guardar(Donacion donacion) {
+    jpa.save(donacion);
+  }
+
+  @Transactional(readOnly = true)
   public List<Donacion> obtenerTodas() {
-    synchronized (donaciones) {
-      return new ArrayList<>(donaciones);
-    }
+    return jpa.findAll();
   }
 
+  @Transactional(readOnly = true)
   public List<Donacion> obtenerPorEstado(String estado) {
-    synchronized (donaciones) {
-      return donaciones.stream()
-          .filter(d -> d.estaEnEstado(estado))
-          .toList();
-    }
+    return jpa.findByEstadoNombre(estado);
   }
 
+  @Transactional(readOnly = true)
   public List<Donacion> obtenerPorDonante(UUID idDonante) {
-    synchronized (donaciones) {
-      return donaciones.stream()
-          .filter(d -> idDonante.equals(d.getIdDonante()))
-          .toList();
-    }
+    return jpa.findByIdDonante(idDonante);
   }
 
+  /** Devuelve null y no Optional para no cambiar el contrato que ya usaban los services. */
+  @Transactional(readOnly = true)
   public Donacion obtenerPorId(UUID id) {
-    synchronized (donaciones) {
-      return donaciones.stream()
-          .filter(d -> d.getId().equals(id))
-          .findFirst()
-          .orElse(null);
-    }
+    return jpa.findById(id).orElse(null);
   }
 
+  @Transactional
   public void eliminar(UUID idDonacion) {
-    donaciones.removeIf(d -> d.getId().equals(idDonacion));
+    jpa.deleteById(idDonacion);
   }
 }

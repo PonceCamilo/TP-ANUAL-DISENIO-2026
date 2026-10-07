@@ -1,5 +1,29 @@
 services:
 
+  # Base de datos de servicio-donaciones (Entrega 4).
+  # Una base por servicio: cada microservicio es dueño de sus datos y nadie
+  # lee las tablas de otro. Cuando los demás servicios agreguen persistencia,
+  # cada uno suma su propio contenedor con su propio volumen.
+  db-donaciones:
+    image: postgres:16-alpine
+    container_name: donatrack-db-donaciones
+    environment:
+      POSTGRES_DB: donatrack_donaciones
+      POSTGRES_USER: donatrack
+      POSTGRES_PASSWORD: donatrack
+    ports:
+      # 5433 en el host para no chocar con un PostgreSQL instalado localmente.
+      - "5433:5432"
+    volumes:
+      - datos-donaciones:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U donatrack -d donatrack_donaciones"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - donatrack-net
+
   servicio-donaciones:
     build:
       # El contexto es la raíz del reactor para que Maven encuentre el POM padre.
@@ -11,9 +35,18 @@ services:
     environment:
       - notificaciones.url=http://servicio-notificaciones:8084
       - servicios.incentivos.url=http://servicio-incentivos:8083
+      - servicios.broker-logistica.url=http://servicio-broker-logistica:8087
+      - spring.datasource.url=jdbc:postgresql://db-donaciones:5432/donatrack_donaciones
       - spring.docker.compose.enabled=false
     depends_on:
-      - servicio-notificaciones
+      # service_healthy y no solo depends_on: el servicio arranca recién cuando
+      # la base acepta conexiones, si no Hibernate falla al generar el esquema.
+      db-donaciones:
+        condition: service_healthy
+      servicio-notificaciones:
+        condition: service_started
+      servicio-broker-logistica:
+        condition: service_started
     networks:
       - donatrack-net
 
@@ -99,3 +132,8 @@ services:
 networks:
   donatrack-net:
     driver: bridge
+
+volumes:
+  # Los datos sobreviven a docker compose down. Para arrancar de cero:
+  # docker compose down -v
+  datos-donaciones:

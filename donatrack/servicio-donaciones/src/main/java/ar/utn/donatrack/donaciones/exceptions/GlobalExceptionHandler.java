@@ -11,6 +11,8 @@ import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEnco
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
+import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.LogisticaNoDisponibleException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
@@ -129,6 +131,20 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(FechasCampaniaInvalidasException.class)
   public ResponseEntity<Map<String, Object>> manejarFechasCampaniaInvalidas(FechasCampaniaInvalidasException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(DonacionNoDespachableException.class)
+  public ResponseEntity<Map<String, Object>> manejarDonacionNoDespachable(DonacionNoDespachableException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  /**
+   * 503: el broker no tenía proveedores o no respondió. El cliente puede
+   * reintentar; las donaciones quedaron intactas en ASIGNACION_REALIZADA.
+   */
+  @ExceptionHandler(LogisticaNoDisponibleException.class)
+  public ResponseEntity<Map<String, Object>> manejarLogisticaNoDisponible(LogisticaNoDisponibleException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", ex.getMessage()), HttpStatus.SERVICE_UNAVAILABLE);
   }
 
   @ExceptionHandler(IllegalStateException.class)

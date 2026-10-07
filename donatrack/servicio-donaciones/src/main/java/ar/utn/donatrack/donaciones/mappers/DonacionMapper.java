@@ -29,6 +29,8 @@ public class DonacionMapper {
         .fechaDonacion(donacion.getFechaDonacion())
         .subcategoria(donacion.getSubcategoria() != null ? donacion.getSubcategoria().getTipo() : null)
         .estado(donacion.getEstado().nombre())
+        .proveedorLogistica(donacion.getProveedorLogistica())
+        .idSeguimientoLogistica(donacion.getIdSeguimientoLogistica())
         .bienes(toBienesDTO(donacion.getBienes()))
         .historialEstados(toHistorialDTO(donacion.getHistorialEstados()))
         .build();

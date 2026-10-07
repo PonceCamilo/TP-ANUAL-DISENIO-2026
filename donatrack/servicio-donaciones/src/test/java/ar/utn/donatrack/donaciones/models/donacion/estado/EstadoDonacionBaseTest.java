@@ -129,6 +129,30 @@ class EstadoDonacionBaseTest {
 
             assertThat(resultado).isInstanceOf(EnDepositoState.class);
         }
+
+        @Test
+        @DisplayName("ENTREGA_FALLIDA -> EN_TRASLADO: el proveedor reintenta la entrega sin pasar por el depósito")
+        void entregaFallidaPermiteReintento() {
+            // Los dos proveedores de logística pueden reintentar una entrega
+            // fallida (el externo permite FALLIDO -> EN_CAMINO). Cuando eso pasa
+            // llega otro inicio-ruta para una donación en ENTREGA_FALLIDA; sin
+            // esta transición el callback fallaría y la donación quedaría
+            // desincronizada respecto de lo que el proveedor cree que pasa.
+            EstadoDonacionBase resultado = new EntregaFallidaState()
+                    .transicionarA("EN_TRASLADO", null);
+
+            assertThat(resultado).isInstanceOf(EnTrasladoState.class);
+        }
+
+        @Test
+        @DisplayName("Un reintento puede terminar entregado, cerrando el circuito")
+        void reintentoPuedeTerminarEntregado() {
+            EstadoDonacionBase estado = new EntregaFallidaState()
+                    .transicionarA("EN_TRASLADO", null)
+                    .transicionarA("ENTREGADA", null);
+
+            assertThat(estado.nombre()).isEqualTo("ENTREGADA");
+        }
     }
 
     @Nested
