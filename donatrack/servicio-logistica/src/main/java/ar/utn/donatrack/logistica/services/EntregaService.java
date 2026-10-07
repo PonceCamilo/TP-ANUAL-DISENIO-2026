@@ -20,12 +20,14 @@ import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import ar.utn.donatrack.logistica.validations.EntregaValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class EntregaService implements EntregaServiceInterface {
 
@@ -69,7 +71,8 @@ public class EntregaService implements EntregaServiceInterface {
                 .patenteCamion(camion != null ? camion.getPatente() : null)
                 .fechaHoraEntrega(entrega.getFechaEntrega())
                 .rutaId(ruta.getId())
-                .fotosComprobante(entrega.getFotosComprobante())
+                // Copia: el evento se publica en otro hilo, fuera de la transacción.
+                .fotosComprobante(List.copyOf(entrega.getFotosComprobante()))
                 .build());
 
         finalizarRutaSiCorresponde(ruta.getId());

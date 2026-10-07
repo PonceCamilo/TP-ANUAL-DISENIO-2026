@@ -36,7 +36,9 @@ public class EntregaResponseDTO {
                 .rutaId(ruta != null ? ruta.getId() : null)
                 .camionId(camion != null ? camion.getId() : null)
                 .estado(entrega.getEstado())
-                .fotosComprobante(entrega.getFotosComprobante())
+                // Copia: la lista de la entidad es una colección lazy de JPA y el
+                // DTO se serializa fuera de la transacción.
+                .fotosComprobante(List.copyOf(entrega.getFotosComprobante()))
                 .observacion(entrega.getObservacion())
                 .fechaEntrega(entrega.getFechaEntrega())
                 .historial(entrega.getHistorial().stream().map(CambioEstadoEntregaResponseDTO::desde).toList())

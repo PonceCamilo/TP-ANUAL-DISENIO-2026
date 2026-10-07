@@ -5,20 +5,25 @@ import ar.utn.donatrack.logistica.models.planificacion.LotePlanificacion;
 import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
-public class LotePlanificacionRepository implements LotePlanificacionRepositoryInterface {
+public class LotePlanificacionRepository extends RepositorioJpa<LotePlanificacion>
+        implements LotePlanificacionRepositoryInterface {
 
-    private final ConcurrentHashMap<UUID, LotePlanificacion> storage = new ConcurrentHashMap<>();
+    public LotePlanificacionRepository() {
+        super(LotePlanificacion.class);
+    }
 
     @Override
     public void guardar(LotePlanificacion lote) {
-        storage.put(lote.getId(), lote);
+        if (lote.getDonaciones() != null) {
+            lote.getDonaciones().forEach(d -> registrarReferencias(d.getIdDonacion(), d.getIdEntidadBeneficiaria()));
+        }
+        guardarEntidad(lote, lote.getId());
     }
 
     @Override
     public LotePlanificacion buscarPorId(UUID id) {
-        return storage.get(id);
+        return buscarEntidad(id);
     }
 }

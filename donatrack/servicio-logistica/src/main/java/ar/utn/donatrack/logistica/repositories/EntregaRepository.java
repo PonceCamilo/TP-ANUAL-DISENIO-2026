@@ -7,27 +7,29 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
-public class EntregaRepository implements EntregaRepositoryInterface {
+public class EntregaRepository extends RepositorioJpa<Entrega> implements EntregaRepositoryInterface {
 
-    private final ConcurrentHashMap<UUID, Entrega> storage = new ConcurrentHashMap<>();
+    public EntregaRepository() {
+        super(Entrega.class);
+    }
 
     @Override
     public void guardar(Entrega entrega) {
-        storage.put(entrega.getId(), entrega);
+        registrarReferencias(entrega.getIdDonacion(), entrega.getIdEntidadBeneficiaria());
+        guardarEntidad(entrega, entrega.getId());
     }
 
     @Override
     public Entrega buscarPorId(UUID id) {
-        return storage.get(id);
+        return buscarEntidad(id);
     }
 
     @Override
     public List<Entrega> buscarPorEstado(EstadoEntrega estado) {
-        return storage.values().stream()
-                .filter(e -> e.getEstado() == estado)
-                .toList();
+        return em.createQuery("SELECT e FROM Entrega e WHERE e.estado = :estado", Entrega.class)
+                .setParameter("estado", estado)
+                .getResultList();
     }
 }

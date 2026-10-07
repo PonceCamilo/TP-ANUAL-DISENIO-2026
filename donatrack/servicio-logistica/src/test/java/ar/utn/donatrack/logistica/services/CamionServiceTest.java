@@ -3,6 +3,7 @@ package ar.utn.donatrack.logistica.services;
 import ar.utn.donatrack.logistica.dtos.request.CamionRequestDTO;
 import ar.utn.donatrack.logistica.dtos.response.CamionResponseDTO;
 import ar.utn.donatrack.logistica.exceptions.CamionNoEncontradoException;
+import ar.utn.donatrack.logistica.exceptions.PatenteDuplicadaException;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
 import ar.utn.donatrack.logistica.models.flota.Camion;
 import ar.utn.donatrack.logistica.models.flota.EstadoCamion;
@@ -21,6 +22,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -73,6 +76,17 @@ class CamionServiceTest {
             assertThat(camionCaptor.getValue().getCapacidadVolumenM3()).isEqualTo(20.0);
             assertThat(camionCaptor.getValue().getCapacidadCargaKg()).isEqualTo(1500.0);
             assertThat(camionCaptor.getValue().getEstado()).isEqualTo(EstadoCamion.DISPONIBLE);
+        }
+
+        @Test
+        @DisplayName("Rechaza una patente ya registrada (409) sin guardar nada")
+        void rechazaPatenteDuplicada() {
+            when(repositorio.buscarPorPatente("AB123CD"))
+                    .thenReturn(Camion.builder().id(UUID.randomUUID()).patente("AB123CD").build());
+
+            assertThatThrownBy(() -> servicio.registrar(dtoAlta()))
+                    .isInstanceOf(PatenteDuplicadaException.class);
+            verify(repositorio, never()).guardar(any());
         }
     }
 

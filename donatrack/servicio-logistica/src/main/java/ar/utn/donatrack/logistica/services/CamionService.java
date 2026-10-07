@@ -3,16 +3,19 @@ package ar.utn.donatrack.logistica.services;
 import ar.utn.donatrack.logistica.dtos.request.CamionRequestDTO;
 import ar.utn.donatrack.logistica.dtos.response.CamionResponseDTO;
 import ar.utn.donatrack.logistica.exceptions.CamionNoEncontradoException;
+import ar.utn.donatrack.logistica.exceptions.PatenteDuplicadaException;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.services.CamionServiceInterface;
 import ar.utn.donatrack.logistica.models.flota.Camion;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class CamionService implements CamionServiceInterface {
 
@@ -20,6 +23,9 @@ public class CamionService implements CamionServiceInterface {
 
     @Override
     public CamionResponseDTO registrar(CamionRequestDTO dto) {
+        if (repositorio.buscarPorPatente(dto.getPatente()) != null) {
+            throw new PatenteDuplicadaException(dto.getPatente());
+        }
         Camion camion = Camion.builder()
                 .id(UUID.randomUUID())
                 .patente(dto.getPatente())
