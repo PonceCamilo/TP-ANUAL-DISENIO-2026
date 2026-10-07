@@ -2,27 +2,33 @@ package ar.utn.donatrack.incentivos.repositories;
 
 import ar.utn.donatrack.incentivos.interfaces.repositories.RankingMensualRepositoryInterface;
 import ar.utn.donatrack.incentivos.models.RankingMensual;
+import ar.utn.donatrack.incentivos.repositories.jpa.RankingMensualJpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
+import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
+
 @Repository
 public class RankingMensualRepository implements RankingMensualRepositoryInterface {
 
-    private final List<RankingMensual> historial = new ArrayList<>();
+    private final RankingMensualJpaRepository rankingMensualJpaRepository;
+
+    public RankingMensualRepository(RankingMensualJpaRepository rankingMensualJpaRepository) {
+        this.rankingMensualJpaRepository = rankingMensualJpaRepository;
+    }
 
     public void guardar(RankingMensual ranking) {
-        historial.add(ranking);
+        rankingMensualJpaRepository.save(ranking);
     }
 
     public Optional<RankingMensual> buscarPorPeriodo(int mes, int anio) {
-        return historial.stream()
-                .filter(r -> r.getMes() == mes && r.getAnio() == anio)
-                .findFirst();
+        LocalDateTime periodoInicio = YearMonth.of(anio, mes).atDay(1).atStartOfDay();
+        return rankingMensualJpaRepository.findByPeriodoInicio(periodoInicio);
     }
 
     public List<RankingMensual> obtenerHistorial() {
-        return historial;
+        return rankingMensualJpaRepository.findAll();
     }
 }

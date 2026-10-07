@@ -1,7 +1,17 @@
 package ar.utn.donatrack.incentivos.models;
 
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
@@ -14,9 +24,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "ranking_mensual")
 public class RankingMensual {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     private LocalDateTime periodoInicio;
     private LocalDateTime fechaCalculo;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<PosicionRanking> posiciones;
 
     public static RankingMensual calcular(List<Donante> donantes, LocalDateTime fechaCalculo) {

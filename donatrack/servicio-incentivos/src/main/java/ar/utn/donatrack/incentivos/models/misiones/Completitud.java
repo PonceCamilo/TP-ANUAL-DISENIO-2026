@@ -4,13 +4,20 @@ import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.MetricasDonante;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.insignias.Insignia;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@Entity
+@Table(name = "completitud")
 public class Completitud extends Mision {
     private int categoriasRequeridas;
+
+    protected Completitud() {
+    }
 
     public Completitud(String nombre, String descripcion, CategoriaDonante categoriaRequerida, int categoriasRequeridas, Insignia insignia) {
         super(nombre, descripcion, categoriaRequerida, categoriasRequeridas, insignia);
