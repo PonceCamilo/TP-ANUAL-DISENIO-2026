@@ -30,8 +30,9 @@ import java.util.UUID;
 
 /**
  * Una entrega pertenece a una parada física; la ruta, el camión y la entidad
- * beneficiaria se obtienen a través de ella. La donación es de
- * servicio-donaciones: se referencia solo por id, sin foreign key.
+ * beneficiaria se obtienen a través de esa parada. 
+ * La donación es de servicio-donaciones: 
+ * se referencia solo por id, sin foreign key.
  */
 @Entity
 @Table(name = "entrega")

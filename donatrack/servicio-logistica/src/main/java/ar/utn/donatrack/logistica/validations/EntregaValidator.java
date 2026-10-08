@@ -6,8 +6,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Reglas de transición de EstadoEntrega (mismo enfoque que DonacionesValidator
- * en servicio-donaciones: un enum simple + validación explícita, en vez de
- * una jerarquía de clases State completa).
+ * en servicio-donaciones: un enum simple + validación explícita)
  *
  * LISTO_PARA_ENTREGAR -> EN_TRASLADO    (inicio de ruta)
  * EN_TRASLADO -> ENTREGADA | NO_RECIBIDA
@@ -30,3 +29,11 @@ public class EntregaValidator {
         }
     }
 }
+
+
+/*
+usamos un enum con un switch en vez del patrón State,
+que tendría una clase por estado, porque los estados 
+de la entrega no tienen comportamiento propio;
+solo cambian las reglas de a dónde se puede ir.
+*/

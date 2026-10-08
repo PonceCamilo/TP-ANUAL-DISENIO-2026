@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests del ciclo de vida de una entrega, validado de forma explícita
- * (enum + switch, no jerarquía State como en Donaciones).
+ * (enum + switch)
  *
  * Recorrido:
  *   LISTO_PARA_ENTREGAR -> EN_TRASLADO -> ENTREGADA
