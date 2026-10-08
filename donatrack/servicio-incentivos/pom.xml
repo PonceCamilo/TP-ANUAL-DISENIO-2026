@@ -36,6 +36,25 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!--
+            Driver de PostgreSQL. Faltaba: el servicio tenía JPA y entidades pero
+            ningún driver ni datasource, así que Spring fallaba al arrancar con
+            "Failed to configure a DataSource". No se notaba porque ningún test
+            levantaba el contexto.
+        -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- H2 en memoria para los tests: no dependen de un PostgreSQL corriendo. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>

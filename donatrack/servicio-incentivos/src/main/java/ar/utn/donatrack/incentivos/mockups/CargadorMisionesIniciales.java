@@ -8,21 +8,32 @@ import ar.utn.donatrack.incentivos.models.misiones.Completitud;
 import ar.utn.donatrack.incentivos.models.misiones.DonacionesExitosas;
 import ar.utn.donatrack.incentivos.models.misiones.HabilDonador;
 import ar.utn.donatrack.incentivos.models.misiones.Racha;
-import ar.utn.donatrack.incentivos.repositories.IncentivosRepositorioEnMemoria;
+import ar.utn.donatrack.incentivos.repositories.IncentivosRepository;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
-
+/**
+ * Carga las misiones base del sistema al arrancar el servicio.
+ *
+ * Es idempotente: guardarMision() descarta las que ya existen por nombre, así
+ * que un reinicio contra una base con datos no duplica nada.
+ *
+ * OJO CON EL ID DE LAS INSIGNIAS: acá NO se asigna a mano. Insignia tiene
+ * @GeneratedValue(GenerationType.UUID) y Hibernate lo completa al persistir;
+ * una entidad que llega a persist() con el id ya puesto se considera DETACHED y
+ * el arranque falla con "detached entity passed to persist". Antes el id se
+ * asignaba explícitamente porque el repositorio guardaba en un Map en memoria,
+ * donde nadie generaba nada.
+ */
 @Component
-public class MockupMisiones {
+public class CargadorMisionesIniciales {
 
-    private static final Logger log = LoggerFactory.getLogger(MockupMisiones.class);
-    private final IncentivosRepositorioEnMemoria repositorio;
+    private static final Logger log = LoggerFactory.getLogger(CargadorMisionesIniciales.class);
+    private final IncentivosRepository repositorio;
 
-    public MockupMisiones(IncentivosRepositorioEnMemoria repositorio) {
+    public CargadorMisionesIniciales(IncentivosRepository repositorio) {
         this.repositorio = repositorio;
     }
 
@@ -34,7 +45,6 @@ public class MockupMisiones {
                 new Colaborador(),
                 1,
                 Insignia.builder()
-                        .id(UUID.randomUUID())
                         .nombre("Semilla de Solidaridad")
                         .imagen("semilla.png")
                         .build()
@@ -45,7 +55,6 @@ public class MockupMisiones {
                 new Colaborador(),
                 3,
                 Insignia.builder()
-                        .id(UUID.randomUUID())
                         .nombre("Constancia Solidaria")
                         .imagen("racha.png")
                         .build()
@@ -56,7 +65,6 @@ public class MockupMisiones {
                 new Sostenedor(),
                 10,
                 Insignia.builder()
-                        .id(UUID.randomUUID())
                         .nombre("Corazon de Plata")
                         .imagen("plata.png")
                         .build()
@@ -67,7 +75,6 @@ public class MockupMisiones {
                 new Transformador(),
                 3,
                 Insignia.builder()
-                        .id(UUID.randomUUID())
                         .nombre("Estrella Dorada")
                         .imagen("oro.png")
                         .build()

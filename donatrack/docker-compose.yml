@@ -1,29 +1,61 @@
 services:
 
-  # Base de datos de servicio-donaciones (Entrega 4).
-  # Una base por servicio: cada microservicio es dueño de sus datos y nadie
-  # lee las tablas de otro. Cuando los demás servicios agreguen persistencia,
-  # cada uno suma su propio contenedor con su propio volumen.
-  db-donaciones:
+  # ══ INFRAESTRUCTURA ════════════════════════════════════════════════════════
+
+  # Un único servidor PostgreSQL con una base por servicio.
+  # Las bases las crea db/init/01-crear-bases.sql, que la imagen ejecuta solo
+  # cuando el volumen está vacío. Ver ese archivo para la justificación.
+  postgres:
     image: postgres:16-alpine
-    container_name: donatrack-db-donaciones
+    container_name: donatrack-postgres
     environment:
-      POSTGRES_DB: donatrack_donaciones
+      POSTGRES_DB: postgres
       POSTGRES_USER: donatrack
       POSTGRES_PASSWORD: donatrack
     ports:
-      # 5434 en el host: el 5432 puede estar tomado por un PostgreSQL local y
-      # el 5433 lo publica logistica-db. Dentro de la red sigue siendo 5432.
-      - "5434:5432"
+      # 5433 en el host: el 5432 suele estar tomado por un PostgreSQL instalado
+      # localmente. Dentro de la red de Docker sigue siendo 5432.
+      - "5433:5432"
     volumes:
-      - datos-donaciones:/var/lib/postgresql/data
+      - datos-postgres:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U donatrack -d donatrack_donaciones"]
+      test: ["CMD-SHELL", "pg_isready -U donatrack"]
       interval: 5s
       timeout: 5s
       retries: 10
     networks:
       - donatrack-net
+
+  # Cola de mensajes para la integración asincrónica con notificaciones.
+  # La imagen -management trae el panel web en el 15672 (guest/guest), que sirve
+  # para mostrar en la defensa cómo se acumulan los mensajes si el consumidor
+  # está caído.
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: donatrack-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - datos-rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      # check_port_connectivity y no "ping": ping responde en cuanto arranca el
+      # nodo Erlang, que es ANTES de que el puerto 5672 acepte conexiones. Con
+      # ping, los servicios arrancaban contra un broker que todavía no escuchaba
+      # y el log se llenaba de "Connection refused" (se recuperaban solos a los
+      # 5 segundos, pero el stack trace hacía pensar que algo estaba roto).
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - donatrack-net
+
+  # ══ SERVICIOS DE DOMINIO ═══════════════════════════════════════════════════
 
   servicio-donaciones:
     build:
@@ -37,15 +69,19 @@ services:
       - notificaciones.url=http://servicio-notificaciones:8084
       - servicios.incentivos.url=http://servicio-incentivos:8083
       - servicios.broker-logistica.url=http://servicio-broker-logistica:8087
-      - spring.datasource.url=jdbc:postgresql://db-donaciones:5432/donatrack_donaciones
+      - spring.datasource.url=jdbc:postgresql://postgres:5432/donaciones_db
+      - spring.datasource.username=donatrack
+      - spring.datasource.password=donatrack
+      - notificaciones.transporte=amqp
+      - spring.rabbitmq.host=rabbitmq
       - spring.docker.compose.enabled=false
     depends_on:
       # service_healthy y no solo depends_on: el servicio arranca recién cuando
       # la base acepta conexiones, si no Hibernate falla al generar el esquema.
-      db-donaciones:
+      postgres:
         condition: service_healthy
-      servicio-notificaciones:
-        condition: service_started
+      rabbitmq:
+        condition: service_healthy
       servicio-broker-logistica:
         condition: service_started
     networks:
@@ -59,7 +95,16 @@ services:
     ports:
       - "8084:8084"
     environment:
+      - spring.datasource.url=jdbc:postgresql://postgres:5432/notificaciones_db
+      - spring.datasource.username=donatrack
+      - spring.datasource.password=donatrack
+      - spring.rabbitmq.host=rabbitmq
       - spring.docker.compose.enabled=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - donatrack-net
 
@@ -74,9 +119,17 @@ services:
       SERVER_PORT: 8083
       SERVICIOS_NOTIFICACIONES_URL: http://servicio-notificaciones:8084
       INTEGRACIONES_N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/insignia-obtenida
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/incentivos_db
+      SPRING_DATASOURCE_USERNAME: donatrack
+      SPRING_DATASOURCE_PASSWORD: donatrack
+      NOTIFICACIONES_TRANSPORTE: amqp
+      SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
     depends_on:
-      - servicio-notificaciones
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - donatrack-net
 
@@ -92,39 +145,18 @@ services:
       INTEGRACIONES_PROVEEDOR_RUTEO_URL: http://localhost:8085/ruteo/planificar
       INTEGRACIONES_BROKER_EVENTOS_URL: http://servicio-broker-logistica:8087/api/broker/eventos/donatrack
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
-      LOGISTICA_DB_URL: jdbc:postgresql://logistica-db:5432/logistica_db
-      LOGISTICA_DB_USER: logistica
-      LOGISTICA_DB_PASSWORD: logistica
+      LOGISTICA_DB_URL: jdbc:postgresql://postgres:5432/logistica_db
+      LOGISTICA_DB_USER: donatrack
+      LOGISTICA_DB_PASSWORD: donatrack
     depends_on:
-      logistica-db:
+      postgres:
         condition: service_healthy
     networks:
       - donatrack-net
 
-  # Base de datos propia de servicio-logistica (database per service).
-  # Se publica en el puerto 5433 del host para poder correr el servicio desde
-  # el IDE sin chocar con un PostgreSQL local en 5432.
-  logistica-db:
-    image: postgres:16-alpine
-    container_name: donatrack-logistica-db
-    ports:
-      - "5433:5432"
-    environment:
-      POSTGRES_DB: logistica_db
-      POSTGRES_USER: logistica
-      POSTGRES_PASSWORD: logistica
-    volumes:
-      - logistica-db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U logistica -d logistica_db"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-    networks:
-      - donatrack-net
-
   # Segundo proveedor de logistica (de terceros), independiente de
-  # servicio-logistica: el broker elige entre ambos.
+  # servicio-logistica: el broker elige entre ambos. No tiene base propia porque
+  # solo simula a un operador externo.
   servicio-logistica-externa:
     build:
       context: .
@@ -165,5 +197,8 @@ networks:
 volumes:
   # Los datos sobreviven a docker compose down. Para arrancar de cero:
   # docker compose down -v
-  datos-donaciones:
-  logistica-db-data:
+  #
+  # OJO: el script que crea las bases solo corre con el volumen vacío. Si se
+  # agrega una base nueva a db/init, hay que hacer down -v para que se aplique.
+  datos-postgres:
+  datos-rabbitmq:

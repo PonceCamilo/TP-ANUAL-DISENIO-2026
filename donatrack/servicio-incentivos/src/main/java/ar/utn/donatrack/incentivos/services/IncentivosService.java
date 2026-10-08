@@ -11,7 +11,7 @@ import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.misiones.Racha;
 import ar.utn.donatrack.incentivos.interfaces.services.IncentivosServiceInterface;
-import ar.utn.donatrack.incentivos.repositories.IncentivosRepositorioEnMemoria;
+import ar.utn.donatrack.incentivos.repositories.IncentivosRepository;
 import ar.utn.donatrack.incentivos.validations.IncentivosValidator;
 import org.springframework.stereotype.Service;
 
@@ -23,12 +23,12 @@ import java.util.UUID;
 @Service
 public class IncentivosService implements IncentivosServiceInterface {
 
-    private final IncentivosRepositorioEnMemoria repositorio;
+    private final IncentivosRepository repositorio;
     private final NotificacionClient notificacionClient;
     private final N8nWebhookClient n8nWebhookClient;
     private final IncentivosValidator validator;
 
-    public IncentivosService(IncentivosRepositorioEnMemoria repositorio, NotificacionClient notificacionClient, N8nWebhookClient n8nWebhookClient, IncentivosValidator validator) {
+    public IncentivosService(IncentivosRepository repositorio, NotificacionClient notificacionClient, N8nWebhookClient n8nWebhookClient, IncentivosValidator validator) {
         this.repositorio = repositorio;
         this.notificacionClient = notificacionClient;
         this.n8nWebhookClient = n8nWebhookClient;

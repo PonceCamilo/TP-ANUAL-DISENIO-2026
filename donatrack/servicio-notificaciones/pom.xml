@@ -40,6 +40,29 @@
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
+        <!--
+            Entrega 4: persistencia en medio relacional. Las notificaciones
+            enviadas se guardan para poder auditar que se envio, por que medio y
+            si quedo ENVIADA o FALLIDA.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- H2 en memoria para los tests: no dependen de un PostgreSQL corriendo. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Spring Mail (SMTP) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

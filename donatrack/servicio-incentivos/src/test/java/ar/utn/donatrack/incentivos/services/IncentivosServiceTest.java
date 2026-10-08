@@ -14,7 +14,7 @@ import ar.utn.donatrack.incentivos.models.misiones.DonacionesExitosas;
 import ar.utn.donatrack.incentivos.models.misiones.HabilDonador;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.misiones.Racha;
-import ar.utn.donatrack.incentivos.repositories.IncentivosRepositorioEnMemoria;
+import ar.utn.donatrack.incentivos.repositories.IncentivosRepository;
 import ar.utn.donatrack.incentivos.validations.IncentivosValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,12 +49,12 @@ class IncentivosServiceTest {
     @Mock
     private N8nWebhookClient n8nWebhookClient;
 
-    private IncentivosRepositorioEnMemoria repositorio;
+    private IncentivosRepository repositorio;
     private IncentivosService service;
 
     @BeforeEach
     void crearService() {
-        repositorio = new IncentivosRepositorioEnMemoria();
+        repositorio = new IncentivosRepository();
         service = new IncentivosService(repositorio, notificacionClient, n8nWebhookClient, new IncentivosValidator());
     }
 

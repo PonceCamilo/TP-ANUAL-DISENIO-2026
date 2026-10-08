@@ -11,6 +11,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -38,6 +39,29 @@ public class Donante {
 
     @Embedded
     private ProgresoMision progresoMision = new ProgresoMision();
+
+    /**
+     * Vuelve a crear el progreso de misión cuando Hibernate lo trae en null.
+     *
+     * POR QUÉ ES NECESARIO: ProgresoMision es un @Embedded cuya única columna es
+     * la misión actual. Si esa columna está en NULL —un donante que todavía no
+     * arrancó ninguna misión— Hibernate deja el embeddable ENTERO en null y pisa
+     * el `= new ProgresoMision()` del campo, que solo corre al construir el
+     * objeto en memoria.
+     *
+     * Sin esto, cualquier donante leído de la base sin misión actual tiraba
+     * NullPointerException al subir de categoría, que es el flujo central del
+     * servicio. Lo detectó MapeoIncentivosTest.subirCategoriaYGuardar.
+     *
+     * Es el mismo criterio de rehidratación que usa servicio-donaciones para el
+     * patrón State y servicio-notificaciones para el medio.
+     */
+    @PostLoad
+    private void rehidratarProgresoMision() {
+        if (this.progresoMision == null) {
+            this.progresoMision = new ProgresoMision();
+        }
+    }
 
     public CategoriaDonante getCategoria() {
         return categoriaActual;
