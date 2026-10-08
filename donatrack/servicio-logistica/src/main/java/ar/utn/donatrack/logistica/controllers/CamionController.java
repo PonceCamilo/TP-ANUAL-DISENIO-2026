@@ -67,7 +67,7 @@ public class CamionController {
     )
     @GetMapping("/{id}")
     public ResponseEntity<CamionResponseDTO> obtenerPorId(
-            @Parameter(description = "ID del camión")
+            @Parameter(description = "ID del camión", example = "88888888-8888-8888-8888-888888888888")
             @PathVariable UUID id) {
         return ResponseEntity.ok(camionService.obtenerPorId(id));
     }
@@ -83,7 +83,7 @@ public class CamionController {
     )
     @GetMapping("/{id}/ruta")
     public ResponseEntity<RutaResponseDTO> obtenerRutaVigente(
-            @Parameter(description = "ID del camión")
+            @Parameter(description = "ID del camión", example = "66666666-6666-6666-6666-666666666666")
             @PathVariable UUID id) {
         return ResponseEntity.ok(planificacionService.obtenerRutaVigentePorCamion(id));
     }

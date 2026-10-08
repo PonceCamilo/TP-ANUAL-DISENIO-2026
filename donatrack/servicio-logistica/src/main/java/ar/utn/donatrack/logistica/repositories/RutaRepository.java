@@ -7,34 +7,39 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
-public class RutaRepository implements RutaRepositoryInterface {
+public class RutaRepository extends RepositorioJpa<Ruta> implements RutaRepositoryInterface {
 
-    private final ConcurrentHashMap<UUID, Ruta> storage = new ConcurrentHashMap<>();
+    public RutaRepository() {
+        super(Ruta.class);
+    }
 
     @Override
     public void guardar(Ruta ruta) {
-        storage.put(ruta.getId(), ruta);
+        // Las paradas y entregas se guardan en cascada con la ruta.
+        guardarEntidad(ruta, ruta.getId());
     }
 
     @Override
     public Ruta buscarPorId(UUID id) {
-        return storage.get(id);
+        return buscarEntidad(id);
     }
 
     @Override
     public List<Ruta> buscarPorCamionId(UUID camionId) {
-        return storage.values().stream()
-                .filter(r -> r.getCamion() != null && camionId.equals(r.getCamion().getId()))
-                .toList();
+        return em.createQuery("SELECT r FROM Ruta r WHERE r.camion.id = :camionId", Ruta.class)
+                .setParameter("camionId", camionId)
+                .getResultList();
     }
 
     @Override
     public Optional<Ruta> buscarPorEntregaId(UUID entregaId) {
-        return storage.values().stream()
-                .filter(ruta -> ruta.buscarParadaPorEntregaId(entregaId).isPresent())
+        return em.createQuery(
+                        "SELECT r FROM Ruta r JOIN r.paradas p JOIN p.entregas e WHERE e.id = :entregaId",
+                        Ruta.class)
+                .setParameter("entregaId", entregaId)
+                .getResultStream()
                 .findFirst();
     }
 }

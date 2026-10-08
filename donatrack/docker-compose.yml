@@ -12,8 +12,9 @@ services:
       POSTGRES_USER: donatrack
       POSTGRES_PASSWORD: donatrack
     ports:
-      # 5433 en el host para no chocar con un PostgreSQL instalado localmente.
-      - "5433:5432"
+      # 5434 en el host: el 5432 puede estar tomado por un PostgreSQL local y
+      # el 5433 lo publica logistica-db. Dentro de la red sigue siendo 5432.
+      - "5434:5432"
     volumes:
       - datos-donaciones:/var/lib/postgresql/data
     healthcheck:
@@ -91,6 +92,34 @@ services:
       INTEGRACIONES_PROVEEDOR_RUTEO_URL: http://localhost:8085/ruteo/planificar
       INTEGRACIONES_BROKER_EVENTOS_URL: http://servicio-broker-logistica:8087/api/broker/eventos/donatrack
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      LOGISTICA_DB_URL: jdbc:postgresql://logistica-db:5432/logistica_db
+      LOGISTICA_DB_USER: logistica
+      LOGISTICA_DB_PASSWORD: logistica
+    depends_on:
+      logistica-db:
+        condition: service_healthy
+    networks:
+      - donatrack-net
+
+  # Base de datos propia de servicio-logistica (database per service).
+  # Se publica en el puerto 5433 del host para poder correr el servicio desde
+  # el IDE sin chocar con un PostgreSQL local en 5432.
+  logistica-db:
+    image: postgres:16-alpine
+    container_name: donatrack-logistica-db
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: logistica_db
+      POSTGRES_USER: logistica
+      POSTGRES_PASSWORD: logistica
+    volumes:
+      - logistica-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logistica -d logistica_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - donatrack-net
 
@@ -137,3 +166,4 @@ volumes:
   # Los datos sobreviven a docker compose down. Para arrancar de cero:
   # docker compose down -v
   datos-donaciones:
+  logistica-db-data:

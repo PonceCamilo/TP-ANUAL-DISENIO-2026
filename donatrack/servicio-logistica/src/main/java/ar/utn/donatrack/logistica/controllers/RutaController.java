@@ -33,7 +33,7 @@ public class RutaController {
     )
     @GetMapping("/{id}")
     public ResponseEntity<RutaResponseDTO> obtenerPorId(
-            @Parameter(description = "ID de la ruta")
+            @Parameter(description = "ID de la ruta", example = "55555555-5555-5555-5555-555555555555")
             @PathVariable UUID id) {
         return ResponseEntity.ok(planificacionService.obtenerRuta(id));
     }
@@ -48,7 +48,7 @@ public class RutaController {
     )
     @PostMapping("/{id}/iniciar")
     public ResponseEntity<Void> iniciar(
-            @Parameter(description = "ID de la ruta")
+            @Parameter(description = "ID de la ruta", example = "55555555-5555-5555-5555-555555555555")
             @PathVariable UUID id) {
         planificacionService.iniciarRuta(id);
         return ResponseEntity.ok().build();

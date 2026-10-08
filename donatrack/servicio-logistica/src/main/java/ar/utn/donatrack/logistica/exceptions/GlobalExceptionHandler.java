@@ -32,6 +32,11 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
     }
 
+    @ExceptionHandler(PatenteDuplicadaException.class)
+    public ResponseEntity<Map<String, Object>> manejarPatenteDuplicada(PatenteDuplicadaException ex) {
+        return construir(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
+    }
+
     @ExceptionHandler(LoteCallbackInvalidoException.class)
     public ResponseEntity<Map<String, Object>> manejarCallbackInvalido(LoteCallbackInvalidoException ex) {
         return construir(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
