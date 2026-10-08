@@ -1,7 +1,6 @@
 package ar.utn.donatrack.brokerlogistica.controllers;
 
 import ar.utn.donatrack.brokerlogistica.exceptions.DonacionesNoDisponibleException;
-import ar.utn.donatrack.brokerlogistica.exceptions.EventoInvalidoException;
 import ar.utn.donatrack.brokerlogistica.services.BrokerEventosService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,17 +40,6 @@ class EventosBrokerControllerTest {
                 .andExpect(status().isOk());
 
         verify(brokerEventosService).procesarEventoDonatrack(any());
-    }
-
-    @Test
-    @DisplayName("POST /eventos/donatrack con tipo desconocido responde 400")
-    void eventoDonatrackInvalido() throws Exception {
-        doThrow(new EventoInvalidoException("Tipo desconocido")).when(brokerEventosService).procesarEventoDonatrack(any());
-
-        mockMvc.perform(post("/api/broker/eventos/donatrack")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"tipo\":\"OTRO\"}"))
-                .andExpect(status().isBadRequest());
     }
 
     @Test

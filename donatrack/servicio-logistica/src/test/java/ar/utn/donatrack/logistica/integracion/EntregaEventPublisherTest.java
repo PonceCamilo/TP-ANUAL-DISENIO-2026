@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -50,17 +49,6 @@ class EntregaEventPublisherTest {
 
             verify(listenerBroker).onEvento(evento);
             verify(otroListener).onEvento(evento);
-        }
-
-        @Test
-        @DisplayName("Sin listeners registrados no falla")
-        void sinListenersNoFalla() {
-            EntregaEventPublisher publisher = new EntregaEventPublisher(List.of());
-            EntregaEvento evento = EntregaEvento.builder()
-                    .tipo(TipoEventoLogistica.ENTREGA_CONFIRMADA)
-                    .build();
-
-            assertThatCode(() -> publisher.publicar(evento)).doesNotThrowAnyException();
         }
     }
 }

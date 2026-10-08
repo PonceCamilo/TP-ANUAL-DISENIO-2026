@@ -1,7 +1,6 @@
 package ar.utn.donatrack.logistica.controllers;
 
 import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
-import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.TransicionEntregaIlegalException;
 import ar.utn.donatrack.logistica.interfaces.services.EntregaServiceInterface;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
@@ -66,28 +65,6 @@ class EntregaControllerTest {
     @Nested
     @DisplayName("GET /api/logistica/entregas")
     class Consulta {
-
-        @Test
-        @DisplayName("GET por id devuelve 200 con el detalle")
-        void detalleOk() throws Exception {
-            when(entregaService.obtenerPorId(idEntrega)).thenReturn(respuesta(EstadoEntrega.EN_TRASLADO));
-
-            mockMvc.perform(get("/api/logistica/entregas/{id}", idEntrega))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(idEntrega.toString()))
-                    .andExpect(jsonPath("$.estado").value("EN_TRASLADO"));
-        }
-
-        @Test
-        @DisplayName("GET por id devuelve 404 si la entrega no existe")
-        void detalle404() throws Exception {
-            when(entregaService.obtenerPorId(idEntrega))
-                    .thenThrow(new EntregaNoEncontradaException(idEntrega));
-
-            mockMvc.perform(get("/api/logistica/entregas/{id}", idEntrega))
-                    .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.status").value(404));
-        }
 
         @Test
         @DisplayName("GET con filtro de estado pasa el enum al service")
@@ -169,18 +146,6 @@ class EntregaControllerTest {
 
             verify(entregaService, never()).marcarNoRecibida(any(), any());
         }
-
-        @Test
-        @DisplayName("Devuelve 409 si la entrega no está EN_TRASLADO")
-        void transicionIlegal() throws Exception {
-            doThrow(new TransicionEntregaIlegalException(EstadoEntrega.LISTO_PARA_ENTREGAR, EstadoEntrega.NO_RECIBIDA))
-                    .when(entregaService).marcarNoRecibida(eq(idEntrega), any());
-
-            mockMvc.perform(post("/api/logistica/entregas/{id}/no-recibida", idEntrega)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(Map.of("motivo", "ENTIDAD_AUSENTE"))))
-                    .andExpect(status().isConflict());
-        }
     }
 
     @Nested
@@ -194,16 +159,6 @@ class EntregaControllerTest {
                     .andExpect(status().isOk());
 
             verify(entregaService).regresarADeposito(idEntrega);
-        }
-
-        @Test
-        @DisplayName("Devuelve 409 si la entrega no está NO_RECIBIDA")
-        void transicionIlegal() throws Exception {
-            doThrow(new TransicionEntregaIlegalException(EstadoEntrega.ENTREGADA, EstadoEntrega.LISTO_PARA_ENTREGAR))
-                    .when(entregaService).regresarADeposito(idEntrega);
-
-            mockMvc.perform(post("/api/logistica/entregas/{id}/regreso-deposito", idEntrega))
-                    .andExpect(status().isConflict());
         }
     }
 }

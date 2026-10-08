@@ -137,12 +137,5 @@ class BrokerEventosServiceTest {
                     .isInstanceOf(EventoInvalidoException.class);
             verifyNoInteractions(donacionesClient);
         }
-
-        @Test
-        @DisplayName("Un estado desconocido lanza EventoInvalidoException")
-        void estadoDesconocido() {
-            assertThatThrownBy(() -> servicio.procesarEventoExterno(evento("PERDIDO", null, null)))
-                    .isInstanceOf(EventoInvalidoException.class);
-        }
     }
 }

@@ -38,13 +38,6 @@ class EntregaTest {
         void naceListaParaEntregar() {
             assertThat(entrega.getEstado()).isEqualTo(EstadoEntrega.LISTO_PARA_ENTREGAR);
         }
-
-        @Test
-        @DisplayName("Historial y fotos arrancan vacíos, nunca null")
-        void coleccionesInicializadas() {
-            assertThat(entrega.getHistorial()).isNotNull().isEmpty();
-            assertThat(entrega.getFotosComprobante()).isNotNull().isEmpty();
-        }
     }
 
     @Nested

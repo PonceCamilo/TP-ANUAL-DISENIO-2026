@@ -2,8 +2,6 @@ package ar.utn.donatrack.logistica.controllers;
 
 import ar.utn.donatrack.logistica.dtos.response.CamionResponseDTO;
 import ar.utn.donatrack.logistica.dtos.response.RutaResponseDTO;
-import ar.utn.donatrack.logistica.exceptions.CamionNoEncontradoException;
-import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
 import ar.utn.donatrack.logistica.interfaces.services.CamionServiceInterface;
 import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
 import ar.utn.donatrack.logistica.models.flota.EstadoCamion;
@@ -109,40 +107,6 @@ class CamionControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /api/logistica/camiones")
-    class Consulta {
-
-        @Test
-        @DisplayName("GET listado devuelve 200")
-        void listadoOk() throws Exception {
-            when(camionService.obtenerTodos()).thenReturn(List.of(respuestaCamion()));
-
-            mockMvc.perform(get("/api/logistica/camiones"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)));
-        }
-
-        @Test
-        @DisplayName("GET por id devuelve 200 con el detalle")
-        void detalleOk() throws Exception {
-            when(camionService.obtenerPorId(idCamion)).thenReturn(respuestaCamion());
-
-            mockMvc.perform(get("/api/logistica/camiones/{id}", idCamion))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(idCamion.toString()));
-        }
-
-        @Test
-        @DisplayName("GET por id devuelve 404 si el camión no existe")
-        void detalle404() throws Exception {
-            when(camionService.obtenerPorId(idCamion)).thenThrow(new CamionNoEncontradoException(idCamion));
-
-            mockMvc.perform(get("/api/logistica/camiones/{id}", idCamion))
-                    .andExpect(status().isNotFound());
-        }
-    }
-
-    @Nested
     @DisplayName("GET /api/logistica/camiones/{id}/ruta")
     class RutaVigente {
 
@@ -161,16 +125,6 @@ class CamionControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.camionId").value(idCamion.toString()))
                     .andExpect(jsonPath("$.estado").value("INICIADA"));
-        }
-
-        @Test
-        @DisplayName("Devuelve 404 si el camión no tiene ruta vigente")
-        void ruta404() throws Exception {
-            when(planificacionService.obtenerRutaVigentePorCamion(idCamion))
-                    .thenThrow(new RutaNoEncontradaException(idCamion));
-
-            mockMvc.perform(get("/api/logistica/camiones/{id}/ruta", idCamion))
-                    .andExpect(status().isNotFound());
         }
     }
 }

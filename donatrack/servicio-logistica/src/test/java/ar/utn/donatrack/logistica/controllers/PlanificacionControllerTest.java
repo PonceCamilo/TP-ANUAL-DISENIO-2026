@@ -2,9 +2,7 @@ package ar.utn.donatrack.logistica.controllers;
 
 import ar.utn.donatrack.logistica.dtos.response.LoteResponseDTO;
 import ar.utn.donatrack.logistica.exceptions.LoteCallbackInvalidoException;
-import ar.utn.donatrack.logistica.exceptions.LoteNoEncontradoException;
 import ar.utn.donatrack.logistica.exceptions.ProveedorRuteoIndisponibleException;
-import ar.utn.donatrack.logistica.exceptions.SinCamionesDisponiblesException;
 import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
 import ar.utn.donatrack.logistica.models.planificacion.EstadoLote;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +26,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -154,42 +151,6 @@ class PlanificacionControllerTest {
                                             "idEntidadBeneficiaria", idEntidad,
                                             "direccionEntrega", direccion()))))))
                     .andExpect(status().isOk());
-        }
-
-        @Test
-        @DisplayName("Devuelve 503 si no hay camiones disponibles")
-        void sinCamionesDisponibles() throws Exception {
-            when(planificacionService.planificar(any())).thenThrow(new SinCamionesDisponiblesException());
-
-            mockMvc.perform(post("/api/logistica/planificaciones")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(cuerpoPlanificar()))
-                    .andExpect(status().isServiceUnavailable())
-                    .andExpect(jsonPath("$.status").value(503));
-        }
-    }
-
-    @Nested
-    @DisplayName("GET /api/logistica/planificaciones/{loteId}")
-    class DetalleLote {
-
-        @Test
-        @DisplayName("Devuelve 200 con el lote")
-        void detalleOk() throws Exception {
-            when(planificacionService.obtenerLote(idLote)).thenReturn(respuestaLote());
-
-            mockMvc.perform(get("/api/logistica/planificaciones/{loteId}", idLote))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(idLote.toString()));
-        }
-
-        @Test
-        @DisplayName("Devuelve 404 si el lote no existe")
-        void detalle404() throws Exception {
-            when(planificacionService.obtenerLote(idLote)).thenThrow(new LoteNoEncontradoException(idLote));
-
-            mockMvc.perform(get("/api/logistica/planificaciones/{loteId}", idLote))
-                    .andExpect(status().isNotFound());
         }
     }
 

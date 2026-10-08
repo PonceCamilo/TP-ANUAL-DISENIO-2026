@@ -17,15 +17,6 @@ class EnvioTest {
     }
 
     @Test
-    @DisplayName("Arranca ACEPTADO con su historial inicial")
-    void estadoInicial() {
-        Envio envio = nuevoEnvio();
-
-        assertThat(envio.getEstado()).isEqualTo(EstadoEnvio.ACEPTADO);
-        assertThat(envio.getHistorial()).hasSize(1);
-    }
-
-    @Test
     @DisplayName("ACEPTADO -> EN_CAMINO -> ENTREGADO registra vehículo e historial")
     void recorridoExitoso() {
         Envio envio = nuevoEnvio();

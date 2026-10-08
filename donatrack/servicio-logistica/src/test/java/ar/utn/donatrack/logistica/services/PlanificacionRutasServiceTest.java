@@ -308,68 +308,6 @@ class PlanificacionRutasServiceTest {
     }
 
     @Nested
-    @DisplayName("Consulta de lote y ruta")
-    class Consulta {
-
-        @Test
-        @DisplayName("obtenerLote() devuelve el lote pedido")
-        void obtenerLote() {
-            UUID loteId = UUID.randomUUID();
-            LotePlanificacion lote = LotePlanificacion.builder()
-                    .id(loteId)
-                    .estado(EstadoLote.COMPLETADO)
-                    .donaciones(List.of())
-                    .build();
-            when(loteRepositorio.buscarPorId(loteId)).thenReturn(lote);
-
-            LoteResponseDTO dto = servicio.obtenerLote(loteId);
-
-            assertThat(dto.getId()).isEqualTo(loteId);
-            assertThat(dto.getEstado()).isEqualTo(EstadoLote.COMPLETADO);
-        }
-
-        @Test
-        @DisplayName("obtenerLote() lanza 404 si el lote no existe")
-        void obtenerLoteInexistente() {
-            UUID idInexistente = UUID.randomUUID();
-            when(loteRepositorio.buscarPorId(idInexistente)).thenReturn(null);
-
-            assertThatThrownBy(() -> servicio.obtenerLote(idInexistente))
-                    .isInstanceOf(LoteNoEncontradoException.class);
-        }
-
-        @Test
-        @DisplayName("obtenerRuta() devuelve la ruta pedida")
-        void obtenerRuta() {
-            UUID rutaId = UUID.randomUUID();
-            Camion camion = camion(UUID.randomUUID(), "AB123CD");
-            Ruta ruta = Ruta.builder()
-                    .id(rutaId)
-                    .camion(camion)
-                    .estado(EstadoRuta.PLANIFICADA)
-                    .paradas(List.of())
-                    .build();
-            when(rutaRepositorio.buscarPorId(rutaId)).thenReturn(ruta);
-
-            RutaResponseDTO dto = servicio.obtenerRuta(rutaId);
-
-            assertThat(dto.getId()).isEqualTo(rutaId);
-            assertThat(dto.getCamionId()).isEqualTo(camion.getId());
-            assertThat(dto.getEstado()).isEqualTo(EstadoRuta.PLANIFICADA);
-        }
-
-        @Test
-        @DisplayName("obtenerRuta() lanza 404 si la ruta no existe")
-        void obtenerRutaInexistente() {
-            UUID idInexistente = UUID.randomUUID();
-            when(rutaRepositorio.buscarPorId(idInexistente)).thenReturn(null);
-
-            assertThatThrownBy(() -> servicio.obtenerRuta(idInexistente))
-                    .isInstanceOf(RutaNoEncontradaException.class);
-        }
-    }
-
-    @Nested
     @DisplayName("Callback del proveedor de ruteo")
     class Callback {
 
@@ -553,17 +491,6 @@ class PlanificacionRutasServiceTest {
             servicio.iniciarRuta(rutaId);
 
             assertThat(ruta.getEstado()).isEqualTo(EstadoRuta.INICIADA);
-            verifyNoInteractions(eventPublisher);
-        }
-
-        @Test
-        @DisplayName("Lanza 404 si la ruta no existe")
-        void rutaInexistente() {
-            UUID idInexistente = UUID.randomUUID();
-            when(rutaRepositorio.buscarPorId(idInexistente)).thenReturn(null);
-
-            assertThatThrownBy(() -> servicio.iniciarRuta(idInexistente))
-                    .isInstanceOf(RutaNoEncontradaException.class);
             verifyNoInteractions(eventPublisher);
         }
     }

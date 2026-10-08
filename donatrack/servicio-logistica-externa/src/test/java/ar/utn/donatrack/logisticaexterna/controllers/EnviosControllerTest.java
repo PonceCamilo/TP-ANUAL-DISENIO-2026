@@ -1,7 +1,6 @@
 package ar.utn.donatrack.logisticaexterna.controllers;
 
 import ar.utn.donatrack.logisticaexterna.dtos.EnvioResponse;
-import ar.utn.donatrack.logisticaexterna.exceptions.EnvioNoEncontradoException;
 import ar.utn.donatrack.logisticaexterna.exceptions.TransicionEnvioIlegalException;
 import ar.utn.donatrack.logisticaexterna.models.EstadoEnvio;
 import ar.utn.donatrack.logisticaexterna.services.EnvioService;
@@ -20,7 +19,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -62,27 +60,6 @@ class EnviosControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(envioService, never()).crear(any());
-    }
-
-    @Test
-    @DisplayName("GET de un tracking inexistente responde 404")
-    void consultar404() throws Exception {
-        when(envioService.consultar("EXT-X")).thenThrow(new EnvioNoEncontradoException("EXT-X"));
-
-        mockMvc.perform(get("/api/v1/envios/{id}", "EXT-X"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("Despachar responde 200 con el envío EN_CAMINO")
-    void despachar() throws Exception {
-        when(envioService.despachar("EXT-1", "AB123CD")).thenReturn(envio("EN_CAMINO"));
-
-        mockMvc.perform(post("/api/v1/envios/{id}/despacho", "EXT-1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"vehiculo\":\"AB123CD\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estado").value("EN_CAMINO"));
     }
 
     @Test

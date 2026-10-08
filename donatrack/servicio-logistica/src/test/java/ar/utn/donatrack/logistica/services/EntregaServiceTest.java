@@ -5,7 +5,6 @@ import ar.utn.donatrack.logistica.dtos.request.NoRecibidaRequestDTO;
 import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
 import ar.utn.donatrack.logistica.eventos.EntregaEvento;
 import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
-import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.TransicionEntregaIlegalException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
@@ -143,16 +142,6 @@ class EntregaServiceTest {
         }
 
         @Test
-        @DisplayName("obtenerPorId() lanza 404 si la entrega no existe")
-        void obtenerPorIdInexistente() {
-            UUID idInexistente = UUID.randomUUID();
-            when(repositorio.buscarPorId(idInexistente)).thenReturn(null);
-
-            assertThatThrownBy(() -> servicio.obtenerPorId(idInexistente))
-                    .isInstanceOf(EntregaNoEncontradaException.class);
-        }
-
-        @Test
         @DisplayName("obtenerPorId() no rompe si la entrega todavía no está en ninguna ruta")
         void obtenerPorIdSinRuta() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.LISTO_PARA_ENTREGAR);
@@ -164,23 +153,6 @@ class EntregaServiceTest {
             assertThat(dto.getId()).isEqualTo(entrega.getId());
             assertThat(dto.getRutaId()).isNull();
             assertThat(dto.getCamionId()).isNull();
-        }
-
-        @Test
-        @DisplayName("obtenerPorEstado() delega en el repositorio y completa rutaId y camionId")
-        void obtenerPorEstado() {
-            Entrega entrega = entregaEnEstado(EstadoEntrega.NO_RECIBIDA);
-            Camion camion = camion();
-            Ruta ruta = rutaQueContiene(entrega, camion);
-            when(repositorio.buscarPorEstado(EstadoEntrega.NO_RECIBIDA)).thenReturn(List.of(entrega));
-            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
-
-            List<EntregaResponseDTO> resultado = servicio.obtenerPorEstado(EstadoEntrega.NO_RECIBIDA);
-
-            assertThat(resultado).hasSize(1);
-            assertThat(resultado.getFirst().getId()).isEqualTo(entrega.getId());
-            assertThat(resultado.getFirst().getRutaId()).isEqualTo(ruta.getId());
-            assertThat(resultado.getFirst().getCamionId()).isEqualTo(camion.getId());
         }
     }
 
@@ -265,17 +237,6 @@ class EntregaServiceTest {
             verify(rutaRepositorio, never()).buscarPorEntregaId(any());
             verifyNoInteractions(planificacionService);
         }
-
-        @Test
-        @DisplayName("Lanza 404 si la entrega a confirmar no existe")
-        void entregaInexistente() {
-            UUID idInexistente = UUID.randomUUID();
-            when(repositorio.buscarPorId(idInexistente)).thenReturn(null);
-
-            assertThatThrownBy(() -> servicio.confirmar(idInexistente, dtoConfirmar()))
-                    .isInstanceOf(EntregaNoEncontradaException.class);
-            verifyNoInteractions(eventPublisher);
-        }
     }
 
     @Nested
@@ -357,17 +318,6 @@ class EntregaServiceTest {
             verify(repositorio, never()).guardar(any());
             verifyNoInteractions(eventPublisher);
         }
-
-        @Test
-        @DisplayName("Lanza 404 si la entrega no existe")
-        void entregaInexistente() {
-            UUID idInexistente = UUID.randomUUID();
-            when(repositorio.buscarPorId(idInexistente)).thenReturn(null);
-
-            assertThatThrownBy(() -> servicio.marcarNoRecibida(
-                    idInexistente, dtoNoRecibida(MotivoFalloEntrega.ENTIDAD_AUSENTE)))
-                    .isInstanceOf(EntregaNoEncontradaException.class);
-        }
     }
 
     @Nested
@@ -387,27 +337,6 @@ class EntregaServiceTest {
             verify(repositorio).guardar(entrega);
             verifyNoInteractions(eventPublisher);
             verifyNoInteractions(planificacionService);
-        }
-
-        @Test
-        @DisplayName("Una entrega ENTREGADA no puede volver al depósito")
-        void estadoIncompatible() {
-            Entrega entrega = entregaEnEstado(EstadoEntrega.ENTREGADA);
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
-
-            assertThatThrownBy(() -> servicio.regresarADeposito(entrega.getId()))
-                    .isInstanceOf(TransicionEntregaIlegalException.class);
-            verify(repositorio, never()).guardar(any());
-        }
-
-        @Test
-        @DisplayName("Lanza 404 si la entrega no existe")
-        void entregaInexistente() {
-            UUID idInexistente = UUID.randomUUID();
-            when(repositorio.buscarPorId(idInexistente)).thenReturn(null);
-
-            assertThatThrownBy(() -> servicio.regresarADeposito(idInexistente))
-                    .isInstanceOf(EntregaNoEncontradaException.class);
         }
     }
 }

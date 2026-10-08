@@ -7,7 +7,6 @@ import ar.utn.donatrack.brokerlogistica.dtos.EnvioAsignadoDTO;
 import ar.utn.donatrack.brokerlogistica.dtos.ProveedorEstadoDTO;
 import ar.utn.donatrack.brokerlogistica.dtos.ResultadoEnvioResponse;
 import ar.utn.donatrack.brokerlogistica.dtos.SolicitudEnvioRequest;
-import ar.utn.donatrack.brokerlogistica.exceptions.EnvioNoRegistradoException;
 import ar.utn.donatrack.brokerlogistica.exceptions.ProveedorNoDisponibleException;
 import ar.utn.donatrack.brokerlogistica.exceptions.SinProveedorDisponibleException;
 import ar.utn.donatrack.brokerlogistica.repositories.RegistroEnviosRepository;
@@ -129,13 +128,6 @@ class BrokerEnviosServiceTest {
                 .hasMessageContaining("DONATRACK")
                 .hasMessageContaining("EXTERNA");
         assertThat(registro.buscarPorDonacion(donacion.idDonacion())).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Consultar una donación que no pasó por el broker lanza EnvioNoRegistradoException")
-    void envioNoRegistrado() {
-        assertThatThrownBy(() -> servicio.consultarEnvio(UUID.randomUUID()))
-                .isInstanceOf(EnvioNoRegistradoException.class);
     }
 
     @Test

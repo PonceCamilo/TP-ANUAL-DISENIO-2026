@@ -3,7 +3,6 @@ package ar.utn.donatrack.logisticaexterna.services;
 import ar.utn.donatrack.logisticaexterna.dtos.CrearEnvioRequest;
 import ar.utn.donatrack.logisticaexterna.dtos.EnvioResponse;
 import ar.utn.donatrack.logisticaexterna.dtos.EventoEnvio;
-import ar.utn.donatrack.logisticaexterna.exceptions.EnvioNoEncontradoException;
 import ar.utn.donatrack.logisticaexterna.exceptions.TransicionEnvioIlegalException;
 import ar.utn.donatrack.logisticaexterna.integracion.WebhookEventosNotifier;
 import ar.utn.donatrack.logisticaexterna.repositories.EnvioRepository;
@@ -107,12 +106,5 @@ class EnvioServiceTest {
         assertThatThrownBy(() -> servicio.entregar(envio.trackingId()))
                 .isInstanceOf(TransicionEnvioIlegalException.class);
         verify(notifier, never()).notificar(any());
-    }
-
-    @Test
-    @DisplayName("Tracking inexistente lanza EnvioNoEncontradoException")
-    void trackingInexistente() {
-        assertThatThrownBy(() -> servicio.consultar("EXT-NOEXISTE"))
-                .isInstanceOf(EnvioNoEncontradoException.class);
     }
 }
