@@ -4,10 +4,9 @@ import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public record MisionResponse(
-        UUID misionId,
+        Long misionId,
         String nombre,
         String descripcion,
         String tipo,

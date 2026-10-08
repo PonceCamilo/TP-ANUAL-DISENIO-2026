@@ -4,6 +4,14 @@ import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.misiones.ProgresoMision;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,11 +21,22 @@ import java.util.UUID;
 
 @Getter
 @Setter
+@Entity
+@Table(name = "donante")
 public class Donante {
+    @Id
     private UUID id;
+
+    @ManyToOne
     private CategoriaDonante categoriaActual;
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<InsigniaObtenida> insigniasObtenidas = new ArrayList<>();
+
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<DonacionRegistrada> donaciones = new ArrayList<>();
+
+    @Embedded
     private ProgresoMision progresoMision = new ProgresoMision();
 
     public CategoriaDonante getCategoria() {

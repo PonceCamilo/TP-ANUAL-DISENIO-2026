@@ -2,12 +2,14 @@ package ar.utn.donatrack.incentivos.models.misiones;
 
 import ar.utn.donatrack.incentivos.models.DonacionRegistrada;
 import ar.utn.donatrack.incentivos.models.Donante;
+import jakarta.persistence.Embeddable;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
 
+@Embeddable
 public class ProgresoRacha {
 
     public int mesesConsecutivosDonando(Donante donante, LocalDate fechaReferencia) {

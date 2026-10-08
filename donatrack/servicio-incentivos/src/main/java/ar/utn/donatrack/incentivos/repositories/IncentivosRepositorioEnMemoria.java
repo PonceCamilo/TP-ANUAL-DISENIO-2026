@@ -1,9 +1,13 @@
 package ar.utn.donatrack.incentivos.repositories;
 
 import ar.utn.donatrack.incentivos.models.Donante;
-import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
+import ar.utn.donatrack.incentivos.models.misiones.Mision;
+import ar.utn.donatrack.incentivos.repositories.jpa.CategoriaDonanteJpaRepository;
+import ar.utn.donatrack.incentivos.repositories.jpa.DonanteJpaRepository;
+import ar.utn.donatrack.incentivos.repositories.jpa.MisionJpaRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -11,44 +15,125 @@ import java.util.concurrent.ConcurrentHashMap;
 @Repository
 public class IncentivosRepositorioEnMemoria {
 
-    private final List<Mision> misiones = new ArrayList<>();
-    private final Map<UUID, Donante> perfiles = new ConcurrentHashMap<>();
+    private MisionJpaRepository misionRepository;
+    private DonanteJpaRepository donanteRepository;
+    private CategoriaDonanteJpaRepository categoriaRepository;
+    private final List<Mision> misionesFallback = new ArrayList<>();
+    private final Map<UUID, Donante> perfilesFallback = new ConcurrentHashMap<>();
 
+    public IncentivosRepositorioEnMemoria() {
+    }
+
+    public IncentivosRepositorioEnMemoria(MisionJpaRepository misionRepository, DonanteJpaRepository donanteRepository, CategoriaDonanteJpaRepository categoriaRepository) {
+        this.misionRepository = misionRepository;
+        this.donanteRepository = donanteRepository;
+        this.categoriaRepository = categoriaRepository;
+    }
+
+    @Transactional
     public void guardarMision(Mision mision) {
-        misiones.add(mision);
+        if (usaFallbackEnMemoria()) {
+            if (mision.getOrden() == 0) {
+                mision.setOrden((int) misionesFallback.stream()
+                        .filter(m -> mismaCategoria(m.getCategoriaRequerida(), mision.getCategoriaRequerida()))
+                        .count() + 1);
+            }
+            misionesFallback.add(mision);
+            return;
+        }
+
+        if (misionRepository.existsByNombre(mision.getNombre())) {
+            return;
+        }
+
+        CategoriaDonante categoria = guardarORecuperarCategoria(mision.getCategoriaRequerida());
+        mision.setCategoriaRequerida(categoria);
+        mision.setOrden((int) misionRepository.countByCategoriaRequeridaOrden(categoria.getOrden()) + 1);
+        misionRepository.save(mision);
     }
 
     public List<Mision> listarMisiones() {
-        return new ArrayList<>(misiones);
+        if (usaFallbackEnMemoria()) {
+            return new ArrayList<>(misionesFallback);
+        }
+        return misionRepository.findAll();
     }
 
     public List<Mision> listarMisionesPorCategoria(CategoriaDonante categoria) {
-        return misiones.stream()
-                .filter(m -> m.getCategoriaRequerida().getClass().equals(categoria.getClass()))
-                .toList();
+        if (categoria == null) {
+            return List.of();
+        }
+        if (usaFallbackEnMemoria()) {
+            return misionesFallback.stream()
+                    .filter(m -> mismaCategoria(m.getCategoriaRequerida(), categoria))
+                    .sorted(Comparator.comparingInt(Mision::getOrden))
+                    .toList();
+        }
+        return misionRepository.findByCategoriaRequeridaOrdenOrderByOrdenAsc(categoria.getOrden());
     }
 
     public Donante obtenerOCrearPerfil(UUID donanteId) {
-        return perfiles.computeIfAbsent(donanteId, id -> {
+        if (usaFallbackEnMemoria()) {
+            return perfilesFallback.computeIfAbsent(donanteId, id -> {
+                Donante d = new Donante();
+                d.setId(id);
+                return d;
+            });
+        }
+        return donanteRepository.findById(donanteId).orElseGet(() -> {
             Donante d = new Donante();
-            d.setId(id);
+            d.setId(donanteId);
             return d;
         });
     }
 
+    @Transactional
     public void guardarPerfil(Donante perfil) {
-        perfiles.put(perfil.getId(), perfil);
+        if (usaFallbackEnMemoria()) {
+            perfilesFallback.put(perfil.getId(), perfil);
+            return;
+        }
+        if (perfil.getCategoria() != null) {
+            perfil.setCategoria(guardarORecuperarCategoria(perfil.getCategoria()));
+        }
+        donanteRepository.save(perfil);
     }
 
     public Optional<Donante> buscarPerfil(UUID donanteId) {
-        return Optional.ofNullable(perfiles.get(donanteId));
+        if (usaFallbackEnMemoria()) {
+            return Optional.ofNullable(perfilesFallback.get(donanteId));
+        }
+        return donanteRepository.findById(donanteId);
     }
 
     public List<UUID> listarTodosLosDonanteIds() {
-        return new ArrayList<>(perfiles.keySet());
+        if (usaFallbackEnMemoria()) {
+            return new ArrayList<>(perfilesFallback.keySet());
+        }
+        return donanteRepository.findAll().stream()
+                .map(Donante::getId)
+                .toList();
     }
 
     public List<Donante> listarPerfiles() {
-        return new ArrayList<>(perfiles.values());
+        if (usaFallbackEnMemoria()) {
+            return new ArrayList<>(perfilesFallback.values());
+        }
+        return donanteRepository.findAll();
+    }
+
+    private CategoriaDonante guardarORecuperarCategoria(CategoriaDonante categoria) {
+        return categoriaRepository.findById(categoria.getOrden())
+                .orElseGet(() -> categoriaRepository.save(categoria));
+    }
+
+    private boolean usaFallbackEnMemoria() {
+        return misionRepository == null || donanteRepository == null || categoriaRepository == null;
+    }
+
+    private boolean mismaCategoria(CategoriaDonante unaCategoria, CategoriaDonante otraCategoria) {
+        return unaCategoria != null
+                && otraCategoria != null
+                && unaCategoria.getClass().equals(otraCategoria.getClass());
     }
 }

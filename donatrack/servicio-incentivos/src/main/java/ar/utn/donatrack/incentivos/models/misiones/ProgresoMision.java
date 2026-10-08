@@ -1,12 +1,16 @@
 package ar.utn.donatrack.incentivos.models.misiones;
 
 import ar.utn.donatrack.incentivos.models.Donante;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.ManyToOne;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@Embeddable
 public class ProgresoMision {
+    @ManyToOne
     private Mision misionActual;
 
     public boolean completadaPor(Donante donante) {
