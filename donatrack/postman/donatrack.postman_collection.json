@@ -1805,6 +1805,38 @@
       "name": "Logistica",
       "item": [
         {
+          "name": "Health logistica",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlLogistica}}/actuator/health",
+              "host": [
+                "{{baseUrlLogistica}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Debe responder {\"status\":\"UP\"}. Es lo que consulta el broker para saber si este proveedor esta disponible."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Servicio UP', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(pm.response.json().status).to.eql('UP');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Camiones",
           "item": [
             {
@@ -1933,7 +1965,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrlLogistica}}/api/logistica/camiones/{{camionId}}/ruta",
+                  "raw": "{{baseUrlLogistica}}/api/logistica/camiones/{{camionConRutaId}}/ruta",
                   "host": [
                     "{{baseUrlLogistica}}"
                   ],
@@ -1941,11 +1973,11 @@
                     "api",
                     "logistica",
                     "camiones",
-                    "{{camionId}}",
+                    "{{camionConRutaId}}",
                     "ruta"
                   ]
                 },
-                "description": ""
+                "description": "Usa camionConRutaId (6666, AB123CD, el camion de ejemplo con la ruta 5555 iniciada). Los camiones de camionId (8888) no tienen ruta y responden 404."
               },
               "event": [
                 {
@@ -2522,6 +2554,38 @@
       "name": "Broker Logistica",
       "item": [
         {
+          "name": "Health broker",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlBroker}}/actuator/health",
+              "host": [
+                "{{baseUrlBroker}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Debe responder {\"status\":\"UP\"}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Servicio UP', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(pm.response.json().status).to.eql('UP');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Ver proveedores",
           "request": {
             "method": "GET",
@@ -2599,6 +2663,7 @@
                   "  if (json.envios && json.envios.length) {",
                   "    pm.collectionVariables.set('brokerProveedorElegido', json.proveedor);",
                   "    if (json.proveedor === 'EXTERNA') pm.collectionVariables.set('trackingId', json.envios[0].idSeguimiento);",
+                  "    if (json.proveedor === 'DONATRACK') pm.collectionVariables.set('loteId', json.envios[0].idSeguimiento);",
                   "  }",
                   "}"
                 ]
@@ -2652,6 +2717,7 @@
                   "  if (json.envios && json.envios.length) {",
                   "    pm.collectionVariables.set('brokerProveedorElegido', json.proveedor);",
                   "    if (json.proveedor === 'EXTERNA') pm.collectionVariables.set('trackingId', json.envios[0].idSeguimiento);",
+                  "    if (json.proveedor === 'DONATRACK') pm.collectionVariables.set('loteId', json.envios[0].idSeguimiento);",
                   "  }",
                   "}"
                 ]
@@ -2705,6 +2771,7 @@
                   "  if (json.envios && json.envios.length) {",
                   "    pm.collectionVariables.set('brokerProveedorElegido', json.proveedor);",
                   "    if (json.proveedor === 'EXTERNA') pm.collectionVariables.set('trackingId', json.envios[0].idSeguimiento);",
+                  "    if (json.proveedor === 'DONATRACK') pm.collectionVariables.set('loteId', json.envios[0].idSeguimiento);",
                   "  }",
                   "}"
                 ]
@@ -2844,6 +2911,38 @@
     {
       "name": "Logistica Externa",
       "item": [
+        {
+          "name": "Health logistica externa",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlLogisticaExterna}}/actuator/health",
+              "host": [
+                "{{baseUrlLogisticaExterna}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Debe responder {\"status\":\"UP\"}. Es lo que consulta el broker para saber si este proveedor esta disponible."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Servicio UP', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "  pm.expect(pm.response.json().status).to.eql('UP');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "Crear envio",
           "request": {
@@ -3298,6 +3397,10 @@
     {
       "key": "camionId",
       "value": "88888888-8888-8888-8888-888888888888"
+    },
+    {
+      "key": "camionConRutaId",
+      "value": "66666666-6666-6666-6666-666666666666"
     },
     {
       "key": "loteId",

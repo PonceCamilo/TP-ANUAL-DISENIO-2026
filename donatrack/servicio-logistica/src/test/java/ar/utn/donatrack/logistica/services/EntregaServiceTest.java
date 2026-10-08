@@ -283,7 +283,7 @@ class EntregaServiceTest {
     class NoRecibida {
 
         @Test
-        @DisplayName("Pasa la entrega a NO_RECIBIDA y guarda el motivo como observación")
+        @DisplayName("Pasa la entrega a NO_RECIBIDA y guarda el motivo en el historial")
         void pasaANoRecibida() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
             Ruta ruta = rutaQueContiene(entrega, camion());
@@ -293,7 +293,7 @@ class EntregaServiceTest {
             servicio.marcarNoRecibida(entrega.getId(), dtoNoRecibida(MotivoFalloEntrega.ENTIDAD_AUSENTE));
 
             assertThat(entrega.getEstado()).isEqualTo(EstadoEntrega.NO_RECIBIDA);
-            assertThat(entrega.getObservacion()).isEqualTo("ENTIDAD_AUSENTE");
+            assertThat(entrega.getHistorial().getLast().getMotivoFallo()).isEqualTo(MotivoFalloEntrega.ENTIDAD_AUSENTE);
             verify(repositorio).guardar(entrega);
         }
 

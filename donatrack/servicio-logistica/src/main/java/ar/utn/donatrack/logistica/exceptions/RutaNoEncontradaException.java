@@ -14,4 +14,8 @@ public class RutaNoEncontradaException extends RuntimeException {
     public static RutaNoEncontradaException paraEntrega(UUID entregaId) {
         return new RutaNoEncontradaException("No existe una ruta que contenga la entrega " + entregaId);
     }
+
+    public static RutaNoEncontradaException paraCamion(UUID camionId) {
+        return new RutaNoEncontradaException("El camión " + camionId + " no tiene una ruta vigente");
+    }
 }
