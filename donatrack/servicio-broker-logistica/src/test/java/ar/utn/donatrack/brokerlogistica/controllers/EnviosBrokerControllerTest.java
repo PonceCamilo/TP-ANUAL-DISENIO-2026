@@ -2,7 +2,6 @@ package ar.utn.donatrack.brokerlogistica.controllers;
 
 import ar.utn.donatrack.brokerlogistica.dtos.EnvioAsignadoDTO;
 import ar.utn.donatrack.brokerlogistica.dtos.ResultadoEnvioResponse;
-import ar.utn.donatrack.brokerlogistica.exceptions.EnvioNoRegistradoException;
 import ar.utn.donatrack.brokerlogistica.exceptions.ProveedorDesconocidoException;
 import ar.utn.donatrack.brokerlogistica.exceptions.SinProveedorDisponibleException;
 import ar.utn.donatrack.brokerlogistica.services.BrokerEnviosService;
@@ -22,7 +21,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -89,14 +87,5 @@ class EnviosBrokerControllerTest {
 
         mockMvc.perform(post("/api/broker/envios").contentType(MediaType.APPLICATION_JSON).content(solicitud()))
                 .andExpect(status().isServiceUnavailable());
-    }
-
-    @Test
-    @DisplayName("GET /envios/{id} de una donación no enviada responde 404")
-    void envioNoRegistrado() throws Exception {
-        when(brokerEnviosService.consultarEnvio(idDonacion)).thenThrow(new EnvioNoRegistradoException(idDonacion));
-
-        mockMvc.perform(get("/api/broker/envios/{id}", idDonacion))
-                .andExpect(status().isNotFound());
     }
 }

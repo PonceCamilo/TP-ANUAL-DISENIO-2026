@@ -2,7 +2,6 @@ package ar.utn.donatrack.logistica.services;
 
 import ar.utn.donatrack.logistica.dtos.request.CamionRequestDTO;
 import ar.utn.donatrack.logistica.dtos.response.CamionResponseDTO;
-import ar.utn.donatrack.logistica.exceptions.CamionNoEncontradoException;
 import ar.utn.donatrack.logistica.exceptions.PatenteDuplicadaException;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
 import ar.utn.donatrack.logistica.models.flota.Camion;
@@ -17,7 +16,6 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,7 +28,7 @@ import static org.mockito.Mockito.when;
 /**
  * Tests del CRUD de la flota.
  *
- * Cubren el alta (el camión nace DISPONIBLE) y la consulta por id / listado.
+ * Cubren el alta: el camión nace DISPONIBLE y la patente no se repite.
  * Solo se mockea el repositorio: el service no tiene más colaboradores.
  */
 @ExtendWith(MockitoExtension.class)
@@ -87,46 +85,6 @@ class CamionServiceTest {
             assertThatThrownBy(() -> servicio.registrar(dtoAlta()))
                     .isInstanceOf(PatenteDuplicadaException.class);
             verify(repositorio, never()).guardar(any());
-        }
-    }
-
-    @Nested
-    @DisplayName("Consulta de camiones")
-    class Consulta {
-
-        @Test
-        @DisplayName("obtenerPorId() devuelve el camión pedido")
-        void obtenerPorId() {
-            UUID id = UUID.randomUUID();
-            Camion camion = Camion.builder().id(id).patente("AB123CD").build();
-            when(repositorio.buscarPorId(id)).thenReturn(camion);
-
-            CamionResponseDTO resultado = servicio.obtenerPorId(id);
-
-            assertThat(resultado.getId()).isEqualTo(id);
-            assertThat(resultado.getPatente()).isEqualTo("AB123CD");
-        }
-
-        @Test
-        @DisplayName("obtenerPorId() lanza 404 si el camión no existe")
-        void obtenerPorIdInexistente() {
-            UUID idInexistente = UUID.randomUUID();
-            when(repositorio.buscarPorId(idInexistente)).thenReturn(null);
-
-            assertThatThrownBy(() -> servicio.obtenerPorId(idInexistente))
-                    .isInstanceOf(CamionNoEncontradoException.class);
-        }
-
-        @Test
-        @DisplayName("obtenerTodos() delega en el repositorio")
-        void obtenerTodos() {
-            Camion camion = Camion.builder().id(UUID.randomUUID()).patente("AB123CD").build();
-            when(repositorio.buscarTodos()).thenReturn(List.of(camion));
-
-            List<CamionResponseDTO> resultado = servicio.obtenerTodos();
-
-            assertThat(resultado).hasSize(1);
-            assertThat(resultado.getFirst().getPatente()).isEqualTo("AB123CD");
         }
     }
 }

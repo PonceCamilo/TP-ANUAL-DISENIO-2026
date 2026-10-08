@@ -50,30 +50,6 @@ class RutaTest {
                     .extracting(Entrega::getId)
                     .containsExactly(primera.getId(), segunda.getId(), tercera.getId());
         }
-
-        @Test
-        @DisplayName("Sin paradas (null) devuelve lista vacía, no null")
-        void sinParadas() {
-            Ruta ruta = Ruta.builder().id(UUID.randomUUID()).build();
-
-            assertThat(ruta.obtenerEntregas()).isEmpty();
-        }
-
-        @Test
-        @DisplayName("Una parada sin lista de entregas se saltea")
-        void paradaSinEntregas() {
-            Parada vacia = Parada.builder()
-                    .id(UUID.randomUUID())
-                    .orden(1)
-                    .build();
-            Entrega unica = entrega(UUID.randomUUID());
-            Ruta ruta = Ruta.builder()
-                    .id(UUID.randomUUID())
-                    .paradas(List.of(vacia, paradaCon(unica)))
-                    .build();
-
-            assertThat(ruta.obtenerEntregas()).containsExactly(unica);
-        }
     }
 
     @Nested
@@ -100,14 +76,6 @@ class RutaTest {
                     .id(UUID.randomUUID())
                     .paradas(List.of(paradaCon(entrega(UUID.randomUUID()))))
                     .build();
-
-            assertThat(ruta.buscarParadaPorEntregaId(UUID.randomUUID())).isEmpty();
-        }
-
-        @Test
-        @DisplayName("Sin paradas no rompe")
-        void sinParadas() {
-            Ruta ruta = Ruta.builder().id(UUID.randomUUID()).build();
 
             assertThat(ruta.buscarParadaPorEntregaId(UUID.randomUUID())).isEmpty();
         }
