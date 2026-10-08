@@ -1,0 +1,51 @@
+// ==========================================
+// DBML para dbdiagram.io
+// Servicio de Notificaciones
+// Notificaciones, Medios, Estados y Eventos
+// ==========================================
+
+
+Table medio_notificacion {
+  id_medio int [pk, increment]
+  codigo varchar(20) [not null, unique, note: 'EMAIL, SMS, WHATSAPP, DISCORD']
+  descripcion varchar(100) [not null]
+  proveedor varchar(50) [not null, note: 'Gmail SMTP, Discord Webhook, Twilio SMS, Twilio WhatsApp Sandbox']
+  activo boolean [not null, default: true]
+}
+
+
+Table estado_notificacion {
+  id_estado int [pk, increment]
+  codigo varchar(20) [not null, unique, note: 'PENDIENTE, ENVIADA, FALLIDA']
+  descripcion varchar(100) [not null]
+}
+
+
+Table tipo_evento {
+  id_tipo_evento int [pk, increment]
+  codigo varchar(40) [not null, unique, note: 'MISION_CUMPLIDA, CAMBIO_CATEGORIA, DONACION_ASIGNADA, INACTIVIDAD_DONANTE, INICIO_RUTA, ENTREGA_EXITOSA, ENTREGA_FALLIDA']
+  descripcion varchar(150) [not null]
+}
+
+
+Table notificacion {
+  id_notificacion uuid [pk]
+  id_medio int [not null, ref: > medio_notificacion.id_medio]
+  id_estado int [not null, ref: > estado_notificacion.id_estado]
+  id_tipo_evento int [null, ref: > tipo_evento.id_tipo_evento, note: 'Opcional: evento que originó el aviso']
+  destinatario varchar(255) [not null, note: 'Mail, teléfono o handle según el medio']
+  mensaje text [not null]
+  origen varchar(10) [not null, note: 'COLA o REST: por dónde llegó el pedido']
+  id_mensaje_cola uuid [null, unique, note: 'Id de correlación del mensaje en RabbitMQ; evita procesar duplicados']
+  id_externo varchar(64) [null, note: 'Id devuelto por el proveedor (ej: SID de Twilio)']
+  motivo_fallo varchar(500) [null, note: 'Error del proveedor cuando el estado es FALLIDA']
+  fecha_creacion datetime [not null]
+  fecha_envio datetime [null, note: 'Se completa al pasar a ENVIADA']
+
+
+  indexes {
+    id_estado
+    id_medio
+    (destinatario, fecha_creacion)
+  }
+}
