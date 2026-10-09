@@ -1,5 +1,4 @@
 package ar.utn.donatrack.incentivos.models.insignias;
-import java.util.UUID;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -20,8 +19,8 @@ import lombok.Setter;
 @Table(name = "insignia")
 public class Insignia{
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     private String nombre;
     private String imagen;

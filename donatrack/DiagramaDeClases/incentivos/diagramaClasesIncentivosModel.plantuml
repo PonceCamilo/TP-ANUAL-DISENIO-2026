@@ -9,7 +9,7 @@ class Donante {
   + completarMision(mision: Mision): void
   + subirCategoria(): boolean
   + agregarInsignia(insignia: InsigniaObtenida): void
-  + cambiarVisibilidadInsignia(idInsignia, visible: boolean): void
+  + cambiarVisibilidadInsignia(idInsignia: Long, visible: boolean): void
   + cambiarMisionActual(mision: Mision): void
   + misionesCompletadasEnPeriodo(mes: int, anio: int): int
 }
@@ -165,11 +165,11 @@ HabilDonador --|> Mision
 DonacionesExitosas --|> Mision
 
 Mision -- Insignia
+InsigniaBuilder -- Insignia
 
 Racha -- ProgresoRacha
 ProgresoRacha -- Donante
 
-InsigniaBuilder -- Insignia
 InsigniaObtenida -- Insignia
 
 RankingMensual -- PosicionRanking

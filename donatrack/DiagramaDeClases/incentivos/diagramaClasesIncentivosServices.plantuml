@@ -8,7 +8,7 @@ class IncentivosJob {
 }
 
 class IncentivosService {
-  - repositorio: IncentivosRepositorioEnMemoria
+  - repositorio: IncentivosRepository
   - notificacionClient: NotificacionClient
   - n8nWebhookClient: N8nWebhookClient
   - validator: IncentivosValidator
@@ -31,7 +31,7 @@ class N8nWebhookClient {
 class IncentivosValidator {
 }
 
-class IncentivosRepositorioEnMemoria {
+class IncentivosRepository {
 }
 
 class RankingMensualRepository {
@@ -43,6 +43,6 @@ IncentivosJob -- RankingMensualRepository
 IncentivosService -- NotificacionClient
 IncentivosService -- N8nWebhookClient
 IncentivosService -- IncentivosValidator
-IncentivosService -- IncentivosRepositorioEnMemoria
+IncentivosService -- IncentivosRepository
 
 @enduml

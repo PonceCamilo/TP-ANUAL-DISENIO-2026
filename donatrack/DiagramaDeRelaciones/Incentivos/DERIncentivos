@@ -1,118 +1,121 @@
-Table mision {
-  id_mision int [pk]
-  id_categoria int [not null]
-  id_insignia int [not null]
-  nombre varchar(100) [not null]
-  descripcion text
-}
-
 Table categoria_donante {
-  id_categoria int [pk]
-  nombre varchar(50) [not null]
-  orden int [not null]
+  tipo_categoria varchar(31) [not null]
+  orden int [pk]
+  nombre varchar(255)
 }
 
 Table insignia {
-  id_insignia int [pk]
-  nombre varchar(100) [not null]
+  id bigint [pk, increment]
+  nombre varchar(255)
   imagen varchar(255)
 }
 
-Table insignia_obtenida {
-  id_insignia_obtenida int [pk]
-  id_donante uuid [not null]
-  id_insignia int [not null]
-  visibilidad boolean
-  fecha_obtencion date [not null]
+Table mision {
+  id bigint [pk, increment]
+  nombre varchar(255)
+  descripcion varchar(255)
+  objetivo int [not null]
+  orden int [not null]
+  categoria_requerida_orden int
+  insignia_id bigint [unique]
+}
+
+Table habil_donador {
+  id bigint [pk]
+  cantidad_bienes_requerida int [not null]
+}
+
+Table completitud {
+  id bigint [pk]
+  categorias_requeridas int [not null]
+}
+
+Table donaciones_exitosas {
+  id bigint [pk]
+  cantidad_donaciones_requerida int [not null]
+}
+
+Table racha {
+  id bigint [pk]
+  meses_requeridos int [not null]
 }
 
 Table donante {
-  id_donante uuid [pk]
-  id_categoria int [not null]
-  created_at timestamp
+  id uuid [pk]
+  categoria_actual_orden int
+  mision_actual_id bigint
 }
 
-Table progreso_mision {
-  id_progreso int [pk]
-  id_donante uuid [not null]
-  id_mision int [not null]
-  esta_completada boolean
-  actualizado_al timestamp
+Table insignia_obtenida {
+  id bigint [pk, increment]
+  insignia_id bigint
+  visibilidad boolean [not null]
+  fecha_obtencion date
 }
 
 Table donacion_registrada {
-  id_donacion uuid [pk]
-  id_donante uuid [not null]
-  id_entidad_beneficiaria uuid [not null]
-  fecha datetime [not null]
-  cantidad_bienes int
-  exitosa boolean
+  id uuid [pk]
+  fecha timestamp
+  cantidad_bienes int [not null]
+  exitosa boolean [not null]
+  entidad_beneficiaria varchar(255)
 }
 
 Table donacion_categoria {
-  id_donacion uuid [not null]
-  categoria varchar(50) [not null]
-
-  indexes {
-    (id_donacion, categoria) [pk]
-  }
+  donacion_id uuid [not null]
+  categorias varchar(255)
 }
 
-Table posicion_ranking {
-  id_posicion int [pk]
-  id_ranking int [not null]
-  id_donante uuid [not null]
-  puesto int [not null]
-  misiones_completadas int
-  periodo_inicio datetime [not null]
+Table donante_insignias_obtenidas {
+  donante_id uuid [not null]
+  insignias_obtenidas_id bigint [not null, unique]
+}
+
+Table donante_donaciones {
+  donante_id uuid [not null]
+  donaciones_id uuid [not null, unique]
 }
 
 Table ranking_mensual {
-  id_ranking int [pk]
-  periodo_inicio datetime [not null]
-  fecha_calculo datetime [not null]
+  id bigint [pk, increment]
+  periodo_inicio timestamp
+  fecha_calculo timestamp
 }
 
-Table HabilDonador {
-  id_habil_donador int [pk]
-  id_mision int [not null]
-  cant_bienes_requerida int [not null]
+Table posicion_ranking {
+  id bigint [pk, increment]
+  donante_id uuid
+  puesto int [not null]
+  misiones_completadas int [not null]
+  dia_de_creacion timestamp
 }
 
-Table Completitud {
-  id_completitud int [pk]
-  id_mision int [not null]
-  cant_categorias_requeridas int [not null]
+Table ranking_mensual_posiciones {
+  ranking_mensual_id bigint [not null]
+  posiciones_id bigint [not null, unique]
 }
 
-Table DonacionesExitosas {
-  id_donaciones_exitosas int [pk]
-  id_mision int [not null]
-  cant_donaciones_requeridas int [not null]
-}
+Ref: mision.categoria_requerida_orden > categoria_donante.orden
+Ref: mision.insignia_id - insignia.id
 
-Table Racha {
-  id_racha int [pk]
-  id_mision int [not null]
-  cant_meses_requeridos int [not null]
-}
+Ref: habil_donador.id - mision.id
+Ref: completitud.id - mision.id
+Ref: donaciones_exitosas.id - mision.id
+Ref: racha.id - mision.id
 
-Ref: mision.id_categoria > categoria_donante.id_categoria
-Ref: mision.id_insignia > insignia.id_insignia
-Ref: insignia_obtenida.id_donante > donante.id_donante
-Ref: insignia_obtenida.id_insignia > insignia.id_insignia
-Ref: donante.id_categoria > categoria_donante.id_categoria
-Ref: progreso_mision.id_donante > donante.id_donante
-Ref: progreso_mision.id_mision > mision.id_mision
-Ref: donacion_registrada.id_donante > donante.id_donante
-Ref: donacion_categoria.id_donacion > donacion_registrada.id_donacion
-Ref: posicion_ranking.id_ranking > ranking_mensual.id_ranking
-Ref: posicion_ranking.id_donante > donante.id_donante
-Ref: HabilDonador.id_mision - mision.id_mision
-Ref: Completitud.id_mision - mision.id_mision
-Ref: DonacionesExitosas.id_mision - mision.id_mision
-Ref: Racha.id_mision - mision.id_mision
+Ref: donante.categoria_actual_orden > categoria_donante.orden
+Ref: donante.mision_actual_id > mision.id
 
-Ref: "Completitud"."id_completitud" <? "insignia_obtenida"."id_donante"
+Ref: insignia_obtenida.insignia_id > insignia.id
 
+Ref: donacion_categoria.donacion_id > donacion_registrada.id
 
+Ref: donante_insignias_obtenidas.donante_id > donante.id
+Ref: donante_insignias_obtenidas.insignias_obtenidas_id > insignia_obtenida.id
+
+Ref: donante_donaciones.donante_id > donante.id
+Ref: donante_donaciones.donaciones_id > donacion_registrada.id
+
+Ref: posicion_ranking.donante_id > donante.id
+Ref: ranking_mensual_posiciones.ranking_mensual_id > ranking_mensual.id
+Ref: ranking_mensual_posiciones.posiciones_id > posicion_ranking.id

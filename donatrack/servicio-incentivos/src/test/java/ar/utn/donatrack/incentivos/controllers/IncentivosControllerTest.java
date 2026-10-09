@@ -415,6 +415,6 @@ class IncentivosControllerTest {
     }
 
     private Insignia insignia() {
-        return Insignia.builder().id(UUID.randomUUID()).nombre("Semilla").imagen("semilla.png").build();
+        return Insignia.builder().id(1L).nombre("Semilla").imagen("semilla.png").build();
     }
 }

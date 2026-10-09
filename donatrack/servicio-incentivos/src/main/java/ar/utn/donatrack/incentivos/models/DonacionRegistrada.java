@@ -25,6 +25,7 @@ import java.util.UUID;
 @Table(name = "donacion_registrada")
 public class DonacionRegistrada {
     @Id
+    @Builder.Default
     private UUID id = UUID.randomUUID();
 
     private LocalDateTime fecha;

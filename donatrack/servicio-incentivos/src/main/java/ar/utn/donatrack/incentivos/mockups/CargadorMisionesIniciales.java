@@ -16,16 +16,6 @@ import org.springframework.stereotype.Component;
 
 /**
  * Carga las misiones base del sistema al arrancar el servicio.
- *
- * Es idempotente: guardarMision() descarta las que ya existen por nombre, así
- * que un reinicio contra una base con datos no duplica nada.
- *
- * OJO CON EL ID DE LAS INSIGNIAS: acá NO se asigna a mano. Insignia tiene
- * @GeneratedValue(GenerationType.UUID) y Hibernate lo completa al persistir;
- * una entidad que llega a persist() con el id ya puesto se considera DETACHED y
- * el arranque falla con "detached entity passed to persist". Antes el id se
- * asignaba explícitamente porque el repositorio guardaba en un Map en memoria,
- * donde nadie generaba nada.
  */
 @Component
 public class CargadorMisionesIniciales {

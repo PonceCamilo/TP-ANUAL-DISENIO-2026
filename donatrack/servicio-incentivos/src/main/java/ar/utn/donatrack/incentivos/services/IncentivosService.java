@@ -87,8 +87,8 @@ public class IncentivosService implements IncentivosServiceInterface {
     private void registrarDonacionYVerificarMision(UUID donanteId, DonacionRegistrada donacion, String destinatario, String medio) {
         Donante perfil = obtenerPerfil(donanteId);
         perfil.registrarDonacion(donacion);
-        repositorio.guardarPerfil(perfil);
         verificarMisionActiva(perfil, destinatario, medio);
+        repositorio.guardarPerfil(perfil);
     }
 
     private void verificarMisionActiva(Donante perfil, String destinatario, String medio) {
@@ -105,10 +105,10 @@ public class IncentivosService implements IncentivosServiceInterface {
         }
 
         avanzarMision(perfil, activa, destinatario, medio);
-        repositorio.guardarPerfil(perfil);
     }
 
     private void avanzarMision(Donante perfil, Mision activa, String destinatario, String medio) {
+        sincronizarMisionesDeCategoria(perfil.getCategoria());
         Mision siguienteMision = perfil.getCategoria().siguienteMision(activa);
         if (siguienteMision != null) {
             perfil.cambiarMisionActual(siguienteMision);

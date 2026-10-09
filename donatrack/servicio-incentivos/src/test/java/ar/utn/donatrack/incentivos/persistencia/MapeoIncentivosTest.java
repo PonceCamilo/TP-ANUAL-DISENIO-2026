@@ -237,7 +237,7 @@ class MapeoIncentivosTest {
 
             assertThat(recuperada.getInsignia()).isNotNull();
             assertThat(recuperada.getInsignia().getNombre()).isEqualTo("Medalla de bienes");
-            assertThat(recuperada.getInsignia().getId()).as("el @GeneratedValue(UUID) se aplicó").isNotNull();
+            assertThat(recuperada.getInsignia().getId()).as("el @GeneratedValue se aplicó").isNotNull();
         }
 
         @Test

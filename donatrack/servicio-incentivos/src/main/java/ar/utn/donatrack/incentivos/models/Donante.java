@@ -18,6 +18,7 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Getter
@@ -40,22 +41,6 @@ public class Donante {
     @Embedded
     private ProgresoMision progresoMision = new ProgresoMision();
 
-    /**
-     * Vuelve a crear el progreso de misión cuando Hibernate lo trae en null.
-     *
-     * POR QUÉ ES NECESARIO: ProgresoMision es un @Embedded cuya única columna es
-     * la misión actual. Si esa columna está en NULL —un donante que todavía no
-     * arrancó ninguna misión— Hibernate deja el embeddable ENTERO en null y pisa
-     * el `= new ProgresoMision()` del campo, que solo corre al construir el
-     * objeto en memoria.
-     *
-     * Sin esto, cualquier donante leído de la base sin misión actual tiraba
-     * NullPointerException al subir de categoría, que es el flujo central del
-     * servicio. Lo detectó MapeoIncentivosTest.subirCategoriaYGuardar.
-     *
-     * Es el mismo criterio de rehidratación que usa servicio-donaciones para el
-     * patrón State y servicio-notificaciones para el medio.
-     */
     @PostLoad
     private void rehidratarProgresoMision() {
         if (this.progresoMision == null) {
@@ -93,9 +78,9 @@ public class Donante {
         this.insigniasObtenidas.add(insignia);
     }
 
-    public void cambiarVisibilidadInsignia(UUID idInsignia, boolean visible) {
+    public void cambiarVisibilidadInsignia(Long idInsignia, boolean visible) {
         insigniasObtenidas.stream()
-                .filter(insignia -> insignia.getId().equals(idInsignia))
+                .filter(insignia -> Objects.equals(insignia.getId(), idInsignia))
                 .findFirst()
                 .ifPresent(insignia -> insignia.setVisibilidad(visible));
     }

@@ -260,7 +260,7 @@ class IncentivosServiceTest {
     }
 
     private Insignia insignia(String nombre) {
-        return Insignia.builder().id(UUID.randomUUID()).nombre(nombre).imagen(nombre + ".png").build();
+        return Insignia.builder().id(1L).nombre(nombre).imagen(nombre + ".png").build();
     }
 
     private DonacionRegistrada donacionRegistrada(int cantidadBienes, String... categorias) {

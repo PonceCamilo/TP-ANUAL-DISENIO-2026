@@ -155,6 +155,8 @@ class DonanteTest {
             Donante donante = new Donante();
             InsigniaObtenida visible = new InsigniaObtenida(insignia("Semilla"), true);
             InsigniaObtenida otra = new InsigniaObtenida(insignia("Racha"), true);
+            visible.setId(1L);
+            otra.setId(2L);
             donante.setInsigniasObtenidas(List.of(visible, otra));
 
             donante.cambiarVisibilidadInsignia(visible.getId(), false);
