@@ -14,9 +14,6 @@ import org.springframework.stereotype.Component;
  * delega en un NotificacionTransport, que puede ser sincrónico (REST)
  * o asincrónico (cola de RabbitMQ) según la property
  * `notificaciones.transporte`.
- *
- * La firma de enviarNotificacion() NO cambió a propósito: IncentivosService
- * sigue usándola igual y no sabe —ni le importa— por dónde viaja el aviso.
  */
 @Component
 public class NotificacionClient {

@@ -8,11 +8,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * Transporte asincrónico: publica la solicitud en la cola de RabbitMQ
- * y vuelve de inmediato, sin esperar a que servicio-notificaciones la procese.
- *
- * Si notificaciones está caído, los mensajes se acumulan en la cola y se
- * procesan cuando vuelve. Antes con HTTP se perdían.
+ * Transporte asincrónico: publica la solicitud en la cola de RabbitMQ y vuelve de inmediato, sin esperar a que servicio-notificaciones la procese.
+ * Si notificaciones está caído, los mensajes se acumulan en la cola y se procesan cuando vuelve. Antes con HTTP se perdían.
  */
 @Component
 @ConditionalOnProperty(name = "notificaciones.transporte", havingValue = "amqp")

@@ -24,16 +24,6 @@ import static org.mockito.Mockito.verify;
 /**
  * Tests del transporte asincrónico de incentivos hacia el Servicio de
  * Notificaciones.
- *
- * Incentivos es el segundo productor de la cola: cuando un donante completa una
- * misión o cambia de categoría, el aviso se publica en RabbitMQ en lugar de
- * viajar por HTTP. Es el mismo requisito de la Entrega 4 que ya cumple
- * donaciones, y los tres servicios comparten la misma topología.
- *
- * POR QUÉ IMPORTA QUE LOS NOMBRES COINCIDAN: si el exchange o la routing key de
- * este servicio se desalinean de los que declara notificaciones, el mensaje se
- * descarta y NADA FALLA A LA VISTA. Ya pasó una vez en este proyecto, con la
- * cola `notificaciones.pendientes` contra `notificaciones.queue`.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("NotificacionTransportAmqp (incentivos) - publicación en la cola")
@@ -56,7 +46,6 @@ class NotificacionTransportAmqpTest {
                 "MISION_CUMPLIDA");
     }
 
-    /** Publica y devuelve el mensaje que efectivamente salió. */
     private SolicitudNotificacionMensaje publicar(SolicitudNotificacionMensaje solicitud) {
         transporte.enviar(solicitud);
         verify(rabbitTemplate).convertAndSend(anyString(), anyString(), mensajeCaptor.capture());
@@ -81,10 +70,6 @@ class NotificacionTransportAmqpTest {
         @Test
         @DisplayName("Usa exactamente los mismos nombres que donaciones y notificaciones")
         void nombresAlineadosEntreLosTresServicios() {
-            // Están escritos a mano acá a propósito: si alguien cambia la
-            // constante de un servicio y no la de los otros, este test falla.
-            // Es la única defensa contra una desalineación silenciosa, porque
-            // los tres módulos no comparten código.
             assertThat(RabbitMQConfig.EXCHANGE).isEqualTo("donatrack.notificaciones");
             assertThat(RabbitMQConfig.ROUTING_KEY).isEqualTo("notificacion.enviar");
             assertThat(RabbitMQConfig.QUEUE).isEqualTo("notificaciones.queue");
@@ -109,10 +94,6 @@ class NotificacionTransportAmqpTest {
         @Test
         @DisplayName("El campo evento viaja: es lo que distingue a este productor de donaciones")
         void incluyeElEvento() {
-            // Donaciones manda 3 campos, incentivos manda 4. El consumidor los
-            // recibe en el mismo record, con `evento` opcional. Si este campo
-            // dejara de viajar, notificaciones perdería el motivo del aviso sin
-            // que nada falle.
             SolicitudNotificacionMensaje publicado =
                     publicar(new SolicitudNotificacionMensaje(
                             "otro@example.com", "Subiste a Sostenedor", "EMAIL", "CAMBIO_CATEGORIA"));

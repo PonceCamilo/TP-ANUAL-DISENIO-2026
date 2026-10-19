@@ -14,9 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-/**
- * Carga las misiones base del sistema al arrancar el servicio.
- */
+//Carga las misiones base del sistema al arrancar el servicio.
 @Component
 public class CargadorMisionesIniciales {
 
@@ -71,5 +69,5 @@ public class CargadorMisionesIniciales {
         ));
 
         log.info("Misiones mockup del sistema cargadas correctamente.");
-    }
+        }
 }
