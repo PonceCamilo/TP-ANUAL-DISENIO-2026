@@ -12,10 +12,11 @@ import java.util.List;
  * Hoy hay una sola implementación (proveedor externo vía REST), pero el
  * puerto permite cambiarla sin tocar PlanificacionRutasService.
  *
- * La planificación se pide de a un camión por vez: se le pasan las
- * donaciones que le corresponden a ese camión y el proveedor responde,
- * en el mismo request/response HTTP, la ruta planificada para él.
+ * La planificación se pide una vez por lote: se le pasan todas las
+ * donaciones del lote y todos los camiones disponibles. El proveedor
+ * decide la carga de cada camión y responde, en el mismo request/response
+ * HTTP, una ruta por camión usado.
  */
 public interface EstrategiaRuteoPort {
-    RutaPlanificadaProveedorDTO planificarParaCamion(LotePlanificacion lote, Camion camion, List<DonacionLote> donaciones);
+    List<RutaPlanificadaProveedorDTO> planificar(LotePlanificacion lote, List<Camion> camiones, List<DonacionLote> donaciones);
 }

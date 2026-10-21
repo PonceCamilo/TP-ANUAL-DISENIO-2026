@@ -22,7 +22,7 @@ import java.util.UUID;
 /**
  * Recibe donaciones en estado "Asignación Realizada" + camiones disponibles,
  * planifica sus rutas contra el proveedor externo de ruteo (una llamada
- * síncrona por camión, ver ProveedorRuteoExternoAdapter) y expone además
+ * síncrona por lote, ver ProveedorRuteoExternoAdapter) y expone además
  * un callback alternativo para un proveedor externo que responda de forma
  * asíncrona.
  */
@@ -38,7 +38,7 @@ public class PlanificacionController {
             summary = "Planificar rutas",
             description = "Recibe donaciones disponibles y, opcionalmente, los camiones a usar "
                     + "(si no se envían camionesIds se usan todos los camiones DISPONIBLE). Particiona en lotes de <=100 donaciones y, "
-                    + "para cada uno, le pide al proveedor externo de ruteo (una llamada síncrona por camión) que planifique su ruta. "
+                    + "para cada uno, le pide al proveedor externo de ruteo (una llamada síncrona con todas las donaciones y los camiones) que arme las rutas. "
                     + "Devuelve, para cada lote, la lista de camiones con los destinos y las entregas a realizar en cada uno; "
                     + "las entregas creadas quedan en estado LISTO_PARA_ENTREGAR.",
             responses = {

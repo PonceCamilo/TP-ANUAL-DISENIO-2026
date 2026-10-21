@@ -14,6 +14,7 @@ import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
 import ar.utn.donatrack.logistica.exceptions.CamionNoEncontradoException;
 import ar.utn.donatrack.logistica.exceptions.LoteCallbackInvalidoException;
 import ar.utn.donatrack.logistica.exceptions.LoteNoEncontradoException;
+import ar.utn.donatrack.logistica.exceptions.ProveedorRuteoIndisponibleException;
 import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.SinCamionesDisponiblesException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
@@ -41,17 +42,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * Facade: oculta detrás de planificar()/registrarCallback() el particionado
- * en lotes de ≤100 donaciones, el reparto de esas donaciones entre los
- * camiones disponibles, la planificación síncrona (una llamada al proveedor
- * externo por camión) y la traducción de su respuesta (Strategy:
- * EstrategiaRuteoPort) en Ruta/Parada/Entrega.
+ * en lotes de ≤100 donaciones, la planificación síncrona (una llamada al
+ * proveedor externo por lote, con todas las donaciones y todos los camiones)
+ * y la traducción de su respuesta (Strategy: EstrategiaRuteoPort) en
+ * Ruta/Parada/Entrega. Quién lleva cada donación lo decide el proveedor.
  */
 @Service
 @Transactional
@@ -200,11 +201,11 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
     }
 
     /**
-     * Crea el lote y, de a un camión por vez, le pide al proveedor externo
-     * (Strategy: EstrategiaRuteoPort) que planifique la porción de donaciones
-     * que le corresponde. Cada llamada es síncrona: el proveedor devuelve la
-     * ruta planificada en el mismo response, así que al terminar el lote ya
-     * tiene todas sus rutas armadas y queda COMPLETADO.
+     * Crea el lote y le pide al proveedor externo (Strategy: EstrategiaRuteoPort)
+     * que reparta todas sus donaciones entre los camiones. La llamada es
+     * síncrona: el proveedor devuelve una ruta por camión usado. Si esa
+     * respuesta no asigna cada donación exactamente una vez, o nombra un
+     * camión que no se le envió, el lote se rechaza entero.
      */
     private ResultadoLote crearYPlanificarLote(List<DonacionLote> batch, List<Camion> camiones) {
         LotePlanificacion lote = LotePlanificacion.builder()
@@ -217,14 +218,22 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .build();
         loteRepositorio.guardar(lote);
 
-        Map<Camion, List<DonacionLote>> donacionesPorCamion = distribuirEntreCamiones(batch, camiones);
+        List<RutaPlanificadaProveedorDTO> rutasPlanificadas = estrategiaRuteo.planificar(lote, camiones, batch);
+        validarRespuestaProveedor(batch, camiones, rutasPlanificadas);
+
         List<Ruta> rutas = new ArrayList<>();
-        for (Camion camion : camiones) {
-            List<DonacionLote> donacionesDelCamion = donacionesPorCamion.get(camion);
-            if (donacionesDelCamion.isEmpty()) {
-                continue;
+        for (RutaPlanificadaProveedorDTO rutaPlanificada : rutasPlanificadas) {
+            Camion camion = null;
+            for (Camion candidato : camiones) {
+                if (candidato.getId().equals(rutaPlanificada.getCamionId())) {
+                    camion = candidato;
+                    break;
+                }
             }
-            RutaPlanificadaProveedorDTO rutaPlanificada = estrategiaRuteo.planificarParaCamion(lote, camion, donacionesDelCamion);
+            if (camion == null) {
+                throw new ProveedorRuteoIndisponibleException(
+                        "El proveedor de ruteo nombró un camión que no se le envió");
+            }
             rutas.add(crearRuta(lote, camion, rutaPlanificada.getParadas()));
         }
 
@@ -235,17 +244,54 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
         return new ResultadoLote(lote, rutas);
     }
 
-    /** Reparto simple round-robin: cada donación va al camión (índice % cantidad de camiones). */
-    private Map<Camion, List<DonacionLote>> distribuirEntreCamiones(List<DonacionLote> donaciones, List<Camion> camiones) {
-        Map<Camion, List<DonacionLote>> porCamion = new LinkedHashMap<>();
+    /**
+     * El proveedor tiene que ubicar cada donación del lote en una sola parada
+     * y usar solamente camiones de la lista que recibió. Una respuesta a medias
+     * no se persiste: la transacción de planificar() revierte el lote.
+     */
+    private void validarRespuestaProveedor(List<DonacionLote> donaciones, List<Camion> camiones, List<RutaPlanificadaProveedorDTO> rutas) {
+        if (rutas == null) {
+            throw new ProveedorRuteoIndisponibleException("El proveedor de ruteo respondió sin rutas");
+        }
+
+        Set<UUID> camionesEnviados = new HashSet<>();
         for (Camion camion : camiones) {
-            porCamion.put(camion, new ArrayList<>());
+            camionesEnviados.add(camion.getId());
         }
-        for (int i = 0; i < donaciones.size(); i++) {
-            Camion camion = camiones.get(i % camiones.size());
-            porCamion.get(camion).add(donaciones.get(i));
+        Set<UUID> donacionesEsperadas = new HashSet<>();
+        for (DonacionLote donacion : donaciones) {
+            donacionesEsperadas.add(donacion.getIdDonacion());
         }
-        return porCamion;
+
+        Set<UUID> camionesVistos = new HashSet<>();
+        Set<UUID> donacionesVistas = new HashSet<>();
+        for (RutaPlanificadaProveedorDTO ruta : rutas) {
+            if (ruta.getCamionId() == null || !camionesEnviados.contains(ruta.getCamionId())) {
+                throw new ProveedorRuteoIndisponibleException(
+                        "El proveedor de ruteo nombró un camión que no se le envió");
+            }
+            if (!camionesVistos.add(ruta.getCamionId())) {
+                throw new ProveedorRuteoIndisponibleException("El proveedor de ruteo repitió un camión");
+            }
+            if (ruta.getParadas() == null || ruta.getParadas().isEmpty()) {
+                throw new ProveedorRuteoIndisponibleException("El proveedor de ruteo devolvió una ruta sin paradas");
+            }
+            for (CallbackParadaDTO parada : ruta.getParadas()) {
+                if (parada.getDonacionesIds() == null || parada.getDonacionesIds().isEmpty()) {
+                    throw new ProveedorRuteoIndisponibleException("El proveedor de ruteo devolvió una parada sin donaciones");
+                }
+                for (UUID idDonacion : parada.getDonacionesIds()) {
+                    if (!donacionesEsperadas.contains(idDonacion) || !donacionesVistas.add(idDonacion)) {
+                        throw new ProveedorRuteoIndisponibleException(
+                                "El proveedor de ruteo no asignó cada donación del lote exactamente una vez");
+                    }
+                }
+            }
+        }
+        if (!donacionesVistas.equals(donacionesEsperadas)) {
+            throw new ProveedorRuteoIndisponibleException(
+                    "El proveedor de ruteo no asignó cada donación del lote exactamente una vez");
+        }
     }
 
     private Ruta crearRuta(LotePlanificacion lote, Camion camion, List<CallbackParadaDTO> paradasDTO) {

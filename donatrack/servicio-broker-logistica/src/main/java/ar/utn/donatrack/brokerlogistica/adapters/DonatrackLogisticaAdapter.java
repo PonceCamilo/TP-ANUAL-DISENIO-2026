@@ -11,16 +11,18 @@ import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * Adapter de servicio-logistica (el propio).
  *
  * Contrato del proveedor: un único POST /api/logistica/planificaciones con
- * todas las donaciones; logística las particiona en lotes, elige los camiones
- * disponibles y responde la lista de lotes planificados. El id de seguimiento
- * de cada donación es el id del lote que la contiene.
+ * todas las donaciones; logística las particiona en lotes, el proveedor
+ * reparte las donaciones entre los camiones y responde las rutas. El id de
+ * seguimiento de cada donación es el id de su entrega.
  */
 @Component
 public class DonatrackLogisticaAdapter extends AdapterLogisticaHttp {
@@ -53,21 +55,52 @@ public class DonatrackLogisticaAdapter extends AdapterLogisticaHttp {
         if (lotes == null || lotes.isEmpty()) {
             throw new ProveedorNoDisponibleException(NOMBRE, new IllegalStateException("Respuesta sin lotes"));
         }
-        return asignarLotes(donaciones, lotes);
+        return asignarEntregas(donaciones, lotes);
     }
 
     /**
-     * Logística particiona respetando el orden recibido, así que los lotes
-     * vienen en orden y cada uno trae cuántas donaciones contiene.
+     * Cada donación del pedido tiene que aparecer exactamente una vez, con el
+     * id de su entrega. El resultado sale en el mismo orden del pedido. Si
+     * falta una donación o se repite, falla la llamada entera.
      */
-    private List<EnvioAsignadoDTO> asignarLotes(List<DonacionEnvioDTO> donaciones, List<LoteRespuesta> lotes) {
+    private List<EnvioAsignadoDTO> asignarEntregas(List<DonacionEnvioDTO> donaciones, List<LoteRespuesta> lotes) {
+        Map<UUID, UUID> entregaPorDonacion = new HashMap<>();
+        for (LoteRespuesta lote : lotes) {
+            if (lote.rutas() == null) {
+                continue;
+            }
+            for (RutaRespuesta ruta : lote.rutas()) {
+                if (ruta.paradas() == null) {
+                    continue;
+                }
+                for (ParadaRespuesta parada : ruta.paradas()) {
+                    if (parada.entregas() == null) {
+                        continue;
+                    }
+                    for (EntregaRespuesta entrega : parada.entregas()) {
+                        if (entrega.id() == null || entrega.idDonacion() == null) {
+                            throw new ProveedorNoDisponibleException(NOMBRE,
+                                    new IllegalStateException("La respuesta de logística trae una entrega sin id"));
+                        }
+                        UUID anterior = entregaPorDonacion.put(entrega.idDonacion(), entrega.id());
+                        if (anterior != null) {
+                            throw new ProveedorNoDisponibleException(NOMBRE,
+                                    new IllegalStateException("La donación " + entrega.idDonacion() + " aparece dos veces"));
+                        }
+                    }
+                }
+            }
+        }
+
         LocalDateTime ahora = LocalDateTime.now();
         List<EnvioAsignadoDTO> envios = new ArrayList<>();
-        int indice = 0;
-        for (LoteRespuesta lote : lotes) {
-            for (int i = 0; i < lote.cantidadDonaciones() && indice < donaciones.size(); i++, indice++) {
-                envios.add(new EnvioAsignadoDTO(donaciones.get(indice).idDonacion(), NOMBRE, lote.id().toString(), ahora));
+        for (DonacionEnvioDTO donacion : donaciones) {
+            UUID idEntrega = entregaPorDonacion.get(donacion.idDonacion());
+            if (idEntrega == null) {
+                throw new ProveedorNoDisponibleException(NOMBRE,
+                        new IllegalStateException("La donación " + donacion.idDonacion() + " no tiene entrega"));
             }
+            envios.add(new EnvioAsignadoDTO(donacion.idDonacion(), NOMBRE, idEntrega.toString(), ahora));
         }
         return envios;
     }
@@ -83,6 +116,15 @@ public class DonatrackLogisticaAdapter extends AdapterLogisticaHttp {
     private record DonacionParaRutear(UUID idDonacion, UUID idEntidadBeneficiaria, DireccionDTO direccionEntrega) {
     }
 
-    private record LoteRespuesta(UUID id, int cantidadDonaciones) {
+    private record LoteRespuesta(UUID id, int cantidadDonaciones, List<RutaRespuesta> rutas) {
+    }
+
+    private record RutaRespuesta(UUID id, UUID camionId, List<ParadaRespuesta> paradas) {
+    }
+
+    private record ParadaRespuesta(List<EntregaRespuesta> entregas) {
+    }
+
+    private record EntregaRespuesta(UUID id, UUID idDonacion) {
     }
 }

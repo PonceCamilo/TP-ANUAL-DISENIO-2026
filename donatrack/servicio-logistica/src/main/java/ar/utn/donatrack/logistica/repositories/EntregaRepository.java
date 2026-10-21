@@ -31,4 +31,11 @@ public class EntregaRepository extends RepositorioJpa<Entrega> implements Entreg
                 .setParameter("estado", estado)
                 .getResultList();
     }
+
+    @Override
+    public List<Entrega> buscarPorIdDonacion(UUID idDonacion) {
+        return em.createQuery("SELECT e FROM Entrega e WHERE e.idDonacion = :idDonacion", Entrega.class)
+                .setParameter("idDonacion", idDonacion)
+                .getResultList();
+    }
 }

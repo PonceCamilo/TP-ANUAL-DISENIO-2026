@@ -9,14 +9,14 @@ import java.util.UUID;
 
 /**
  * Payload que ProveedorRuteoExternoAdapter envía al proveedor/mock de ruteo
- * para pedir la planificación de UN camión: el lote al que pertenece, ese
- * camión y las donaciones que le tocan a él.
+ * para un lote: todas las donaciones del lote y todos los camiones disponibles.
+ * El proveedor decide qué donaciones lleva cada camión y en qué orden.
  */
 @Getter
 @Setter
 @NoArgsConstructor
-public class SolicitudRuteoCamionRequestDTO {
+public class SolicitudRuteoLoteRequestDTO {
     private UUID loteId;
-    private CamionParaRutearRequestDTO camion;
+    private List<CamionParaRutearRequestDTO> camiones;
     private List<DonacionParaRutearRequestDTO> donaciones;
 }

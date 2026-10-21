@@ -10,6 +10,7 @@ import java.util.UUID;
 
 public interface EntregaServiceInterface {
     EntregaResponseDTO obtenerPorId(UUID id);
+    EntregaResponseDTO obtenerPorDonacion(UUID idDonacion);
     List<EntregaResponseDTO> obtenerPorEstado(EstadoEntrega estado);
     void confirmar(UUID id, ConfirmarEntregaRequestDTO dto);
     void marcarNoRecibida(UUID id, NoRecibidaRequestDTO dto);

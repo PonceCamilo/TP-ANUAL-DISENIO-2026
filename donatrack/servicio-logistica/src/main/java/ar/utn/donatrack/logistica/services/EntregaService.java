@@ -44,6 +44,26 @@ public class EntregaService implements EntregaServiceInterface {
     }
 
     @Override
+    public EntregaResponseDTO obtenerPorDonacion(UUID idDonacion) {
+        List<Entrega> entregas = repositorio.buscarPorIdDonacion(idDonacion);
+        if (entregas.isEmpty()) {
+            throw EntregaNoEncontradaException.porDonacion(idDonacion);
+        }
+
+        List<Entrega> enCurso = entregas.stream()
+                .filter(entrega -> entrega.getEstado() == EstadoEntrega.LISTO_PARA_ENTREGAR
+                        || entrega.getEstado() == EstadoEntrega.EN_TRASLADO)
+                .toList();
+        if (enCurso.size() > 1 || (enCurso.isEmpty() && entregas.size() > 1)) {
+            throw new IllegalStateException(
+                    "La donación " + idDonacion + " tiene varias entregas y no hay una sola en curso");
+        }
+
+        Entrega elegida = enCurso.isEmpty() ? entregas.getFirst() : enCurso.getFirst();
+        return EntregaResponseDTO.desde(elegida, rutaDe(elegida.getId()));
+    }
+
+    @Override
     public List<EntregaResponseDTO> obtenerPorEstado(EstadoEntrega estado) {
         return repositorio.buscarPorEstado(estado).stream()
                 .map(e -> EntregaResponseDTO.desde(e, rutaDe(e.getId())))

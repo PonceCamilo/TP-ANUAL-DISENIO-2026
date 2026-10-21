@@ -44,13 +44,16 @@ class DonatrackLogisticaAdapterTest {
     }
 
     @Test
-    @DisplayName("Manda todas las donaciones en una planificación sin camiones y asigna cada una a su lote")
-    void planificaYAsignaLotes() {
+    @DisplayName("Manda todas las donaciones en una planificación sin camiones y asigna cada una a su entrega")
+    void planificaYAsignaEntregas() {
         DonacionEnvioDTO d1 = donacion();
         DonacionEnvioDTO d2 = donacion();
         DonacionEnvioDTO d3 = donacion();
         UUID lote1 = UUID.randomUUID();
         UUID lote2 = UUID.randomUUID();
+        UUID entrega1 = UUID.randomUUID();
+        UUID entrega2 = UUID.randomUUID();
+        UUID entrega3 = UUID.randomUUID();
 
         servidor.expect(requestTo(BASE + "/api/logistica/planificaciones"))
                 .andExpect(method(HttpMethod.POST))
@@ -59,16 +62,39 @@ class DonatrackLogisticaAdapterTest {
                 .andExpect(jsonPath("$.donaciones[0].direccionEntrega.calle").value("Medrano"))
                 .andExpect(jsonPath("$.camionesIds").doesNotExist())
                 .andRespond(withSuccess("""
-                        [{"id":"%s","cantidadDonaciones":2,"estado":"COMPLETADO"},
-                         {"id":"%s","cantidadDonaciones":1,"estado":"COMPLETADO"}]
-                        """.formatted(lote1, lote2), MediaType.APPLICATION_JSON));
+                        [{"id":"%s","cantidadDonaciones":2,"estado":"COMPLETADO","rutas":[
+                            {"id":"%s","camionId":"%s","paradas":[{"entregas":[
+                                {"id":"%s","idDonacion":"%s"},
+                                {"id":"%s","idDonacion":"%s"}]}]}]},
+                         {"id":"%s","cantidadDonaciones":1,"estado":"COMPLETADO","rutas":[
+                            {"id":"%s","camionId":"%s","paradas":[{"entregas":[
+                                {"id":"%s","idDonacion":"%s"}]}]}]}]
+                        """.formatted(
+                        lote1, UUID.randomUUID(), UUID.randomUUID(), entrega1, d1.idDonacion(), entrega2, d2.idDonacion(),
+                        lote2, UUID.randomUUID(), UUID.randomUUID(), entrega3, d3.idDonacion()),
+                        MediaType.APPLICATION_JSON));
 
         List<EnvioAsignadoDTO> envios = adapter.solicitarEnvios(List.of(d1, d2, d3));
 
         assertThat(envios).extracting(EnvioAsignadoDTO::idSeguimiento)
-                .containsExactly(lote1.toString(), lote1.toString(), lote2.toString());
+                .containsExactly(entrega1.toString(), entrega2.toString(), entrega3.toString());
+        assertThat(envios).extracting(EnvioAsignadoDTO::idDonacion)
+                .containsExactly(d1.idDonacion(), d2.idDonacion(), d3.idDonacion());
         assertThat(envios).extracting(EnvioAsignadoDTO::proveedor).containsOnly("DONATRACK");
         servidor.verify();
+    }
+
+    @Test
+    @DisplayName("Si una donación del pedido no tiene entrega, el proveedor queda no disponible")
+    void donacionSinEntrega() {
+        DonacionEnvioDTO pedida = donacion();
+        servidor.expect(requestTo(BASE + "/api/logistica/planificaciones"))
+                .andRespond(withSuccess("""
+                        [{"id":"%s","cantidadDonaciones":0,"estado":"COMPLETADO","rutas":[]}]
+                        """.formatted(UUID.randomUUID()), MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> adapter.solicitarEnvios(List.of(pedida)))
+                .isInstanceOf(ProveedorNoDisponibleException.class);
     }
 
     @Test

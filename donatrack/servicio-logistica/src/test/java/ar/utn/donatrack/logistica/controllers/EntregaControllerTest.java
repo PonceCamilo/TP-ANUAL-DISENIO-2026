@@ -1,6 +1,7 @@
 package ar.utn.donatrack.logistica.controllers;
 
 import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
+import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.TransicionEntregaIlegalException;
 import ar.utn.donatrack.logistica.interfaces.services.EntregaServiceInterface;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
@@ -78,6 +79,25 @@ class EntregaControllerTest {
                     .andExpect(jsonPath("$[0].estado").value("NO_RECIBIDA"));
 
             verify(entregaService).obtenerPorEstado(EstadoEntrega.NO_RECIBIDA);
+        }
+
+        @Test
+        @DisplayName("GET por donación devuelve la entrega y 404 si no existe")
+        void porDonacion() throws Exception {
+            UUID idDonacion = UUID.randomUUID();
+            when(entregaService.obtenerPorDonacion(idDonacion)).thenReturn(respuesta(EstadoEntrega.EN_TRASLADO));
+
+            mockMvc.perform(get("/api/logistica/entregas/por-donacion/{idDonacion}", idDonacion))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("EN_TRASLADO"));
+
+            verify(entregaService).obtenerPorDonacion(idDonacion);
+
+            when(entregaService.obtenerPorDonacion(idDonacion))
+                    .thenThrow(EntregaNoEncontradaException.porDonacion(idDonacion));
+
+            mockMvc.perform(get("/api/logistica/entregas/por-donacion/{idDonacion}", idDonacion))
+                    .andExpect(status().isNotFound());
         }
     }
 

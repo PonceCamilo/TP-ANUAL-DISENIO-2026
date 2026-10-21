@@ -19,7 +19,7 @@ El compose sobreescribe la configuracion por defecto (`application.properties`) 
 variables de entorno:
 
 - `SERVER_PORT`: puerto del servicio (8085).
-- `INTEGRACIONES_PROVEEDOR_RUTEO_URL`: URL del proveedor de ruteo (apunta al mock interno). Se llama una vez por camión y responde de forma síncrona con la ruta planificada.
+- `INTEGRACIONES_PROVEEDOR_RUTEO_URL`: URL del proveedor de ruteo (apunta al mock interno). Se llama una vez por lote y responde de forma síncrona con las rutas de los camiones usados.
 - `INTEGRACIONES_BROKER_EVENTOS_URL`: endpoint del broker de logistica al que se publican los
   eventos de entrega. En el `docker-compose.yml` de `donatrack/` apunta a
   `http://servicio-broker-logistica:8087/api/broker/eventos/donatrack`; si el broker corre en

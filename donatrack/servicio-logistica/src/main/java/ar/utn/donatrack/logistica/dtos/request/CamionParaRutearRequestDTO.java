@@ -6,7 +6,7 @@ import lombok.Setter;
 
 import java.util.UUID;
 
-/** Camión tal como lo recibe el proveedor/mock de ruteo en la solicitud síncrona por camión. */
+/** Camión tal como lo recibe el proveedor/mock de ruteo dentro del pedido de un lote. */
 @Getter
 @Setter
 @NoArgsConstructor

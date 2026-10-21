@@ -29,6 +29,23 @@ public class EntregaController {
     private final EntregaServiceInterface entregaService;
 
     @Operation(
+            summary = "Obtener la entrega de una donación",
+            description = "Devuelve la entrega de esa donación. Si hay más de una, devuelve la que está en curso "
+                    + "(LISTO_PARA_ENTREGAR o EN_TRASLADO).",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Entrega encontrada",
+                            content = @Content(schema = @Schema(implementation = EntregaResponseDTO.class))),
+                    @ApiResponse(responseCode = "404", description = "La donación no tiene entrega")
+            }
+    )
+    @GetMapping("/por-donacion/{idDonacion}")
+    public ResponseEntity<EntregaResponseDTO> obtenerPorDonacion(
+            @Parameter(description = "ID de la donación", example = "22222222-2222-2222-2222-222222222222")
+            @PathVariable UUID idDonacion) {
+        return ResponseEntity.ok(entregaService.obtenerPorDonacion(idDonacion));
+    }
+
+    @Operation(
             summary = "Obtener entrega por ID",
             description = "Devuelve el detalle de una entrega, incluyendo su estado actual e historial.",
             responses = {

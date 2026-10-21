@@ -1,8 +1,10 @@
 package ar.utn.donatrack.logistica.controllers;
 
 import ar.utn.donatrack.logistica.dtos.request.CallbackParadaDTO;
+import ar.utn.donatrack.logistica.dtos.request.CamionParaRutearRequestDTO;
 import ar.utn.donatrack.logistica.dtos.request.DonacionParaRutearRequestDTO;
-import ar.utn.donatrack.logistica.dtos.request.SolicitudRuteoCamionRequestDTO;
+import ar.utn.donatrack.logistica.dtos.request.SolicitudRuteoLoteRequestDTO;
+import ar.utn.donatrack.logistica.dtos.response.PlanificacionProveedorResponseDTO;
 import ar.utn.donatrack.logistica.dtos.response.RutaPlanificadaProveedorDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -28,12 +30,20 @@ import java.util.UUID;
  * (que normalmente viviria en otro host) para poder probar en local el flujo
  * de planificacion sin un 'Connection Refused'.
  *
- * Recibe la solicitud de UN camión (loteId, camión, donaciones que le tocan
- * a ese camión, ver ProveedorRuteoExternoAdapter) y responde, en el mismo
- * request/response, la ruta planificada para ese camión: agrupa las
- * donaciones recibidas por entidad beneficiaria y arma una parada por
- * entidad, en el orden en que llegaron. No es un algoritmo de ruteo real,
- * solo genera una ruta determinística para poder probar el flujo end to end.
+ * Recibe un lote completo: todas sus donaciones y todos los camiones
+ * disponibles. Decide qué grupo lleva cada camión y responde, en el mismo
+ * request/response, una ruta por camión usado. No calcula un recorrido
+ * geográfico: no hay coordenadas en el pedido.
+ *
+ * Regla, en el orden de llegada de las donaciones:
+ * 1. Un grupo por entidad beneficiaria. Las donaciones del grupo conservan
+ *    el orden en que llegaron.
+ * 2. Cada grupo entero va al camión que hasta ese momento tiene menos
+ *    donaciones. Si empatan, gana el que aparece primero en la lista.
+ * 3. Un camión sin donaciones no genera ruta.
+ * 4. Las paradas de un camión quedan en el orden en que se le asignaron
+ *    los grupos. La capacidad del camión viaja en el pedido y no se usa
+ *    para cortar la carga: toda donación recibida queda en alguna ruta.
  */
 @RestController
 @RequestMapping("/ruteo")
@@ -43,38 +53,85 @@ public class MockProveedorRuteoController {
     private static final Logger log = LoggerFactory.getLogger(MockProveedorRuteoController.class);
 
     @Operation(
-            summary = "Planificar la ruta de un camión (mock)",
-            description = "Simula al proveedor externo: agrupa las donaciones recibidas por entidad beneficiaria "
-                    + "y devuelve, en el mismo response, la ruta planificada para el camión indicado.",
+            summary = "Planificar las rutas de un lote (mock)",
+            description = "Simula al proveedor externo: agrupa las donaciones por entidad beneficiaria, "
+                    + "asigna cada grupo entero al camión con menos donaciones y devuelve una ruta por camión usado.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Ruta planificada para el camión",
-                            content = @Content(schema = @Schema(implementation = RutaPlanificadaProveedorDTO.class)))
+                    @ApiResponse(responseCode = "200", description = "Rutas planificadas del lote",
+                            content = @Content(schema = @Schema(implementation = PlanificacionProveedorResponseDTO.class)))
             }
     )
     @PostMapping("/planificar")
-    public ResponseEntity<RutaPlanificadaProveedorDTO> planificar(@RequestBody SolicitudRuteoCamionRequestDTO dto) {
-        log.info("[MockProveedorRuteoController] Planificando lote={}, camion={}, {} donaciones",
-                dto.getLoteId(), dto.getCamion().getId(), dto.getDonaciones().size());
+    public ResponseEntity<PlanificacionProveedorResponseDTO> planificar(@RequestBody SolicitudRuteoLoteRequestDTO dto) {
+        List<CamionParaRutearRequestDTO> camiones = dto.getCamiones() == null ? List.of() : dto.getCamiones();
+        List<DonacionParaRutearRequestDTO> donaciones = dto.getDonaciones() == null ? List.of() : dto.getDonaciones();
+        log.info("[MockProveedorRuteoController] Planificando lote={}, {} camiones, {} donaciones",
+                dto.getLoteId(), camiones.size(), donaciones.size());
 
-        RutaPlanificadaProveedorDTO ruta = new RutaPlanificadaProveedorDTO();
-        ruta.setCamionId(dto.getCamion().getId());
-        ruta.setParadas(agruparPorEntidad(dto.getDonaciones()));
-        return ResponseEntity.ok(ruta);
+        PlanificacionProveedorResponseDTO respuesta = new PlanificacionProveedorResponseDTO();
+        respuesta.setRutas(repartir(camiones, donaciones));
+        return ResponseEntity.ok(respuesta);
     }
 
-    private List<CallbackParadaDTO> agruparPorEntidad(List<DonacionParaRutearRequestDTO> donaciones) {
-        Map<UUID, CallbackParadaDTO> paradasPorEntidad = new LinkedHashMap<>();
-        for (DonacionParaRutearRequestDTO donacion : donaciones) {
-            CallbackParadaDTO parada = paradasPorEntidad.computeIfAbsent(donacion.getIdEntidadBeneficiaria(), idEntidad -> {
-                CallbackParadaDTO nueva = new CallbackParadaDTO();
-                nueva.setOrden(paradasPorEntidad.size() + 1);
-                nueva.setIdEntidadBeneficiaria(idEntidad);
-                nueva.setDireccion(donacion.getDireccionEntrega());
-                nueva.setDonacionesIds(new ArrayList<>());
-                return nueva;
-            });
-            parada.getDonacionesIds().add(donacion.getIdDonacion());
+    private List<RutaPlanificadaProveedorDTO> repartir(
+            List<CamionParaRutearRequestDTO> camiones,
+            List<DonacionParaRutearRequestDTO> donaciones) {
+        if (camiones.isEmpty() || donaciones.isEmpty()) {
+            return List.of();
         }
-        return new ArrayList<>(paradasPorEntidad.values());
+
+        Map<UUID, List<DonacionParaRutearRequestDTO>> grupos = new LinkedHashMap<>();
+        for (DonacionParaRutearRequestDTO donacion : donaciones) {
+            grupos.computeIfAbsent(donacion.getIdEntidadBeneficiaria(), id -> new ArrayList<>()).add(donacion);
+        }
+
+        Map<UUID, List<List<DonacionParaRutearRequestDTO>>> gruposPorCamion = new LinkedHashMap<>();
+        Map<UUID, Integer> cantidadPorCamion = new LinkedHashMap<>();
+        for (CamionParaRutearRequestDTO camion : camiones) {
+            gruposPorCamion.put(camion.getId(), new ArrayList<>());
+            cantidadPorCamion.put(camion.getId(), 0);
+        }
+
+        for (List<DonacionParaRutearRequestDTO> grupo : grupos.values()) {
+            CamionParaRutearRequestDTO elegido = camiones.getFirst();
+            int menorCantidad = Integer.MAX_VALUE;
+            for (CamionParaRutearRequestDTO camion : camiones) {
+                int cantidad = cantidadPorCamion.get(camion.getId());
+                if (cantidad < menorCantidad) {
+                    menorCantidad = cantidad;
+                    elegido = camion;
+                }
+            }
+            gruposPorCamion.get(elegido.getId()).add(grupo);
+            cantidadPorCamion.put(elegido.getId(), menorCantidad + grupo.size());
+        }
+
+        List<RutaPlanificadaProveedorDTO> rutas = new ArrayList<>();
+        for (CamionParaRutearRequestDTO camion : camiones) {
+            List<List<DonacionParaRutearRequestDTO>> gruposDelCamion = gruposPorCamion.get(camion.getId());
+            if (gruposDelCamion.isEmpty()) {
+                continue;
+            }
+            RutaPlanificadaProveedorDTO ruta = new RutaPlanificadaProveedorDTO();
+            ruta.setCamionId(camion.getId());
+            ruta.setParadas(aParadas(gruposDelCamion));
+            rutas.add(ruta);
+        }
+        return rutas;
+    }
+
+    private List<CallbackParadaDTO> aParadas(List<List<DonacionParaRutearRequestDTO>> grupos) {
+        List<CallbackParadaDTO> paradas = new ArrayList<>();
+        int orden = 1;
+        for (List<DonacionParaRutearRequestDTO> grupo : grupos) {
+            DonacionParaRutearRequestDTO primera = grupo.getFirst();
+            CallbackParadaDTO parada = new CallbackParadaDTO();
+            parada.setOrden(orden++);
+            parada.setIdEntidadBeneficiaria(primera.getIdEntidadBeneficiaria());
+            parada.setDireccion(primera.getDireccionEntrega());
+            parada.setDonacionesIds(grupo.stream().map(DonacionParaRutearRequestDTO::getIdDonacion).toList());
+            paradas.add(parada);
+        }
+        return paradas;
     }
 }

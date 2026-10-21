@@ -1,5 +1,6 @@
 package ar.utn.donatrack.logistica.integracion;
 
+import ar.utn.donatrack.logistica.dtos.response.PlanificacionProveedorResponseDTO;
 import ar.utn.donatrack.logistica.dtos.response.RutaPlanificadaProveedorDTO;
 import ar.utn.donatrack.logistica.exceptions.ProveedorRuteoIndisponibleException;
 import ar.utn.donatrack.logistica.interfaces.integracion.EstrategiaRuteoPort;
@@ -21,10 +22,9 @@ import java.util.Map;
 
 /**
  * Strategy + Adapter: traduce el modelo interno al contrato del proveedor
- * externo de ruteo y pide, de a un camión por vez, que planifique su ruta.
- * El proveedor procesa esa solicitud en el momento y devuelve la ruta
- * planificada como response HTTP síncrona (no hay callback de por medio
- * para este flujo).
+ * externo de ruteo y le pide, una vez por lote, que decida qué donaciones
+ * lleva cada camión. El proveedor responde la lista de rutas en el mismo
+ * request/response HTTP (no hay callback de por medio para este flujo).
  */
 @Component
 public class ProveedorRuteoExternoAdapter implements EstrategiaRuteoPort {
@@ -44,11 +44,11 @@ public class ProveedorRuteoExternoAdapter implements EstrategiaRuteoPort {
     }
 
     @Override
-    public RutaPlanificadaProveedorDTO planificarParaCamion(LotePlanificacion lote, Camion camion, List<DonacionLote> donaciones) {
+    public List<RutaPlanificadaProveedorDTO> planificar(LotePlanificacion lote, List<Camion> camiones, List<DonacionLote> donaciones) {
         try {
             Map<String, Object> payload = Map.of(
                     "loteId", lote.getId().toString(),
-                    "camion", camionAPayload(camion),
+                    "camiones", camiones.stream().map(this::camionAPayload).toList(),
                     "donaciones", donaciones.stream().map(this::donacionAPayload).toList()
             );
             String jsonBody = objectMapper.writeValueAsString(payload);
@@ -60,16 +60,26 @@ public class ProveedorRuteoExternoAdapter implements EstrategiaRuteoPort {
                     .build();
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            RutaPlanificadaProveedorDTO rutaPlanificada = objectMapper.readValue(response.body(), RutaPlanificadaProveedorDTO.class);
+            if (response.statusCode() != 200) {
+                throw new ProveedorRuteoIndisponibleException(
+                        "El proveedor de ruteo respondió " + response.statusCode() + " al planificar el lote " + lote.getId());
+            }
+            PlanificacionProveedorResponseDTO respuesta = objectMapper.readValue(response.body(), PlanificacionProveedorResponseDTO.class);
+            if (respuesta.getRutas() == null) {
+                throw new ProveedorRuteoIndisponibleException(
+                        "El proveedor de ruteo respondió sin rutas para el lote " + lote.getId());
+            }
 
-            log.info("[ProveedorRuteoExternoAdapter] Lote {} - camión {} planificado ({} donaciones -> {} paradas)",
-                    lote.getId(), camion.getId(), donaciones.size(), rutaPlanificada.getParadas().size());
+            log.info("[ProveedorRuteoExternoAdapter] Lote {} planificado ({} donaciones, {} camiones -> {} rutas)",
+                    lote.getId(), donaciones.size(), camiones.size(), respuesta.getRutas().size());
 
-            return rutaPlanificada;
+            return respuesta.getRutas();
+        } catch (ProveedorRuteoIndisponibleException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("[ProveedorRuteoExternoAdapter] No se pudo planificar el camión {} del lote {}: {}",
-                    camion.getId(), lote.getId(), e.getMessage());
-            throw new ProveedorRuteoIndisponibleException(camion.getId(), e);
+            log.error("[ProveedorRuteoExternoAdapter] No se pudo planificar el lote {}: {}", lote.getId(), e.getMessage());
+            throw new ProveedorRuteoIndisponibleException(
+                    "El proveedor de ruteo no pudo planificar el lote " + lote.getId(), e);
         }
     }
 

@@ -139,6 +139,9 @@ class RepositoriosJpaTest {
 
         Entrega leida = entregas.buscarPorId(entrega.getId());
         assertThat(leida.getParada().getId()).isEqualTo(porEntrega.getParadas().get(0).getId());
+        assertThat(entregas.buscarPorIdDonacion(entrega.getIdDonacion())).extracting(Entrega::getId)
+                .containsExactly(entrega.getId());
+        assertThat(entregas.buscarPorIdDonacion(UUID.randomUUID())).isEmpty();
 
         assertThat(rutas.buscarPorCamionId(camion.getId())).extracting(Ruta::getId).containsExactly(idRuta);
         assertThat(rutas.buscarPorEntregaId(UUID.randomUUID())).isEmpty();

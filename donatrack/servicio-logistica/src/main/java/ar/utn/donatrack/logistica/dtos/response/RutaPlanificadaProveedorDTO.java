@@ -9,10 +9,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Respuesta síncrona del proveedor/mock de ruteo a la solicitud de
- * planificación de UN camión: la ruta (paradas y donaciones asignadas)
- * para ese camión (ver ProveedorRuteoExternoAdapter y
- * MockProveedorRuteoController).
+ * Una ruta dentro de la respuesta del proveedor/mock: el camión y las
+ * paradas, con las donaciones de cada una. El cuerpo completo del lote
+ * es PlanificacionProveedorResponseDTO.
  */
 @Getter
 @Setter

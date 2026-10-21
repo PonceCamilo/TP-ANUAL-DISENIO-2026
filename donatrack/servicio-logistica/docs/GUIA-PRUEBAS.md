@@ -164,8 +164,9 @@ Para volver a probar, **reiniciá el backend**: eso regenera la entrega en estad
 
 ## 3. PRUEBA B - Flujo de planificación con el proveedor de ruteo mock
 
-El backend, al planificar, le pide a un proveedor externo de ruteo que planifique la ruta de
-cada camión: una llamada síncrona por camión, que responde con la ruta planificada. Para no
+El backend, al planificar, le pide a un proveedor externo de ruteo que arme las rutas del
+lote: una llamada síncrona con todas las donaciones y los camiones, y el proveedor decide
+qué lleva cada uno. Para no
 depender de un servidor externo, hay un **mock** dentro de la misma app
 (`MockProveedorRuteoController`) en `/ruteo/planificar`.
 
@@ -203,7 +204,7 @@ depender de un servidor externo, hay un **mock** dentro de la misma app
 2. **En la consola de Logística:** el log del mock:
 
    ```text
-   [MockProveedorRuteoController] Planificando lote=..., camion=..., 1 donaciones
+   [MockProveedorRuteoController] Planificando lote=..., 2 camiones, 1 donaciones
    ```
 
 Si no hay ningún camión `DISPONIBLE` la respuesta es `503` ("No hay camiones disponibles"):

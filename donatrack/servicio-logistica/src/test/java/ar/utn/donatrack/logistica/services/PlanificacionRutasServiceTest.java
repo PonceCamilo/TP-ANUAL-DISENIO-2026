@@ -52,7 +52,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -62,9 +61,9 @@ import static org.mockito.Mockito.when;
 /**
  * Tests del orquestador de planificación de rutas.
  *
- * planificar() es un flujo de coordinación (particionar, repartir entre
- * camiones, llamar al proveedor, materializar Ruta/Parada/Entrega), así que
- * esos tests cubren el recorte del lote y el round-robin juntos. iniciarRuta()
+ * planificar() es un flujo de coordinación (particionar, llamar al proveedor
+ * una vez por lote, validar que ubicó cada donación y materializar
+ * Ruta/Parada/Entrega). iniciarRuta()
  * sí se parte: un test el cambio de estados, otro la publicación del evento.
  *
  * El proveedor se mockea vía EstrategiaRuteoPort: acá no se prueba el HTTP
@@ -159,11 +158,11 @@ class PlanificacionRutasServiceTest {
             UUID idCamion = UUID.randomUUID();
             Camion camion = camion(idCamion, "AB123CD");
             when(camionRepositorio.buscarPorIds(List.of(idCamion))).thenReturn(List.of(camion));
-            when(estrategiaRuteo.planificarParaCamion(any(), eq(camion), anyList()))
+            when(estrategiaRuteo.planificar(any(), anyList(), anyList()))
                     .thenAnswer(inv -> {
                         List<DonacionLote> donaciones = inv.getArgument(2);
                         List<UUID> ids = donaciones.stream().map(DonacionLote::getIdDonacion).toList();
-                        return rutaPlanificadaPara(idCamion, idEntidad, ids);
+                        return List.of(rutaPlanificadaPara(idCamion, idEntidad, ids));
                     });
 
             PlanificacionRequestDTO dto = new PlanificacionRequestDTO();
@@ -174,7 +173,7 @@ class PlanificacionRutasServiceTest {
 
             assertThat(lotes).hasSize(2);
             assertThat(lotes.getFirst().getEstado()).isEqualTo(EstadoLote.COMPLETADO);
-            verify(estrategiaRuteo, times(2)).planificarParaCamion(any(), eq(camion), anyList());
+            verify(estrategiaRuteo, times(2)).planificar(any(), anyList(), anyList());
             verify(loteRepositorio, times(4)).guardar(loteCaptor.capture());
             List<Integer> tamaniosDeLote = loteCaptor.getAllValues().stream()
                     .map(l -> l.getDonaciones().size())
@@ -185,8 +184,8 @@ class PlanificacionRutasServiceTest {
         }
 
         @Test
-        @DisplayName("Reparte las donaciones round-robin entre los camiones y arma una ruta por camión con destinos")
-        void reparteDonacionesEntreCamiones() {
+        @DisplayName("Una llamada por lote y materializa una ruta por cada camión que devolvió el proveedor")
+        void materializaLasRutasDelProveedor() {
             UUID idEntidad1 = UUID.randomUUID();
             UUID idEntidad2 = UUID.randomUUID();
             UUID idCamion1 = UUID.randomUUID();
@@ -195,22 +194,16 @@ class PlanificacionRutasServiceTest {
             Camion camion2 = camion(idCamion2, "XY987ZW");
             when(camionRepositorio.buscarPorIds(List.of(idCamion1, idCamion2))).thenReturn(List.of(camion1, camion2));
 
-            when(estrategiaRuteo.planificarParaCamion(any(), eq(camion1), anyList()))
-                    .thenAnswer(inv -> {
-                        List<DonacionLote> donaciones = inv.getArgument(2);
-                        return rutaPlanificadaPara(idCamion1, idEntidad1,
-                                donaciones.stream().map(DonacionLote::getIdDonacion).toList());
-                    });
-            when(estrategiaRuteo.planificarParaCamion(any(), eq(camion2), anyList()))
-                    .thenAnswer(inv -> {
-                        List<DonacionLote> donaciones = inv.getArgument(2);
-                        return rutaPlanificadaPara(idCamion2, idEntidad2,
-                                donaciones.stream().map(DonacionLote::getIdDonacion).toList());
-                    });
+            DonacionParaRutearRequestDTO donacion1 = donacionDTO(idEntidad1);
+            DonacionParaRutearRequestDTO donacion2 = donacionDTO(idEntidad2);
+            when(estrategiaRuteo.planificar(any(), anyList(), anyList()))
+                    .thenReturn(List.of(
+                            rutaPlanificadaPara(idCamion1, idEntidad1, List.of(donacion1.getIdDonacion())),
+                            rutaPlanificadaPara(idCamion2, idEntidad2, List.of(donacion2.getIdDonacion()))));
 
             PlanificacionRequestDTO dto = new PlanificacionRequestDTO();
             dto.setCamionesIds(List.of(idCamion1, idCamion2));
-            dto.setDonaciones(List.of(donacionDTO(idEntidad1), donacionDTO(idEntidad2)));
+            dto.setDonaciones(List.of(donacion1, donacion2));
 
             List<LoteResponseDTO> lotes = servicio.planificar(dto);
 
@@ -225,12 +218,33 @@ class PlanificacionRutasServiceTest {
             RutaResponseDTO rutaCamion1 = lote.getRutas().getFirst();
             assertThat(rutaCamion1.getParadas()).hasSize(1);
             assertThat(rutaCamion1.getParadas().getFirst().getIdEntidadBeneficiaria()).isEqualTo(idEntidad1);
-            assertThat(rutaCamion1.getParadas().getFirst().getEntregasIds()).hasSize(1);
+            assertThat(rutaCamion1.getParadas().getFirst().getEntregas()).hasSize(1);
+            assertThat(rutaCamion1.getParadas().getFirst().getEntregas().getFirst().getIdDonacion())
+                    .isEqualTo(donacion1.getIdDonacion());
 
+            verify(estrategiaRuteo, times(1)).planificar(any(), anyList(), anyList());
             verify(entregaRepositorio, times(2)).guardar(entregaCaptor.capture());
             assertThat(entregaCaptor.getAllValues())
                     .extracting(Entrega::getEstado)
                     .containsExactly(EstadoEntrega.LISTO_PARA_ENTREGAR, EstadoEntrega.LISTO_PARA_ENTREGAR);
+        }
+
+        @Test
+        @DisplayName("Si el proveedor no ubica cada donación una sola vez, rechaza el lote y no crea entregas")
+        void respuestaDelProveedorIncompleta() {
+            UUID idCamion = UUID.randomUUID();
+            Camion camion = camion(idCamion, "AB123CD");
+            when(camionRepositorio.buscarPorIds(List.of(idCamion))).thenReturn(List.of(camion));
+            when(estrategiaRuteo.planificar(any(), anyList(), anyList()))
+                    .thenReturn(List.of(rutaPlanificadaPara(idCamion, UUID.randomUUID(), List.of(UUID.randomUUID()))));
+
+            PlanificacionRequestDTO dto = new PlanificacionRequestDTO();
+            dto.setCamionesIds(List.of(idCamion));
+            dto.setDonaciones(List.of(donacionDTO(UUID.randomUUID())));
+
+            assertThatThrownBy(() -> servicio.planificar(dto))
+                    .isInstanceOf(ProveedorRuteoIndisponibleException.class);
+            verify(entregaRepositorio, never()).guardar(any());
         }
 
         @Test
@@ -245,7 +259,7 @@ class PlanificacionRutasServiceTest {
 
             assertThatThrownBy(() -> servicio.planificar(dto))
                     .isInstanceOf(CamionNoEncontradoException.class);
-            verify(estrategiaRuteo, never()).planificarParaCamion(any(), any(), any());
+            verify(estrategiaRuteo, never()).planificar(any(), any(), any());
         }
 
         @Test
@@ -254,7 +268,7 @@ class PlanificacionRutasServiceTest {
             UUID idCamion = UUID.randomUUID();
             Camion camion = camion(idCamion, "AB123CD");
             when(camionRepositorio.buscarPorIds(List.of(idCamion))).thenReturn(List.of(camion));
-            when(estrategiaRuteo.planificarParaCamion(any(), eq(camion), anyList()))
+            when(estrategiaRuteo.planificar(any(), anyList(), anyList()))
                     .thenThrow(new ProveedorRuteoIndisponibleException(idCamion, new RuntimeException("timeout")));
 
             PlanificacionRequestDTO dto = new PlanificacionRequestDTO();
@@ -276,8 +290,8 @@ class PlanificacionRutasServiceTest {
             when(camionRepositorio.buscarTodos()).thenReturn(List.of(disponible, enRuta));
 
             DonacionParaRutearRequestDTO donacion = donacionDTO(idEntidad);
-            when(estrategiaRuteo.planificarParaCamion(any(), eq(disponible), anyList()))
-                    .thenReturn(rutaPlanificadaPara(idDisponible, idEntidad, List.of(donacion.getIdDonacion())));
+            when(estrategiaRuteo.planificar(any(), anyList(), anyList()))
+                    .thenReturn(List.of(rutaPlanificadaPara(idDisponible, idEntidad, List.of(donacion.getIdDonacion()))));
 
             PlanificacionRequestDTO dto = new PlanificacionRequestDTO();
             dto.setDonaciones(List.of(donacion));
@@ -285,8 +299,10 @@ class PlanificacionRutasServiceTest {
             List<LoteResponseDTO> lotes = servicio.planificar(dto);
 
             assertThat(lotes).hasSize(1);
-            verify(estrategiaRuteo).planificarParaCamion(any(), eq(disponible), anyList());
-            verify(estrategiaRuteo, never()).planificarParaCamion(any(), eq(enRuta), anyList());
+            verify(estrategiaRuteo).planificar(any(), org.mockito.ArgumentMatchers.<List<Camion>>argThat(enviados ->
+                    enviados.size() == 1
+                            && enviados.getFirst().getId().equals(idDisponible)
+                            && enviados.stream().noneMatch(candidato -> candidato.getId().equals(enRuta.getId()))), anyList());
             verify(camionRepositorio, never()).buscarPorIds(anyList());
         }
 

@@ -10,4 +10,5 @@ public interface EntregaRepositoryInterface {
     void guardar(Entrega entrega);
     Entrega buscarPorId(UUID id);
     List<Entrega> buscarPorEstado(EstadoEntrega estado);
+    List<Entrega> buscarPorIdDonacion(UUID idDonacion);
 }

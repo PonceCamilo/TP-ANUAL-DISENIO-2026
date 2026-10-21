@@ -5,6 +5,7 @@ import ar.utn.donatrack.logistica.dtos.request.NoRecibidaRequestDTO;
 import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
 import ar.utn.donatrack.logistica.eventos.EntregaEvento;
 import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
+import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.TransicionEntregaIlegalException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
@@ -153,6 +154,47 @@ class EntregaServiceTest {
             assertThat(dto.getId()).isEqualTo(entrega.getId());
             assertThat(dto.getRutaId()).isNull();
             assertThat(dto.getCamionId()).isNull();
+        }
+
+        @Test
+        @DisplayName("obtenerPorDonacion() devuelve la única entrega de esa donación")
+        void obtenerPorDonacion() {
+            Entrega entrega = entregaEnEstado(EstadoEntrega.ENTREGADA);
+            Ruta ruta = rutaQueContiene(entrega, camion());
+            when(repositorio.buscarPorIdDonacion(entrega.getIdDonacion())).thenReturn(List.of(entrega));
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
+
+            EntregaResponseDTO dto = servicio.obtenerPorDonacion(entrega.getIdDonacion());
+
+            assertThat(dto.getId()).isEqualTo(entrega.getId());
+            assertThat(dto.getIdDonacion()).isEqualTo(entrega.getIdDonacion());
+            assertThat(dto.getRutaId()).isEqualTo(ruta.getId());
+        }
+
+        @Test
+        @DisplayName("Si hay una entrega terminada y otra en curso, devuelve la que está en curso")
+        void prefiereLaEntregaEnCurso() {
+            UUID idDonacion = UUID.randomUUID();
+            Entrega terminada = Entrega.builder().id(UUID.randomUUID()).idDonacion(idDonacion).estado(EstadoEntrega.NO_RECIBIDA).build();
+            Entrega enCurso = Entrega.builder().id(UUID.randomUUID()).idDonacion(idDonacion).estado(EstadoEntrega.LISTO_PARA_ENTREGAR).build();
+            Ruta ruta = rutaQueContiene(enCurso, camion());
+            when(repositorio.buscarPorIdDonacion(idDonacion)).thenReturn(List.of(terminada, enCurso));
+            when(rutaRepositorio.buscarPorEntregaId(enCurso.getId())).thenReturn(Optional.of(ruta));
+
+            EntregaResponseDTO dto = servicio.obtenerPorDonacion(idDonacion);
+
+            assertThat(dto.getId()).isEqualTo(enCurso.getId());
+            assertThat(dto.getEstado()).isEqualTo(EstadoEntrega.LISTO_PARA_ENTREGAR);
+        }
+
+        @Test
+        @DisplayName("obtenerPorDonacion() lanza EntregaNoEncontradaException si no hay entrega")
+        void sinEntregaParaLaDonacion() {
+            UUID idDonacion = UUID.randomUUID();
+            when(repositorio.buscarPorIdDonacion(idDonacion)).thenReturn(List.of());
+
+            assertThatThrownBy(() -> servicio.obtenerPorDonacion(idDonacion))
+                    .isInstanceOf(EntregaNoEncontradaException.class);
         }
     }
 
