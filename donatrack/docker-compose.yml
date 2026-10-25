@@ -145,12 +145,32 @@ services:
       INTEGRACIONES_PROVEEDOR_RUTEO_URL: http://localhost:8085/ruteo/planificar
       INTEGRACIONES_BROKER_EVENTOS_URL: http://servicio-broker-logistica:8087/api/broker/eventos/donatrack
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
-      LOGISTICA_DB_URL: jdbc:postgresql://postgres:5432/logistica_db
-      LOGISTICA_DB_USER: donatrack
-      LOGISTICA_DB_PASSWORD: donatrack
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/logistica?replicaSet=rs0&directConnection=true
     depends_on:
-      postgres:
+      mongo:
         condition: service_healthy
+    networks:
+      - donatrack-net
+
+  # Base documental de logística: colecciones camiones, lotes y rutas.
+  # Replica set de un solo nodo: no suma copias, habilita transacciones
+  # para cuando una operación escriba ruta y camión juntos.
+  # El miembro se anuncia como 127.0.0.1; las aplicaciones usan directConnection
+  # para no tener que resolver ese nombre.
+  mongo:
+    image: mongo:7
+    container_name: donatrack-mongo
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - datos-mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { if (rs.status().ok) { quit(0); } } catch (e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'127.0.0.1:27017'}]}); } quit(1);"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
     networks:
       - donatrack-net
 
@@ -202,3 +222,4 @@ volumes:
   # agrega una base nueva a db/init, hay que hacer down -v para que se aplique.
   datos-postgres:
   datos-rabbitmq:
+  datos-mongo:
