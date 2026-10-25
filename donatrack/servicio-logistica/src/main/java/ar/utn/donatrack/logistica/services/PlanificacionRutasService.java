@@ -210,7 +210,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
     private ResultadoLote crearYPlanificarLote(List<DonacionLote> batch, List<Camion> camiones) {
         LotePlanificacion lote = LotePlanificacion.builder()
                 .id(UUID.randomUUID())
-                .camiones(camiones)
+                .camionIds(camiones.stream().map(Camion::getId).toList())
                 .donaciones(batch)
                 .estado(EstadoLote.ENVIADO)
                 .tokenCorrelacion(UUID.randomUUID().toString())
@@ -299,7 +299,7 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
 
         Ruta ruta = Ruta.builder()
                 .id(UUID.randomUUID())
-                .lote(lote)
+                .loteId(lote.getId())
                 .camion(camion)
                 .paradas(paradas)
                 .estado(EstadoRuta.PLANIFICADA)
@@ -328,8 +328,8 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
             }
         }
 
-        // Primero la ruta: guarda en cascada sus paradas y las entregas de cada
-        // parada. Una entrega no puede guardarse antes que la parada a la que pertenece.
+        // La ruta guarda, embebidas, sus paradas y entregas. El segundo guardar
+        // reescribe ese mismo documento: cubre el caso de tocar una entrega sola.
         rutaRepositorio.guardar(ruta);
         entregasDeLaRuta.forEach(entregaRepositorio::guardar);
         return ruta;

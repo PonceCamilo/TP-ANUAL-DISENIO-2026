@@ -2,25 +2,27 @@ package ar.utn.donatrack.logistica.repositories;
 
 import ar.utn.donatrack.logistica.interfaces.repositories.LotePlanificacionRepositoryInterface;
 import ar.utn.donatrack.logistica.models.planificacion.LotePlanificacion;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 
 @Repository
-public class LotePlanificacionRepository extends RepositorioJpa<LotePlanificacion>
-        implements LotePlanificacionRepositoryInterface {
+public class LotePlanificacionRepository implements LotePlanificacionRepositoryInterface {
 
-    public LotePlanificacionRepository() {
-        super(LotePlanificacion.class);
+    private final MongoTemplate mongo;
+
+    public LotePlanificacionRepository(MongoTemplate mongo) {
+        this.mongo = mongo;
     }
 
     @Override
     public void guardar(LotePlanificacion lote) {
-        guardarEntidad(lote, lote.getId());
+        mongo.save(lote);
     }
 
     @Override
     public LotePlanificacion buscarPorId(UUID id) {
-        return buscarEntidad(id);
+        return id == null ? null : mongo.findById(id, LotePlanificacion.class);
     }
 }

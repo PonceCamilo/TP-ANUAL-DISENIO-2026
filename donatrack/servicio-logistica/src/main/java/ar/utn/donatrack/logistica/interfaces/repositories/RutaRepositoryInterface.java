@@ -12,9 +12,7 @@ public interface RutaRepositoryInterface {
     List<Ruta> buscarPorCamionId(UUID camionId);
 
     /**
-     * Query inversa del agregado: Ruta → Parada → Entrega.
-     * Equivale al JOIN de JPA
-     * {@code SELECT r FROM Ruta r JOIN r.paradas p JOIN p.entregas e WHERE e.id = :entregaId}.
+     * Busca la ruta cuyo documento embebe la entrega indicada.
      */
     Optional<Ruta> buscarPorEntregaId(UUID entregaId);
 }

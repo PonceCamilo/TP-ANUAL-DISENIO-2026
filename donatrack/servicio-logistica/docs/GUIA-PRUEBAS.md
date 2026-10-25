@@ -44,15 +44,14 @@ También se puede levantar todo junto con `docker compose up --build` desde `don
 
 ## 1. Levantar el backend de logística
 
-1. Levantar la base de datos de logística (PostgreSQL, publicada en `localhost:5433`):
+1. Levantar MongoDB de logística (puerto `27017`, base `logistica`):
 
    ```bash
    cd donatrack
-   docker compose up -d logistica-db
+   docker compose up -d mongo
    ```
 
-   Al arrancar, el servicio crea las tablas con las migraciones de Flyway
-   (`src/main/resources/db/migration`).
+   Camiones, lotes y rutas viven ahí. Postgres no lo usa este servicio.
 
 2. En una terminal:
 
@@ -70,10 +69,10 @@ También se puede levantar todo junto con `docker compose up --build` desde `don
    ```
 
    Confirman que hay una entrega de prueba lista para "fallar" (su camión, `AB123CD`, queda
-   `EN_RUTA`) y dos camiones `DISPONIBLE` para planificar. Los datos quedan guardados en la
-   base: en los arranques siguientes no se recrean (se ve "ya existente, no se recarga"),
-   así que los cambios de estado de una prueba persisten. Para empezar de cero:
-   `docker compose down -v` (borra el volumen `logistica-db-data`).
+   `EN_RUTA`) y dos camiones `DISPONIBLE` para planificar. Los datos quedan en MongoDB:
+   en los arranques siguientes no se recrean (se ve "ya existente, no se recarga").
+   Para vaciar logística, borrar el volumen `datos-mongo`. `docker compose down -v` desde
+   `donatrack/` borra también el Postgres de los otros servicios y RabbitMQ.
 
 4. En otra terminal, levantar el broker:
 

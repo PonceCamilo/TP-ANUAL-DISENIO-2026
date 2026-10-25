@@ -1,11 +1,11 @@
 # Docker - Servicio de Logistica
 
-Este compose levanta unicamente el servicio de logistica en el puerto `8085`.
-
-Desde `donatrack/servicio-logistica`:
+El compose del proyecto está en `donatrack/docker-compose.yml`.
+Desde esa carpeta, este comando levanta MongoDB y el servicio de logística en el puerto `8085`:
 
 ```bash
-docker compose up --build
+cd donatrack
+docker compose up --build servicio-logistica
 ```
 
 Endpoints utiles:
@@ -24,21 +24,21 @@ variables de entorno:
   eventos de entrega. En el `docker-compose.yml` de `donatrack/` apunta a
   `http://servicio-broker-logistica:8087/api/broker/eventos/donatrack`; si el broker corre en
   la maquina host, usar `host.docker.internal`.
-- `SPRING_DOCKER_COMPOSE_ENABLED`: `false` (la base se levanta como servicio del compose, no desde Spring).
-- `LOGISTICA_DB_URL`, `LOGISTICA_DB_USER`, `LOGISTICA_DB_PASSWORD`: conexión a la base propia del
-  servicio. En el compose apuntan al contenedor `logistica-db` (PostgreSQL 16); sin estas
-  variables se usa `jdbc:postgresql://localhost:5433/logistica_db` (usuario y clave `logistica`),
-  que es el mismo contenedor publicado en el host.
+- `SPRING_DOCKER_COMPOSE_ENABLED`: `false` (MongoDB se levanta como servicio del compose, no desde Spring).
+- `SPRING_DATA_MONGODB_URI`: MongoDB de logística (base `logistica`, colecciones `camiones`, `lotes` y `rutas`).
+  En el compose apunta al servicio `mongo`.
 
 ## Base de datos
 
-`servicio-logistica` tiene su propia base (`logistica_db`): ningún otro servicio accede a ella.
-El esquema sigue el DER de Logística del grupo, con claves primarias UUID. Los datos de
-servicio-donaciones (donación, entidad beneficiaria) no se copian: las tablas `donacion` y
-`entidad_beneficiaria` guardan solo el id, para que las foreign keys de logística sean válidas,
-y logística las completa sola al recibir cada donación.
+Logística usa solo MongoDB (`donatrack-mongo`, puerto `27017`, base `logistica`). Ahí están las colecciones `camiones`, `lotes` y `rutas`. Las paradas, entregas, direcciones, historial y fotos van embebidos en la ruta. Las donaciones del pedido van embebidas en el lote.
 
-- Esquema: migraciones de Flyway en `src/main/resources/db/migration`. Para cambiar el esquema
-  se agrega un archivo nuevo (`V2__descripcion.sql`); las migraciones ya aplicadas no se editan.
-- Al arrancar, Hibernate valida (`ddl-auto=validate`) que las entidades coincidan con las tablas.
-- Los datos persisten en el volumen `logistica-db-data`; `docker compose down -v` los borra.
+Postgres sigue en el compose para donaciones, incentivos y notificaciones. Logística no se conecta a él.
+
+```bash
+cd donatrack
+docker compose up -d mongo
+```
+
+Los ids de donaciones y de entidades beneficiarias se guardan como UUID, sin relación hacia servicio-donaciones.
+
+Los datos persisten en el volumen `datos-mongo`. `docker compose down -v` desde `donatrack/` borra también el Postgres de los otros servicios y RabbitMQ. Para vaciar solo logística, borrar el volumen `datos-mongo`.

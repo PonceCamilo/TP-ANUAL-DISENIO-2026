@@ -1,24 +1,23 @@
 package ar.utn.donatrack.logistica.models.flota;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.UUID;
 
-@Entity
-@Table(name = "camion")
+/**
+ * Documento de la colección {@code camiones}.
+ * El id es el UUID que ya expone la API. La patente tiene un índice único:
+ * la base rechaza un segundo camión con la misma patente.
+ */
+@Document(collection = "camiones")
 @Getter
 @Setter
 @Builder
@@ -26,27 +25,17 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Camion {
     @Id
-    @Column(name = "id_camion")
     private UUID id;
 
-    @Column(nullable = false, unique = true, length = 20)
+    @Indexed(unique = true)
     private String patente;
 
-    // En la base son decimal(p, 2); en el dominio se siguen usando como double.
-    @JdbcTypeCode(SqlTypes.NUMERIC)
-    @Column(name = "capacidad_volumen_m3", precision = 10, scale = 2)
     private double capacidadVolumenM3;
 
-    @JdbcTypeCode(SqlTypes.NUMERIC)
-    @Column(name = "altura_m", precision = 5, scale = 2)
     private double alturaM;
 
-    @JdbcTypeCode(SqlTypes.NUMERIC)
-    @Column(name = "capacidad_carga_kg", precision = 10, scale = 2)
     private double capacidadCargaKg;
 
     @Builder.Default
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
     private EstadoCamion estado = EstadoCamion.DISPONIBLE;
 }

@@ -2,6 +2,10 @@ package ar.utn.donatrack.logistica.repositories;
 
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
 import ar.utn.donatrack.logistica.models.flota.Camion;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -12,50 +16,50 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Repository
-public class CamionRepository extends RepositorioJpa<Camion> implements CamionRepositoryInterface {
+public class CamionRepository implements CamionRepositoryInterface {
 
-    public CamionRepository() {
-        super(Camion.class);
+    private final MongoTemplate mongo;
+
+    public CamionRepository(MongoTemplate mongo) {
+        this.mongo = mongo;
     }
 
     @Override
     public void guardar(Camion camion) {
-        guardarEntidad(camion, camion.getId());
+        mongo.save(camion);
     }
 
     @Override
     public List<Camion> buscarTodos() {
-        return em.createQuery("SELECT c FROM Camion c ORDER BY c.patente", Camion.class)
-                .getResultList();
+        Query query = new Query().with(Sort.by(Sort.Direction.ASC, "patente"));
+        return mongo.find(query, Camion.class);
     }
 
     @Override
     public Camion buscarPorId(UUID id) {
-        return buscarEntidad(id);
+        return id == null ? null : mongo.findById(id, Camion.class);
     }
 
     @Override
     public Camion buscarPorPatente(String patente) {
-        return em.createQuery("SELECT c FROM Camion c WHERE c.patente = :patente", Camion.class)
-                .setParameter("patente", patente)
-                .getResultStream()
-                .findFirst()
-                .orElse(null);
+        return mongo.findOne(Query.query(Criteria.where("patente").is(patente)), Camion.class);
     }
 
     /**
      * Devuelve los camiones encontrados respetando el orden de los ids pedidos,
-     * sin repetir (un camión aparece una sola vez por lote en lote_camion).
+     * sin repetir.
      */
     @Override
     public List<Camion> buscarPorIds(List<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
         List<UUID> idsValidos = ids.stream().filter(Objects::nonNull).distinct().toList();
         if (idsValidos.isEmpty()) {
             return List.of();
         }
-        Map<UUID, Camion> porId = em.createQuery("SELECT c FROM Camion c WHERE c.id IN :ids", Camion.class)
-                .setParameter("ids", idsValidos)
-                .getResultStream()
+        Map<UUID, Camion> porId = mongo.find(Query.query(Criteria.where("_id").in(idsValidos)), Camion.class)
+                .stream()
                 .collect(Collectors.toMap(Camion::getId, Function.identity()));
         return idsValidos.stream()
                 .map(porId::get)

@@ -2,24 +2,15 @@ package ar.utn.donatrack.logistica.models.planificacion;
 
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.flota.Camion;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderBy;
-import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,11 +18,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Raíz del agregado Ruta → Parada → Entrega: guardar la ruta guarda en
- * cascada sus paradas y las entregas de cada parada.
+ * Documento de la colección rutas. Paradas, direcciones, entregas,
+ * historial y fotos van embebidos. El lote y el camión se referencian por id.
  */
-@Entity
-@Table(name = "ruta")
+@Document(collection = "rutas")
 @Getter
 @Setter
 @Builder
@@ -39,24 +29,18 @@ import java.util.UUID;
 @AllArgsConstructor
 public class Ruta {
     @Id
-    @Column(name = "id_ruta")
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_lote", nullable = false)
-    private LotePlanificacion lote;
+    private UUID loteId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "id_camion", nullable = false)
+    private UUID camionId;
+
+    /** Lo completa RutaRepository al leer. No se embebe el camión. */
+    @Transient
     private Camion camion;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "id_ruta", nullable = false)
-    @OrderBy("orden")
     private List<Parada> paradas;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
     private EstadoRuta estado;
 
     private LocalDateTime fechaInicio;
@@ -79,5 +63,20 @@ public class Ruta {
                 .filter(p -> p.getEntregas() != null
                         && p.getEntregas().stream().anyMatch(e -> entregaId.equals(e.getId())))
                 .findFirst();
+    }
+
+    /** Rearma el puntero entrega → parada, que el documento no guarda. */
+    public void enlazarEntregas() {
+        if (paradas == null) {
+            return;
+        }
+        for (Parada parada : paradas) {
+            if (parada.getEntregas() == null) {
+                continue;
+            }
+            for (Entrega entrega : parada.getEntregas()) {
+                entrega.setParada(parada);
+            }
+        }
     }
 }

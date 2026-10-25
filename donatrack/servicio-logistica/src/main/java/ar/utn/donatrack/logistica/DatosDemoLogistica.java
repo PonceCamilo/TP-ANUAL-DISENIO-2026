@@ -36,8 +36,8 @@ import java.util.UUID;
  *  - Dos camiones DISPONIBLE, para que la planificación (y el broker de
  *    logística, que planifica sin indicar camiones) funcione desde el arranque.
  *
- * Persiste la Ruta con su Parada y la Entrega anidada, más la Entrega en su
- * repositorio independiente, para que la query inversa por entregaId funcione.
+ * Persiste el lote, la ruta (con la parada y la entrega embebidas) y también
+ * la entrega por su repositorio, que reescribe ese mismo documento de ruta.
  *
  * Es solo para pruebas locales. Como los datos quedan en la base, cada dato de
  * ejemplo se crea solo si todavía no existe: reiniciar el servicio no pisa los
@@ -124,7 +124,7 @@ public class DatosDemoLogistica implements CommandLineRunner {
         // Toda ruta pertenece a un lote de planificación (ruta.id_lote es obligatorio).
         LotePlanificacion lote = LotePlanificacion.builder()
                 .id(LOTE_DEMO_ID)
-                .camiones(List.of(camion))
+                .camionIds(List.of(camion.getId()))
                 .donaciones(List.of(DonacionLote.builder()
                         .idDonacion(idDonacion)
                         .idEntidadBeneficiaria(idEntidad)
@@ -140,7 +140,7 @@ public class DatosDemoLogistica implements CommandLineRunner {
         List<Parada> paradas = new ArrayList<>();
         Ruta ruta = Ruta.builder()
                 .id(RUTA_DEMO_ID)
-                .lote(lote)
+                .loteId(lote.getId())
                 .camion(camion)
                 .estado(EstadoRuta.INICIADA)
                 .fechaInicio(LocalDateTime.now())
