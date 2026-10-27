@@ -223,10 +223,17 @@ class DonacionesRepositoryTest {
             return donacion;
         }
 
+        /**
+         * Cada asignación parte de la donación leída de la base, como en un pedido
+         * real: guardar dos veces el mismo objeto desprendido ahora falla por el
+         * bloqueo optimista (su versión quedó vieja después del primer guardado).
+         */
         private void asignar(Donacion donacion, UUID idEntidad, LocalDate fecha) {
-            donacion.setIdEntidadBeneficiaria(idEntidad);
-            donacion.setFechaAsignacion(fecha);
-            repositorio.guardarAsignacion(donacion);
+            Donacion actual = repositorio.obtenerPorId(donacion.getId());
+            em.clear(); // como en un pedido real de hoy: la donación llega desprendida
+            actual.setIdEntidadBeneficiaria(idEntidad);
+            actual.setFechaAsignacion(fecha);
+            repositorio.guardarAsignacion(actual);
             jpa.flush();
             em.clear();
         }
@@ -255,6 +262,27 @@ class DonacionesRepositoryTest {
 
             assertThat(recibidas(comedor)).isZero();
             assertThat(recibidas(otraEntidad)).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Guardar una copia vieja de la donación falla en lugar de pisar el cambio de otro (bloqueo optimista)")
+        void copiaViejaFalla() {
+            Donacion donacion = guardadaEnDeposito();
+            Donacion copiaA = repositorio.obtenerPorId(donacion.getId());
+            em.clear();
+            Donacion copiaB = repositorio.obtenerPorId(donacion.getId());
+            em.clear();
+
+            copiaA.setDescripcion("cambio de A");
+            repositorio.guardar(copiaA);
+            jpa.flush();
+            em.clear();
+
+            copiaB.setDescripcion("cambio de B");
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> {
+                repositorio.guardar(copiaB);
+                jpa.flush();
+            }).isInstanceOf(org.springframework.orm.ObjectOptimisticLockingFailureException.class);
         }
 
         @Test

@@ -40,7 +40,6 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     validador.validarEmail(dto.getEmail());
 
     PersonaDonante persona = mapper.toModel(dto);
-    persona.setId(UUID.randomUUID());
     persona.setEstado(new ActivoState());
     persona.registrarInteraccion();
 

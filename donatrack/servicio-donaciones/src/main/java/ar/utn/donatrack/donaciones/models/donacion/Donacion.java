@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import ar.utn.donatrack.donaciones.models.EntidadPersistible;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
 import java.util.Optional;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienIncompatibleConDonacionException;
@@ -20,18 +21,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PostLoad;
-import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import org.hibernate.annotations.BatchSize;
-import org.springframework.data.domain.Persistable;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -71,12 +68,7 @@ import java.util.UUID;
         @Index(name = "idx_donacion_fecha", columnList = "fecha_donacion DESC, id")
 })
 @Getter
-public class Donacion implements Persistable<UUID> {
-
-    @Id
-    @Setter
-    @Column(name = "id")
-    protected UUID id = UUID.randomUUID();
+public class Donacion extends EntidadPersistible {
 
     /**
      * La donación es dueña de sus bienes: se guardan y se borran con ella
@@ -143,31 +135,10 @@ public class Donacion implements Persistable<UUID> {
     @Column(name = "id_seguimiento_logistica")
     protected String idSeguimientoLogistica;
 
-    /**
-     * ESCRITURA (Entrega 5): el id se genera al construir la donación, así que
-     * Spring Data no puede deducir si es nueva y haría un merge (un SELECT por
-     * la donación y otro por cada colección antes de insertar). Con este
-     * indicador el registro de una carga va directo a los INSERT.
-     */
-    @Transient
-    @Getter(AccessLevel.NONE)
-    protected boolean nueva = true;
-
-    @Override
-    public boolean isNew() {
-        return nueva;
-    }
-
     /** Reconstruye el objeto de estado después de cargar la fila. */
     @PostLoad
     private void rehidratarEstado() {
         this.estado = EstadosDonacion.desde(this.estadoNombre);
-        this.nueva = false;
-    }
-
-    @PostPersist
-    private void marcarPersistida() {
-        this.nueva = false;
     }
 
     public void cambiarEstado(String estadoDestino, String nombreTransicion, String justificacion) {

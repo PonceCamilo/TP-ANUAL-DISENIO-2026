@@ -27,9 +27,6 @@ public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasR
 
     @Transactional
     public void guardar(EntidadBeneficiaria entidad) {
-        if (entidad.getId() == null) {
-            entidad.setId(UUID.randomUUID());
-        }
         jpa.save(entidad);
     }
 

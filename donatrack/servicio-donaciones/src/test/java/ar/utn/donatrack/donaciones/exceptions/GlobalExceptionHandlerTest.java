@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.UUID;
@@ -40,6 +41,7 @@ class GlobalExceptionHandlerTest {
                 case "no-disponible" -> new LogisticaNoDisponibleException("sin proveedores");
                 case "archivo" -> new MaxUploadSizeExceededException(1024);
                 case "estado-corrupto" -> new EstadoDesconocidoException("donación", "INVENTADO");
+                case "concurrencia" -> new ObjectOptimisticLockingFailureException(Object.class, UUID.randomUUID());
                 default -> new IllegalStateException("cualquier otra cosa");
             };
         }
@@ -90,6 +92,12 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(get("/falla/archivo"))
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(jsonPath("$.status").value(413));
+    }
+
+    @Test
+    @DisplayName("una modificación concurrente (bloqueo optimista) es un 409")
+    void modificacionConcurrenteResponde409() throws Exception {
+        mockMvc.perform(get("/falla/concurrencia")).andExpect(status().isConflict());
     }
 
     @Test

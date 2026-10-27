@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.models.entidad;
 
+import lombok.experimental.SuperBuilder;
+import ar.utn.donatrack.donaciones.models.EntidadPersistible;
 import java.util.Optional;
 import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
@@ -11,7 +13,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -34,16 +35,11 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "entidad_beneficiaria")
-@Builder
+@SuperBuilder
 @NoArgsConstructor
-@lombok.AllArgsConstructor
 @Getter
 @Setter
-public class EntidadBeneficiaria {
-
-    @Id
-    @Column(name = "id")
-    private UUID id;
+public class EntidadBeneficiaria extends EntidadPersistible {
 
     @Column(name = "razon_social")
     private String razonSocial;

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.exceptions;
 
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import ar.utn.donatrack.donaciones.dtos.response.ErrorResponseDTO;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import org.slf4j.Logger;
@@ -79,6 +80,17 @@ public class GlobalExceptionHandler {
             return responder(HttpStatus.CONFLICT, "Ya existe un registro con ese valor único (por ejemplo, el email).");
         }
         return errorInesperado(ex);
+    }
+
+    /**
+     * Otra operación modificó la misma entidad entre que se la leyó y se la quiso
+     * guardar (bloqueo optimista, columna version): 409, y quien llama puede
+     * volver a leerla y reintentar.
+     */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponseDTO> modificacionConcurrente(ObjectOptimisticLockingFailureException ex) {
+        return responder(HttpStatus.CONFLICT,
+                "Otra operación modificó el mismo registro al mismo tiempo. Volvé a consultarlo y reintentá.");
     }
 
     /**

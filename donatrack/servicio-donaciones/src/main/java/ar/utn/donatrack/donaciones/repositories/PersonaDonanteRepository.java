@@ -44,16 +44,11 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
 
     @Transactional
     public void guardar(PersonaDonante personaDonante) {
-        if (personaDonante.getId() == null) {
-            personaDonante.setId(UUID.randomUUID());
-        }
         jpa.save(personaDonante);
     }
 
     @Transactional
     public void guardarTodos(Collection<PersonaDonante> donantes) {
-        donantes.stream().filter(persona -> persona.getId() == null)
-                .forEach(persona -> persona.setId(UUID.randomUUID()));
         jpa.saveAll(donantes);
     }
 
