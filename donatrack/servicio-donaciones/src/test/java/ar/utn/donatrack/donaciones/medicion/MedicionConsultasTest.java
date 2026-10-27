@@ -63,9 +63,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * servicio, contra H2 en modo PostgreSQL y con un volumen fijo de datos.
  *
  * POR QUÉ EXISTE (Entrega 5): las desnormalizaciones y los índices se justifican
- * con números, no con intuición. Este test da la línea base y, una vez aplicadas
- * las optimizaciones, fija con aserciones que la cantidad de sentencias no vuelva
- * a crecer con el volumen de datos.
+ * con números, no con intuición. Se corrió primero sobre el código de la
+ * Entrega 4 para tener la línea base, y ahora fija con topes que la cantidad de
+ * sentencias no vuelva a crecer con el volumen de datos.
+ *
+ * Cuenta sentencias preparadas (Hibernate Statistics): con escrituras por lotes,
+ * un lote de INSERT del mismo tipo cuenta como una.
  *
  * Los resultados se imprimen y se guardan en target/medicion-consultas-{etiqueta}.txt
  * (la etiqueta se pasa con -Ddonatrack.medicion.etiqueta=..., por defecto "actual").
@@ -90,6 +93,27 @@ class MedicionConsultasTest {
     private static final int DONACIONES_ASIGNADAS = 30;
     private static final int DONANTES = 200;
     private static final int FILAS_CSV = 300;
+
+    // ── Topes de sentencias (regresión) ───────────────────────────────────────
+    // Línea base medida sobre el código de la Entrega 4 y valor medido después de
+    // las optimizaciones de la Entrega 5. El tope deja margen sobre lo medido;
+    // si una consulta vuelve a crecer con el volumen de datos, el test falla.
+    /** Línea base 2.603, medido 13. */
+    private static final int TOPE_RANKING_A_DEMANDA = 30;
+    /** Línea base 75.091, medido 192 (guarda 30 rankings). */
+    private static final int TOPE_MATCHMAKING_NOCTURNO = 400;
+    /** Línea base 3.000, medido 9. */
+    private static final int TOPE_BANDEJA = 20;
+    /** Línea base 121 (donaciones) y 401 (donantes), medido 3-4. */
+    private static final int TOPE_LISTADO = 10;
+    /** Línea base 401, medido 3. */
+    private static final int TOPE_INACTIVIDAD = 10;
+    /** Línea base 20, medido 7. */
+    private static final int TOPE_REGISTRO = 15;
+    /** Línea base 13, medido 23: subió por mantener el contador de recepciones. */
+    private static final int TOPE_ASIGNACION = 35;
+    /** Línea base 1.200 (altas) y 900 (actualizaciones), medido 6-7. */
+    private static final int TOPE_IMPORTACION = 30;
 
     @Autowired private MockMvc mvc;
     @Autowired private EntityManagerFactory emf;
@@ -224,7 +248,7 @@ class MedicionConsultasTest {
         long sentencias = medir("GET /donaciones/{id}/candidatos", () ->
                 mvc.perform(get("/donaciones/{id}/candidatos", idsEnDeposito.getFirst()))
                         .andExpect(status().isOk()));
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_RANKING_A_DEMANDA);
     }
 
     @Test
@@ -233,7 +257,7 @@ class MedicionConsultasTest {
     void matchmakingNocturno() throws Exception {
         long sentencias = medir("Matchmaking nocturno (batch)", () ->
                 asignacionBatchService.ejecutarMatchmakingNocturno());
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_MATCHMAKING_NOCTURNO);
     }
 
     @Test
@@ -242,7 +266,7 @@ class MedicionConsultasTest {
     void bandejaDeCandidatos() throws Exception {
         long sentencias = medir("GET /donaciones/candidatos", () ->
                 mvc.perform(get("/donaciones/candidatos")).andExpect(status().isOk()));
-        assertThat(sentencias).isNotNegative();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_BANDEJA);
     }
 
     @Test
@@ -252,7 +276,7 @@ class MedicionConsultasTest {
         long sentencias = medir("GET /donaciones?idDonante=", () ->
                 mvc.perform(get("/donaciones").param("idDonante", idsDonantes.getFirst().toString()))
                         .andExpect(status().isOk()));
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_LISTADO);
     }
 
     @Test
@@ -262,7 +286,7 @@ class MedicionConsultasTest {
         long sentencias = medir("GET /donaciones?estado=EN_DEPOSITO", () ->
                 mvc.perform(get("/donaciones").param("estado", "EN_DEPOSITO"))
                         .andExpect(status().isOk()));
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_LISTADO);
     }
 
     @Test
@@ -271,7 +295,7 @@ class MedicionConsultasTest {
     void todasLasDonaciones() throws Exception {
         long sentencias = medir("GET /donaciones", () ->
                 mvc.perform(get("/donaciones")).andExpect(status().isOk()));
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_LISTADO);
     }
 
     @Test
@@ -280,7 +304,7 @@ class MedicionConsultasTest {
     void listadoDeDonantes() throws Exception {
         long sentencias = medir("GET /donantes", () ->
                 mvc.perform(get("/donantes")).andExpect(status().isOk()));
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_LISTADO);
     }
 
     @Test
@@ -289,7 +313,7 @@ class MedicionConsultasTest {
     void procesoDeInactividad() throws Exception {
         long sentencias = medir("Proceso de inactividad (batch)", () ->
                 inactividadDonantesService.notificarDonantesInactivos());
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_INACTIVIDAD);
     }
 
     // ── Escrituras ─────────────────────────────────────────────────────────────
@@ -308,7 +332,7 @@ class MedicionConsultasTest {
         long sentencias = medir("POST /donaciones (4 bienes)", () ->
                 mvc.perform(post("/donaciones").contentType(MediaType.APPLICATION_JSON).content(cuerpo))
                         .andExpect(status().isCreated()));
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_REGISTRO);
     }
 
     @Test
@@ -320,7 +344,7 @@ class MedicionConsultasTest {
                 mvc.perform(patch("/donaciones/{id}/asignar", idsEnDeposito.getLast())
                                 .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
                         .andExpect(status().isNoContent()));
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_ASIGNACION);
     }
 
     @Test
@@ -331,7 +355,7 @@ class MedicionConsultasTest {
                 mvc.perform(multipart("/donantes/import")
                                 .file(new MockMultipartFile("file", "donantes.csv", "text/csv", csv)))
                         .andExpect(status().isOk()));
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_IMPORTACION);
     }
 
     @Test
@@ -342,7 +366,7 @@ class MedicionConsultasTest {
                 mvc.perform(multipart("/donantes/import")
                                 .file(new MockMultipartFile("file", "donantes.csv", "text/csv", csv)))
                         .andExpect(status().isOk()));
-        assertThat(sentencias).isPositive();
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_IMPORTACION);
     }
 
     // ── Informe ────────────────────────────────────────────────────────────────
