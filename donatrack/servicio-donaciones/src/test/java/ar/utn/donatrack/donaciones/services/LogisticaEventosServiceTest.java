@@ -10,9 +10,9 @@ import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.InicioRutaCallbackDTO;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
@@ -71,13 +71,13 @@ class LogisticaEventosServiceTest {
     private static final String URL_MAPA = "https://donatrack.org/mapa/ruta-123";
 
     @Mock
-    private DonacionesRepositoryInterface donacionesRepositorio;
+    private RepositorioDonaciones donacionesRepositorio;
 
     @Mock
-    private EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
+    private RepositorioEntidadesBeneficiarias entidadesRepositorio;
 
     @Mock
-    private PersonaDonanteRepositoryInterface donanteRepositorio;
+    private RepositorioPersonasDonantes donanteRepositorio;
 
     private final NotificacionClient notificacionClient = mock(NotificacionClient.class);
 

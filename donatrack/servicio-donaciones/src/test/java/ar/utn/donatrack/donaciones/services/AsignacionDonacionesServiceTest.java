@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -45,7 +45,7 @@ class AsignacionDonacionesServiceTest {
     private AlgoritmoPrioridadSubAtendidos algoritmoSubAtendidos;
 
     @Mock
-    private EntidadesBeneficiariasRepositoryInterface entidadesRepository;
+    private RepositorioEntidadesBeneficiarias entidadesRepository;
 
     @InjectMocks
     private AsignacionDonacionesService servicio;

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.services.PersonaDonanteService;
 import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
@@ -19,7 +20,6 @@ import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteN
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
 import ar.utn.donatrack.donaciones.importacion.ImportReport;
-import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
 import ar.utn.donatrack.donaciones.models.donante.Genero;
 import ar.utn.donatrack.donaciones.services.CsvImportService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -82,7 +82,7 @@ class PersonaDonanteControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private PersonaDonanteServiceInterface personaDonanteService;
+    private PersonaDonanteService personaDonanteService;
 
     @MockitoBean
     private CsvImportService csvImportService;

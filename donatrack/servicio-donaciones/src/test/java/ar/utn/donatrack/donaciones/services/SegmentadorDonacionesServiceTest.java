@@ -14,8 +14,8 @@ import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -65,10 +65,10 @@ import static org.mockito.Mockito.when;
 class SegmentadorDonacionesServiceTest {
 
     @Mock
-    private DonacionesRepositoryInterface donacionesRepository;
+    private RepositorioDonaciones donacionesRepository;
 
     @Mock
-    private PersonaDonanteRepositoryInterface donanteRepository;
+    private RepositorioPersonasDonantes donanteRepository;
 
     @Mock
     private IncentivosClient incentivosClient;

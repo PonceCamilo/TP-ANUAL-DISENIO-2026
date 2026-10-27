@@ -21,11 +21,11 @@ import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEnc
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
-import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
@@ -88,13 +88,13 @@ import static org.mockito.Mockito.when;
 class DonacionServiceTest {
 
     @Mock
-    private DonacionesRepositoryInterface repositorio;
+    private RepositorioDonaciones repositorio;
 
     @Mock
-    private EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
+    private RepositorioEntidadesBeneficiarias entidadesRepositorio;
 
     @Mock
-    private PersonaDonanteRepositoryInterface donanteRepositorio;
+    private RepositorioPersonasDonantes donanteRepositorio;
 
     @Mock
     private AsignacionDonacionesService asignacionService;
@@ -106,7 +106,7 @@ class DonacionServiceTest {
     private IncentivosClient incentivosClient;
 
     @Mock
-    private CandidatosAsignacionRepositoryInterface candidatosRepositorio;
+    private RepositorioCandidatosAsignacion candidatosRepositorio;
 
     private DonacionService servicio;
 

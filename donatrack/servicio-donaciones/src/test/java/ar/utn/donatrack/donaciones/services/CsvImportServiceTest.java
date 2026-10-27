@@ -7,7 +7,7 @@ import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
 import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
 import ar.utn.donatrack.donaciones.importacion.ImportReport;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
@@ -66,7 +66,7 @@ class CsvImportServiceTest {
     private static final String ENCABEZADO = "TipoPersona,TipoDoc,Documento,Nombre,Email,Telefono\n";
 
     @Mock
-    private PersonaDonanteRepositoryInterface donanteRepository;
+    private RepositorioPersonasDonantes donanteRepository;
 
     @Captor
     private ArgumentCaptor<Collection<PersonaDonante>> loteCaptor;

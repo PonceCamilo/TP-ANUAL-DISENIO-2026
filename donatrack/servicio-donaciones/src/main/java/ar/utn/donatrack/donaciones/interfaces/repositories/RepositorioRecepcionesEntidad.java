@@ -9,7 +9,7 @@ import java.util.UUID;
  * (ver RecepcionDiariaEntidad). Lo usa el algoritmo de prioridad a
  * sub-atendidos; quien lo mantiene al día es DonacionesRepository.
  */
-public interface RecepcionesEntidadRepositoryInterface {
+public interface RepositorioRecepcionesEntidad {
 
     /**
      * Donaciones asignadas a cada entidad desde la fecha indicada, inclusive.

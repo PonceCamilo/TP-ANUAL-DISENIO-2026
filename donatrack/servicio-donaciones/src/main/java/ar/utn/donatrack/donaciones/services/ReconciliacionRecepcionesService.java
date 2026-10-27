@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
 import org.springframework.transaction.annotation.Transactional;
-import ar.utn.donatrack.donaciones.interfaces.repositories.RecepcionesEntidadRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioRecepcionesEntidad;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ReconciliacionRecepcionesService {
 
-    private final RecepcionesEntidadRepositoryInterface recepciones;
+    private final RepositorioRecepcionesEntidad recepciones;
 
     @Scheduled(cron = "${donaciones.procesos.cron-reconciliacion:0 0 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     @Transactional

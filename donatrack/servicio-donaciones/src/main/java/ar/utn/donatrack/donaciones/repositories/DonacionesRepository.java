@@ -6,7 +6,7 @@ import jakarta.persistence.criteria.ListJoin;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.models.asignacion.RecepcionDiariaEntidad;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
@@ -32,7 +32,7 @@ import java.util.UUID;
  * Persistencia de donaciones en base relacional (Entrega 4).
  *
  * Antes de la Entrega 4 el almacenamiento era una List sincronizada en memoria.
- * La interfaz DonacionesRepositoryInterface permitió reemplazarlo sin que los
+ * La interfaz RepositorioDonaciones permitió reemplazarlo sin que los
  * services ni sus tests, que mockean la interfaz, se enteraran.
  *
  * Esta clase es un adapter delgado: traduce el vocabulario del dominio
@@ -40,7 +40,7 @@ import java.util.UUID;
  */
 @Repository
 @RequiredArgsConstructor
-public class DonacionesRepository implements DonacionesRepositoryInterface {
+public class DonacionesRepository implements RepositorioDonaciones {
 
   /** Más nuevas primero; el id desempata para que la paginación sea estable. */
   private static final Sort ORDEN_LISTADO = Sort.by(Sort.Order.desc("fechaDonacion"), Sort.Order.asc("id"));

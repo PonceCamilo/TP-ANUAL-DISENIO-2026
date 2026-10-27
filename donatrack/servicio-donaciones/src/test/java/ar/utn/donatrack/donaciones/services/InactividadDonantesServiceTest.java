@@ -8,7 +8,7 @@ import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import java.time.LocalDateTime;
 import org.mockito.ArgumentCaptor;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
@@ -60,7 +60,7 @@ class InactividadDonantesServiceTest {
     private static final int DIAS_LIMITE = 20;
 
     @Mock
-    private PersonaDonanteRepositoryInterface donanteRepository;
+    private RepositorioPersonasDonantes donanteRepository;
 
     private final NotificacionClient notificacionClient = mock(NotificacionClient.class);
 

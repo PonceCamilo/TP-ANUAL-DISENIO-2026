@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.RecepcionesEntidadRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioRecepcionesEntidad;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -51,7 +51,7 @@ import static org.mockito.Mockito.when;
 class AlgoritmosAsignacionTest {
 
     @Mock
-    private RecepcionesEntidadRepositoryInterface recepciones;
+    private RepositorioRecepcionesEntidad recepciones;
 
     private AlgoritmoCompatibilidadSemantica algoritmoSemantico;
     private AlgoritmoPrioridadSubAtendidos algoritmoSubAtendidos;

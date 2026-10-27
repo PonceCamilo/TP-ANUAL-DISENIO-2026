@@ -6,9 +6,9 @@ import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.InicioRutaCallbackDTO;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -33,9 +33,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class LogisticaEventosService {
 
-    private final DonacionesRepositoryInterface donacionesRepositorio;
-    private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
-    private final PersonaDonanteRepositoryInterface donanteRepositorio;
+    private final RepositorioDonaciones donacionesRepositorio;
+    private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
+    private final RepositorioPersonasDonantes donanteRepositorio;
     private final Notificador notificador;
     private final IncentivosClient incentivosClient;
 

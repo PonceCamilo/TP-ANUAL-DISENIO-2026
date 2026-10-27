@@ -14,7 +14,7 @@ import java.util.UUID;
  * Entrega 4 era en memoria; la interfaz permitió cambiarla sin tocar a quienes
  * la usan.
  */
-public interface CandidatosAsignacionRepositoryInterface {
+public interface RepositorioCandidatosAsignacion {
 
     /** Guarda (o pisa) el ranking calculado para una donación. */
     void guardar(RankingPrecalculado ranking);

@@ -2,9 +2,9 @@ package ar.utn.donatrack.donaciones.services;
 
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
-import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -43,10 +43,10 @@ public class AsignacionBatchService {
     /** Estado de las donaciones que todavía esperan destino. */
     private static final String ESTADO_EN_DEPOSITO = "EN_DEPOSITO";
 
-    private final DonacionesRepositoryInterface donacionesRepositorio;
+    private final RepositorioDonaciones donacionesRepositorio;
     private final AsignacionDonacionesService asignacionService;
-    private final CandidatosAsignacionRepositoryInterface candidatosRepositorio;
-    private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
+    private final RepositorioCandidatosAsignacion candidatosRepositorio;
+    private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
 
     /**
      * Corre todos los días a las 03:30 de Argentina, que es la franja de menor

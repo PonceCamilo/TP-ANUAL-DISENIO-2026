@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDonacionesException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadExtraordinariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRecurrenteRequestDTO;
@@ -13,7 +13,7 @@ import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEnco
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -60,10 +60,10 @@ import static org.mockito.Mockito.when;
 class EntidadesBeneficiariasServiceTest {
 
     @Mock
-    private EntidadesBeneficiariasRepositoryInterface repositorio;
+    private RepositorioEntidadesBeneficiarias repositorio;
 
     @Mock
-    private DonacionesRepositoryInterface donaciones;
+    private RepositorioDonaciones donaciones;
 
     private EntidadesBeneficiariasService servicio;
 

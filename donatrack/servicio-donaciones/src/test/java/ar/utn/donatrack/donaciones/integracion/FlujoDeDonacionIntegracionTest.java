@@ -3,8 +3,8 @@ package ar.utn.donatrack.donaciones.integracion;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.RecepcionesEntidadRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioRecepcionesEntidad;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -41,8 +41,8 @@ class FlujoDeDonacionIntegracionTest {
 
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper json;
-    @Autowired private DonacionesRepositoryInterface donaciones;
-    @Autowired private RecepcionesEntidadRepositoryInterface recepciones;
+    @Autowired private RepositorioDonaciones donaciones;
+    @Autowired private RepositorioRecepcionesEntidad recepciones;
 
     @MockitoBean private NotificacionClient notificacionClient;
     @MockitoBean private IncentivosClient incentivosClient;

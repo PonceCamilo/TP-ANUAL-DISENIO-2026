@@ -5,8 +5,8 @@ import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.LogisticaNoDisponibleException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -48,8 +48,8 @@ public class PlanificacionEntregasService {
     /** Único estado desde el que una donación puede despacharse a logística. */
     private static final String ESTADO_ASIGNADA = "ASIGNACION_REALIZADA";
 
-    private final DonacionesRepositoryInterface donacionesRepositorio;
-    private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
+    private final RepositorioDonaciones donacionesRepositorio;
+    private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
     private final BrokerLogisticaClient brokerClient;
     private final DonacionesValidator validador;
 

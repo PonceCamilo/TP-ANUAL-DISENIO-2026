@@ -6,8 +6,8 @@ import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.LogisticaNoDisponibleException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
@@ -62,10 +62,10 @@ import static org.mockito.Mockito.when;
 class PlanificacionEntregasServiceTest {
 
     @Mock
-    private DonacionesRepositoryInterface donacionesRepositorio;
+    private RepositorioDonaciones donacionesRepositorio;
 
     @Mock
-    private EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
+    private RepositorioEntidadesBeneficiarias entidadesRepositorio;
 
     @Mock
     private BrokerLogisticaClient brokerClient;

@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.interfaces.services.AlgoritmoAsignacionInterface;
+import ar.utn.donatrack.donaciones.interfaces.services.AlgoritmoAsignacion;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -11,7 +11,7 @@ import java.util.function.ToDoubleFunction;
 
 /**
  * Clase base de los algoritmos de asignación (patrón Template Method sobre
- * el contrato AlgoritmoAsignacionInterface).
+ * el contrato AlgoritmoAsignacion).
  *
  * Centraliza el esqueleto común de TODO algoritmo —puntuar cada entidad,
  * descartar las que no apliquen, ordenar de mayor a menor puntaje y recortar
@@ -19,7 +19,7 @@ import java.util.function.ToDoubleFunction;
  * calcula el puntaje. Así se cumple el requisito del enunciado de poder
  * incorporar algoritmos nuevos sin tocar el orquestador ni duplicar lógica.
  */
-public abstract class AlgoritmoAsignacionBase implements AlgoritmoAsignacionInterface {
+public abstract class AlgoritmoAsignacionBase implements AlgoritmoAsignacion {
 
     protected static final int TOP_N = 10;
 

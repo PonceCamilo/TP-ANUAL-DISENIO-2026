@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
@@ -27,7 +27,7 @@ import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJusti
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.donante.Genero;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
@@ -80,10 +80,10 @@ import static org.mockito.Mockito.when;
 class PersonaDonanteServiceTest {
 
     @Mock
-    private PersonaDonanteRepositoryInterface repositorio;
+    private RepositorioPersonasDonantes repositorio;
 
     @Mock
-    private DonacionesRepositoryInterface donaciones;
+    private RepositorioDonaciones donaciones;
 
     @Captor
     private ArgumentCaptor<PersonaDonante> donanteCaptor;

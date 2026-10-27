@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.repositories;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.repositories.jpa.EntidadBeneficiariaJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,7 @@ import java.util.UUID;
  */
 @Repository
 @RequiredArgsConstructor
-public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasRepositoryInterface {
+public class EntidadesBeneficiariasRepository implements RepositorioEntidadesBeneficiarias {
 
     private final EntidadBeneficiariaJpaRepository jpa;
 

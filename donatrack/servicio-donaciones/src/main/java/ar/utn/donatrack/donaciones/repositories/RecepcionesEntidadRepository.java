@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.repositories;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.RecepcionesEntidadRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioRecepcionesEntidad;
 import ar.utn.donatrack.donaciones.repositories.jpa.RecepcionDiariaJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
-public class RecepcionesEntidadRepository implements RecepcionesEntidadRepositoryInterface {
+public class RecepcionesEntidadRepository implements RepositorioRecepcionesEntidad {
 
     private final RecepcionDiariaJpaRepository jpa;
 

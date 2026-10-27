@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.services.EntidadesBeneficiariasService;
 import ar.utn.donatrack.donaciones.dtos.response.CampaniaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.NecesidadExtraordinariaResponseDTO;
@@ -10,7 +11,6 @@ import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEnco
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
-import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.periodicidades.Periodicidad;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -67,7 +67,7 @@ class EntidadBeneficiariaControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private EntidadesBeneficiariasServiceInterface entidadesService;
+    private EntidadesBeneficiariasService entidadesService;
 
     private final UUID idEntidad = UUID.randomUUID();
     private final UUID idCampania = UUID.randomUUID();

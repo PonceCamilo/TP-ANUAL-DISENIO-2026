@@ -9,7 +9,7 @@ import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
 import ar.utn.donatrack.donaciones.importacion.ImportReport;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
@@ -53,7 +53,7 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class CsvImportService {
 
-    private final PersonaDonanteRepositoryInterface donanteRepository;
+    private final RepositorioPersonasDonantes donanteRepository;
     private final DonanteCsvRowParser parser;
     private final DonanteFactory factory;
     private final DonacionesProperties propiedades;

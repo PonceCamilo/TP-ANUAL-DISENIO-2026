@@ -1,9 +1,9 @@
 package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
@@ -49,16 +49,16 @@ import static org.mockito.Mockito.when;
 class AsignacionBatchServiceTest {
 
     @Mock
-    private DonacionesRepositoryInterface donacionesRepositorio;
+    private RepositorioDonaciones donacionesRepositorio;
 
     @Mock
     private AsignacionDonacionesService asignacionService;
 
     @Mock
-    private CandidatosAsignacionRepositoryInterface candidatosRepositorio;
+    private RepositorioCandidatosAsignacion candidatosRepositorio;
 
     @Mock
-    private EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
+    private RepositorioEntidadesBeneficiarias entidadesRepositorio;
 
     @InjectMocks
     private AsignacionBatchService servicio;

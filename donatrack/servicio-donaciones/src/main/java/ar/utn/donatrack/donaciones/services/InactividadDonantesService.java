@@ -3,7 +3,7 @@ package ar.utn.donatrack.donaciones.services;
 import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InactividadDonantesService {
 
-    private final PersonaDonanteRepositoryInterface donanteRepository;
+    private final RepositorioPersonasDonantes donanteRepository;
     private final Notificador notificador;
     private final DonacionesProperties propiedades;
 

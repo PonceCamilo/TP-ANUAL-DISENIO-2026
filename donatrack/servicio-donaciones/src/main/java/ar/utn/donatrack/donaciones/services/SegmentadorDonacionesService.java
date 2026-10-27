@@ -10,9 +10,8 @@ import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloquead
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -28,10 +27,10 @@ import java.util.UUID;
 @Transactional
 @Service
 @RequiredArgsConstructor
-public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {
+public class SegmentadorDonacionesService {
 
-  private final DonacionesRepositoryInterface donacionesRepository;
-  private final PersonaDonanteRepositoryInterface donanteRepository;
+  private final RepositorioDonaciones donacionesRepository;
+  private final RepositorioPersonasDonantes donanteRepository;
   private final IncentivosClient incentivosClient;
   private final Notificador notificador;
   private final PersonasValidator personasValidator;

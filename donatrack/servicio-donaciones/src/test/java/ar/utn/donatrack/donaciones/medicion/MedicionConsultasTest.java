@@ -4,9 +4,9 @@ import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
@@ -117,9 +117,9 @@ class MedicionConsultasTest {
 
     @Autowired private MockMvc mvc;
     @Autowired private EntityManagerFactory emf;
-    @Autowired private PersonaDonanteRepositoryInterface donantes;
-    @Autowired private EntidadesBeneficiariasRepositoryInterface entidades;
-    @Autowired private DonacionesRepositoryInterface donaciones;
+    @Autowired private RepositorioPersonasDonantes donantes;
+    @Autowired private RepositorioEntidadesBeneficiarias entidades;
+    @Autowired private RepositorioDonaciones donaciones;
     @Autowired private DonacionService donacionService;
     @Autowired private AsignacionBatchService asignacionBatchService;
     @Autowired private InactividadDonantesService inactividadDonantesService;

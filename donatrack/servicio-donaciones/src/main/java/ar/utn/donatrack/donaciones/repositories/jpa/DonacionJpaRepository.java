@@ -17,7 +17,7 @@ import java.util.UUID;
  * Acceso JPA a la tabla donacion.
  *
  * Es deliberadamente un detalle interno del paquete repositories: los services
- * dependen de DonacionesRepositoryInterface, no de esta interfaz. Así el día que
+ * dependen de RepositorioDonaciones, no de esta interfaz. Así el día que
  * cambie la tecnología de persistencia, el cambio no sale de este paquete.
  *
  * Las consultas se derivan del nombre del método; el estado se filtra por la

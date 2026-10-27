@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -28,7 +28,7 @@ public class AsignacionDonacionesService {
 
     private final AlgoritmoCompatibilidadSemantica algoritmoSemantico;
     private final AlgoritmoPrioridadSubAtendidos algoritmoSubAtendidos;
-    private final EntidadesBeneficiariasRepositoryInterface entidadesRepository;
+    private final RepositorioEntidadesBeneficiarias entidadesRepository;
 
     /** Ranking a demanda de una sola donación: carga las entidades y evalúa. */
     public ResultadoMatchmaking generarRanking(Donacion donacion) {

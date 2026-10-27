@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
+import ar.utn.donatrack.donaciones.services.DonacionService;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
@@ -18,8 +20,6 @@ import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEnc
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
-import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
-import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -87,10 +87,10 @@ class DonacionesControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private DonacionServiceInterface donacionService;
+    private DonacionService donacionService;
 
     @MockitoBean
-    private SegmentadorDonacionesServiceInterface segmentadorService;
+    private SegmentadorDonacionesService segmentadorService;
 
     @MockitoBean
     private PlanificacionEntregasService planificacionEntregasService;

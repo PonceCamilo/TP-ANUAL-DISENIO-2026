@@ -9,9 +9,8 @@ import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
@@ -30,14 +29,13 @@ import java.util.stream.Collectors;
 @Transactional
 @Service
 @RequiredArgsConstructor
-public class PersonaDonanteService implements PersonaDonanteServiceInterface {
+public class PersonaDonanteService {
 
-  private final PersonaDonanteRepositoryInterface repositorio;
-  private final DonacionesRepositoryInterface donaciones;
+  private final RepositorioPersonasDonantes repositorio;
+  private final RepositorioDonaciones donaciones;
   private final PersonasValidator validador;
   private final PersonaDonanteMapper mapper;
 
-  @Override
   public PersonaDonanteResponseDTO registrar(PersonaDonanteRequestDTO dto) {
     validador.validarEmail(dto.getEmail());
 
@@ -50,18 +48,15 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
   }
 
   @Transactional(readOnly = true)
-  @Override
   public PersonaDonanteResponseDTO obtenerDonante(UUID id) {
     return mapper.toDTO(validador.validarYObtenerPersona(id));
   }
 
   @Transactional(readOnly = true)
-  @Override
   public PaginaResponseDTO<PersonaDonanteResponseDTO> obtenerDonantes(String estado, SolicitudPagina pagina) {
     return PaginaResponseDTO.desde(repositorio.buscar(estado, pagina).map(mapper::toDTO));
   }
 
-  @Override
   public void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto) {
     PersonaDonante persona = validador.validarYObtenerPersona(id);
     persona.cambiarEstado(dto.getEstado(), dto.getJustificacion());
@@ -69,7 +64,6 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     repositorio.guardar(persona);
   }
 
-  @Override
   public void modificarContacto(UUID id, MedioDeContactoRequestDTO dto) {
     PersonaDonante persona = validador.validarYObtenerPersona(id);
     MedioDeContacto medio = mapper.toContacto(dto);
@@ -83,14 +77,12 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     repositorio.guardar(persona);
   }
 
-  @Override
   public void modificarRepresentante(UUID id, RepresentanteRequestDTO dto) {
     validador.validarExistenciaPersona(id);
     validador.validarEsPersonaJuridica(id);
     repositorio.modificarRepresentante(id, mapper.toRepresentante(dto));
   }
 
-  @Override
   public PersonaDonanteResponseDTO actualizar(UUID id, PersonaDonanteUpdateRequestDTO dto) {
     PersonaDonante persona = validador.validarYObtenerPersona(id);
 
@@ -115,7 +107,6 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     return mapper.toDTO(persona);
   }
 
-  @Override
   public void eliminar(UUID id) {
     validador.validarExistenciaPersona(id);
     // Sin FK entre donacion y persona_donante: la integridad la cuida el servicio.

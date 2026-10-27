@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.repositories;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
+import ar.utn.donatrack.donaciones.services.DonacionService;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.repositories.jpa.RankingPrecalculadoJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,7 @@ import java.util.UUID;
  */
 @Repository
 @RequiredArgsConstructor
-public class CandidatosAsignacionRepository implements CandidatosAsignacionRepositoryInterface {
+public class CandidatosAsignacionRepository implements RepositorioCandidatosAsignacion {
 
     private final RankingPrecalculadoJpaRepository jpa;
 

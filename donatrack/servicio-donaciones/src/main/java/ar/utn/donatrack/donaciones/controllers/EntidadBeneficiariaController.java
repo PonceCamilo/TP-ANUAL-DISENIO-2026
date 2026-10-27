@@ -1,12 +1,12 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.services.EntidadesBeneficiariasService;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CampaniaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.NecesidadResponseDTO;
-import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -31,7 +31,7 @@ import java.util.UUID;
 @Tag(name = "Entidades Beneficiarias", description = "Gestión de entidades beneficiarias, sus campañas y necesidades materiales")
 public class EntidadBeneficiariaController {
 
-    private final EntidadesBeneficiariasServiceInterface entidadesBeneficiariasService;
+    private final EntidadesBeneficiariasService entidadesBeneficiariasService;
 
     @Operation(
         summary = "Crear una entidad beneficiaria",

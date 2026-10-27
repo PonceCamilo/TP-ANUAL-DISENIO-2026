@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.RecepcionesEntidadRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioRecepcionesEntidad;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
@@ -29,7 +29,7 @@ public class AlgoritmoPrioridadSubAtendidos extends AlgoritmoAsignacionBase {
 
     private static final int MESES_TRIMESTRE = 3;
 
-    private final RecepcionesEntidadRepositoryInterface recepciones;
+    private final RepositorioRecepcionesEntidad recepciones;
 
     @Override
     protected double calcularPuntaje(Donacion donacion, EntidadBeneficiaria entidad) {

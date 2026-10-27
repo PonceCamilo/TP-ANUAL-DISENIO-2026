@@ -8,9 +8,8 @@ import ar.utn.donatrack.donaciones.dtos.response.CampaniaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.NecesidadResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDonacionesException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -27,10 +26,10 @@ import java.util.UUID;
 @Transactional
 @Service
 @RequiredArgsConstructor
-public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServiceInterface {
+public class EntidadesBeneficiariasService {
 
-    private final EntidadesBeneficiariasRepositoryInterface repositorio;
-    private final DonacionesRepositoryInterface donaciones;
+    private final RepositorioEntidadesBeneficiarias repositorio;
+    private final RepositorioDonaciones donaciones;
     private final EntidadesBeneficiariasValidator validador;
     private final EntidadBeneficiariaMapper mapper;
     private final PersonaDonanteMapper dependenciasMapper;

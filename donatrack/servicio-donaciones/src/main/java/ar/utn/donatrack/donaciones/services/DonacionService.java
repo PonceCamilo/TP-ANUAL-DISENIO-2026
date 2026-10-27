@@ -13,12 +13,11 @@ import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
-import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
@@ -43,21 +42,21 @@ import java.util.stream.Stream;
 @Transactional
 @Service
 @RequiredArgsConstructor
-public class DonacionService implements DonacionServiceInterface {
+public class DonacionService {
 
   private static final String ESTADO_EN_DEPOSITO = "EN_DEPOSITO";
 
-  private final DonacionesRepositoryInterface repositorio;
+  private final RepositorioDonaciones repositorio;
   private final DonacionMapper mapper;
   private final AsignacionDonacionesService asignacionService;
-  private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
+  private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
   private final EntidadBeneficiariaMapper entidadMapper;
-  private final PersonaDonanteRepositoryInterface donanteRepositorio;
+  private final RepositorioPersonasDonantes donanteRepositorio;
   private final Notificador notificador;
   private final IncentivosClient incentivosClient;
   private final DonacionesValidator validador;
   private final EntidadesBeneficiariasValidator entidadesValidator;
-  private final CandidatosAsignacionRepositoryInterface candidatosRepositorio;
+  private final RepositorioCandidatosAsignacion candidatosRepositorio;
 
   /**
    * Listado paginado. Los filtros se resuelven en la base (Entrega 5): antes se

@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
+import ar.utn.donatrack.donaciones.services.DonacionService;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
@@ -11,8 +13,6 @@ import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
-import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
-import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
 import ar.utn.donatrack.donaciones.services.PlanificacionEntregasService;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,8 +48,8 @@ import java.util.UUID;
 @Tag(name = "Donaciones", description = "Registro, consulta, cambios de estado y asignación de donaciones a entidades beneficiarias")
 public class DonacionesController {
 
-  private final DonacionServiceInterface donacionService;
-  private final SegmentadorDonacionesServiceInterface segmentadorDonacionesService;
+  private final DonacionService donacionService;
+  private final SegmentadorDonacionesService segmentadorDonacionesService;
   private final PlanificacionEntregasService planificacionEntregasService;
 
   @Operation(

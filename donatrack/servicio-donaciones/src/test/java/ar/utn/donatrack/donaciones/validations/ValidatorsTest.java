@@ -10,9 +10,9 @@ import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRe
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -69,7 +69,7 @@ class ValidatorsTest {
     class DonacionesValidatorTest {
 
         @Mock
-        private DonacionesRepositoryInterface repositorio;
+        private RepositorioDonaciones repositorio;
 
         @InjectMocks
         private DonacionesValidator validador;
@@ -103,7 +103,7 @@ class ValidatorsTest {
     class PersonasValidatorTest {
 
         @Mock
-        private PersonaDonanteRepositoryInterface repositorio;
+        private RepositorioPersonasDonantes repositorio;
 
         @InjectMocks
         private PersonasValidator validador;
@@ -282,7 +282,7 @@ class ValidatorsTest {
     class EntidadesBeneficiariasValidatorTest {
 
         @Mock
-        private EntidadesBeneficiariasRepositoryInterface repositorio;
+        private RepositorioEntidadesBeneficiarias repositorio;
 
         @InjectMocks
         private EntidadesBeneficiariasValidator validador;

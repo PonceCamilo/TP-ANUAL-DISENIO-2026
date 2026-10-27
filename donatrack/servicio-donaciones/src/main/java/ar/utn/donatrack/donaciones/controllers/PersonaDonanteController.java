@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.services.PersonaDonanteService;
 import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
@@ -8,7 +9,6 @@ import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
-import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
 import ar.utn.donatrack.donaciones.services.CsvImportService;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import jakarta.validation.Valid;
@@ -37,7 +37,7 @@ import java.util.UUID;
 @Validated
 public class PersonaDonanteController {
 
-  private final PersonaDonanteServiceInterface personaDonanteService;
+  private final PersonaDonanteService personaDonanteService;
   private final CsvImportService csvImportService;
 
   /**

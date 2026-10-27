@@ -15,7 +15,7 @@ import java.util.UUID;
  * Interfaz mínima para persistir y buscar donantes desde el servicio de importación.
  * Implementaciones existentes del proyecto pueden adaptarse a esta interfaz.
  */
-public interface PersonaDonanteRepositoryInterface {
+public interface RepositorioPersonasDonantes {
     /**
      * Listado paginado ordenado por email (Entrega 5). Si estado es nulo o está
      * en blanco devuelve todas las personas.

@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.repositories;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  */
 @Repository
 @RequiredArgsConstructor
-public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterface {
+public class PersonaDonanteRepository implements RepositorioPersonasDonantes {
 
     /** El email es único: ordenar por él da páginas estables y legibles. */
     private static final Sort ORDEN_LISTADO = Sort.by("email");

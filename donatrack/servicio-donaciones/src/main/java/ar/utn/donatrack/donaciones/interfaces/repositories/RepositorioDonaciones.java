@@ -7,7 +7,7 @@ import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import java.util.List;
 import java.util.UUID;
 
-public interface DonacionesRepositoryInterface {
+public interface RepositorioDonaciones {
   void cargarDonaciones(List<Donacion> donaciones);
 
   /**

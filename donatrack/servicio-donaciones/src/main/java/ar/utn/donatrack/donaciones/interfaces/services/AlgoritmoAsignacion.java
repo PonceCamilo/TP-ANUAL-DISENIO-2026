@@ -15,6 +15,6 @@ import java.util.List;
  * Permite incorporar nuevos algoritmos sin modificar el orquestador,
  * tal como anticipa el enunciado.
  */
-public interface AlgoritmoAsignacionInterface {
+public interface AlgoritmoAsignacion {
     List<ResultadoAsignacion> evaluar(Donacion donacion, List<EntidadBeneficiaria> entidades);
 }

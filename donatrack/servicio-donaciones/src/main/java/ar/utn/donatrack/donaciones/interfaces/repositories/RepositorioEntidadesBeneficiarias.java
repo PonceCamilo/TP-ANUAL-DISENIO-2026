@@ -5,7 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-public interface EntidadesBeneficiariasRepositoryInterface {
+public interface RepositorioEntidadesBeneficiarias {
     void guardar(EntidadBeneficiaria entidad);
     List<EntidadBeneficiaria> buscarTodas();
     EntidadBeneficiaria obtenerPorId(UUID id);
