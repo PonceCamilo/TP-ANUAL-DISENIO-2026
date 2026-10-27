@@ -3,10 +3,7 @@ package ar.utn.donatrack.donaciones.services;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.contacto.Telefono;
-import ar.utn.donatrack.donaciones.models.contacto.Whatsapp;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
@@ -72,17 +69,10 @@ public class InactividadDonantesService {
             return;
         }
 
-        String tipoMedio = mapearTipoMedio(medio);
+        String tipoMedio = medio.canal().name();
         String mensaje = "¡Hace más de " + propiedades.inactividad().dias() + " días que no tenemos noticias tuyas! "
                 + "Tu ayuda hace la diferencia: ingresá a DonaTrack y sumá una nueva donación.";
 
         notificacionClient.enviarNotificacion(medio.getValor(), mensaje, tipoMedio);
-    }
-
-    private String mapearTipoMedio(MedioDeContacto medio) {
-        if (medio instanceof Email) return "EMAIL";
-        if (medio instanceof Telefono) return "SMS";
-        if (medio instanceof Whatsapp) return "WHATSAPP";
-        return "EMAIL";
     }
 }

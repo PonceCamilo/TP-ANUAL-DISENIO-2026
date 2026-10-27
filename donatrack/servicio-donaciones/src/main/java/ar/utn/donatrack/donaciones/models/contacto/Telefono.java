@@ -13,4 +13,9 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 public class Telefono extends MedioDeContacto {
+
+    @Override
+    public Canal canal() {
+        return Canal.SMS;
+    }
 }

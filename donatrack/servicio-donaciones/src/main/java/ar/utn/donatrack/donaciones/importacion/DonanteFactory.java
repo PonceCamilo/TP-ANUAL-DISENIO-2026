@@ -52,7 +52,7 @@ public class DonanteFactory {
                 .build();
         }
 
-        persona.setMedioContactoPredeterminado(Email.builder().valor(dto.email()).build());
+        persona.definirContactoPredeterminado(Email.builder().valor(dto.email()).build());
         if (dto.telefono() != null && !dto.telefono().isBlank()) {
             persona.reemplazarContacto(Telefono.builder().valor(dto.telefono()).build());
         }

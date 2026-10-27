@@ -108,14 +108,6 @@ public abstract class PersonaDonante implements Persistable<UUID> {
     @Transient
     protected EstadoDonante estado = EstadosDonante.inicial();
 
-    /**
-     * Canal elegido por la persona para recibir notificaciones. Es una instancia
-     * aparte de las de `contactos`, no una referencia a una de ellas.
-     */
-    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinColumn(name = "medio_predeterminado_id")
-    protected MedioDeContacto medioContactoPredeterminado;
-
     @Column(name = "ultima_interaccion")
     protected LocalDateTime ultimaInteraccion;
 
@@ -200,9 +192,49 @@ public abstract class PersonaDonante implements Persistable<UUID> {
      * de la interacción —hecho sobre otra instancia— pisaba el cambio.
      */
     public void reemplazarContacto(MedioDeContacto medio) {
-        Class<?> tipoNuevo = medio.getClass();
-        contactos.removeIf(mc -> mc.getClass().equals(tipoNuevo));
+        boolean reemplazaAlPredeterminado = contactos.stream()
+                .anyMatch(contacto -> contacto.esDelMismoTipoQue(medio) && contacto.isPredeterminado());
+        contactos.removeIf(contacto -> contacto.esDelMismoTipoQue(medio));
+        if (reemplazaAlPredeterminado) {
+            medio.marcarComoPredeterminado(true);
+        }
         contactos.add(medio);
+    }
+
+    /**
+     * El canal elegido para recibir notificaciones. Es uno de los contactos de la
+     * persona (el marcado como predeterminado), no una copia aparte: si la persona
+     * cambia su teléfono y el teléfono era su canal, el aviso va al número nuevo.
+     */
+    public MedioDeContacto getMedioContactoPredeterminado() {
+        return contactos.stream().filter(MedioDeContacto::isPredeterminado).findFirst().orElse(null);
+    }
+
+    /** Define el canal predeterminado: reemplaza al contacto de ese tipo y lo marca. */
+    public void definirContactoPredeterminado(MedioDeContacto medio) {
+        reemplazarContacto(medio);
+        contactos.forEach(contacto -> contacto.marcarComoPredeterminado(contacto == medio));
+    }
+
+    /**
+     * Reemplaza todos los contactos (actualización completa del perfil). El canal
+     * predeterminado no se pierde: si la lista nueva trae un contacto de su mismo
+     * tipo, ese pasa a ser el predeterminado; si no, se conserva el anterior.
+     *
+     * Modifica la colección existente en lugar de reemplazarla: es una colección
+     * con orphanRemoval y Hibernate no admite que se la cambie por otra.
+     */
+    public void reemplazarContactos(List<MedioDeContacto> nuevos) {
+        MedioDeContacto predeterminado = getMedioContactoPredeterminado();
+        contactos.clear();
+        nuevos.forEach(this::reemplazarContacto);
+        if (predeterminado != null && getMedioContactoPredeterminado() == null) {
+            contactos.stream()
+                    .filter(contacto -> contacto.esDelMismoTipoQue(predeterminado))
+                    .findFirst()
+                    .ifPresentOrElse(contacto -> contacto.marcarComoPredeterminado(true),
+                            () -> contactos.add(predeterminado));
+        }
     }
 
     /** HUMANA o JURIDICA: lo responde cada subclase. */

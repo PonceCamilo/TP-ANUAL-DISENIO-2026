@@ -394,7 +394,7 @@ class CsvImportServiceTest {
         }
 
         @Test
-        @DisplayName("Al crear, guarda el teléfono como contacto y el email como medio predeterminado")
+        @DisplayName("Al crear, guarda el email como contacto predeterminado y el teléfono como otro contacto")
         void guardaTelefonoYMedioPredeterminado() throws IOException {
             String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,+54 11 5555-1111\n";
 
@@ -404,10 +404,13 @@ class CsvImportServiceTest {
             PersonaDonante creada = loteCaptor.getValue().iterator().next();
             assertThat(creada.getMedioContactoPredeterminado()).isInstanceOf(Email.class);
             assertThat(creada.getMedioContactoPredeterminado().getValor()).isEqualTo("juan@example.com");
-            assertThat(creada.getContactos()).singleElement()
+            // El predeterminado es uno de los contactos (el email), junto al teléfono.
+            assertThat(creada.getContactos()).hasSize(2);
+            assertThat(creada.getContactos()).filteredOn(contacto -> contacto instanceof Telefono)
+                    .singleElement()
                     .satisfies(contacto -> {
-                        assertThat(contacto).isInstanceOf(Telefono.class);
                         assertThat(contacto.getValor()).isEqualTo("+54 11 5555-1111");
+                        assertThat(contacto.isPredeterminado()).isFalse();
                     });
         }
 

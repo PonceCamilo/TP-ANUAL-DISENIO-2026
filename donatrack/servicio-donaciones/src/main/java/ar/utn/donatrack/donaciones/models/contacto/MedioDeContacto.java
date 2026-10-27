@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.contacto;
 
+import org.hibernate.annotations.ColumnDefault;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.Entity;
@@ -47,4 +48,25 @@ public abstract class MedioDeContacto {
 
   @Column(name = "valor")
   protected String valor;
+
+  /**
+   * Si es el canal que la persona eligió para recibir notificaciones. Antes el
+   * predeterminado era una instancia aparte, fuera de la lista de contactos, y
+   * quedaba desactualizado cuando se cambiaba el contacto de ese tipo.
+   */
+  @Column(name = "predeterminado", nullable = false)
+  @ColumnDefault("false")
+  @lombok.Builder.Default
+  protected boolean predeterminado = false;
+
+  /** Por qué canal se le escribe a este contacto; lo responde cada subclase. */
+  public abstract Canal canal();
+
+  public void marcarComoPredeterminado(boolean valor) {
+    this.predeterminado = valor;
+  }
+
+  public boolean esDelMismoTipoQue(MedioDeContacto otro) {
+    return getClass().equals(otro.getClass());
+  }
 }

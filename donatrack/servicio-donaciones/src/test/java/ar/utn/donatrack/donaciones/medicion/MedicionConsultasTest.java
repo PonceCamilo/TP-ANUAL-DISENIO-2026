@@ -154,8 +154,8 @@ class MedicionConsultasTest {
                     .tipoDocumento("DNI")
                     .numeroDocumento(String.valueOf(30_000_000 + i))
                     .email("donante" + i + "@mail.com")
-                    .medioContactoPredeterminado(Email.builder().valor("donante" + i + "@mail.com").build())
                     .build();
+            persona.definirContactoPredeterminado(Email.builder().valor("donante" + i + "@mail.com").build());
             persona.setEstado(new ActivoState());
             // La mitad interactuó hace 30 días: son las que detecta el proceso de inactividad.
             persona.setUltimaInteraccion(i % 2 == 0

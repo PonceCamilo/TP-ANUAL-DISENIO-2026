@@ -29,4 +29,9 @@ public class Email extends MedioDeContacto {
     private void normalizarValor() {
         this.valor = NormalizadorEmail.normalizar(this.valor);
     }
+
+    @Override
+    public Canal canal() {
+        return Canal.EMAIL;
+    }
 }

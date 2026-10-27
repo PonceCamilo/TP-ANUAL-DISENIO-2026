@@ -47,6 +47,12 @@ public class PersonaDonanteMapper {
   // ── REQUEST → MODELO ──────────────────────────────────────────────────────
 
   public PersonaDonante toModel(PersonaDonanteRequestDTO dto) {
+    PersonaDonante persona = construir(dto);
+    persona.definirContactoPredeterminado(toContacto(dto.getMedioContactoPredeterminado()));
+    return persona;
+  }
+
+  private PersonaDonante construir(PersonaDonanteRequestDTO dto) {
     if (dto instanceof PersonaHumanaRequestDTO h) {
       return PersonaHumana.builder()
           .nombre(h.getNombre())
@@ -57,7 +63,6 @@ public class PersonaDonanteMapper {
           .numeroDocumento(h.getNumeroDocumento())
           .email(h.getEmail())
           .direccion(toDireccion(h.getDireccion()))
-          .medioContactoPredeterminado(toContacto(h.getMedioContactoPredeterminado()))
           .build();
     }
     if (dto instanceof PersonaJuridicaRequestDTO j) {
@@ -71,7 +76,6 @@ public class PersonaDonanteMapper {
           .tipo(j.getTipoOrganizacion())
           .direccion(toDireccion(j.getDireccion()))
           .representantes(toRepresentantes(j.getRepresentantes()))
-          .medioContactoPredeterminado(toContacto(j.getMedioContactoPredeterminado()))
           .build();
     }
     throw new TipoDesconocidoException("donante");

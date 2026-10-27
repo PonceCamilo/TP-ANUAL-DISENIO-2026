@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
@@ -9,7 +10,6 @@ import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEnc
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -222,7 +222,7 @@ public class LogisticaEventosService {
     private String obtenerEmail(List<MedioDeContacto> contactos) {
         if (contactos == null) return null;
         return contactos.stream()
-                .filter(c -> c instanceof Email)
+                .filter(contacto -> contacto.canal() == Canal.EMAIL)
                 .map(MedioDeContacto::getValor)
                 .findFirst()
                 .orElse(null);

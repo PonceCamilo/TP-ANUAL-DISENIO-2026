@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
@@ -151,7 +152,7 @@ class PersonaDonanteRepositoryTest {
     @DisplayName("Un contacto EMAIL también se guarda en forma canónica")
     void contactoEmailCanonico() {
         PersonaHumana persona = humana("ana@mail.com");
-        persona.setMedioContactoPredeterminado(Email.builder().valor(" Ana@Mail.com").build());
+        persona.definirContactoPredeterminado(Email.builder().valor(" Ana@Mail.com").build());
 
         repositorio.guardar(persona);
         jpa.flush();
@@ -159,5 +160,25 @@ class PersonaDonanteRepositoryTest {
 
         assertThat(repositorio.obtenerPersona(persona.getId()).getMedioContactoPredeterminado().getValor())
                 .isEqualTo("ana@mail.com");
+    }
+
+    @Test
+    @DisplayName("El contacto predeterminado es uno de los contactos: cambiar el contacto de ese tipo cambia el canal")
+    void predeterminadoDentroDeLosContactos() {
+        PersonaHumana persona = humana("ana@mail.com");
+        persona.definirContactoPredeterminado(Telefono.builder().valor("1111").build());
+        repositorio.guardar(persona);
+        jpa.flush();
+        em.clear();
+
+        PersonaDonante leida = repositorio.obtenerPersona(persona.getId());
+        leida.reemplazarContacto(Telefono.builder().valor("2222").build());
+        repositorio.guardar(leida);
+        jpa.flush();
+        em.clear();
+
+        PersonaDonante releida = repositorio.obtenerPersona(persona.getId());
+        assertThat(releida.getContactos()).hasSize(1);
+        assertThat(releida.getMedioContactoPredeterminado().getValor()).isEqualTo("2222");
     }
 }

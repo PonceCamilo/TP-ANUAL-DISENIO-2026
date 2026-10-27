@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.models.entidad;
 
-import ar.utn.donatrack.donaciones.models.contacto.Email;
+import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
@@ -83,7 +83,7 @@ public class EntidadBeneficiaria {
             return null;
         }
         return contactos.stream()
-                .filter(c -> c instanceof Email)
+                .filter(contacto -> contacto.canal() == Canal.EMAIL)
                 .map(MedioDeContacto::getValor)
                 .findFirst()
                 .orElse(null);

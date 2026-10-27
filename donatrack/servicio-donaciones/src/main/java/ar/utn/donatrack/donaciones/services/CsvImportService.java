@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.exceptions.csvExceptions.CsvFormatoException;
@@ -263,7 +264,7 @@ public class CsvImportService {
      */
     private static boolean tieneTelefono(PersonaDonante persona, String telefono) {
         return persona.getContactos().stream()
-                .anyMatch(contacto -> contacto instanceof Telefono && telefono.equals(contacto.getValor()));
+                .anyMatch(contacto -> contacto.canal() == Canal.SMS && telefono.equals(contacto.getValor()));
     }
 
 }

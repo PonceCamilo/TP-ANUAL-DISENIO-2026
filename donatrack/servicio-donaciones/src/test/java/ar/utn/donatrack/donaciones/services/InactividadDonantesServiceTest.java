@@ -74,14 +74,17 @@ class InactividadDonantesServiceTest {
      * y el medio de contacto predeterminado indicado.
      */
     private PersonaDonante donante(int diasSinInteractuar, MedioDeContacto medioPredeterminado) {
-        return PersonaHumana.builder()
+        PersonaHumana persona = PersonaHumana.builder()
                 .id(UUID.randomUUID())
                 .nombre("Juan")
                 .email("juan@example.com")
                 .estado(new ActivoState())
                 .ultimaInteraccion(FechaHoraArgentina.ahora().minusDays(diasSinInteractuar))
-                .medioContactoPredeterminado(medioPredeterminado)
                 .build();
+        if (medioPredeterminado != null) {
+            persona.definirContactoPredeterminado(medioPredeterminado);
+        }
+        return persona;
     }
 
     @Nested
@@ -125,8 +128,8 @@ class InactividadDonantesServiceTest {
             PersonaDonante nuevo = PersonaHumana.builder()
                     .id(UUID.randomUUID())
                     .estado(new ActivoState())
-                    .medioContactoPredeterminado(Email.builder().valor("nuevo@example.com").build())
                     .build();
+            nuevo.definirContactoPredeterminado(Email.builder().valor("nuevo@example.com").build());
             when(donanteRepository.obtenerParaAvisoDeInactividad(any(), anyInt()))
                     .thenReturn(List.of(nuevo), List.of());
 
