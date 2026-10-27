@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
@@ -80,6 +82,9 @@ class LogisticaEventosServiceTest {
 
     @Mock
     private IncentivosClient incentivosClient;
+
+    @Spy
+    private DonacionesProperties propiedades = DonacionesProperties.porDefecto();
 
     @InjectMocks
     private LogisticaEventosService servicio;

@@ -2,6 +2,7 @@ package ar.utn.donatrack.donaciones;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -12,6 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * llegaban a correr.
  */
 @EnableScheduling
+@ConfigurationPropertiesScan
 @SpringBootApplication
 public class ServicioDonacionesApp {
     public static void main(String[] args) {

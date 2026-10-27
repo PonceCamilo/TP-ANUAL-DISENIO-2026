@@ -27,7 +27,7 @@ public class ReconciliacionRecepcionesService {
 
     private final RecepcionesEntidadRepositoryInterface recepciones;
 
-    @Scheduled(cron = "0 0 3 * * *", zone = FechaHoraArgentina.ZONA_ID)
+    @Scheduled(cron = "${donaciones.procesos.cron-reconciliacion:0 0 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     public void reconciliar() {
         int filas = recepciones.reconciliar();
         log.info("[RECEPCIONES] Contador de recepciones recalculado: {} filas (entidad, día)", filas);

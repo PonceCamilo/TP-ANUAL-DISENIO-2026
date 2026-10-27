@@ -99,7 +99,7 @@ public class PlanificacionEntregasService {
      * condiciones simplemente se saltean, porque es un proceso desatendido y no
      * puede cortarse por un caso puntual.
      */
-    @Scheduled(cron = "0 0 4 * * *", zone = FechaHoraArgentina.ZONA_ID)
+    @Scheduled(cron = "${donaciones.procesos.cron-despacho:0 0 4 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     public void despacharPendientesDelDia() {
         List<Donacion> asignadas = donacionesRepositorio.obtenerPorEstado(ESTADO_ASIGNADA);
         log.info("[LOGISTICA] Barrido nocturno. Donaciones con asignación realizada: {}", asignadas.size());

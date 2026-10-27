@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
@@ -26,14 +27,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InactividadDonantesService {
 
-    private static final int DIAS_LIMITE_INACTIVIDAD = 20;
-
     private final PersonaDonanteRepositoryInterface donanteRepository;
     private final NotificacionClient notificacionClient;
+    private final DonacionesProperties propiedades;
 
-    @Scheduled(cron = "0 0 0 * * *", zone = FechaHoraArgentina.ZONA_ID)
+    @Scheduled(cron = "${donaciones.inactividad.cron:0 0 0 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     public void notificarDonantesInactivos() {
-        LocalDateTime fechaLimite = FechaHoraArgentina.ahora().minusDays(DIAS_LIMITE_INACTIVIDAD);
+        LocalDateTime fechaLimite = FechaHoraArgentina.ahora().minusDays(propiedades.inactividad().dias());
 
         // El filtro lo hace la base con el índice de ultima_interaccion
         // (Entrega 5): antes se cargaban todos los donantes y se filtraba acá.
@@ -54,7 +54,7 @@ public class InactividadDonantesService {
         }
 
         String tipoMedio = mapearTipoMedio(medio);
-        String mensaje = "¡Hace más de " + DIAS_LIMITE_INACTIVIDAD + " días que no realizas una donación! "
+        String mensaje = "¡Hace más de " + propiedades.inactividad().dias() + " días que no realizas una donación! "
                 + "Tu ayuda hace la diferencia. Ingresá a DonaTrack y sumá tu aporte!!.";
 
         notificacionClient.enviarNotificacion(medio.getValor(), mensaje, tipoMedio);

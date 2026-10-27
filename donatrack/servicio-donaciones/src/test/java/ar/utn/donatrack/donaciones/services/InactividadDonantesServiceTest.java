@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import java.time.LocalDateTime;
 import org.mockito.ArgumentCaptor;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -58,6 +60,9 @@ class InactividadDonantesServiceTest {
 
     @Mock
     private NotificacionClient notificacionClient;
+
+    @Spy
+    private DonacionesProperties propiedades = DonacionesProperties.porDefecto();
 
     @InjectMocks
     private InactividadDonantesService servicio;

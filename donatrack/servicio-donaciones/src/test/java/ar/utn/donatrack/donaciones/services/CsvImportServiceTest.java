@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
@@ -76,7 +77,7 @@ class CsvImportServiceTest {
         // Sin transacción real: el repositorio está mockeado. La transacción por
         // lote se prueba contra la base en MedicionConsultasTest.
         servicio = new CsvImportService(donanteRepository, new DonanteCsvRowParser(), new DonanteFactory(),
-                TransactionOperations.withoutTransaction());
+                DonacionesProperties.porDefecto(), TransactionOperations.withoutTransaction());
     }
 
     /** Convierte el contenido de un CSV en el stream que recibe el servicio. */

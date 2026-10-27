@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.InicioRutaCallbackDTO;
@@ -43,6 +44,7 @@ public class LogisticaEventosService {
     private final PersonaDonanteRepositoryInterface donanteRepositorio;
     private final NotificacionClient notificacionClient;
     private final IncentivosClient incentivosClient;
+    private final DonacionesProperties propiedades;
 
     // ── INICIO DE RUTA ─────────────────────────────────────────────────────────
 
@@ -198,10 +200,8 @@ public class LogisticaEventosService {
     }
 
     private void notificarEntregaFallidaAdmin(Donacion donacion, String motivo, boolean replanificable) {
-        // El administrador se notifica a un email institucional fijo. Cuando exista
-        // el servicio de autenticación (Entrega 6) se podrá obtener de ahí la lista
-        // real de personas administradoras.
-        String emailAdmin = "admin@donatrack.org";
+        // El destinatario sale de la configuración (donaciones.notificaciones.email-admin).
+        String emailAdmin = propiedades.notificaciones().emailAdmin();
         String mensaje = "ALERTA: Entrega fallida para donación " + donacion.getId()
                 + ". Motivo: " + motivo
                 + (replanificable ? " | Replanificable." : " | No replanificable.");

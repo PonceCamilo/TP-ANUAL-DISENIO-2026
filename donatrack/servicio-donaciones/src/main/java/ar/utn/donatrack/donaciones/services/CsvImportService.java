@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.exceptions.csvExceptions.CsvFormatoException;
 import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
 import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
@@ -35,7 +36,7 @@ import java.util.Map;
  * Orquestador del proceso de importación masiva de personas donantes por CSV.
  *
  * Responsabilidades:
- *  - Leer el archivo línea a línea en lotes de BATCH_SIZE registros, y procesar
+ *  - Leer el archivo línea a línea en lotes (donaciones.importacion.tamanio-lote, 500 por defecto), y procesar
  *    cada lote en una transacción, con una consulta y una escritura (Entrega 5).
  *  - Delegar el parseo a DonanteCsvRowParser.
  *  - Decidir si crear o actualizar usando el email como clave de idempotencia.
@@ -47,11 +48,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CsvImportService {
 
-    private static final int BATCH_SIZE = 500;
-
     private final PersonaDonanteRepositoryInterface donanteRepository;
     private final DonanteCsvRowParser parser;
     private final DonanteFactory factory;
+    private final DonacionesProperties propiedades;
 
     /**
      * Cada lote se procesa en una transacción propia. Es la única excepción a la
@@ -69,7 +69,8 @@ public class CsvImportService {
             .withSkipLines(1)
             .build()) {
 
-            List<DonanteImportDto> lote = new ArrayList<>(BATCH_SIZE);
+            int tamanioLote = propiedades.importacion().tamanioLote();
+            List<DonanteImportDto> lote = new ArrayList<>(tamanioLote);
             String[] columnas;
             int numeroLinea = 2;
 
@@ -83,7 +84,7 @@ public class CsvImportService {
                     report.agregar(ImportFilaCSV.error(numeroLinea, "", e.getMessage()));
                 }
 
-                if (lote.size() >= BATCH_SIZE) {
+                if (lote.size() >= tamanioLote) {
                     procesarLote(lote, report, numeroLinea - lote.size() + 1);
                     lote.clear();
                 }

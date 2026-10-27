@@ -51,7 +51,7 @@ public class AsignacionBatchService {
      * uso del depósito. La zona se declara explícitamente: sin ella el horario
      * dependía de la zona del servidor (UTC en un contenedor).
      */
-    @Scheduled(cron = "0 30 3 * * *", zone = FechaHoraArgentina.ZONA_ID)
+    @Scheduled(cron = "${donaciones.procesos.cron-matchmaking:0 30 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     public void ejecutarMatchmakingNocturno() {
         List<Donacion> enDeposito = donacionesRepositorio.obtenerPorEstado(ESTADO_EN_DEPOSITO);
 
