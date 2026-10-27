@@ -330,7 +330,7 @@ class DonacionServiceTest {
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
 
-            verify(incentivosClient).notificarDonacionExitosa(donacion, "juan@example.com", "EMAIL");
+            verify(incentivosClient).notificarDonacionExitosa(eq(donacion), eq("juan@example.com"), eq("EMAIL"), any());
         }
 
         @Test

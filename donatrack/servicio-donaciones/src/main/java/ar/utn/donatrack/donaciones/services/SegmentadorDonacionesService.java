@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import java.util.Optional;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
@@ -84,6 +85,6 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
         .distinct()
         .toList();
     incentivosClient.notificarDonacionRegistrada(donante.getId(), destino.get().valor(), destino.get().canal().name(),
-        bienes.size(), categorias);
+        bienes.size(), categorias, FechaHoraArgentina.ahora());
   }
 }

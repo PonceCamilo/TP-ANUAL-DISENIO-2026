@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.clientes;
 
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import org.slf4j.Logger;
@@ -21,6 +22,11 @@ import java.util.UUID;
  *  - Cuando una donación es entregada exitosamente → notifica a incentivos para
  *    que actualice el contador de donaciones exitosas / organizaciones ayudadas.
  *
+ * Una sola firma por evento y la fecha siempre la indica quien llama: la del
+ * registro o la de la entrega. Antes, la donación exitosa se informaba con la
+ * fecha en que se había registrado la donación y no con la de la entrega, y el
+ * registro tomaba la hora de la zona del servidor en lugar de la de Argentina.
+ *
  * Si incentivos no está levantado, loguea el error pero NO frena el flujo de donaciones.
  */
 @Component
@@ -34,53 +40,24 @@ public class IncentivosClient {
         this.restClient = RestClient.create(baseUrl);
     }
 
-    public void notificarDonacionRegistrada(UUID donanteId, String destinatario, String medio, int cantidadBienes, List<String> categoriasDonadas) {
-        notificarDonacionRegistrada(donanteId, destinatario, medio, cantidadBienes, categoriasDonadas, LocalDateTime.now(), null);
+    public void notificarDonacionRegistrada(UUID donanteId, String destinatario, String medio,
+                                            int cantidadBienes, List<String> categoriasDonadas, LocalDateTime fecha) {
+        enviar("/api/incentivos/donantes/donacion", "Donación registrada", new SolicitudIncentivo(
+                donanteId, destinatario, medio, cantidadBienes, categoriasDonadas, fecha, null));
     }
 
-    public void notificarDonacionRegistrada(UUID donanteId, String destinatario, String medio, int cantidadBienes, List<String> categoriasDonadas, LocalDateTime fecha, String entidadBeneficiaria) {
+    public void notificarDonacionExitosa(Donacion donacion, String destinatario, String medio, LocalDateTime fechaEntrega) {
+        enviar("/api/incentivos/donantes/donacion-exitosa", "Donación exitosa", new SolicitudIncentivo(
+                donacion.getIdDonante(), destinatario, medio,
+                cantidadBienes(donacion), categoriasDonadas(donacion), fechaEntrega, entidadBeneficiaria(donacion)));
+    }
+
+    private void enviar(String ruta, String evento, SolicitudIncentivo solicitud) {
         try {
-            restClient.post()
-                    .uri("/api/incentivos/donantes/donacion")
-                    .body(new ProcesarDonacionRequest(
-                            donanteId, destinatario, medio, cantidadBienes,
-                            categoriasDonadas, fecha, entidadBeneficiaria))
-                    .retrieve()
-                    .toBodilessEntity();
-            log.info("[IncentivosClient] Donación registrada enviada para donante {}", donanteId);
+            restClient.post().uri(ruta).body(solicitud).retrieve().toBodilessEntity();
+            log.info("[IncentivosClient] {} enviada para donante {}", evento, solicitud.donanteId());
         } catch (Exception e) {
-            log.error("[IncentivosClient] Error al notificar donación: {}", e.getMessage());
-        }
-    }
-
-    public void notificarDonacionExitosa(Donacion donacion, String destinatario, String medio) {
-        notificarDonacionExitosa(donacion, destinatario, medio, donacion.getFechaDonacion());
-    }
-
-    public void notificarDonacionExitosa(Donacion donacion, String destinatario, String medio, LocalDateTime fechaEvento) {
-        notificarDonacionExitosa(
-                donacion.getIdDonante(),
-                destinatario,
-                medio,
-                cantidadBienes(donacion),
-                categoriasDonadas(donacion),
-                fechaEvento,
-                entidadBeneficiaria(donacion)
-        );
-    }
-
-    private void notificarDonacionExitosa(UUID donanteId, String destinatario, String medio, int cantidadBienes, List<String> categoriasDonadas, LocalDateTime fecha, String entidadBeneficiaria) {
-        try {
-            restClient.post()
-                    .uri("/api/incentivos/donantes/donacion-exitosa")
-                    .body(new ProcesarDonacionExitosaRequest(
-                            donanteId, destinatario, medio, cantidadBienes,
-                            categoriasDonadas, fecha, entidadBeneficiaria))
-                    .retrieve()
-                    .toBodilessEntity();
-            log.info("[IncentivosClient] Donación exitosa enviada para donante {}", donanteId);
-        } catch (Exception e) {
-            log.error("[IncentivosClient] Error al notificar donación exitosa: {}", e.getMessage());
+            log.error("[IncentivosClient] Error al notificar {}: {}", evento.toLowerCase(), e.getMessage());
         }
     }
 
@@ -94,7 +71,7 @@ public class IncentivosClient {
         return donacion.getBienes().stream()
                 .map(Bien::getSubcategoria)
                 .filter(Objects::nonNull)
-                .map(subcategoria -> subcategoria.getTipo())
+                .map(Subcategoria::getTipo)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
@@ -104,12 +81,8 @@ public class IncentivosClient {
         return donacion.getIdEntidadBeneficiaria() != null ? donacion.getIdEntidadBeneficiaria().toString() : null;
     }
 
-    private record ProcesarDonacionRequest(
-            UUID donanteId, String destinatario, String medio,
-            int cantidadBienes, List<String> categoriasDonadas,
-            LocalDateTime fecha, String entidadBeneficiaria) {}
-
-    private record ProcesarDonacionExitosaRequest(
+    /** Cuerpo de los dos endpoints de incentivos: tienen los mismos campos. */
+    record SolicitudIncentivo(
             UUID donanteId, String destinatario, String medio,
             int cantidadBienes, List<String> categoriasDonadas,
             LocalDateTime fecha, String entidadBeneficiaria) {}

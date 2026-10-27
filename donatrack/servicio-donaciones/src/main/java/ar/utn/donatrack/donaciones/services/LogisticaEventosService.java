@@ -77,7 +77,8 @@ public class LogisticaEventosService {
 
         // notificar a incentivos: DonacionesExitosas depende de entregas confirmadas por logística
         notificador.destinoDe(donante).ifPresent(destino ->
-                incentivosClient.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name()));
+                incentivosClient.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name(),
+                        dto.fechaHoraEntrega()));
     }
 
     private String armarComprobante(EntregaExitosaCallbackDTO dto) {

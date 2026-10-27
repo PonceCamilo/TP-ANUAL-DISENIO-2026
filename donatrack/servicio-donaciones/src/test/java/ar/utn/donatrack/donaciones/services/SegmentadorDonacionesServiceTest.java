@@ -174,7 +174,7 @@ class SegmentadorDonacionesServiceTest {
             servicio.segmentar(carga);
 
             verify(incentivosClient).notificarDonacionRegistrada(
-                    eq(idDonante), eq("juan@example.com"), eq("EMAIL"), eq(2), categoriasCaptor.capture());
+                    eq(idDonante), eq("juan@example.com"), eq("EMAIL"), eq(2), categoriasCaptor.capture(), any());
             assertThat(categoriasCaptor.getValue()).containsExactlyInAnyOrder("arroz", "ropa");
         }
 
@@ -189,7 +189,7 @@ class SegmentadorDonacionesServiceTest {
 
             // 3 bienes en total, pero solo 2 categorías distintas.
             verify(incentivosClient).notificarDonacionRegistrada(
-                    eq(idDonante), anyString(), anyString(), eq(3), categoriasCaptor.capture());
+                    eq(idDonante), anyString(), anyString(), eq(3), categoriasCaptor.capture(), any());
             assertThat(categoriasCaptor.getValue()).containsExactlyInAnyOrder("arroz", "ropa");
         }
 
@@ -218,7 +218,7 @@ class SegmentadorDonacionesServiceTest {
 
             assertThat(resultado).hasSize(1);
             verify(incentivosClient, never()).notificarDonacionRegistrada(
-                    any(), anyString(), anyString(), anyInt(), anyList());
+                    any(), anyString(), anyString(), anyInt(), anyList(), any());
         }
     }
 

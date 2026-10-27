@@ -298,7 +298,8 @@ class LogisticaEventosServiceTest {
 
             servicio.procesarEntregaExitosa(evento());
 
-            verify(incentivosClient).notificarDonacionExitosa(donacion, EMAIL_DONANTE, "EMAIL");
+            // Se informa la fecha de la entrega, no la del registro de la donación.
+            verify(incentivosClient).notificarDonacionExitosa(donacion, EMAIL_DONANTE, "EMAIL", LocalDateTime.of(2026, 3, 15, 14, 30));
         }
 
         @Test

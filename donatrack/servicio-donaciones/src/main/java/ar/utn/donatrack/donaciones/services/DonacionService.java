@@ -209,9 +209,14 @@ public class DonacionService implements DonacionServiceInterface {
         .toList();
   }
 
-  /** Avisa a incentivos que la donación llegó a destino (actualiza donaciones exitosas / organizaciones ayudadas). */
+  /**
+   * Avisa a incentivos que la donación llegó a destino (actualiza donaciones
+   * exitosas / organizaciones ayudadas). En un cambio manual a ENTREGADA, la
+   * fecha de entrega es la del cambio.
+   */
   private void notificarDonacionExitosa(Donacion donacion) {
     notificador.destinoDe(donanteRepositorio.obtenerPersona(donacion.getIdDonante())).ifPresent(destino ->
-        incentivosClient.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name()));
+        incentivosClient.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name(),
+            FechaHoraArgentina.ahora()));
   }
 }
