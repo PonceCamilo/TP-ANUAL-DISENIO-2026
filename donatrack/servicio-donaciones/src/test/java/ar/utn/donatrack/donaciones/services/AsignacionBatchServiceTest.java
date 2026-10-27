@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -98,7 +99,7 @@ class AsignacionBatchServiceTest {
             servicio.ejecutarMatchmakingNocturno();
 
             verify(donacionesRepositorio).obtenerPorEstado("EN_DEPOSITO");
-            verify(donacionesRepositorio, never()).obtenerTodas();
+            verifyNoMoreInteractions(donacionesRepositorio);
         }
 
         @Test

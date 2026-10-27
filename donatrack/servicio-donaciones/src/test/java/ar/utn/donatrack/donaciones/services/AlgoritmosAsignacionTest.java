@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RecepcionesEntidadRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -17,13 +17,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -46,7 +51,7 @@ import static org.mockito.Mockito.when;
 class AlgoritmosAsignacionTest {
 
     @Mock
-    private DonacionesRepositoryInterface donacionesRepository;
+    private RecepcionesEntidadRepositoryInterface recepciones;
 
     private AlgoritmoCompatibilidadSemantica algoritmoSemantico;
     private AlgoritmoPrioridadSubAtendidos algoritmoSubAtendidos;
@@ -54,7 +59,7 @@ class AlgoritmosAsignacionTest {
     @BeforeEach
     void crearAlgoritmos() {
         algoritmoSemantico = new AlgoritmoCompatibilidadSemantica();
-        algoritmoSubAtendidos = new AlgoritmoPrioridadSubAtendidos(donacionesRepository);
+        algoritmoSubAtendidos = new AlgoritmoPrioridadSubAtendidos(recepciones);
     }
 
     /** Donación de la subcategoría indicada, lista para evaluar. */
@@ -84,14 +89,6 @@ class AlgoritmosAsignacionTest {
             campania.agregarNecesidad(necesidad);
         }
         return entidad;
-    }
-
-    /** Donación ya asignada a una entidad en la fecha indicada (para el histórico). */
-    private Donacion donacionAsignadaA(UUID idEntidad, java.time.LocalDate fechaAsignacion) {
-        Donacion donacion = new Donacion();
-        donacion.setIdEntidadBeneficiaria(idEntidad);
-        donacion.setFechaAsignacion(fechaAsignacion);
-        return donacion;
     }
 
     @Nested
@@ -163,12 +160,17 @@ class AlgoritmosAsignacionTest {
     @DisplayName("AlgoritmoPrioridadSubAtendidos - reparto equitativo")
     class PrioridadSubAtendidos {
 
+        // Desde la Entrega 5 las recepciones salen del contador desnormalizado
+        // entidad_recepcion_diaria. Qué cuenta como recepción (la ventana de 3
+        // meses, solo la entidad asignada, solo donaciones con fecha) lo prueban
+        // los tests de persistencia del contador contra H2.
+
         @Test
         @DisplayName("Una entidad que no recibió nada obtiene el puntaje máximo (1.0)")
         void sinDonacionesRecibidasPuntajeMaximo() {
             // El puntaje es 1 / (1 + recibidas): con 0 recibidas da exactamente 1.
             EntidadBeneficiaria entidad = entidadCon("Comedor A");
-            when(donacionesRepository.obtenerTodas()).thenReturn(List.of());
+            when(recepciones.contarRecepcionesDesde(any(LocalDate.class))).thenReturn(Map.of());
 
             List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad));
 
@@ -179,11 +181,7 @@ class AlgoritmosAsignacionTest {
         @DisplayName("A más donaciones recibidas en el trimestre, menor puntaje")
         void masRecibidasMenorPuntaje() {
             EntidadBeneficiaria entidad = entidadCon("Comedor A");
-            when(donacionesRepository.obtenerTodas()).thenReturn(List.of(
-                    donacionAsignadaA(entidad.getId(), FechaHoraArgentina.hoy().minusDays(5)),
-                    donacionAsignadaA(entidad.getId(), FechaHoraArgentina.hoy().minusDays(10)),
-                    donacionAsignadaA(entidad.getId(), FechaHoraArgentina.hoy().minusDays(20))
-            ));
+            when(recepciones.contarRecepcionesDesde(any(LocalDate.class))).thenReturn(Map.of(entidad.getId(), 3L));
 
             List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad));
 
@@ -197,11 +195,8 @@ class AlgoritmosAsignacionTest {
             // Éste es el objetivo del criterio: repartir en vez de concentrar.
             EntidadBeneficiaria muyAtendida = entidadCon("Comedor A");
             EntidadBeneficiaria pocoAtendida = entidadCon("Comedor B");
-
-            when(donacionesRepository.obtenerTodas()).thenReturn(List.of(
-                    donacionAsignadaA(muyAtendida.getId(), FechaHoraArgentina.hoy().minusDays(5)),
-                    donacionAsignadaA(muyAtendida.getId(), FechaHoraArgentina.hoy().minusDays(10))
-            ));
+            when(recepciones.contarRecepcionesDesde(any(LocalDate.class)))
+                    .thenReturn(Map.of(muyAtendida.getId(), 2L));
 
             List<ResultadoAsignacion> ranking = algoritmoSubAtendidos
                     .evaluar(donacionDe("arroz"), List.of(muyAtendida, pocoAtendida));
@@ -212,46 +207,15 @@ class AlgoritmosAsignacionTest {
         }
 
         @Test
-        @DisplayName("Las donaciones anteriores al trimestre NO penalizan a la entidad")
-        void donacionesViejasNoPenalizan() {
-            // Solo cuenta el último trimestre: una entidad que recibió mucho hace
-            // un año vuelve a estar disponible como candidata prioritaria.
-            EntidadBeneficiaria entidad = entidadCon("Comedor A");
-            when(donacionesRepository.obtenerTodas()).thenReturn(List.of(
-                    donacionAsignadaA(entidad.getId(), FechaHoraArgentina.hoy().minusMonths(10))
-            ));
+        @DisplayName("Consulta las recepciones de los últimos 3 meses una sola vez para todas las entidades")
+        void unaConsultaConLaVentanaDelTrimestre() {
+            // Antes se leían todas las donaciones una vez POR ENTIDAD.
+            when(recepciones.contarRecepcionesDesde(any(LocalDate.class))).thenReturn(Map.of());
 
-            List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad));
+            algoritmoSubAtendidos.evaluar(donacionDe("arroz"),
+                    List.of(entidadCon("A"), entidadCon("B"), entidadCon("C")));
 
-            assertThat(ranking.getFirst().getPuntaje()).isEqualTo(1.0);
-        }
-
-        @Test
-        @DisplayName("Las donaciones asignadas a OTRAS entidades no penalizan")
-        void donacionesDeOtrasEntidadesNoPenalizan() {
-            EntidadBeneficiaria entidad = entidadCon("Comedor A");
-            when(donacionesRepository.obtenerTodas()).thenReturn(List.of(
-                    donacionAsignadaA(UUID.randomUUID(), FechaHoraArgentina.hoy().minusDays(5))
-            ));
-
-            List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad));
-
-            assertThat(ranking.getFirst().getPuntaje()).isEqualTo(1.0);
-        }
-
-        @Test
-        @DisplayName("Las donaciones sin fecha de asignación se ignoran")
-        void donacionesSinFechaSeIgnoran() {
-            // Una donación EN_DEPOSITO todavía no tiene fechaAsignacion: no puede
-            // contar como "ya recibida" por la entidad.
-            EntidadBeneficiaria entidad = entidadCon("Comedor A");
-            when(donacionesRepository.obtenerTodas()).thenReturn(List.of(
-                    donacionAsignadaA(entidad.getId(), null)
-            ));
-
-            List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad));
-
-            assertThat(ranking.getFirst().getPuntaje()).isEqualTo(1.0);
+            verify(recepciones, times(1)).contarRecepcionesDesde(FechaHoraArgentina.hoy().minusMonths(3));
         }
 
         @Test
@@ -260,7 +224,7 @@ class AlgoritmosAsignacionTest {
             // No sobreescribe el hook incluir(), así que toda entidad tiene una
             // chance: incluso una muy atendida sigue en el ranking, pero al final.
             EntidadBeneficiaria sinNecesidades = entidadCon("Comedor A");
-            when(donacionesRepository.obtenerTodas()).thenReturn(List.of());
+            when(recepciones.contarRecepcionesDesde(any(LocalDate.class))).thenReturn(Map.of());
 
             assertThat(algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(sinNecesidades))).hasSize(1);
         }

@@ -7,6 +7,7 @@ import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.function.ToDoubleFunction;
 
 /**
  * Clase base de los algoritmos de asignación (patrón Template Method sobre
@@ -24,8 +25,9 @@ public abstract class AlgoritmoAsignacionBase implements AlgoritmoAsignacionInte
 
     @Override
     public final List<ResultadoAsignacion> evaluar(Donacion donacion, List<EntidadBeneficiaria> entidades) {
+        ToDoubleFunction<EntidadBeneficiaria> puntaje = prepararPuntaje(donacion, entidades);
         return entidades.stream()
-                .map(entidad -> new ResultadoAsignacion(entidad.getId(), calcularPuntaje(donacion, entidad)))
+                .map(entidad -> new ResultadoAsignacion(entidad.getId(), puntaje.applyAsDouble(entidad)))
                 .filter(resultado -> incluir(resultado.getPuntaje()))
                 .sorted(Comparator.comparingDouble(ResultadoAsignacion::getPuntaje).reversed())
                 .limit(TOP_N)
@@ -34,6 +36,16 @@ public abstract class AlgoritmoAsignacionBase implements AlgoritmoAsignacionInte
 
     /** Cada algoritmo define cómo puntúa la afinidad entre la donación y la entidad. */
     protected abstract double calcularPuntaje(Donacion donacion, EntidadBeneficiaria entidad);
+
+    /**
+     * Hook opcional (Entrega 5): permite que un algoritmo cargue de una sola vez
+     * los datos que necesita para puntuar a todas las entidades, en lugar de
+     * consultarlos entidad por entidad. Por defecto puntúa con calcularPuntaje.
+     */
+    protected ToDoubleFunction<EntidadBeneficiaria> prepararPuntaje(Donacion donacion,
+                                                                  List<EntidadBeneficiaria> entidades) {
+        return entidad -> calcularPuntaje(donacion, entidad);
+    }
 
     /**
      * Hook opcional: decide si una entidad con cierto puntaje entra al ranking.

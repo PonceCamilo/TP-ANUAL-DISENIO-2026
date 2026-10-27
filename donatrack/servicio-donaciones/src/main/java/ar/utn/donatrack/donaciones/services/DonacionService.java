@@ -129,7 +129,9 @@ public class DonacionService implements DonacionServiceInterface {
     EntidadBeneficiaria entidad = entidadesValidator.validarYObtenerEntidad(dto.getIdEntidadBeneficiaria());
 
     donacion.asignarA(entidad);
-    repositorio.guardar(donacion);
+    // Guarda la asignación y el contador de recepciones de la entidad en una
+    // sola transacción; la notificación sale recién después de confirmarla.
+    repositorio.guardarAsignacion(donacion);
 
     // Ya tiene destino: sale de la bandeja de pendientes del administrador.
     candidatosRepositorio.eliminar(idDonacion);

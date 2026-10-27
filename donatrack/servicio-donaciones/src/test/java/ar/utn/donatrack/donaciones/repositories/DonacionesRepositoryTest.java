@@ -17,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -32,13 +33,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest(properties = "spring.datasource.url=jdbc:h2:mem:persistencia_donaciones;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(DonacionesRepository.class)
+@Import({DonacionesRepository.class, RecepcionesEntidadRepository.class})
 @DisplayName("DonacionesRepository - persistencia real de donaciones")
 class DonacionesRepositoryTest {
 
     @Autowired private DonacionesRepository repositorio;
     @Autowired private DonacionJpaRepository jpa;
     @Autowired private TestEntityManager em;
+    @Autowired private RecepcionesEntidadRepository recepciones;
 
     private final UUID ana = UUID.randomUUID();
     private final UUID beto = UUID.randomUUID();
@@ -183,6 +185,104 @@ class DonacionesRepositoryTest {
             assertThat(tercera.contenido()).extracting(Donacion::getId).containsExactly(cinco.get(0).getId());
             assertThat(primera.totalElementos()).isEqualTo(5);
             assertThat(primera.totalPaginas()).isEqualTo(3);
+        }
+    }
+
+    @Nested
+    @DisplayName("Contador desnormalizado de recepciones por entidad")
+    class ContadorDeRecepciones {
+
+        private final LocalDate hoy = LocalDate.of(2026, 10, 26);
+        private final UUID otraEntidad = UUID.randomUUID();
+
+        private Donacion guardadaEnDeposito() {
+            Donacion donacion = donacion(ana, "Arroz", LocalDateTime.of(2026, 10, 1, 10, 0));
+            persistirYLimpiar(List.of(donacion));
+            return donacion;
+        }
+
+        private void asignar(Donacion donacion, UUID idEntidad, LocalDate fecha) {
+            donacion.setIdEntidadBeneficiaria(idEntidad);
+            donacion.setFechaAsignacion(fecha);
+            repositorio.guardarAsignacion(donacion);
+            jpa.flush();
+            em.clear();
+        }
+
+        private long recibidas(UUID idEntidad) {
+            return recepciones.contarRecepcionesDesde(idEntidad, hoy.minusMonths(3));
+        }
+
+        @Test
+        @DisplayName("Asignar suma una recepción a la entidad en el día de la asignación")
+        void asignarSuma() {
+            asignar(guardadaEnDeposito(), comedor, hoy);
+            asignar(guardadaEnDeposito(), comedor, hoy);
+
+            assertThat(recibidas(comedor)).isEqualTo(2);
+            assertThat(recepciones.contarRecepcionesDesde(hoy.minusMonths(3))).containsEntry(comedor, 2L);
+        }
+
+        @Test
+        @DisplayName("Reasignar mueve la recepción de la entidad anterior a la nueva")
+        void reasignarMueve() {
+            Donacion donacion = guardadaEnDeposito();
+            asignar(donacion, comedor, hoy.minusDays(1));
+
+            asignar(donacion, otraEntidad, hoy);
+
+            assertThat(recibidas(comedor)).isZero();
+            assertThat(recibidas(otraEntidad)).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Volver a guardar la misma asignación no la cuenta dos veces")
+        void mismaAsignacionNoDuplica() {
+            Donacion donacion = guardadaEnDeposito();
+            asignar(donacion, comedor, hoy);
+
+            asignar(donacion, comedor, hoy);
+
+            assertThat(recibidas(comedor)).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Borrar una donación asignada descuenta su recepción")
+        void eliminarDescuenta() {
+            Donacion donacion = guardadaEnDeposito();
+            asignar(donacion, comedor, hoy);
+
+            repositorio.eliminar(donacion.getId());
+            jpa.flush();
+            em.clear();
+
+            assertThat(recibidas(comedor)).isZero();
+        }
+
+        @Test
+        @DisplayName("Solo cuentan las recepciones dentro de la ventana pedida")
+        void respetaLaVentana() {
+            asignar(guardadaEnDeposito(), comedor, hoy.minusMonths(10));
+            asignar(guardadaEnDeposito(), comedor, hoy.minusDays(10));
+
+            assertThat(recibidas(comedor)).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("La reconciliación recalcula el contador desde la tabla donacion")
+        void reconciliacionCorrigeDesfases() {
+            asignar(guardadaEnDeposito(), comedor, hoy);
+            asignar(guardadaEnDeposito(), comedor, hoy);
+            guardadaEnDeposito(); // sin entidad ni fecha: no cuenta
+            // Se simula un desfase (por ejemplo, un cambio hecho a mano en la base).
+            em.getEntityManager().createNativeQuery("UPDATE entidad_recepcion_diaria SET cantidad = 99")
+                    .executeUpdate();
+            assertThat(recibidas(comedor)).isEqualTo(99);
+
+            int filas = recepciones.reconciliar();
+
+            assertThat(filas).isEqualTo(1);
+            assertThat(recibidas(comedor)).isEqualTo(2);
         }
     }
 }

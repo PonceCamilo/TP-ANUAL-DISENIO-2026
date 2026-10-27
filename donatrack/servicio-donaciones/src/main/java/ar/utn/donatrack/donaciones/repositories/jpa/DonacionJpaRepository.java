@@ -3,8 +3,12 @@ package ar.utn.donatrack.donaciones.repositories.jpa;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -21,4 +25,15 @@ import java.util.UUID;
 public interface DonacionJpaRepository extends JpaRepository<Donacion, UUID>, JpaSpecificationExecutor<Donacion> {
 
     List<Donacion> findByEstadoNombre(String estadoNombre);
+
+    /** Asignación que tiene hoy una donación en la base, antes de guardar un cambio. */
+    interface AsignacionActual {
+        UUID getIdEntidadBeneficiaria();
+
+        LocalDate getFechaAsignacion();
+    }
+
+    @Query("SELECT d.idEntidadBeneficiaria AS idEntidadBeneficiaria, d.fechaAsignacion AS fechaAsignacion "
+            + "FROM Donacion d WHERE d.id = :id")
+    Optional<AsignacionActual> buscarAsignacion(@Param("id") UUID id);
 }

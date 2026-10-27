@@ -415,7 +415,10 @@ class DonacionServiceTest {
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
-            verify(repositorio).guardar(donacion);
+            // guardarAsignacion y no guardar: así el contador de recepciones de
+            // la entidad se actualiza en la misma transacción (Entrega 5).
+            verify(repositorio).guardarAsignacion(donacion);
+            verify(repositorio, never()).guardar(any());
         }
 
         @Test

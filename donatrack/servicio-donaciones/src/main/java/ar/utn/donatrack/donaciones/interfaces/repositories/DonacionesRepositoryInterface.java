@@ -21,7 +21,16 @@ public interface DonacionesRepositoryInterface {
    */
   void guardar(Donacion donacion);
 
-  List<Donacion> obtenerTodas();
+  /**
+   * Guarda una donación a la que se le acaba de asignar (o reasignar) una
+   * entidad beneficiaria, y en la misma transacción actualiza el contador
+   * desnormalizado de donaciones recibidas por entidad (Entrega 5).
+   *
+   * Que vaya junto es lo que garantiza que el contador no quede desfasado si
+   * algo falla a mitad de camino: o se guardan las dos cosas o ninguna.
+   */
+  void guardarAsignacion(Donacion donacion);
+
   List<Donacion> obtenerPorEstado(String estado);
 
   /**
@@ -32,5 +41,7 @@ public interface DonacionesRepositoryInterface {
   Pagina<Donacion> buscar(FiltroDonaciones filtro, SolicitudPagina pagina);
 
   Donacion obtenerPorId(UUID id);
+
+  /** Borra la donación y, si estaba asignada, descuenta la recepción de su entidad. */
   void eliminar(UUID idDonacion);
 }

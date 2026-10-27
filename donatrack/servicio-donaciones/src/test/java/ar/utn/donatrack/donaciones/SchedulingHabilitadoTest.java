@@ -72,4 +72,12 @@ class SchedulingHabilitadoTest {
         // POST /donaciones/envios, que despacha a demanda.
         assertThat(tareasRegistradas()).contains("despacharPendientesDelDia");
     }
+
+    @Test
+    @DisplayName("La reconciliación nocturna del contador de recepciones está programada")
+    void reconciliacionDeRecepcionesProgramada() {
+        // Entrega 5: el contador desnormalizado entidad_recepcion_diaria se
+        // recalcula cada noche desde la tabla donacion.
+        assertThat(tareasRegistradas()).contains("ReconciliacionRecepcionesService.reconciliar");
+    }
 }
