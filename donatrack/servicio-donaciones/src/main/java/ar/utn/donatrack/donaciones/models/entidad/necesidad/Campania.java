@@ -9,6 +9,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -52,6 +53,7 @@ public class Campania {
     @Column(name = "descripcion_general", length = 1000)
     private String descripcionGeneral;
 
+    @BatchSize(size = 100)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "campania_id")
     private List<Necesidad> necesidades = new ArrayList<>();

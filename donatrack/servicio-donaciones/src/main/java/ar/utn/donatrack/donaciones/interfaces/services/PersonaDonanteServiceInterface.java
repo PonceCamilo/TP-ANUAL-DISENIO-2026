@@ -5,15 +5,16 @@ import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface PersonaDonanteServiceInterface {
   PersonaDonanteResponseDTO registrar(PersonaDonanteRequestDTO dto);
   PersonaDonanteResponseDTO obtenerDonante(UUID id);
-  List<PersonaDonanteResponseDTO> obtenerDonantes(String estado);
+  PaginaResponseDTO<PersonaDonanteResponseDTO> obtenerDonantes(String estado, SolicitudPagina pagina);
   void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto);
   void modificarContacto(UUID id, MedioDeContactoRequestDTO dto);
   void modificarRepresentante(UUID id, RepresentanteRequestDTO dto);

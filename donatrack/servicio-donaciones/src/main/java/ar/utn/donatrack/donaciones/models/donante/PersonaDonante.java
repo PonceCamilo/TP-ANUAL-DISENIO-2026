@@ -24,6 +24,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
+import org.hibernate.annotations.BatchSize;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -119,6 +120,7 @@ public abstract class PersonaDonante {
     protected String email;
 
     @Builder.Default
+    @BatchSize(size = 100)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "persona_donante_id")
     protected List<MedioDeContacto> contactos = new ArrayList<>();

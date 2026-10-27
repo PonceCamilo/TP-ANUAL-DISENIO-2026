@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DireccionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EmailRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
@@ -256,29 +259,17 @@ class PersonaDonanteServiceTest {
         }
 
         @Test
-        @DisplayName("Sin filtro de estado devuelve todos los donantes")
-        void listarTodos() {
-            when(repositorio.obtenerTodosDonantes())
-                    .thenReturn(List.of(humanaGuardada(UUID.randomUUID()), juridicaGuardada(UUID.randomUUID())));
+        @DisplayName("Delega estado y página en el repositorio y devuelve la página mapeada")
+        void listarPaginado() {
+            SolicitudPagina pagina = new SolicitudPagina(0, 20);
+            when(repositorio.buscar("BLOQUEADO", pagina)).thenReturn(new Pagina<>(
+                    List.of(humanaGuardada(UUID.randomUUID()), juridicaGuardada(UUID.randomUUID())), 0, 20, 2));
 
-            assertThat(servicio.obtenerDonantes(null)).hasSize(2);
-        }
+            PaginaResponseDTO<PersonaDonanteResponseDTO> resultado = servicio.obtenerDonantes("BLOQUEADO", pagina);
 
-        @Test
-        @DisplayName("Con filtro de estado delega la búsqueda en el repositorio")
-        void listarPorEstado() {
-            when(repositorio.obtenerPorEstado("BLOQUEADO")).thenReturn(List.of(humanaGuardada(UUID.randomUUID())));
-
-            assertThat(servicio.obtenerDonantes("BLOQUEADO")).hasSize(1);
-            verify(repositorio, never()).obtenerTodosDonantes();
-        }
-
-        @Test
-        @DisplayName("Un filtro de estado en blanco se trata como si no se hubiera enviado")
-        void filtroEnBlancoSeIgnora() {
-            when(repositorio.obtenerTodosDonantes()).thenReturn(List.of(humanaGuardada(UUID.randomUUID())));
-
-            assertThat(servicio.obtenerDonantes("   ")).hasSize(1);
+            assertThat(resultado.getContenido()).hasSize(2);
+            assertThat(resultado.getTotalElementos()).isEqualTo(2);
+            assertThat(resultado.getTotalPaginas()).isEqualTo(1);
         }
     }
 

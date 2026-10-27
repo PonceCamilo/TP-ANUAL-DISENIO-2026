@@ -2,8 +2,10 @@ package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,7 @@ public class AsignacionBatchService {
     private final DonacionesRepositoryInterface donacionesRepositorio;
     private final AsignacionDonacionesService asignacionService;
     private final CandidatosAsignacionRepositoryInterface candidatosRepositorio;
+    private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
 
     /**
      * Corre todos los días a las 03:30 (hora del servidor), que es la franja de
@@ -58,11 +61,15 @@ public class AsignacionBatchService {
         // peor que ninguna.
         candidatosRepositorio.limpiar();
 
+        // Las entidades son las mismas para todas las donaciones de la corrida:
+        // se cargan una vez y no una vez por donación (Entrega 5).
+        List<EntidadBeneficiaria> entidades = entidadesRepositorio.buscarTodas();
+
         int conCoincidencias = 0;
         int sinCandidatas = 0;
 
         for (Donacion donacion : enDeposito) {
-            RankingPrecalculado ranking = calcularRanking(donacion);
+            RankingPrecalculado ranking = calcularRanking(donacion, entidades);
             if (ranking == null) {
                 continue;
             }
@@ -86,10 +93,10 @@ public class AsignacionBatchService {
      * el proceso sigue con las demás. Es un batch nocturno sin nadie mirando, así
      * que no puede caerse entero por un caso puntual.
      */
-    private RankingPrecalculado calcularRanking(Donacion donacion) {
+    private RankingPrecalculado calcularRanking(Donacion donacion, List<EntidadBeneficiaria> entidades) {
         try {
             AsignacionDonacionesService.ResultadoMatchmaking resultado =
-                    asignacionService.generarRanking(donacion);
+                    asignacionService.generarRanking(donacion, entidades);
 
             return RankingPrecalculado.builder()
                     .idDonacion(donacion.getId())

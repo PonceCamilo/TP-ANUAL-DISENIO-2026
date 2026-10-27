@@ -8,6 +8,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -35,6 +36,7 @@ import java.util.UUID;
 @Getter
 @SuperBuilder
 @NoArgsConstructor
+@BatchSize(size = 100)
 public abstract class MedioDeContacto {
 
   /** Id técnico: en el modelo original el contacto no tenía identidad propia. */

@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.exceptions;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.comunes.PaginaInvalidaException;
 import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
@@ -28,6 +29,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import java.sql.SQLException;
@@ -178,6 +180,23 @@ public class GlobalExceptionHandler {
           HttpStatus.CONFLICT);
     }
     return manejarErrorGeneral(ex);
+  }
+
+  @ExceptionHandler(PaginaInvalidaException.class)
+  public ResponseEntity<Map<String, Object>> manejarPaginaInvalida(PaginaInvalidaException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  /**
+   * Un parámetro de la URL con un tipo que no corresponde (page=abc o un id que
+   * no es un UUID) es un error de quien llama: 400 y no 500.
+   */
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<Map<String, Object>> manejarParametroInvalido(MethodArgumentTypeMismatchException ex) {
+    return new ResponseEntity<>(
+        construirCuerpoError(HttpStatus.BAD_REQUEST, "Bad Request",
+            "El parámetro '" + ex.getName() + "' tiene un valor inválido: " + ex.getValue()),
+        HttpStatus.BAD_REQUEST);
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -1,0 +1,188 @@
+package ar.utn.donatrack.donaciones.repositories;
+
+import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
+import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
+import ar.utn.donatrack.donaciones.repositories.jpa.DonacionJpaRepository;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.context.annotation.Import;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Persistencia real de donaciones (Entrega 5): filtros y paginación resueltos
+ * en la base, contra H2 en modo PostgreSQL.
+ *
+ * Estos casos antes se probaban en DonacionServiceTest filtrando una lista en
+ * memoria; ahora el filtro es una consulta y se prueba donde ocurre.
+ */
+@DataJpaTest(properties = "spring.datasource.url=jdbc:h2:mem:persistencia_donaciones;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import(DonacionesRepository.class)
+@DisplayName("DonacionesRepository - persistencia real de donaciones")
+class DonacionesRepositoryTest {
+
+    @Autowired private DonacionesRepository repositorio;
+    @Autowired private DonacionJpaRepository jpa;
+    @Autowired private TestEntityManager em;
+
+    private final UUID ana = UUID.randomUUID();
+    private final UUID beto = UUID.randomUUID();
+    private final UUID comedor = UUID.randomUUID();
+    private final SolicitudPagina primeraPagina = new SolicitudPagina(0, 20);
+
+    private Donacion donacion(UUID idDonante, String subcategoria, LocalDateTime fecha) {
+        Donacion donacion = new Donacion();
+        donacion.setIdDonante(idDonante);
+        donacion.setSubcategoria(new Subcategoria(subcategoria));
+        donacion.setFechaDonacion(fecha);
+        donacion.getBienes().add(BienGenerico.builder()
+                .subcategoria(new Subcategoria(subcategoria))
+                .descripcion(subcategoria)
+                .cantidad(1)
+                .unidad("unidades")
+                .build());
+        return donacion;
+    }
+
+    private void persistirYLimpiar(List<Donacion> donaciones) {
+        repositorio.cargarDonaciones(donaciones);
+        jpa.flush();
+        em.clear();
+    }
+
+    @Nested
+    @DisplayName("Filtros")
+    class Filtros {
+
+        private final LocalDateTime base = LocalDateTime.of(2026, 10, 1, 10, 0);
+        private Donacion arrozDeAna;
+        private Donacion ropaDeAna;
+        private Donacion arrozDeBetoAsignado;
+
+        @BeforeEach
+        void cargar() {
+            arrozDeAna = donacion(ana, "Arroz", base);
+            ropaDeAna = donacion(ana, "Ropa", base.plusHours(1));
+            arrozDeBetoAsignado = donacion(beto, "Arroz", base.plusHours(2));
+            arrozDeBetoAsignado.setIdEntidadBeneficiaria(comedor);
+            arrozDeBetoAsignado.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
+            persistirYLimpiar(List.of(arrozDeAna, ropaDeAna, arrozDeBetoAsignado));
+        }
+
+        private List<UUID> ids(Pagina<Donacion> pagina) {
+            return pagina.contenido().stream().map(Donacion::getId).toList();
+        }
+
+        @Test
+        @DisplayName("Sin filtros devuelve todas, de la más nueva a la más vieja")
+        void sinFiltros() {
+            Pagina<Donacion> pagina = repositorio.buscar(FiltroDonaciones.sinFiltros(), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactly(
+                    arrozDeBetoAsignado.getId(), ropaDeAna.getId(), arrozDeAna.getId());
+            assertThat(pagina.totalElementos()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("Filtra por estado")
+        void porEstado() {
+            Pagina<Donacion> pagina = repositorio.buscar(
+                    new FiltroDonaciones("EN_DEPOSITO", null, null, null), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactlyInAnyOrder(arrozDeAna.getId(), ropaDeAna.getId());
+        }
+
+        @Test
+        @DisplayName("Filtra por persona donante")
+        void porDonante() {
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, beto, null, null), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactly(arrozDeBetoAsignado.getId());
+        }
+
+        @Test
+        @DisplayName("Filtra por subcategoría sin distinguir mayúsculas ni espacios")
+        void porSubcategoria() {
+            Pagina<Donacion> pagina = repositorio.buscar(
+                    new FiltroDonaciones(null, null, "  ARROZ ", null), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactlyInAnyOrder(arrozDeAna.getId(), arrozDeBetoAsignado.getId());
+        }
+
+        @Test
+        @DisplayName("Filtra por entidad beneficiaria asignada")
+        void porEntidad() {
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, null, null, comedor), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactly(arrozDeBetoAsignado.getId());
+        }
+
+        @Test
+        @DisplayName("Los filtros se combinan: la donación tiene que cumplir todos")
+        void combinados() {
+            Pagina<Donacion> pagina = repositorio.buscar(
+                    new FiltroDonaciones("EN_DEPOSITO", ana, "arroz", null), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactly(arrozDeAna.getId());
+        }
+
+        @Test
+        @DisplayName("Un filtro en blanco se ignora, igual que si no se hubiera enviado")
+        void enBlancoSeIgnora() {
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones("  ", null, "  ", null), primeraPagina);
+
+            assertThat(pagina.totalElementos()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("Las donaciones leídas traen sus bienes y su estado")
+        void traeBienesYEstado() {
+            Donacion leida = repositorio.buscar(new FiltroDonaciones(null, beto, null, null), primeraPagina)
+                    .contenido().getFirst();
+
+            assertThat(leida.getBienes()).hasSize(1);
+            assertThat(leida.getEstado().nombre()).isEqualTo("ASIGNACION_REALIZADA");
+            assertThat(leida.getHistorialEstados()).hasSize(1);
+        }
+    }
+
+    @Nested
+    @DisplayName("Paginación")
+    class Paginacion {
+
+        @Test
+        @DisplayName("Parte el resultado en páginas estables y calcula los totales")
+        void partePaginas() {
+            LocalDateTime base = LocalDateTime.of(2026, 10, 1, 10, 0);
+            List<Donacion> cinco = List.of(
+                    donacion(ana, "Arroz", base), donacion(ana, "Arroz", base.plusMinutes(1)),
+                    donacion(ana, "Arroz", base.plusMinutes(2)), donacion(ana, "Arroz", base.plusMinutes(3)),
+                    donacion(ana, "Arroz", base.plusMinutes(4)));
+            persistirYLimpiar(cinco);
+
+            Pagina<Donacion> primera = repositorio.buscar(FiltroDonaciones.sinFiltros(), new SolicitudPagina(0, 2));
+            Pagina<Donacion> tercera = repositorio.buscar(FiltroDonaciones.sinFiltros(), new SolicitudPagina(2, 2));
+
+            assertThat(primera.contenido()).extracting(Donacion::getId)
+                    .containsExactly(cinco.get(4).getId(), cinco.get(3).getId());
+            assertThat(tercera.contenido()).extracting(Donacion::getId).containsExactly(cinco.get(0).getId());
+            assertThat(primera.totalElementos()).isEqualTo(5);
+            assertThat(primera.totalPaginas()).isEqualTo(3);
+        }
+    }
+}

@@ -21,6 +21,7 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import org.hibernate.annotations.BatchSize;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -72,6 +73,10 @@ public class Donacion {
      * (cascade + orphanRemoval). No tienen sentido por fuera de una donación.
      */
     @Setter
+    // @BatchSize (Entrega 5): al leer una página de donaciones, Hibernate trae
+    // los bienes de hasta 100 donaciones en una sola consulta, en lugar de una
+    // consulta por donación. Lo mismo vale para el historial.
+    @BatchSize(size = 100)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "donacion_id")
     protected List<Bien> bienes = new ArrayList<>();
@@ -89,6 +94,7 @@ public class Donacion {
     protected EstadoDonacionBase estado = EstadosDonacion.inicial();
 
     /** Historial ordenado por fecha: es la trazabilidad que exige el enunciado. */
+    @BatchSize(size = 100)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "donacion_id")
     @OrderBy("fechaHora ASC")

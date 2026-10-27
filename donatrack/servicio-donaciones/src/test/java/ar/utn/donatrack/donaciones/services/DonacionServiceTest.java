@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
@@ -46,6 +50,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -178,58 +184,22 @@ class DonacionServiceTest {
     class ConsultaYFiltrado {
 
         @Test
-        @DisplayName("Sin filtros devuelve todas las donaciones")
-        void sinFiltrosDevuelveTodas() {
-            when(repositorio.obtenerTodas()).thenReturn(List.of(donacion, donacionDe("ropa", UUID.randomUUID())));
+        @DisplayName("Delega filtros y página al repositorio y devuelve la página mapeada a DTOs")
+        void delegaEnElRepositorio() {
+            // Los filtros los resuelve la base (Entrega 5); su semántica se prueba
+            // contra H2 en DonacionesRepositoryTest. Acá se verifica el pasamanos.
+            FiltroDonaciones filtro = new FiltroDonaciones("EN_DEPOSITO", idDonante, "arroz", null);
+            SolicitudPagina pagina = new SolicitudPagina(1, 5);
+            when(repositorio.buscar(filtro, pagina)).thenReturn(new Pagina<>(List.of(donacion), 1, 5, 6));
 
-            assertThat(servicio.obtenerDonaciones(null, null, null)).hasSize(2);
-        }
+            PaginaResponseDTO<DonacionResponseDTO> resultado = servicio.obtenerDonaciones(filtro, pagina);
 
-        @Test
-        @DisplayName("Filtra por estado")
-        void filtraPorEstado() {
-            Donacion asignada = donacionDe("ropa", UUID.randomUUID());
-            asignada.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
-            when(repositorio.obtenerTodas()).thenReturn(List.of(donacion, asignada));
-
-            List<DonacionResponseDTO> resultado = servicio.obtenerDonaciones("EN_DEPOSITO", null, null);
-
-            assertThat(resultado).hasSize(1);
-            assertThat(resultado.getFirst().getEstado()).isEqualTo("EN_DEPOSITO");
-        }
-
-        @Test
-        @DisplayName("Filtra por donante")
-        void filtraPorDonante() {
-            when(repositorio.obtenerTodas()).thenReturn(List.of(donacion, donacionDe("ropa", UUID.randomUUID())));
-
-            assertThat(servicio.obtenerDonaciones(null, idDonante, null)).hasSize(1);
-        }
-
-        @Test
-        @DisplayName("Filtra por subcategoría sin distinguir mayúsculas")
-        void filtraPorSubcategoria() {
-            when(repositorio.obtenerTodas()).thenReturn(List.of(donacion, donacionDe("ropa", UUID.randomUUID())));
-
-            assertThat(servicio.obtenerDonaciones(null, null, "ARROZ")).hasSize(1);
-        }
-
-        @Test
-        @DisplayName("Los filtros se combinan entre sí")
-        void filtrosCombinados() {
-            // Los tres filtros se aplican en cadena: la donación debe cumplir todos.
-            Donacion otraDelMismoDonante = donacionDe("ropa", idDonante);
-            when(repositorio.obtenerTodas()).thenReturn(List.of(donacion, otraDelMismoDonante));
-
-            assertThat(servicio.obtenerDonaciones("EN_DEPOSITO", idDonante, "arroz")).hasSize(1);
-        }
-
-        @Test
-        @DisplayName("Un filtro en blanco se ignora, igual que si no se hubiera enviado")
-        void filtroEnBlancoSeIgnora() {
-            when(repositorio.obtenerTodas()).thenReturn(List.of(donacion));
-
-            assertThat(servicio.obtenerDonaciones("  ", null, "  ")).hasSize(1);
+            assertThat(resultado.getContenido()).hasSize(1);
+            assertThat(resultado.getContenido().getFirst().getSubcategoria()).isEqualTo("arroz");
+            assertThat(resultado.getPagina()).isEqualTo(1);
+            assertThat(resultado.getTamanio()).isEqualTo(5);
+            assertThat(resultado.getTotalElementos()).isEqualTo(6);
+            assertThat(resultado.getTotalPaginas()).isEqualTo(2);
         }
 
         @Test
@@ -496,8 +466,7 @@ class DonacionServiceTest {
                             List.of(new ResultadoAsignacion(entidadA.getId(), 3.0)),
                             List.of(new ResultadoAsignacion(entidadA.getId(), 1.0),
                                     new ResultadoAsignacion(entidadB.getId(), 0.5))));
-            when(entidadesRepositorio.obtenerPorId(entidadA.getId())).thenReturn(entidadA);
-            when(entidadesRepositorio.obtenerPorId(entidadB.getId())).thenReturn(entidadB);
+            when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidadA, entidadB));
 
             CandidatosAsignacionResponseDTO respuesta = servicio.obtenerCandidatos(donacion.getId());
 
@@ -505,6 +474,12 @@ class DonacionServiceTest {
             assertThat(respuesta.getPorCompatibilidad()).hasSize(1);
             assertThat(respuesta.getPorSubatendidos()).hasSize(2);
             assertThat(respuesta.getCoincidencias()).hasSize(1);
+            // Respeta el orden del ranking: primero A (1.0) y después B (0.5).
+            assertThat(respuesta.getPorSubatendidos().get(0).getId()).isEqualTo(entidadA.getId());
+            assertThat(respuesta.getPorSubatendidos().get(1).getId()).isEqualTo(entidadB.getId());
+            // Todas las entidades de las tres listas se cargan en una sola consulta.
+            verify(entidadesRepositorio, times(1)).obtenerPorIds(anyCollection());
+            verify(entidadesRepositorio, never()).obtenerPorId(any());
         }
 
         @Test
@@ -517,7 +492,7 @@ class DonacionServiceTest {
             when(asignacionService.generarRanking(donacion)).thenReturn(
                     new AsignacionDonacionesService.ResultadoMatchmaking(
                             List.of(), List.of(new ResultadoAsignacion(idEntidadBorrada, 3.0)), List.of()));
-            when(entidadesRepositorio.obtenerPorId(idEntidadBorrada)).thenReturn(null);
+            when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of());
 
             CandidatosAsignacionResponseDTO respuesta = servicio.obtenerCandidatos(donacion.getId());
 
@@ -553,7 +528,7 @@ class DonacionServiceTest {
                             .rankingSubAtendidos(List.of(new ResultadoAsignacion(entidad.getId(), 1.0)))
                             .fechaCalculo(calculadoA)
                             .build()));
-            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
 
             List<CandidatosPendientesResponseDTO> pendientes = servicio.obtenerCandidatosPendientes();
 

@@ -35,9 +35,9 @@ public class InactividadDonantesService {
     public void notificarDonantesInactivos() {
         LocalDateTime fechaLimite = FechaHoraArgentina.ahora().minusDays(DIAS_LIMITE_INACTIVIDAD);
 
-        List<PersonaDonante> inactivos = donanteRepository.obtenerTodosDonantes().stream()
-                .filter(donante -> donante.estaInactivoDesde(fechaLimite))
-                .toList();
+        // El filtro lo hace la base con el índice de ultima_interaccion
+        // (Entrega 5): antes se cargaban todos los donantes y se filtraba acá.
+        List<PersonaDonante> inactivos = donanteRepository.obtenerInactivasDesde(fechaLimite);
 
         log.info("[INACTIVIDAD] {} donantes inactivos detectados", inactivos.size());
 

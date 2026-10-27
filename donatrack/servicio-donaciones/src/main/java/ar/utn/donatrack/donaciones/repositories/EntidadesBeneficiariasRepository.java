@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,6 +41,11 @@ public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasR
     @Transactional(readOnly = true)
     public EntidadBeneficiaria obtenerPorId(UUID id) {
         return jpa.findById(id).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EntidadBeneficiaria> obtenerPorIds(Collection<UUID> ids) {
+        return jpa.findAllById(ids);
     }
 
     @Transactional(readOnly = true)

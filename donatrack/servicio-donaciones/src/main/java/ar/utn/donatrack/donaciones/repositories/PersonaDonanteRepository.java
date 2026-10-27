@@ -6,10 +6,16 @@ import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.repositories.jpa.PersonaDonanteJpaRepository;
 import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,6 +33,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterface {
 
+    /** El email es único: ordenar por él da páginas estables y legibles. */
+    private static final Sort ORDEN_LISTADO = Sort.by("email");
+
     private final PersonaDonanteJpaRepository jpa;
 
     @Transactional
@@ -43,8 +52,17 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
     }
 
     @Transactional(readOnly = true)
-    public List<PersonaDonante> obtenerTodosDonantes() {
-        return jpa.findAll();
+    public Pagina<PersonaDonante> buscar(String estado, SolicitudPagina pagina) {
+        PageRequest pedido = PageRequest.of(pagina.numero(), pagina.tamanio(), ORDEN_LISTADO);
+        Page<PersonaDonante> resultado = (estado == null || estado.isBlank())
+                ? jpa.findAll(pedido)
+                : jpa.findByEstadoNombre(estado, pedido);
+        return new Pagina<>(resultado.getContent(), pagina.numero(), pagina.tamanio(), resultado.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PersonaDonante> obtenerInactivasDesde(LocalDateTime limite) {
+        return jpa.findByUltimaInteraccionBeforeOrUltimaInteraccionIsNull(limite);
     }
 
     @Transactional
@@ -69,11 +87,6 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
     @Transactional(readOnly = true)
     public PersonaDonante obtenerPorEmail(String email) {
         return email == null ? null : jpa.findByEmail(NormalizadorEmail.normalizar(email)).orElse(null);
-    }
-
-    @Transactional(readOnly = true)
-    public List<PersonaDonante> obtenerPorEstado(String estado) {
-        return jpa.findByEstadoNombre(estado);
     }
 
     @Transactional

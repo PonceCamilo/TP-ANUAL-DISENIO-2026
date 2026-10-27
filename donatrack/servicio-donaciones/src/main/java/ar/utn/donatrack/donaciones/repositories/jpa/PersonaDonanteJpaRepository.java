@@ -1,8 +1,11 @@
 package ar.utn.donatrack.donaciones.repositories.jpa;
 
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,5 +24,7 @@ public interface PersonaDonanteJpaRepository extends JpaRepository<PersonaDonant
 
     boolean existsByEmail(String email);
 
-    List<PersonaDonante> findByEstadoNombre(String estadoNombre);
+    Page<PersonaDonante> findByEstadoNombre(String estadoNombre, Pageable pagina);
+
+    List<PersonaDonante> findByUltimaInteraccionBeforeOrUltimaInteraccionIsNull(LocalDateTime limite);
 }

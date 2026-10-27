@@ -10,11 +10,14 @@ import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.services.PlanificacionEntregasService;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -55,23 +58,33 @@ public class DonacionesController {
   private final DonacionMapper mapper;
 
   @Operation(
-      summary = "Listar donaciones",
-      description = "Devuelve las donaciones registradas, con filtros opcionales por estado, donante y subcategoría.",
+      summary = "Listar donaciones (paginado)",
+      description = "Devuelve una página de donaciones, de la más nueva a la más vieja, con filtros opcionales "
+          + "por estado, persona donante, subcategoría y entidad beneficiaria. Las páginas empiezan en 0; "
+          + "el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
+          + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
       responses = {
-          @ApiResponse(responseCode = "200", description = "Donaciones encontradas",
-              content = @Content(array = @ArraySchema(schema = @Schema(implementation = DonacionResponseDTO.class))))
+          @ApiResponse(responseCode = "200", description = "Página de donaciones con el total de resultados"),
+          @ApiResponse(responseCode = "400", description = "Número o tamaño de página fuera de rango")
       }
   )
   @GetMapping
-  public ResponseEntity<List<DonacionResponseDTO>> obtenerDonaciones(
+  public ResponseEntity<PaginaResponseDTO<DonacionResponseDTO>> obtenerDonaciones(
       @Parameter(description = "Nombre del estado de la donación", example = "EN_DEPOSITO")
       @RequestParam(required = false) String estado,
       @Parameter(description = "ID de la persona donante")
       @RequestParam(required = false) UUID idDonante,
       @Parameter(description = "Subcategoría de los bienes", example = "Fideos secos")
-      @RequestParam(required = false) String subcategoria
+      @RequestParam(required = false) String subcategoria,
+      @Parameter(description = "ID de la entidad beneficiaria a la que fueron asignadas")
+      @RequestParam(required = false) UUID idEntidad,
+      @Parameter(description = "Número de página, desde 0", example = "0")
+      @RequestParam(required = false) Integer page,
+      @Parameter(description = "Elementos por página (1 a 100)", example = "20")
+      @RequestParam(required = false) Integer size
   ) {
-    return ResponseEntity.ok(donacionService.obtenerDonaciones(estado, idDonante, subcategoria));
+    FiltroDonaciones filtro = new FiltroDonaciones(estado, idDonante, subcategoria, idEntidad);
+    return ResponseEntity.ok(donacionService.obtenerDonaciones(filtro, SolicitudPagina.de(page, size)));
   }
 
   @Operation(

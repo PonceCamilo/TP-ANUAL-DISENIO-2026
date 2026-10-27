@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
@@ -20,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -52,6 +54,9 @@ class AsignacionBatchServiceTest {
 
     @Mock
     private CandidatosAsignacionRepositoryInterface candidatosRepositorio;
+
+    @Mock
+    private EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
 
     @InjectMocks
     private AsignacionBatchService servicio;
@@ -101,13 +106,27 @@ class AsignacionBatchServiceTest {
         void unRankingPorDonacion() {
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
                     .thenReturn(List.of(donacionEnDeposito("arroz"), donacionEnDeposito("ropa")));
-            when(asignacionService.generarRanking(any()))
+            when(asignacionService.generarRanking(any(), any()))
                     .thenReturn(matchmaking(List.of(), List.of(resultado(1.0)), List.of()));
 
             servicio.ejecutarMatchmakingNocturno();
 
-            verify(asignacionService, times(2)).generarRanking(any());
+            verify(asignacionService, times(2)).generarRanking(any(), any());
             verify(candidatosRepositorio, times(2)).guardar(any());
+        }
+
+        @Test
+        @DisplayName("Carga las entidades una sola vez por corrida, no una vez por donación")
+        void cargaLasEntidadesUnaSolaVez() {
+            // Entrega 5: antes cada donación volvía a leer todas las entidades.
+            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
+                    .thenReturn(List.of(donacionEnDeposito("arroz"), donacionEnDeposito("ropa")));
+            when(asignacionService.generarRanking(any(), any()))
+                    .thenReturn(matchmaking(List.of(), List.of(), List.of()));
+
+            servicio.ejecutarMatchmakingNocturno();
+
+            verify(entidadesRepositorio, times(1)).buscarTodas();
         }
 
         @Test
@@ -132,7 +151,7 @@ class AsignacionBatchServiceTest {
             ResultadoAsignacion coincidencia = resultado(3.0);
 
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(donacion));
-            when(asignacionService.generarRanking(donacion)).thenReturn(matchmaking(
+            when(asignacionService.generarRanking(eq(donacion), any())).thenReturn(matchmaking(
                     List.of(coincidencia),
                     List.of(coincidencia, resultado(1.0)),
                     List.of(coincidencia)));
@@ -154,7 +173,7 @@ class AsignacionBatchServiceTest {
         void detectaCoincidencias() {
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
                     .thenReturn(List.of(donacionEnDeposito("arroz")));
-            when(asignacionService.generarRanking(any()))
+            when(asignacionService.generarRanking(any(), any()))
                     .thenReturn(matchmaking(List.of(resultado(3.0)), List.of(resultado(3.0)), List.of(resultado(1.0))));
 
             servicio.ejecutarMatchmakingNocturno();
@@ -170,7 +189,7 @@ class AsignacionBatchServiceTest {
             // donación se queda en depósito y el administrador lo ve en la bandeja.
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
                     .thenReturn(List.of(donacionEnDeposito("bicicletas")));
-            when(asignacionService.generarRanking(any()))
+            when(asignacionService.generarRanking(any(), any()))
                     .thenReturn(matchmaking(List.of(), List.of(), List.of()));
 
             servicio.ejecutarMatchmakingNocturno();
@@ -191,7 +210,7 @@ class AsignacionBatchServiceTest {
             // fueron asignadas o que se calcularon con necesidades viejas.
             Donacion donacion = donacionEnDeposito("arroz");
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(donacion));
-            when(asignacionService.generarRanking(donacion))
+            when(asignacionService.generarRanking(eq(donacion), any()))
                     .thenReturn(matchmaking(List.of(), List.of(resultado(1.0)), List.of()));
 
             servicio.ejecutarMatchmakingNocturno();
@@ -225,8 +244,8 @@ class AsignacionBatchServiceTest {
             Donacion sana = donacionEnDeposito("ropa");
 
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(rota, sana));
-            when(asignacionService.generarRanking(rota)).thenThrow(new RuntimeException("datos inconsistentes"));
-            when(asignacionService.generarRanking(sana))
+            when(asignacionService.generarRanking(eq(rota), any())).thenThrow(new RuntimeException("datos inconsistentes"));
+            when(asignacionService.generarRanking(eq(sana), any()))
                     .thenReturn(matchmaking(List.of(), List.of(resultado(1.0)), List.of()));
 
             assertThatCode(() -> servicio.ejecutarMatchmakingNocturno()).doesNotThrowAnyException();
@@ -248,7 +267,7 @@ class AsignacionBatchServiceTest {
             // el destino final. El batch solo deja la recomendación lista.
             Donacion donacion = donacionEnDeposito("arroz");
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(donacion));
-            when(asignacionService.generarRanking(donacion))
+            when(asignacionService.generarRanking(eq(donacion), any()))
                     .thenReturn(matchmaking(List.of(resultado(3.0)), List.of(resultado(3.0)), List.of(resultado(1.0))));
 
             servicio.ejecutarMatchmakingNocturno();

@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
@@ -132,44 +136,83 @@ class DonacionesControllerTest {
     }
 
     @Nested
-    @DisplayName("GET /donaciones - listado")
+    @DisplayName("GET /donaciones - listado paginado")
     class Listado {
 
-        @Test
-        @DisplayName("Devuelve 200 con la lista de donaciones")
-        void listaDonaciones() throws Exception {
-            when(donacionService.obtenerDonaciones(isNull(), isNull(), isNull()))
-                    .thenReturn(List.of(respuesta("EN_DEPOSITO", "arroz")));
-
-            mockMvc.perform(get("/donaciones"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
-                    .andExpect(jsonPath("$[0].estado").value("EN_DEPOSITO"))
-                    .andExpect(jsonPath("$[0].subcategoria").value("arroz"));
+        private PaginaResponseDTO<DonacionResponseDTO> pagina(List<DonacionResponseDTO> contenido) {
+            return PaginaResponseDTO.desde(new Pagina<>(contenido, 0, 20, contenido.size()));
         }
 
         @Test
-        @DisplayName("Pasa los tres query params al service tal como llegan")
+        @DisplayName("Devuelve 200 con la página de donaciones y sus totales")
+        void listaDonaciones() throws Exception {
+            when(donacionService.obtenerDonaciones(any(), any()))
+                    .thenReturn(pagina(List.of(respuesta("EN_DEPOSITO", "arroz"))));
+
+            mockMvc.perform(get("/donaciones"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$.contenido[0].estado").value("EN_DEPOSITO"))
+                    .andExpect(jsonPath("$.contenido[0].subcategoria").value("arroz"))
+                    .andExpect(jsonPath("$.pagina").value(0))
+                    .andExpect(jsonPath("$.tamanio").value(20))
+                    .andExpect(jsonPath("$.totalElementos").value(1))
+                    .andExpect(jsonPath("$.totalPaginas").value(1));
+        }
+
+        @Test
+        @DisplayName("Pasa los cuatro filtros y la página al service tal como llegan")
         void pasaLosFiltros() throws Exception {
-            when(donacionService.obtenerDonaciones("EN_DEPOSITO", idDonante, "arroz")).thenReturn(List.of());
+            UUID idEntidad = UUID.randomUUID();
+            when(donacionService.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
 
             mockMvc.perform(get("/donaciones")
                             .param("estado", "EN_DEPOSITO")
                             .param("idDonante", idDonante.toString())
-                            .param("subcategoria", "arroz"))
+                            .param("subcategoria", "arroz")
+                            .param("idEntidad", idEntidad.toString())
+                            .param("page", "2")
+                            .param("size", "50"))
                     .andExpect(status().isOk());
 
-            verify(donacionService).obtenerDonaciones("EN_DEPOSITO", idDonante, "arroz");
+            verify(donacionService).obtenerDonaciones(
+                    new FiltroDonaciones("EN_DEPOSITO", idDonante, "arroz", idEntidad),
+                    new SolicitudPagina(2, 50));
         }
 
         @Test
-        @DisplayName("Devuelve 200 con lista vacía cuando no hay donaciones")
-        void listaVacia() throws Exception {
-            when(donacionService.obtenerDonaciones(isNull(), isNull(), isNull())).thenReturn(List.of());
+        @DisplayName("Sin parámetros pide la primera página de 20 sin filtros")
+        void valoresPorDefecto() throws Exception {
+            when(donacionService.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
 
             mockMvc.perform(get("/donaciones"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(0)));
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(0)));
+
+            verify(donacionService).obtenerDonaciones(FiltroDonaciones.sinFiltros(), new SolicitudPagina(0, 20));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el tamaño de página supera el máximo de 100")
+        void tamanioFueraDeRango() throws Exception {
+            mockMvc.perform(get("/donaciones").param("size", "101"))
+                    .andExpect(status().isBadRequest());
+
+            verify(donacionService, never()).obtenerDonaciones(any(), any());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el número de página es negativo")
+        void paginaNegativa() throws Exception {
+            mockMvc.perform(get("/donaciones").param("page", "-1"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si un parámetro no tiene el tipo esperado")
+        void parametroConTipoInvalido() throws Exception {
+            mockMvc.perform(get("/donaciones").param("page", "abc"))
+                    .andExpect(status().isBadRequest());
         }
     }
 
@@ -198,16 +241,13 @@ class DonacionesControllerTest {
         }
 
         @Test
-        @DisplayName("Un id que no es UUID hoy devuelve 500 (hueco conocido del manejador de errores)")
+        @DisplayName("Un id que no es UUID devuelve 400")
         void idMalFormado() throws Exception {
-            // COMPORTAMIENTO ACTUAL, no el deseable. Spring lanza
-            // MethodArgumentTypeMismatchException, que GlobalExceptionHandler no
-            // maneja de forma específica, así que cae en el catch-all de Exception
-            // y responde 500. Lo correcto sería 400 (el cliente mandó mal el id).
-            // El test deja el hueco documentado: si se agrega el handler, este
-            // test falla y hay que cambiarlo a isBadRequest().
+            // Spring lanza MethodArgumentTypeMismatchException. Antes caía en el
+            // catch-all y respondía 500; desde la Entrega 5 GlobalExceptionHandler
+            // lo maneja como un error de quien llama.
             mockMvc.perform(get("/donaciones/{id}", "no-es-un-uuid"))
-                    .andExpect(status().isInternalServerError());
+                    .andExpect(status().isBadRequest());
         }
     }
 

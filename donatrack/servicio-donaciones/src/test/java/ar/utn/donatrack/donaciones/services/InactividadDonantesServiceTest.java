@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import java.time.LocalDateTime;
+import org.mockito.ArgumentCaptor;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
@@ -21,6 +23,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
@@ -81,7 +85,7 @@ class InactividadDonantesServiceTest {
         @DisplayName("Notifica al donante que lleva más de 20 días sin interactuar")
         void notificaAlInactivo() {
             PersonaDonante inactivo = donante(DIAS_LIMITE + 10, Email.builder().valor("juan@example.com").build());
-            when(donanteRepository.obtenerTodosDonantes()).thenReturn(List.of(inactivo));
+            when(donanteRepository.obtenerInactivasDesde(any())).thenReturn(List.of(inactivo));
 
             servicio.notificarDonantesInactivos();
 
@@ -89,13 +93,18 @@ class InactividadDonantesServiceTest {
         }
 
         @Test
-        @DisplayName("NO notifica al donante que interactuó dentro de los últimos 20 días")
-        void noNotificaAlActivo() {
-            PersonaDonante activo = donante(5, Email.builder().valor("juan@example.com").build());
-            when(donanteRepository.obtenerTodosDonantes()).thenReturn(List.of(activo));
+        @DisplayName("Le pide a la base los donantes sin interacción desde hace 20 días")
+        void consultaConElUmbralDe20Dias() {
+            // El filtro por fecha lo hace la base con el índice de ultima_interaccion
+            // (Entrega 5); su semántica se prueba en PersonaDonanteRepositoryTest.
+            when(donanteRepository.obtenerInactivasDesde(any())).thenReturn(List.of());
+            LocalDateTime antes = FechaHoraArgentina.ahora().minusDays(DIAS_LIMITE);
 
             servicio.notificarDonantesInactivos();
 
+            ArgumentCaptor<LocalDateTime> limite = ArgumentCaptor.forClass(LocalDateTime.class);
+            verify(donanteRepository).obtenerInactivasDesde(limite.capture());
+            assertThat(limite.getValue()).isBetween(antes, FechaHoraArgentina.ahora().minusDays(DIAS_LIMITE));
             verifyNoInteractions(notificacionClient);
         }
 
@@ -109,7 +118,7 @@ class InactividadDonantesServiceTest {
                     .estado(new ActivoState())
                     .medioContactoPredeterminado(Email.builder().valor("nuevo@example.com").build())
                     .build();
-            when(donanteRepository.obtenerTodosDonantes()).thenReturn(List.of(nuevo));
+            when(donanteRepository.obtenerInactivasDesde(any())).thenReturn(List.of(nuevo));
 
             servicio.notificarDonantesInactivos();
 
@@ -117,24 +126,22 @@ class InactividadDonantesServiceTest {
         }
 
         @Test
-        @DisplayName("De una lista mixta, solo se notifica a los inactivos")
-        void filtraCorrectamenteUnaListaMixta() {
+        @DisplayName("Notifica a todos los inactivos que devuelve la base")
+        void notificaATodosLosInactivos() {
             PersonaDonante inactivoUno = donante(30, Email.builder().valor("inactivo1@example.com").build());
-            PersonaDonante activo = donante(2, Email.builder().valor("activo@example.com").build());
             PersonaDonante inactivoDos = donante(60, Email.builder().valor("inactivo2@example.com").build());
-            when(donanteRepository.obtenerTodosDonantes()).thenReturn(List.of(inactivoUno, activo, inactivoDos));
+            when(donanteRepository.obtenerInactivasDesde(any())).thenReturn(List.of(inactivoUno, inactivoDos));
 
             servicio.notificarDonantesInactivos();
 
             verify(notificacionClient).enviarNotificacion(eq("inactivo1@example.com"), anyString(), anyString());
             verify(notificacionClient).enviarNotificacion(eq("inactivo2@example.com"), anyString(), anyString());
-            verify(notificacionClient, never()).enviarNotificacion(eq("activo@example.com"), anyString(), anyString());
         }
 
         @Test
         @DisplayName("Sin donantes cargados la tarea corre sin hacer nada")
         void sinDonantesNoHaceNada() {
-            when(donanteRepository.obtenerTodosDonantes()).thenReturn(List.of());
+            when(donanteRepository.obtenerInactivasDesde(any())).thenReturn(List.of());
 
             servicio.notificarDonantesInactivos();
 
@@ -149,7 +156,7 @@ class InactividadDonantesServiceTest {
         @Test
         @DisplayName("Un donante con Email predeterminado se notifica por EMAIL")
         void canalEmail() {
-            when(donanteRepository.obtenerTodosDonantes())
+            when(donanteRepository.obtenerInactivasDesde(any()))
                     .thenReturn(List.of(donante(30, Email.builder().valor("juan@example.com").build())));
 
             servicio.notificarDonantesInactivos();
@@ -160,7 +167,7 @@ class InactividadDonantesServiceTest {
         @Test
         @DisplayName("Un donante con Teléfono predeterminado se notifica por SMS")
         void canalSms() {
-            when(donanteRepository.obtenerTodosDonantes())
+            when(donanteRepository.obtenerInactivasDesde(any()))
                     .thenReturn(List.of(donante(30, Telefono.builder().valor("1155667788").build())));
 
             servicio.notificarDonantesInactivos();
@@ -171,7 +178,7 @@ class InactividadDonantesServiceTest {
         @Test
         @DisplayName("Un donante con WhatsApp predeterminado se notifica por WHATSAPP")
         void canalWhatsapp() {
-            when(donanteRepository.obtenerTodosDonantes())
+            when(donanteRepository.obtenerInactivasDesde(any()))
                     .thenReturn(List.of(donante(30, Whatsapp.builder().valor("1155667788").build())));
 
             servicio.notificarDonantesInactivos();
@@ -186,7 +193,7 @@ class InactividadDonantesServiceTest {
             // impedir que se notifique a los demás.
             PersonaDonante sinMedio = donante(30, null);
             PersonaDonante conMedio = donante(30, Email.builder().valor("ok@example.com").build());
-            when(donanteRepository.obtenerTodosDonantes()).thenReturn(List.of(sinMedio, conMedio));
+            when(donanteRepository.obtenerInactivasDesde(any())).thenReturn(List.of(sinMedio, conMedio));
 
             servicio.notificarDonantesInactivos();
 
@@ -201,7 +208,7 @@ class InactividadDonantesServiceTest {
         @Test
         @DisplayName("El mensaje menciona los días de inactividad e invita a volver a donar")
         void mensajeInvitaADonar() {
-            when(donanteRepository.obtenerTodosDonantes())
+            when(donanteRepository.obtenerInactivasDesde(any()))
                     .thenReturn(List.of(donante(30, Email.builder().valor("juan@example.com").build())));
 
             servicio.notificarDonantesInactivos();

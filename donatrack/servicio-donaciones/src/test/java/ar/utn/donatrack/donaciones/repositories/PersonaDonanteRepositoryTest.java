@@ -4,6 +4,8 @@ import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.repositories.jpa.PersonaDonanteJpaRepository;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,8 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -86,6 +90,49 @@ class PersonaDonanteRepositoryTest {
         em.clear();
 
         assertThat(repositorio.obtenerPersona(persona.getId()).getEstado().nombre()).isEqualTo("ACTIVO");
+    }
+
+    @Test
+    @DisplayName("El listado paginado ordena por email y filtra por estado en la base")
+    void listadoPaginadoPorEmail() {
+        repositorio.guardar(humana("carla@mail.com"));
+        repositorio.guardar(humana("ana@mail.com"));
+        PersonaHumana bloqueada = humana("beto@mail.com");
+        bloqueada.cambiarEstado("BLOQUEADO", "fraude");
+        repositorio.guardar(bloqueada);
+        jpa.flush();
+        em.clear();
+
+        Pagina<PersonaDonante> primera = repositorio.buscar(null, new SolicitudPagina(0, 2));
+        Pagina<PersonaDonante> bloqueadas = repositorio.buscar("BLOQUEADO", new SolicitudPagina(0, 20));
+
+        assertThat(primera.contenido()).extracting(PersonaDonante::getEmail)
+                .containsExactly("ana@mail.com", "beto@mail.com");
+        assertThat(primera.totalElementos()).isEqualTo(3);
+        assertThat(primera.totalPaginas()).isEqualTo(2);
+        assertThat(bloqueadas.contenido()).extracting(PersonaDonante::getEmail).containsExactly("beto@mail.com");
+    }
+
+    @Test
+    @DisplayName("La consulta de inactividad trae a quienes no interactúan desde el límite o nunca interactuaron")
+    void consultaDeInactivos() {
+        LocalDateTime ahora = LocalDateTime.of(2026, 10, 26, 0, 0);
+        PersonaHumana reciente = humana("reciente@mail.com");
+        reciente.setUltimaInteraccion(ahora.minusDays(5));
+        PersonaHumana vieja = humana("vieja@mail.com");
+        vieja.setUltimaInteraccion(ahora.minusDays(30));
+        PersonaHumana nunca = humana("nunca@mail.com");
+        nunca.setUltimaInteraccion(null);
+        repositorio.guardar(reciente);
+        repositorio.guardar(vieja);
+        repositorio.guardar(nunca);
+        jpa.flush();
+        em.clear();
+
+        List<PersonaDonante> inactivas = repositorio.obtenerInactivasDesde(ahora.minusDays(20));
+
+        assertThat(inactivas).extracting(PersonaDonante::getEmail)
+                .containsExactlyInAnyOrder("vieja@mail.com", "nunca@mail.com");
     }
 
     @Test

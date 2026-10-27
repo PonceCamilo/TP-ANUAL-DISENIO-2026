@@ -30,9 +30,17 @@ public class AsignacionDonacionesService {
     private final AlgoritmoPrioridadSubAtendidos algoritmoSubAtendidos;
     private final EntidadesBeneficiariasRepositoryInterface entidadesRepository;
 
+    /** Ranking a demanda de una sola donación: carga las entidades y evalúa. */
     public ResultadoMatchmaking generarRanking(Donacion donacion) {
-        List<EntidadBeneficiaria> entidades = entidadesRepository.buscarTodas();
+        return generarRanking(donacion, entidadesRepository.buscarTodas());
+    }
 
+    /**
+     * Ranking contra un conjunto de entidades ya cargado. Lo usa el proceso
+     * nocturno (Entrega 5): carga las entidades una sola vez para todas las
+     * donaciones en depósito, en lugar de una vez por donación.
+     */
+    public ResultadoMatchmaking generarRanking(Donacion donacion, List<EntidadBeneficiaria> entidades) {
         List<ResultadoAsignacion> rankingSemantico = algoritmoSemantico.evaluar(donacion, entidades);
         List<ResultadoAsignacion> rankingSubAtendidos = algoritmoSubAtendidos.evaluar(donacion, entidades);
         List<ResultadoAsignacion> coincidencias = intersectar(rankingSemantico, rankingSubAtendidos);

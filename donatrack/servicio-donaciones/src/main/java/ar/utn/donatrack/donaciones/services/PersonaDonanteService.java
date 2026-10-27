@@ -5,6 +5,7 @@ import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
@@ -14,12 +15,12 @@ import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -50,11 +51,8 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
   }
 
   @Override
-  public List<PersonaDonanteResponseDTO> obtenerDonantes(String estado) {
-    List<PersonaDonante> donantes = (estado != null && !estado.isBlank())
-        ? repositorio.obtenerPorEstado(estado)
-        : repositorio.obtenerTodosDonantes();
-    return donantes.stream().map(mapper::toDTO).toList();
+  public PaginaResponseDTO<PersonaDonanteResponseDTO> obtenerDonantes(String estado, SolicitudPagina pagina) {
+    return PaginaResponseDTO.desde(repositorio.buscar(estado, pagina).map(mapper::toDTO));
   }
 
   @Override

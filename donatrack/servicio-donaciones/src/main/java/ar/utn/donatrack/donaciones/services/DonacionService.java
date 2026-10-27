@@ -9,25 +9,33 @@ import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
+import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.validations.donaciones.DonacionesValidator;
 import ar.utn.donatrack.donaciones.validations.entidades.EntidadesBeneficiariasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -45,19 +53,13 @@ public class DonacionService implements DonacionServiceInterface {
   private final EntidadesBeneficiariasValidator entidadesValidator;
   private final CandidatosAsignacionRepositoryInterface candidatosRepositorio;
 
-  public List<DonacionResponseDTO> obtenerDonaciones(String estado, UUID idDonante, String subcategoria) {
-    List<Donacion> resultado = repositorio.obtenerTodas();
-
-    if (estado != null && !estado.isBlank()) {
-      resultado = resultado.stream().filter(d -> d.estaEnEstado(estado)).toList();
-    }
-    if (idDonante != null) {
-      resultado = resultado.stream().filter(d -> idDonante.equals(d.getIdDonante())).toList();
-    }
-    if (subcategoria != null && !subcategoria.isBlank()) {
-      resultado = resultado.stream().filter(d -> d.esDeSubcategoria(subcategoria)).toList();
-    }
-    return mapper.toDTOList(resultado);
+  /**
+   * Listado paginado. Los filtros se resuelven en la base (Entrega 5): antes se
+   * cargaban todas las donaciones con sus bienes e historial y se filtraba en
+   * memoria, así que el costo crecía con el total de donaciones del sistema.
+   */
+  public PaginaResponseDTO<DonacionResponseDTO> obtenerDonaciones(FiltroDonaciones filtro, SolicitudPagina pagina) {
+    return PaginaResponseDTO.desde(repositorio.buscar(filtro, pagina).map(mapper::toDTO));
   }
 
   public DonacionResponseDTO obtenerPorId(UUID id) {
@@ -84,12 +86,14 @@ public class DonacionService implements DonacionServiceInterface {
   public CandidatosAsignacionResponseDTO obtenerCandidatos(UUID idDonacion) {
     Donacion donacion = validador.validarYObtenerDonacion(idDonacion);
     AsignacionDonacionesService.ResultadoMatchmaking ranking = asignacionService.generarRanking(donacion);
+    Map<UUID, EntidadBeneficiariaResponseDTO> entidades = cargarEntidades(List.of(
+        ranking.getRankingSemantico(), ranking.getRankingSubAtendidos(), ranking.getCoincidencias()));
 
     return CandidatosAsignacionResponseDTO.builder()
         .idDonacion(idDonacion)
-        .porCompatibilidad(mapearRanking(ranking.getRankingSemantico()))
-        .porSubatendidos(mapearRanking(ranking.getRankingSubAtendidos()))
-        .coincidencias(mapearRanking(ranking.getCoincidencias()))
+        .porCompatibilidad(mapearRanking(ranking.getRankingSemantico(), entidades))
+        .porSubatendidos(mapearRanking(ranking.getRankingSubAtendidos(), entidades))
+        .coincidencias(mapearRanking(ranking.getCoincidencias(), entidades))
         .build();
   }
 
@@ -97,16 +101,25 @@ public class DonacionService implements DonacionServiceInterface {
    * Devuelve las donaciones en depósito con las entidades que les recomendó el
    * último matchmaking nocturno (AsignacionBatchService), para que una persona
    * administradora confirme el destino final.
+   *
+   * Las entidades de todos los rankings se cargan en una sola consulta: antes se
+   * buscaba cada entidad por separado, y con 30 donaciones en la bandeja eran
+   * miles de consultas para armar una sola respuesta.
    */
   public List<CandidatosPendientesResponseDTO> obtenerCandidatosPendientes() {
-    return candidatosRepositorio.obtenerTodos().stream()
+    List<RankingPrecalculado> rankings = candidatosRepositorio.obtenerTodos();
+    Map<UUID, EntidadBeneficiariaResponseDTO> entidades = cargarEntidades(rankings.stream()
+        .flatMap(r -> Stream.of(r.getCoincidencias(), r.getRankingSemantico(), r.getRankingSubAtendidos()))
+        .toList());
+
+    return rankings.stream()
         .map(ranking -> CandidatosPendientesResponseDTO.builder()
             .idDonacion(ranking.getIdDonacion())
             .fechaCalculo(ranking.getFechaCalculo())
             .huboCoincidencias(ranking.huboCoincidencias())
-            .coincidencias(mapearRanking(ranking.getCoincidencias()))
-            .porCompatibilidad(mapearRanking(ranking.getRankingSemantico()))
-            .porSubatendidos(mapearRanking(ranking.getRankingSubAtendidos()))
+            .coincidencias(mapearRanking(ranking.getCoincidencias(), entidades))
+            .porCompatibilidad(mapearRanking(ranking.getRankingSemantico(), entidades))
+            .porSubatendidos(mapearRanking(ranking.getRankingSubAtendidos(), entidades))
             .build())
         .toList();
   }
@@ -131,12 +144,33 @@ public class DonacionService implements DonacionServiceInterface {
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
-  /** Convierte un ranking de (idEntidad, puntaje) en los DTOs de las entidades correspondientes. */
-  private List<EntidadBeneficiariaResponseDTO> mapearRanking(List<ResultadoAsignacion> ranking) {
-    return ranking.stream()
-        .map(resultado -> entidadesRepositorio.obtenerPorId(resultado.getIdEntidad()))
+  /** Carga en una sola consulta todas las entidades que aparecen en los rankings. */
+  private Map<UUID, EntidadBeneficiariaResponseDTO> cargarEntidades(List<List<ResultadoAsignacion>> rankings) {
+    Set<UUID> ids = rankings.stream()
         .filter(Objects::nonNull)
-        .map(entidadMapper::toDTO)
+        .flatMap(List::stream)
+        .map(ResultadoAsignacion::getIdEntidad)
+        .collect(Collectors.toSet());
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
+    return entidadesRepositorio.obtenerPorIds(ids).stream()
+        .collect(Collectors.toMap(EntidadBeneficiaria::getId, entidadMapper::toDTO));
+  }
+
+  /**
+   * Convierte un ranking de (idEntidad, puntaje) en los DTOs de las entidades,
+   * respetando el orden del ranking. Si una entidad se borró después del
+   * cálculo, se omite.
+   */
+  private List<EntidadBeneficiariaResponseDTO> mapearRanking(List<ResultadoAsignacion> ranking,
+                                                             Map<UUID, EntidadBeneficiariaResponseDTO> entidades) {
+    if (ranking == null) {
+      return List.of();
+    }
+    return ranking.stream()
+        .map(resultado -> entidades.get(resultado.getIdEntidad()))
+        .filter(Objects::nonNull)
         .toList();
   }
 

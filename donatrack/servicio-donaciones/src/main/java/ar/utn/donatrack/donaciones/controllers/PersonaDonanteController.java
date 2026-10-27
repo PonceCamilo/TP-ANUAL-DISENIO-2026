@@ -5,10 +5,12 @@ import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
 import ar.utn.donatrack.donaciones.importacion.ImportReport;
 import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
 import ar.utn.donatrack.donaciones.services.CsvImportService;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,7 +29,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -39,11 +40,17 @@ public class PersonaDonanteController {
   private final PersonaDonanteServiceInterface personaDonanteService;
   private final CsvImportService csvImportService;
 
+  /**
+   * Listado paginado y ordenado por email (Entrega 5). Páginas desde 0, 20
+   * elementos por defecto y como máximo 100; fuera de rango responde 400.
+   */
   @GetMapping
-  public ResponseEntity<List<PersonaDonanteResponseDTO>> obtenerDonantes(
-      @RequestParam(required = false) String estado
+  public ResponseEntity<PaginaResponseDTO<PersonaDonanteResponseDTO>> obtenerDonantes(
+      @RequestParam(required = false) String estado,
+      @RequestParam(required = false) Integer page,
+      @RequestParam(required = false) Integer size
   ) {
-    return ResponseEntity.ok(personaDonanteService.obtenerDonantes(estado));
+    return ResponseEntity.ok(personaDonanteService.obtenerDonantes(estado, SolicitudPagina.de(page, size)));
   }
 
   @GetMapping("/{id}")

@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DireccionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EmailRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.LocalidadRequestDTO;
@@ -135,25 +138,37 @@ class PersonaDonanteControllerTest {
     class Consulta {
 
         @Test
-        @DisplayName("Devuelve 200 con la lista de donantes")
+        @DisplayName("Devuelve 200 con la página de donantes y sus totales")
         void listaDonantes() throws Exception {
-            when(personaDonanteService.obtenerDonantes(isNull())).thenReturn(List.of(respuestaHumana()));
+            when(personaDonanteService.obtenerDonantes(isNull(), any()))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(respuestaHumana()), 0, 20, 1)));
 
             mockMvc.perform(get("/donantes"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
-                    .andExpect(jsonPath("$[0].estado").value("ACTIVO"));
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$.contenido[0].estado").value("ACTIVO"))
+                    .andExpect(jsonPath("$.totalElementos").value(1));
+
+            verify(personaDonanteService).obtenerDonantes(null, new SolicitudPagina(0, 20));
         }
 
         @Test
-        @DisplayName("Pasa el filtro de estado al service")
+        @DisplayName("Pasa el filtro de estado y la página al service")
         void filtraPorEstado() throws Exception {
-            when(personaDonanteService.obtenerDonantes("BLOQUEADO")).thenReturn(List.of());
+            when(personaDonanteService.obtenerDonantes(any(), any()))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 1, 10, 0)));
 
-            mockMvc.perform(get("/donantes").param("estado", "BLOQUEADO"))
+            mockMvc.perform(get("/donantes").param("estado", "BLOQUEADO").param("page", "1").param("size", "10"))
                     .andExpect(status().isOk());
 
-            verify(personaDonanteService).obtenerDonantes("BLOQUEADO");
+            verify(personaDonanteService).obtenerDonantes("BLOQUEADO", new SolicitudPagina(1, 10));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el tamaño de página es 0")
+        void tamanioCero() throws Exception {
+            mockMvc.perform(get("/donantes").param("size", "0"))
+                    .andExpect(status().isBadRequest());
         }
 
         @Test

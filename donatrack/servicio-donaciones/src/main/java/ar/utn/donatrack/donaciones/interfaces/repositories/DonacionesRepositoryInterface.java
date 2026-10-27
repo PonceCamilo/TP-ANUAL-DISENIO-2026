@@ -1,6 +1,8 @@
 package ar.utn.donatrack.donaciones.interfaces.repositories;
 
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,7 +23,14 @@ public interface DonacionesRepositoryInterface {
 
   List<Donacion> obtenerTodas();
   List<Donacion> obtenerPorEstado(String estado);
-  List<Donacion> obtenerPorDonante(UUID idDonante);
+
+  /**
+   * Listado paginado con los filtros aplicados en la base (Entrega 5). Ordena
+   * de la donación más nueva a la más vieja; el id desempata para que las
+   * páginas sean estables.
+   */
+  Pagina<Donacion> buscar(FiltroDonaciones filtro, SolicitudPagina pagina);
+
   Donacion obtenerPorId(UUID id);
   void eliminar(UUID idDonacion);
 }
