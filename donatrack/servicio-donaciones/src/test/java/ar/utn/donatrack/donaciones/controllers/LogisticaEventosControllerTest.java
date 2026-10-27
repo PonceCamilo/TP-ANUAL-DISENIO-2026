@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.services.LogisticaEventosService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -118,7 +118,7 @@ class LogisticaEventosControllerTest {
         @Test
         @DisplayName("Devuelve 422 si la donación no está en un estado que permita iniciar la ruta")
         void estadoIncompatible() throws Exception {
-            doThrow(new CambioEstadoDonacionIlegalException("EN_DEPOSITO", "EN_TRASLADO"))
+            doThrow(new TransicionDeEstadoIlegalException("EN_DEPOSITO", "EN_TRASLADO"))
                     .when(logisticaEventosService).procesarInicioRuta(any());
 
             mockMvc.perform(post("/logistica/eventos/inicio-ruta")
@@ -250,7 +250,7 @@ class LogisticaEventosControllerTest {
         @Test
         @DisplayName("Devuelve 422 si la donación no está EN_TRASLADO")
         void estadoIncompatible() throws Exception {
-            doThrow(new CambioEstadoDonacionIlegalException("EN_DEPOSITO", "ENTREGA_FALLIDA"))
+            doThrow(new TransicionDeEstadoIlegalException("EN_DEPOSITO", "ENTREGA_FALLIDA"))
                     .when(logisticaEventosService).procesarEntregaFallida(any());
 
             mockMvc.perform(post("/logistica/eventos/entrega-fallida")

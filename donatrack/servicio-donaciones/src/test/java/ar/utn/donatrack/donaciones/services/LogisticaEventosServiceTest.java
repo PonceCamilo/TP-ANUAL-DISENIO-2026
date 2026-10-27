@@ -5,7 +5,7 @@ import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.InicioRutaCallbackDTO;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
@@ -202,7 +202,7 @@ class LogisticaEventosServiceTest {
             when(donacionesRepositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
             assertThatThrownBy(() -> servicio.procesarInicioRuta(evento(donacion.getId())))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
             verifyNoInteractions(notificacionClient);
         }
 
@@ -321,7 +321,7 @@ class LogisticaEventosServiceTest {
             when(donacionesRepositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
             assertThatThrownBy(() -> servicio.procesarEntregaExitosa(evento()))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
     }
 
@@ -419,7 +419,7 @@ class LogisticaEventosServiceTest {
             when(donacionesRepositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
             assertThatThrownBy(() -> servicio.procesarEntregaFallida(evento(true)))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
             verify(notificacionClient, never()).enviarNotificacion(anyString(), anyString(), anyString());
         }
 

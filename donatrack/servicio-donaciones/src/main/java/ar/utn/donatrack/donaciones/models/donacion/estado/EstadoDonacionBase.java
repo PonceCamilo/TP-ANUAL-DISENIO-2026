@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donacion.estado;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -17,7 +17,7 @@ public abstract class EstadoDonacionBase {
     public EstadoDonacionBase transicionarA(String estadoDestino, String justificacion) {
         Supplier<EstadoDonacionBase> factory = transiciones.get(estadoDestino);
         if (factory == null) {
-            throw new CambioEstadoDonacionIlegalException(nombre(), estadoDestino);
+            throw new TransicionDeEstadoIlegalException(nombre(), estadoDestino);
         }
         return factory.get();
     }

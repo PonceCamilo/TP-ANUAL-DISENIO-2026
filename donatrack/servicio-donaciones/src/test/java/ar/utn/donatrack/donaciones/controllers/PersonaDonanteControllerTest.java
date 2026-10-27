@@ -11,8 +11,8 @@ import ar.utn.donatrack.donaciones.dtos.request.ProvinciaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaHumanaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
@@ -358,7 +358,7 @@ class PersonaDonanteControllerTest {
         @Test
         @DisplayName("Devuelve 422 si la transición no está permitida")
         void transicionIlegal() throws Exception {
-            doThrow(new CambioEstadoPersonaIlegalException("INACTIVO", "BLOQUEADO"))
+            doThrow(new TransicionDeEstadoIlegalException("INACTIVO", "BLOQUEADO"))
                     .when(personaDonanteService).cambiarEstado(eq(idDonante), any());
 
             mockMvc.perform(patch("/donantes/{id}/estado", idDonante)

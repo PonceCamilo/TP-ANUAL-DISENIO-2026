@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.models.donacion.estado;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -101,14 +101,14 @@ class EstadoDonacionBaseTest {
         @DisplayName("ENTREGA_FALLIDA sin justificación (null) se rechaza")
         void entregaFallidaSinJustificacionNull() {
             assertThatThrownBy(() -> new EnTrasladoState().transicionarA("ENTREGA_FALLIDA", null))
-                    .isInstanceOf(FaltaJustificacionDonacionException.class);
+                    .isInstanceOf(FaltaJustificacionException.class);
         }
 
         @Test
         @DisplayName("ENTREGA_FALLIDA con justificación en blanco se rechaza")
         void entregaFallidaConJustificacionEnBlanco() {
             assertThatThrownBy(() -> new EnTrasladoState().transicionarA("ENTREGA_FALLIDA", "  "))
-                    .isInstanceOf(FaltaJustificacionDonacionException.class);
+                    .isInstanceOf(FaltaJustificacionException.class);
         }
 
         @Test
@@ -177,17 +177,17 @@ class EstadoDonacionBaseTest {
         void entregadaEsTerminal() {
             // Una vez entregada, la donación cerró su ciclo de vida.
             assertThatThrownBy(() -> new EntregadaState().transicionarA("EN_DEPOSITO", null))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
 
             assertThatThrownBy(() -> new EntregadaState().transicionarA("EN_TRASLADO", null))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
 
         @Test
         @DisplayName("VENCIDA es terminal: la donación ya no puede reutilizarse")
         void vencidaEsTerminal() {
             assertThatThrownBy(() -> new VencidaState().transicionarA("EN_DEPOSITO", null))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
     }
 
@@ -199,7 +199,7 @@ class EstadoDonacionBaseTest {
         @DisplayName("EN_DEPOSITO no puede ir directo a EN_TRASLADO sin ser asignada ni planificada")
         void noSePuedeSaltearAsignacionYPlanificacion() {
             assertThatThrownBy(() -> new EnDepositoState().transicionarA("EN_TRASLADO", null))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class)
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class)
                     .hasMessageContaining("EN_DEPOSITO");
         }
 
@@ -207,21 +207,21 @@ class EstadoDonacionBaseTest {
         @DisplayName("EN_DEPOSITO no puede ir directo a ENTREGADA")
         void noSePuedeSaltearTodoElCircuito() {
             assertThatThrownBy(() -> new EnDepositoState().transicionarA("ENTREGADA", null))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
 
         @Test
         @DisplayName("ASIGNACION_REALIZADA no puede volver a EN_DEPOSITO")
         void asignadaNoRetrocedeADeposito() {
             assertThatThrownBy(() -> new AsignacionRealizadaState().transicionarA("EN_DEPOSITO", null))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
 
         @Test
         @DisplayName("Un estado destino inexistente se rechaza como transición ilegal")
         void estadoDestinoInexistente() {
             assertThatThrownBy(() -> new EnDepositoState().transicionarA("ESTADO_INVENTADO", null))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
     }
 

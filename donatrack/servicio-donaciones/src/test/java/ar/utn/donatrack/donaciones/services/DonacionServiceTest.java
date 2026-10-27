@@ -11,7 +11,7 @@ import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
@@ -261,7 +261,7 @@ class DonacionServiceTest {
             when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
             assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
 
             verify(repositorio, never()).guardar(any());
         }
@@ -272,7 +272,7 @@ class DonacionServiceTest {
             when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
             assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
 
         @Test
@@ -355,7 +355,7 @@ class DonacionServiceTest {
             when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
             assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
 
             verifyNoInteractions(candidatosRepositorio);
         }

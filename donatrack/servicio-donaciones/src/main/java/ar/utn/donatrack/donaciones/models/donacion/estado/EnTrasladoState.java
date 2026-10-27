@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donacion.estado;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import java.util.Map;
 
 public class EnTrasladoState extends EstadoDonacionBase {
@@ -14,7 +14,7 @@ public class EnTrasladoState extends EstadoDonacionBase {
 
     public EstadoDonacionBase transicionarA(String estadoDestino, String justificacion) {
         if ("ENTREGA_FALLIDA".equals(estadoDestino) && (justificacion == null || justificacion.isBlank())) {
-            throw new FaltaJustificacionDonacionException();
+            throw new FaltaJustificacionException("Es necesaria una justificación para registrar una entrega fallida.");
         }
         return super.transicionarA(estadoDestino, justificacion);
     }

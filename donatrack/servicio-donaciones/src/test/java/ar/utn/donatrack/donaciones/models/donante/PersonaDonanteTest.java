@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.donante.estado.BloqueadoState;
@@ -89,7 +89,7 @@ class PersonaDonanteTest {
             donante.cambiarEstado("INACTIVO", null);
 
             assertThatThrownBy(() -> donante.cambiarEstado("BLOQUEADO", "spam"))
-                    .isInstanceOf(CambioEstadoPersonaIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
 
             assertThat(donante.getEstado()).isInstanceOf(InactivoState.class);
         }

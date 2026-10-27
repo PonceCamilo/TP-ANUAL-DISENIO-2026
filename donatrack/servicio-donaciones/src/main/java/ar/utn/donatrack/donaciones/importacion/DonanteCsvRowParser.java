@@ -1,10 +1,6 @@
 package ar.utn.donatrack.donaciones.importacion;
 
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoDocumentoException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoLineaException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoMailException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoNombreException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoPersonaException;
+import ar.utn.donatrack.donaciones.exceptions.csvExceptions.CsvFormatoException;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +19,7 @@ public class DonanteCsvRowParser {
 
     public DonanteImportDto parsear(String[] columnas, int numeroLinea) {
         if (columnas.length < 5) {
-            throw new CsvFormatoLineaException(numeroLinea, columnas.length);
+            throw CsvFormatoException.columnasInsuficientes(numeroLinea, columnas.length);
         }
 
         String tipoPersona = columnas[0].trim().toUpperCase();
@@ -34,16 +30,16 @@ public class DonanteCsvRowParser {
         String tel     = columnas.length > 5 ? columnas[5].trim() : null;
 
         if (!tipoPersona.equals("HUMANA") && !tipoPersona.equals("JURIDICA")) {
-            throw new CsvFormatoPersonaException(numeroLinea, tipoPersona);
+            throw CsvFormatoException.tipoPersonaInvalido(numeroLinea, tipoPersona);
         }
         if (email.isBlank()) {
-            throw new CsvFormatoMailException(numeroLinea);
+            throw CsvFormatoException.emailVacio(numeroLinea);
         }
         if (doc.isBlank()) {
-            throw new CsvFormatoDocumentoException(numeroLinea);
+            throw CsvFormatoException.documentoVacio(numeroLinea);
         }
         if (nombre.isBlank()) {
-            throw new CsvFormatoNombreException(numeroLinea);
+            throw CsvFormatoException.nombreVacio(numeroLinea);
         }
 
         return new DonanteImportDto(

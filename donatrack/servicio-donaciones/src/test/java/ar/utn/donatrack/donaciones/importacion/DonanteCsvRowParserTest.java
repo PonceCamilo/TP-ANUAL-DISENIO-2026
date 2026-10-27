@@ -1,10 +1,6 @@
 package ar.utn.donatrack.donaciones.importacion;
 
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoDocumentoException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoLineaException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoMailException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoNombreException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoPersonaException;
+import ar.utn.donatrack.donaciones.exceptions.csvExceptions.CsvFormatoException;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -134,7 +130,7 @@ class DonanteCsvRowParserTest {
             String[] incompleta = {"HUMANA", "DNI", "30111222"};
 
             assertThatThrownBy(() -> parser.parsear(incompleta, LINEA))
-                    .isInstanceOf(CsvFormatoLineaException.class)
+                    .isInstanceOf(CsvFormatoException.class)
                     .hasMessageContaining(String.valueOf(LINEA));
         }
 
@@ -142,7 +138,7 @@ class DonanteCsvRowParserTest {
         @DisplayName("Una fila sin columnas lanza CsvFormatoLineaException")
         void filaVacia() {
             assertThatThrownBy(() -> parser.parsear(new String[]{}, LINEA))
-                    .isInstanceOf(CsvFormatoLineaException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
 
         @Test
@@ -152,7 +148,7 @@ class DonanteCsvRowParserTest {
             String[] fila = {"EMPRESA", "CUIT", "30111222", "Fundación", "contacto@fundacion.org"};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoPersonaException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
 
         @Test
@@ -163,7 +159,7 @@ class DonanteCsvRowParserTest {
             String[] fila = {"HUMANA", "DNI", "30111222", "Juan Pérez", "   "};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoMailException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
 
         @Test
@@ -172,7 +168,7 @@ class DonanteCsvRowParserTest {
             String[] fila = {"HUMANA", "DNI", "  ", "Juan Pérez", "juan@example.com"};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoDocumentoException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
 
         @Test
@@ -181,7 +177,7 @@ class DonanteCsvRowParserTest {
             String[] fila = {"HUMANA", "DNI", "30111222", "   ", "juan@example.com"};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoNombreException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
 
         @Test
@@ -192,7 +188,7 @@ class DonanteCsvRowParserTest {
             String[] fila = {"EMPRESA", "DNI", "30111222", "Juan Pérez", ""};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoPersonaException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
     }
 }

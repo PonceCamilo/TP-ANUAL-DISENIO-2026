@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
@@ -123,7 +123,7 @@ class DonacionTest {
             // Verificación importante: como el State lanza la excepción ANTES de que
             // se agregue el registro, la donación no queda en un estado inconsistente.
             assertThatThrownBy(() -> donacion.cambiarEstado("ENTREGADA", "entregar", null))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
 
             assertThat(donacion.estaEnEstado("EN_DEPOSITO")).isTrue();
             assertThat(donacion.getHistorialEstados()).isEmpty();
@@ -137,7 +137,7 @@ class DonacionTest {
             donacion.cambiarEstado("EN_TRASLADO", "iniciar ruta", null);
 
             assertThatThrownBy(() -> donacion.cambiarEstado("ENTREGA_FALLIDA", "fallar", null))
-                    .isInstanceOf(FaltaJustificacionDonacionException.class);
+                    .isInstanceOf(FaltaJustificacionException.class);
 
             assertThat(donacion.estaEnEstado("EN_TRASLADO")).isTrue();
             assertThat(donacion.getHistorialEstados()).hasSize(3);
@@ -187,7 +187,7 @@ class DonacionTest {
             donacion.asignarA(entidad);
 
             assertThatThrownBy(() -> donacion.asignarA(entidad))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
     }
 

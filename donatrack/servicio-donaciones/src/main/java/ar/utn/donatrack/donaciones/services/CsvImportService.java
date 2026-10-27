@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoException;
+import ar.utn.donatrack.donaciones.exceptions.csvExceptions.CsvFormatoException;
 import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
 import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;

@@ -22,8 +22,8 @@ import ar.utn.donatrack.donaciones.dtos.response.PersonaJuridicaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
@@ -328,7 +328,7 @@ class PersonaDonanteServiceTest {
             when(repositorio.obtenerPersona(id)).thenReturn(donante);
 
             assertThatThrownBy(() -> servicio.cambiarEstado(id, dtoEstado("BLOQUEADO", "motivo")))
-                    .isInstanceOf(CambioEstadoPersonaIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
 
         @Test

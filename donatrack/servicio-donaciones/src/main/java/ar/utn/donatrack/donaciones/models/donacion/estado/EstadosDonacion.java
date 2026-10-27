@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donacion.estado;
 
-import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
+import ar.utn.donatrack.donaciones.exceptions.comunes.EstadoDesconocidoException;
 
 import java.util.Map;
 import java.util.function.Supplier;
@@ -39,7 +39,7 @@ public final class EstadosDonacion {
     public static EstadoDonacionBase desde(String nombre) {
         Supplier<EstadoDonacionBase> factory = POR_NOMBRE.get(nombre);
         if (factory == null) {
-            throw new TipoDesconocidoException("estado de donación '" + nombre + "'");
+            throw new EstadoDesconocidoException("donación", nombre);
         }
         return factory.get();
     }

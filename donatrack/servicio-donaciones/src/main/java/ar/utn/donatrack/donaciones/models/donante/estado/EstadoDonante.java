@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donante.estado;
 
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 
 import java.util.Map;
@@ -22,7 +22,7 @@ public abstract class EstadoDonante {
         }
         Supplier<EstadoDonante> factory = transiciones.get(estadoDestino);
         if (factory == null) {
-            throw new CambioEstadoPersonaIlegalException(nombre, estadoDestino);
+            throw new TransicionDeEstadoIlegalException(nombre, estadoDestino);
         }
         return factory.get();
     }

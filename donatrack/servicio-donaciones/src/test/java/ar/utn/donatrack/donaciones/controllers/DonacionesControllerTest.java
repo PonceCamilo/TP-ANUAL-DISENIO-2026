@@ -10,8 +10,8 @@ import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
@@ -350,7 +350,7 @@ class DonacionesControllerTest {
         void transicionIlegal() throws Exception {
             // 422 (Unprocessable Entity) distingue el "entiendo el pedido pero
             // el estado actual no lo permite" de un simple 400 por datos mal formados.
-            doThrow(new CambioEstadoDonacionIlegalException("EN_DEPOSITO", "ENTREGADA"))
+            doThrow(new TransicionDeEstadoIlegalException("EN_DEPOSITO", "ENTREGADA"))
                     .when(donacionService).cambiarEstado(eq(idDonacion), any());
 
             mockMvc.perform(patch("/donaciones/{id}/estado", idDonacion)
@@ -363,7 +363,7 @@ class DonacionesControllerTest {
         @Test
         @DisplayName("Devuelve 400 si falta la justificación obligatoria")
         void faltaJustificacion() throws Exception {
-            doThrow(new FaltaJustificacionDonacionException())
+            doThrow(new FaltaJustificacionException("Es necesaria una justificación para registrar una entrega fallida."))
                     .when(donacionService).cambiarEstado(eq(idDonacion), any());
 
             mockMvc.perform(patch("/donaciones/{id}/estado", idDonacion)
