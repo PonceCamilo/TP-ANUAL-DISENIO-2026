@@ -54,6 +54,16 @@ public class PersonaJuridica extends PersonaDonante {
      * mismo email actualiza sus datos en lugar de duplicarlo. La comparación
      * ignora mayúsculas porque los emails no distinguen case en la práctica.
      */
+    @Override
+    public TipoPersona tipoPersona() {
+        return TipoPersona.JURIDICA;
+    }
+
+    @Override
+    public void actualizarNombreImportado(String razonSocial) {
+        this.razonSocial = razonSocial.trim();
+    }
+
     public void agregarRepresentante(Representante representante) {
         representantes.removeIf(rep -> rep.getEmail() != null
                 && rep.getEmail().equalsIgnoreCase(representante.getEmail()));

@@ -236,6 +236,51 @@ class CsvImportServiceTest {
     }
 
     @Nested
+    @DisplayName("El tipo de persona de la fila tiene que coincidir con el de la persona registrada")
+    class TipoDePersona {
+
+        @Test
+        @DisplayName("Una fila JURIDICA con el email de una persona humana es un error y no la modifica")
+        void filaJuridicaSobreHumana() throws IOException {
+            PersonaHumana humana = donanteExistente("juan@example.com");
+            when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("juan@example.com", humana));
+            String contenido = ENCABEZADO + "JURIDICA,CUIT,30-11122233-4,Fundación Nueva SA,juan@example.com,\n";
+
+            ImportReport reporte = servicio.importar(csv(contenido));
+
+            assertThat(reporte.totalActualizados()).isZero();
+            assertThat(reporte.getErrores()).singleElement().satisfies(error -> {
+                assertThat(error.getNumeroLinea()).isEqualTo(2);
+                assertThat(error.getDetalle()).contains("HUMANA").contains("JURIDICA");
+            });
+            assertThat(humana.getNombre()).isEqualTo("Nombre viejo");
+            assertThat(humana.getApellido()).isEqualTo("Apellido viejo");
+            assertThat(humana.getTipoDocumento()).isEqualTo("DNI");
+        }
+
+        @Test
+        @DisplayName("Una fila HUMANA con el email de una persona jurídica es un error y no la modifica")
+        void filaHumanaSobreJuridica() throws IOException {
+            PersonaJuridica juridica = PersonaJuridica.builder()
+                    .id(UUID.randomUUID())
+                    .razonSocial("Fundación Vieja")
+                    .tipoDocumento("CUIT")
+                    .numeroDocumento("30-11122233-4")
+                    .email("contacto@fundacion.org")
+                    .estado(new ActivoState())
+                    .build();
+            when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("contacto@fundacion.org", juridica));
+            String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,contacto@fundacion.org,\n";
+
+            ImportReport reporte = servicio.importar(csv(contenido));
+
+            assertThat(reporte.tieneErrores()).isTrue();
+            assertThat(juridica.getRazonSocial()).isEqualTo("Fundación Vieja");
+            assertThat(juridica.getNumeroDocumento()).isEqualTo("30-11122233-4");
+        }
+    }
+
+    @Nested
     @DisplayName("Tolerancia a errores: una fila mala no frena el archivo")
     class ToleranciaAErrores {
 

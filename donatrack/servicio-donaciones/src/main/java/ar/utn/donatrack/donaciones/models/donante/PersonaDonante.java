@@ -197,6 +197,15 @@ public abstract class PersonaDonante implements Persistable<UUID> {
         contactos.add(medio);
     }
 
+    /** HUMANA o JURIDICA: lo responde cada subclase. */
+    public abstract TipoPersona tipoPersona();
+
+    /**
+     * Aplica el nombre que trae una fila de la importación por CSV, donde nombre
+     * y apellido (o la razón social) vienen en una sola columna.
+     */
+    public abstract void actualizarNombreImportado(String nombreORazonSocial);
+
     public String obtenerEmail() {
         return this.email;
     }

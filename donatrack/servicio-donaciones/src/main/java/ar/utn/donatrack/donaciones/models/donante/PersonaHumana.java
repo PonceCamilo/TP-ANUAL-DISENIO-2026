@@ -41,4 +41,22 @@ public class PersonaHumana extends PersonaDonante {
     @Enumerated(EnumType.STRING)
     @Column(name = "genero")
     private Genero genero;
+
+    @Override
+    public TipoPersona tipoPersona() {
+        return TipoPersona.HUMANA;
+    }
+
+    /**
+     * La primera palabra es el nombre y el resto el apellido. Si la fila no trae
+     * apellido se conserva el que ya tenía la persona.
+     */
+    @Override
+    public void actualizarNombreImportado(String nombreCompleto) {
+        String[] partes = nombreCompleto.trim().split(" ", 2);
+        this.nombre = partes[0];
+        if (partes.length > 1) {
+            this.apellido = partes[1];
+        }
+    }
 }

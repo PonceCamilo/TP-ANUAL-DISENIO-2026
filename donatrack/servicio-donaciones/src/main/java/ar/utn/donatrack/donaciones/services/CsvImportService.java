@@ -11,8 +11,6 @@ import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
-import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 
 import com.opencsv.CSVReader;
@@ -172,7 +170,10 @@ public class CsvImportService {
             String clave = NormalizadorEmail.normalizar(dto.email());
             try {
                 PersonaDonante existente = porEmail.get(clave);
-                if (existente != null) {
+                String conflicto = existente == null ? null : conflictoDeTipo(existente, dto);
+                if (conflicto != null) {
+                    resultados.add(ImportFilaCSV.error(linea, dto.email(), conflicto));
+                } else if (existente != null) {
                     actualizar(existente, dto);
                     aGuardar.put(clave, existente);
                     resultados.add(ImportFilaCSV.actualizado(linea, dto.email()));
@@ -198,6 +199,10 @@ public class CsvImportService {
         int linea = dto.linea();
         try {
             PersonaDonante existente = donanteRepository.obtenerPorEmail(dto.email());
+            String conflicto = existente == null ? null : conflictoDeTipo(existente, dto);
+            if (conflicto != null) {
+                return ImportFilaCSV.error(linea, dto.email(), conflicto);
+            }
             if (existente != null) {
                 actualizar(existente, dto);
                 donanteRepository.guardar(existente);
@@ -218,18 +223,26 @@ public class CsvImportService {
     private void actualizar(PersonaDonante existente, DonanteImportDto dto) {
         existente.setTipoDocumento(dto.tipoDoc());
         existente.setNumeroDocumento(dto.documento());
-
-        if (existente instanceof PersonaHumana humana) {
-            String[] partes = dto.nombreORazonSocial().split(" ", 2);
-            humana.setNombre(partes[0]);
-            humana.setApellido(partes.length > 1 ? partes[1] : humana.getApellido());
-        } else if (existente instanceof PersonaJuridica juridica) {
-            juridica.setRazonSocial(dto.nombreORazonSocial());
-        }
+        existente.actualizarNombreImportado(dto.nombreORazonSocial());
 
         if (dto.telefono() != null && !dto.telefono().isBlank() && !tieneTelefono(existente, dto.telefono())) {
             existente.reemplazarContacto(Telefono.builder().valor(dto.telefono()).build());
         }
+    }
+
+    /**
+     * Una fila no puede convertir a una persona humana en jurídica ni al revés:
+     * si el email ya pertenece a una persona del otro tipo, la fila es un error y
+     * no se modifica nada. Antes la fila se aplicaba igual sobre la persona
+     * existente (una fila JURIDICA dejaba la razón social como nombre y apellido
+     * de una persona humana).
+     */
+    private static String conflictoDeTipo(PersonaDonante existente, DonanteImportDto dto) {
+        if (existente.tipoPersona().name().equals(dto.tipoPersona())) {
+            return null;
+        }
+        return "El email ya pertenece a una persona " + existente.tipoPersona()
+                + " y la fila indica " + dto.tipoPersona() + ": no se modificó.";
     }
 
     /**
