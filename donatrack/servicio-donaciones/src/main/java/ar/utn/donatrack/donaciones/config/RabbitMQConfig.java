@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
  *   donaciones ──publish──▶ [exchange donatrack.notificaciones]
  *                                    │ routing key: notificacion.enviar
  *                                    ▼
- *                           [queue notificaciones.pendientes] ──▶ servicio-notificaciones
+ *                           [queue notificaciones.queue] ──▶ servicio-notificaciones
  *
  * POR QUÉ SE DECLARA DESDE ACÁ: lo habitual es que la cola la declare quien
  * consume. Se declara también del lado productor a propósito, para que la cola

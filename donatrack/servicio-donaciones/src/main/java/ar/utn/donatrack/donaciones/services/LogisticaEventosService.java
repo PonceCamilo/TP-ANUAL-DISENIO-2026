@@ -198,9 +198,9 @@ public class LogisticaEventosService {
     }
 
     private void notificarEntregaFallidaAdmin(Donacion donacion, String motivo, boolean replanificable) {
-        // En este punto, el administrador se notifica al email institucional configurado.
-        // En Entrega 4 se integrará con el módulo de autenticación para obtener
-        // los emails reales de los administradores registrados en el sistema.
+        // El administrador se notifica a un email institucional fijo. Cuando exista
+        // el servicio de autenticación (Entrega 6) se podrá obtener de ahí la lista
+        // real de personas administradoras.
         String emailAdmin = "admin@donatrack.org";
         String mensaje = "ALERTA: Entrega fallida para donación " + donacion.getId()
                 + ". Motivo: " + motivo

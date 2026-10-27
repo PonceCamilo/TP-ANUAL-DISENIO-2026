@@ -92,6 +92,16 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
     return jpa.findById(id).orElse(null);
   }
 
+  @Transactional(readOnly = true)
+  public boolean existenDelDonante(UUID idDonante) {
+    return jpa.existsByIdDonante(idDonante);
+  }
+
+  @Transactional(readOnly = true)
+  public boolean existenAsignadasA(UUID idEntidad) {
+    return jpa.existsByIdEntidadBeneficiaria(idEntidad);
+  }
+
   @Transactional
   public void eliminar(UUID idDonacion) {
     Optional<DonacionJpaRepository.AsignacionActual> previa = jpa.buscarAsignacion(idDonacion);

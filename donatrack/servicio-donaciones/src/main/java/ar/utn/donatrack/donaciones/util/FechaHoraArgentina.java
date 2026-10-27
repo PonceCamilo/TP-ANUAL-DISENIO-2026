@@ -11,7 +11,14 @@ import java.time.ZoneId;
  */
 public final class FechaHoraArgentina {
 
-    public static final ZoneId ZONA = ZoneId.of("America/Argentina/Buenos_Aires");
+    /**
+     * Identificador de la zona. Es una constante de texto para poder usarla en
+     * anotaciones: los @Scheduled la declaran en `zone` y así corren en hora de
+     * Argentina aunque el servidor (por ejemplo, un contenedor) esté en UTC.
+     */
+    public static final String ZONA_ID = "America/Argentina/Buenos_Aires";
+
+    public static final ZoneId ZONA = ZoneId.of(ZONA_ID);
 
     private FechaHoraArgentina() {
     }

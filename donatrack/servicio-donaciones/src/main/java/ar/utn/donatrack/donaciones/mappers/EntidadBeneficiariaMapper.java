@@ -83,6 +83,7 @@ public class EntidadBeneficiariaMapper {
             necesidad.setCantidadObjetivo(extraDto.getCantidadObjetivo());
             // Toda necesidad nueva arranca con 0 recibido
             necesidad.setCantidadRecibida(0);
+            necesidad.setFechaRegistro(FechaHoraArgentina.hoy());
             return necesidad;
 
         } else if (dto instanceof NecesidadRecurrenteRequestDTO recuDto) {
@@ -91,6 +92,7 @@ public class EntidadBeneficiariaMapper {
             necesidad.setDescripcion(recuDto.getDescripcion());
             necesidad.setCantidadObjetivo(recuDto.getCantidadObjetivo());
             necesidad.setCantidadRecibida(0);
+            necesidad.setFechaRegistro(FechaHoraArgentina.hoy());
 
             // Setear atributos propios de la recurrente
             necesidad.setPeriodo(recuDto.getPeriodo());

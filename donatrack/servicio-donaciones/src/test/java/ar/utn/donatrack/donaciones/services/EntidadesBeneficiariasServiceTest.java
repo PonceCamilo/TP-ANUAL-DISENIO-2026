@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDonacionesException;
+import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadExtraordinariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRecurrenteRequestDTO;
@@ -60,6 +62,9 @@ class EntidadesBeneficiariasServiceTest {
     @Mock
     private EntidadesBeneficiariasRepositoryInterface repositorio;
 
+    @Mock
+    private DonacionesRepositoryInterface donaciones;
+
     private EntidadesBeneficiariasService servicio;
 
     private EntidadBeneficiaria entidad;
@@ -71,7 +76,7 @@ class EntidadesBeneficiariasServiceTest {
         EntidadBeneficiariaMapper mapper = new EntidadBeneficiariaMapper(dependenciasMapper);
         EntidadesBeneficiariasValidator validador = new EntidadesBeneficiariasValidator(repositorio);
 
-        servicio = new EntidadesBeneficiariasService(repositorio, validador, mapper, dependenciasMapper);
+        servicio = new EntidadesBeneficiariasService(repositorio, donaciones, validador, mapper, dependenciasMapper);
 
         entidad = EntidadBeneficiaria.builder()
                 .id(UUID.randomUUID())
@@ -167,6 +172,19 @@ class EntidadesBeneficiariasServiceTest {
             assertThatThrownBy(() -> servicio.eliminarEntidad(idInexistente))
                     .isInstanceOf(EntidadBeneficiariaNoEncontradaException.class);
             verify(repositorio, never()).eliminar(idInexistente);
+        }
+
+        @Test
+        @DisplayName("eliminarEntidad() rechaza el borrado (409) si la entidad tiene donaciones asignadas")
+        void eliminarEntidadConDonaciones() {
+            // Entrega 5: donacion.id_entidad_beneficiaria no es FK; si se borrara
+            // la entidad, sus donaciones quedarían apuntando a nadie.
+            when(repositorio.existePorId(entidad.getId())).thenReturn(true);
+            when(donaciones.existenAsignadasA(entidad.getId())).thenReturn(true);
+
+            assertThatThrownBy(() -> servicio.eliminarEntidad(entidad.getId()))
+                    .isInstanceOf(EntidadConDonacionesException.class);
+            verify(repositorio, never()).eliminar(entidad.getId());
         }
     }
 

@@ -31,7 +31,7 @@ public class InactividadDonantesService {
     private final PersonaDonanteRepositoryInterface donanteRepository;
     private final NotificacionClient notificacionClient;
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 0 0 * * *", zone = FechaHoraArgentina.ZONA_ID)
     public void notificarDonantesInactivos() {
         LocalDateTime fechaLimite = FechaHoraArgentina.ahora().minusDays(DIAS_LIMITE_INACTIVIDAD);
 

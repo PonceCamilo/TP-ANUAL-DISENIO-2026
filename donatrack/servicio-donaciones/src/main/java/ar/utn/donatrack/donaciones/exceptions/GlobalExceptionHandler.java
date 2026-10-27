@@ -10,6 +10,7 @@ import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBi
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CambioTipoNecesidadException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDonacionesException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
@@ -18,6 +19,7 @@ import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInva
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
@@ -153,6 +155,16 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(LogisticaNoDisponibleException.class)
   public ResponseEntity<Map<String, Object>> manejarLogisticaNoDisponible(LogisticaNoDisponibleException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", ex.getMessage()), HttpStatus.SERVICE_UNAVAILABLE);
+  }
+
+  /**
+   * Borrar una persona o una entidad que tiene donaciones dejaría donaciones
+   * apuntando a nadie (Entrega 5): el pedido es válido pero choca con el estado
+   * actual del sistema.
+   */
+  @ExceptionHandler({PersonaConDonacionesException.class, EntidadConDonacionesException.class})
+  public ResponseEntity<Map<String, Object>> manejarBorradoConDonaciones(RuntimeException ex) {
+    return new ResponseEntity<>(construirCuerpoError(HttpStatus.CONFLICT, "Conflict", ex.getMessage()), HttpStatus.CONFLICT);
   }
 
   @ExceptionHandler(IllegalStateException.class)

@@ -6,6 +6,8 @@ import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CampaniaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.NecesidadResponseDTO;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDonacionesException;
+import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServiceInterface {
 
     private final EntidadesBeneficiariasRepositoryInterface repositorio;
+    private final DonacionesRepositoryInterface donaciones;
     private final EntidadesBeneficiariasValidator validador;
     private final EntidadBeneficiariaMapper mapper;
     private final PersonaDonanteMapper dependenciasMapper;
@@ -66,6 +69,11 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
     // NUEVO REQUERIDO: Eliminar entidad
     public void eliminarEntidad(UUID id) {
         validador.validarExistenciaEntidad(id);
+        // Sin FK entre donacion y entidad_beneficiaria: la integridad la cuida el
+        // servicio. Borrar la entidad dejaría donaciones apuntando a nadie.
+        if (donaciones.existenAsignadasA(id)) {
+            throw new EntidadConDonacionesException(id);
+        }
         repositorio.eliminar(id);
     }
 

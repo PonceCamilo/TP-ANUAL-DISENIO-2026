@@ -26,6 +26,10 @@ public interface DonacionJpaRepository extends JpaRepository<Donacion, UUID>, Jp
 
     List<Donacion> findByEstadoNombre(String estadoNombre);
 
+    boolean existsByIdDonante(UUID idDonante);
+
+    boolean existsByIdEntidadBeneficiaria(UUID idEntidadBeneficiaria);
+
     /** Asignación que tiene hoy una donación en la base, antes de guardar un cambio. */
     interface AsignacionActual {
         UUID getIdEntidadBeneficiaria();

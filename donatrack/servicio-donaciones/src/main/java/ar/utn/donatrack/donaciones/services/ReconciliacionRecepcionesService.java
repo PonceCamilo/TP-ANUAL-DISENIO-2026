@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.RecepcionesEntidadRepositoryInterface;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,7 +27,7 @@ public class ReconciliacionRecepcionesService {
 
     private final RecepcionesEntidadRepositoryInterface recepciones;
 
-    @Scheduled(cron = "0 0 3 * * *", zone = "America/Argentina/Buenos_Aires")
+    @Scheduled(cron = "0 0 3 * * *", zone = FechaHoraArgentina.ZONA_ID)
     public void reconciliar() {
         int filas = recepciones.reconciliar();
         log.info("[RECEPCIONES] Contador de recepciones recalculado: {} filas (entidad, día)", filas);

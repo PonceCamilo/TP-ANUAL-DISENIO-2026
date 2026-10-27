@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
+import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
@@ -80,6 +82,9 @@ class PersonaDonanteServiceTest {
     @Mock
     private PersonaDonanteRepositoryInterface repositorio;
 
+    @Mock
+    private DonacionesRepositoryInterface donaciones;
+
     @Captor
     private ArgumentCaptor<PersonaDonante> donanteCaptor;
 
@@ -89,6 +94,7 @@ class PersonaDonanteServiceTest {
     void crearServicio() {
         servicio = new PersonaDonanteService(
                 repositorio,
+                donaciones,
                 new PersonasValidator(repositorio),
                 new PersonaDonanteMapper());
     }
@@ -563,6 +569,19 @@ class PersonaDonanteServiceTest {
 
             assertThatThrownBy(() -> servicio.eliminar(id))
                     .isInstanceOf(PersonaDonanteNoEncontradaException.class);
+            verify(repositorio, never()).eliminar(id);
+        }
+
+        @Test
+        @DisplayName("Rechaza el borrado (409) si la persona tiene donaciones registradas")
+        void bajaConDonaciones() {
+            // Entrega 5: donacion.id_donante no es FK; si se borrara la persona,
+            // sus donaciones quedarían apuntando a nadie.
+            UUID id = UUID.randomUUID();
+            when(repositorio.existePorId(id)).thenReturn(true);
+            when(donaciones.existenDelDonante(id)).thenReturn(true);
+
+            assertThatThrownBy(() -> servicio.eliminar(id)).isInstanceOf(PersonaConDonacionesException.class);
             verify(repositorio, never()).eliminar(id);
         }
     }

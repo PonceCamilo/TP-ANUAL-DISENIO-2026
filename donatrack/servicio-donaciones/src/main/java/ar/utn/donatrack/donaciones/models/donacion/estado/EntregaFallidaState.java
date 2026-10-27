@@ -14,7 +14,7 @@ import java.util.Map;
  * intentar una entrega fallida (el externo permite FALLIDO → EN_CAMINO). Cuando
  * eso pasa, llega otro inicio-ruta para una donación que está en ENTREGA_FALLIDA.
  * Sin esta transición, el callback fallaría con una transición ilegal, Donaciones
- * respondería 400, el broker devolvería 502 al proveedor y la donación quedaría
+ * respondería 422, el broker devolvería 502 al proveedor y la donación quedaría
  * desincronizada respecto de lo que el proveedor cree que está pasando.
  *
  * Se eligió esta opción sobre la alternativa de encadenar

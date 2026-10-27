@@ -27,6 +27,11 @@ import java.util.UUID;
  * Guarda idEntidad en lugar de la razón social para no quedar inconsistente si
  * la entidad cambia de nombre.
  *
+ * MAPEO (Entrega 5): idEntidad se lee de la columna entidad_id, la misma FK que
+ * escribe EntidadBeneficiaria al guardar sus campañas. Hasta la Entrega 4 había
+ * además una columna id_entidad que repetía el mismo dato: era una redundancia
+ * sin beneficio de lectura y podía quedar distinta de la FK.
+ *
  * MAPEO: la campaña es dueña de sus necesidades (cascade + orphanRemoval): no
  * tienen sentido por fuera de una campaña.
  */
@@ -41,7 +46,7 @@ public class Campania {
     @Column(name = "id_campania")
     private UUID idCampania;
 
-    @Column(name = "id_entidad")
+    @Column(name = "entidad_id", insertable = false, updatable = false)
     private UUID idEntidad;
 
     @Column(name = "fecha_inicio")

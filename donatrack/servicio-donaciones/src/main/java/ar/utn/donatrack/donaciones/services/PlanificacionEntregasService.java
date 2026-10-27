@@ -10,6 +10,7 @@ import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.validations.donaciones.DonacionesValidator;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -98,7 +99,7 @@ public class PlanificacionEntregasService {
      * condiciones simplemente se saltean, porque es un proceso desatendido y no
      * puede cortarse por un caso puntual.
      */
-    @Scheduled(cron = "0 0 4 * * *")
+    @Scheduled(cron = "0 0 4 * * *", zone = FechaHoraArgentina.ZONA_ID)
     public void despacharPendientesDelDia() {
         List<Donacion> asignadas = donacionesRepositorio.obtenerPorEstado(ESTADO_ASIGNADA);
         log.info("[LOGISTICA] Barrido nocturno. Donaciones con asignación realizada: {}", asignadas.size());

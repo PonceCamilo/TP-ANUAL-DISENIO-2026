@@ -7,6 +7,8 @@ import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
+import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 public class PersonaDonanteService implements PersonaDonanteServiceInterface {
 
   private final PersonaDonanteRepositoryInterface repositorio;
+  private final DonacionesRepositoryInterface donaciones;
   private final PersonasValidator validador;
   private final PersonaDonanteMapper mapper;
 
@@ -114,6 +117,10 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
   @Override
   public void eliminar(UUID id) {
     validador.validarExistenciaPersona(id);
+    // Sin FK entre donacion y persona_donante: la integridad la cuida el servicio.
+    if (donaciones.existenDelDonante(id)) {
+      throw new PersonaConDonacionesException(id);
+    }
     repositorio.eliminar(id);
   }
 }

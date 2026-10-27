@@ -42,6 +42,16 @@ public interface DonacionesRepositoryInterface {
 
   Donacion obtenerPorId(UUID id);
 
+  /**
+   * Integridad referencial (Entrega 5): donacion.id_donante e
+   * id_entidad_beneficiaria referencian a otros agregados solo por id, sin FK.
+   * Antes de borrar una persona o una entidad se consulta si alguna donación la
+   * referencia, y en ese caso el borrado se rechaza.
+   */
+  boolean existenDelDonante(UUID idDonante);
+
+  boolean existenAsignadasA(UUID idEntidad);
+
   /** Borra la donación y, si estaba asignada, descuenta la recepción de su entidad. */
   void eliminar(UUID idDonacion);
 }

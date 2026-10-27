@@ -47,10 +47,11 @@ public class AsignacionBatchService {
     private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
 
     /**
-     * Corre todos los días a las 03:30 (hora del servidor), que es la franja de
-     * menor uso del depósito.
+     * Corre todos los días a las 03:30 de Argentina, que es la franja de menor
+     * uso del depósito. La zona se declara explícitamente: sin ella el horario
+     * dependía de la zona del servidor (UTC en un contenedor).
      */
-    @Scheduled(cron = "0 30 3 * * *")
+    @Scheduled(cron = "0 30 3 * * *", zone = FechaHoraArgentina.ZONA_ID)
     public void ejecutarMatchmakingNocturno() {
         List<Donacion> enDeposito = donacionesRepositorio.obtenerPorEstado(ESTADO_EN_DEPOSITO);
 
