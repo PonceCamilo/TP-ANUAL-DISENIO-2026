@@ -55,6 +55,12 @@ public class Ruta {
                 .toList();
     }
 
+    public Optional<Entrega> buscarEntrega(UUID entregaId) {
+        return obtenerEntregas().stream()
+                .filter(entrega -> entregaId.equals(entrega.getId()))
+                .findFirst();
+    }
+
     public Optional<Parada> buscarParadaPorEntregaId(UUID entregaId) {
         if (paradas == null) {
             return Optional.empty();

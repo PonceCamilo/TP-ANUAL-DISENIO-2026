@@ -31,17 +31,4 @@ public class Parada {
     private UUID idEntidadBeneficiaria;
 
     private List<Entrega> entregas;
-
-    public void reemplazarEntrega(Entrega entrega) {
-        if (entregas == null) {
-            return;
-        }
-        for (int i = 0; i < entregas.size(); i++) {
-            if (entrega.getId().equals(entregas.get(i).getId())) {
-                entregas.set(i, entrega);
-                entrega.setParada(this);
-                return;
-            }
-        }
-    }
 }

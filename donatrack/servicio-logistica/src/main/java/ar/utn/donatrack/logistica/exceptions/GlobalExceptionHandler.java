@@ -1,5 +1,7 @@
 package ar.utn.donatrack.logistica.exceptions;
 
+import com.mongodb.MongoException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,6 +14,8 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final int CODIGO_WRITE_CONFLICT = 112;
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> manejarValidacion(MethodArgumentNotValidException ex) {
@@ -50,6 +54,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SinCamionesDisponiblesException.class)
     public ResponseEntity<Map<String, Object>> manejarSinCamionesDisponibles(SinCamionesDisponiblesException ex) {
         return construir(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", ex.getMessage());
+    }
+
+    // Dos transacciones escribieron el mismo documento a la vez (por ejemplo, dos
+    // entregas de una misma ruta): Mongo rechaza la segunda con WriteConflict.
+    // Esa transacción no guardó nada y el cliente puede reintentar.
+    // Cualquier otra violación de integridad sigue su curso normal (500).
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> manejarEscrituraConcurrente(DataIntegrityViolationException ex) {
+        if (!(ex.getCause() instanceof MongoException mongo) || mongo.getCode() != CODIGO_WRITE_CONFLICT) {
+            throw ex;
+        }
+        return construir(HttpStatus.CONFLICT, "Conflict",
+                "Otra operación modificó los mismos datos al mismo tiempo. Volvé a intentar.");
     }
 
     @ExceptionHandler({

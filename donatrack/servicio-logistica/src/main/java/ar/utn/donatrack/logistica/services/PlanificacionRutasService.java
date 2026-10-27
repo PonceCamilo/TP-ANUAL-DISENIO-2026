@@ -20,7 +20,6 @@ import ar.utn.donatrack.logistica.exceptions.SinCamionesDisponiblesException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.integracion.EstrategiaRuteoPort;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
-import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.LotePlanificacionRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.RutaRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
@@ -63,7 +62,6 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
 
     private final LotePlanificacionRepositoryInterface loteRepositorio;
     private final RutaRepositoryInterface rutaRepositorio;
-    private final EntregaRepositoryInterface entregaRepositorio;
     private final CamionRepositoryInterface camionRepositorio;
     private final EstrategiaRuteoPort estrategiaRuteo;
     private final EntregaEventPublisher eventPublisher;
@@ -73,7 +71,6 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
     public PlanificacionRutasService(
             LotePlanificacionRepositoryInterface loteRepositorio,
             RutaRepositoryInterface rutaRepositorio,
-            EntregaRepositoryInterface entregaRepositorio,
             CamionRepositoryInterface camionRepositorio,
             EstrategiaRuteoPort estrategiaRuteo,
             EntregaEventPublisher eventPublisher,
@@ -81,7 +78,6 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
             @Value("${integraciones.proveedor-ruteo.max-donaciones-por-lote}") int maxDonacionesPorLote) {
         this.loteRepositorio = loteRepositorio;
         this.rutaRepositorio = rutaRepositorio;
-        this.entregaRepositorio = entregaRepositorio;
         this.camionRepositorio = camionRepositorio;
         this.estrategiaRuteo = estrategiaRuteo;
         this.eventPublisher = eventPublisher;
@@ -144,20 +140,20 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
         Ruta ruta = buscarRutaOFallar(rutaId);
         ruta.setEstado(EstadoRuta.INICIADA);
         ruta.setFechaInicio(LocalDateTime.now());
+
+        List<UUID> idsDonaciones = new ArrayList<>();
+        for (Entrega entrega : ruta.obtenerEntregas()) {
+            entregaValidator.validarTransicion(entrega.getEstado(), EstadoEntrega.EN_TRASLADO);
+            entrega.registrarCambio(EstadoEntrega.EN_TRASLADO, "Inicio de ruta");
+            idsDonaciones.add(entrega.getIdDonacion());
+        }
+        // Las entregas van embebidas: un solo guardado de la ruta las persiste a todas.
         rutaRepositorio.guardar(ruta);
 
         Camion camion = ruta.getCamion();
         if (camion != null) {
             camion.setEstado(EstadoCamion.EN_RUTA);
             camionRepositorio.guardar(camion);
-        }
-
-        List<UUID> idsDonaciones = new ArrayList<>();
-        for (Entrega entrega : ruta.obtenerEntregas()) {
-            entregaValidator.validarTransicion(entrega.getEstado(), EstadoEntrega.EN_TRASLADO);
-            entrega.registrarCambio(EstadoEntrega.EN_TRASLADO, "Inicio de ruta");
-            entregaRepositorio.guardar(entrega);
-            idsDonaciones.add(entrega.getIdDonacion());
         }
 
         // Un solo evento por ruta agrupando todas sus donaciones: Donaciones
@@ -304,7 +300,6 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .paradas(paradas)
                 .estado(EstadoRuta.PLANIFICADA)
                 .build();
-        List<Entrega> entregasDeLaRuta = new ArrayList<>();
 
         for (CallbackParadaDTO paradaDTO : paradasDTO) {
             List<Entrega> entregas = new ArrayList<>();
@@ -324,14 +319,11 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                         .parada(parada)
                         .build();
                 entregas.add(entrega);
-                entregasDeLaRuta.add(entrega);
             }
         }
 
-        // La ruta guarda, embebidas, sus paradas y entregas. El segundo guardar
-        // reescribe ese mismo documento: cubre el caso de tocar una entrega sola.
+        // Un solo documento: la ruta guarda embebidas sus paradas y entregas.
         rutaRepositorio.guardar(ruta);
-        entregasDeLaRuta.forEach(entregaRepositorio::guardar);
         return ruta;
     }
 

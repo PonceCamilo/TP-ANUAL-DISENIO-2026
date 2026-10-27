@@ -36,8 +36,7 @@ import java.util.UUID;
  *  - Dos camiones DISPONIBLE, para que la planificación (y el broker de
  *    logística, que planifica sin indicar camiones) funcione desde el arranque.
  *
- * Persiste el lote, la ruta (con la parada y la entrega embebidas) y también
- * la entrega por su repositorio, que reescribe ese mismo documento de ruta.
+ * Persiste el lote y la ruta, con la parada y la entrega embebidas.
  *
  * Es solo para pruebas locales. Como los datos quedan en la base, cada dato de
  * ejemplo se crea solo si todavía no existe: reiniciar el servicio no pisa los
@@ -169,9 +168,8 @@ public class DatosDemoLogistica implements CommandLineRunner {
                 .build());
         entregas.add(entrega);
 
-        // La ruta primero: guarda en cascada su parada y la entrega.
+        // La ruta guarda embebidas su parada y la entrega.
         rutaRepositorio.guardar(ruta);
-        entregaRepositorio.guardar(entrega);
 
         log.info("[DatosDemoLogistica] Entrega de prueba cargada: {} (estado EN_TRASLADO) en ruta {}",
                 ENTREGA_DEMO_ID, RUTA_DEMO_ID);

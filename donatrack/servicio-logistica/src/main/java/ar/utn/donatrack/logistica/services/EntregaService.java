@@ -6,7 +6,6 @@ import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
 import ar.utn.donatrack.logistica.eventos.EntregaEvento;
 import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
 import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
-import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.RutaRepositoryInterface;
@@ -72,15 +71,15 @@ public class EntregaService implements EntregaServiceInterface {
 
     @Override
     public void confirmar(UUID id, ConfirmarEntregaRequestDTO dto) {
-        Entrega entrega = buscarOFallar(id);
+        Ruta ruta = buscarRutaDeEntregaOFallar(id);
+        Entrega entrega = entregaDe(ruta, id);
         validador.validarTransicion(entrega.getEstado(), EstadoEntrega.ENTREGADA);
 
         entrega.getFotosComprobante().addAll(dto.getFotosComprobante());
         entrega.setFechaEntrega(LocalDateTime.now());
         entrega.registrarCambio(EstadoEntrega.ENTREGADA, null);
-        repositorio.guardar(entrega);
+        rutaRepositorio.guardar(ruta);
 
-        Ruta ruta = buscarRutaDeEntregaOFallar(entrega.getId());
         Camion camion = ruta.getCamion();
         eventPublisher.publicar(EntregaEvento.builder()
                 .tipo(TipoEventoLogistica.ENTREGA_CONFIRMADA)
@@ -100,14 +99,14 @@ public class EntregaService implements EntregaServiceInterface {
 
     @Override
     public void marcarNoRecibida(UUID id, NoRecibidaRequestDTO dto) {
-        Entrega entrega = buscarOFallar(id);
+        Ruta ruta = buscarRutaDeEntregaOFallar(id);
+        Entrega entrega = entregaDe(ruta, id);
         validador.validarTransicion(entrega.getEstado(), EstadoEntrega.NO_RECIBIDA);
 
         MotivoFalloEntrega motivo = dto.getMotivo();
         entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, motivo, null);
-        repositorio.guardar(entrega);
+        rutaRepositorio.guardar(ruta);
 
-        Ruta ruta = buscarRutaDeEntregaOFallar(entrega.getId());
         Camion camion = ruta.getCamion();
         eventPublisher.publicar(EntregaEvento.builder()
                 .tipo(TipoEventoLogistica.ENTREGA_NO_RECIBIDA)
@@ -126,10 +125,11 @@ public class EntregaService implements EntregaServiceInterface {
 
     @Override
     public void regresarADeposito(UUID id) {
-        Entrega entrega = buscarOFallar(id);
+        Ruta ruta = buscarRutaDeEntregaOFallar(id);
+        Entrega entrega = entregaDe(ruta, id);
         validador.validarTransicion(entrega.getEstado(), EstadoEntrega.LISTO_PARA_ENTREGAR);
         entrega.registrarCambio(EstadoEntrega.LISTO_PARA_ENTREGAR, "Regreso a depósito");
-        repositorio.guardar(entrega);
+        rutaRepositorio.guardar(ruta);
     }
 
     // Cuando esta entrega era la última EN_TRASLADO de su ruta, el camión
@@ -146,9 +146,16 @@ public class EntregaService implements EntregaServiceInterface {
         return entrega;
     }
 
+    // La entrega vive embebida en su ruta: si ninguna ruta la contiene, no existe.
+    // Los cambios se hacen sobre la entrega de esa ruta y se guarda la ruta entera.
     private Ruta buscarRutaDeEntregaOFallar(UUID entregaId) {
         return rutaRepositorio.buscarPorEntregaId(entregaId)
-                .orElseThrow(() -> RutaNoEncontradaException.paraEntrega(entregaId));
+                .orElseThrow(() -> new EntregaNoEncontradaException(entregaId));
+    }
+
+    private Entrega entregaDe(Ruta ruta, UUID entregaId) {
+        return ruta.buscarEntrega(entregaId)
+                .orElseThrow(() -> new EntregaNoEncontradaException(entregaId));
     }
 
     private Ruta rutaDe(UUID entregaId) {

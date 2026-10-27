@@ -20,7 +20,6 @@ import ar.utn.donatrack.logistica.exceptions.SinCamionesDisponiblesException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.integracion.EstrategiaRuteoPort;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
-import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.LotePlanificacionRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.RutaRepositoryInterface;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
@@ -79,8 +78,6 @@ class PlanificacionRutasServiceTest {
     @Mock
     private RutaRepositoryInterface rutaRepositorio;
     @Mock
-    private EntregaRepositoryInterface entregaRepositorio;
-    @Mock
     private CamionRepositoryInterface camionRepositorio;
     @Mock
     private EstrategiaRuteoPort estrategiaRuteo;
@@ -89,8 +86,6 @@ class PlanificacionRutasServiceTest {
 
     @Captor
     private ArgumentCaptor<LotePlanificacion> loteCaptor;
-    @Captor
-    private ArgumentCaptor<Entrega> entregaCaptor;
     @Captor
     private ArgumentCaptor<Ruta> rutaCaptor;
     @Captor
@@ -105,7 +100,7 @@ class PlanificacionRutasServiceTest {
 
     private PlanificacionRutasService nuevoServicio(int maxDonacionesPorLote) {
         return new PlanificacionRutasService(
-                loteRepositorio, rutaRepositorio, entregaRepositorio, camionRepositorio,
+                loteRepositorio, rutaRepositorio, camionRepositorio,
                 estrategiaRuteo, eventPublisher, new EntregaValidator(), maxDonacionesPorLote);
     }
 
@@ -223,8 +218,12 @@ class PlanificacionRutasServiceTest {
                     .isEqualTo(donacion1.getIdDonacion());
 
             verify(estrategiaRuteo, times(1)).planificar(any(), anyList(), anyList());
-            verify(entregaRepositorio, times(2)).guardar(entregaCaptor.capture());
-            assertThat(entregaCaptor.getAllValues())
+            // Un guardado por ruta: las entregas van embebidas en su documento.
+            verify(rutaRepositorio, times(2)).guardar(rutaCaptor.capture());
+            List<Entrega> entregasGuardadas = rutaCaptor.getAllValues().stream()
+                    .flatMap(ruta -> ruta.obtenerEntregas().stream())
+                    .toList();
+            assertThat(entregasGuardadas)
                     .extracting(Entrega::getEstado)
                     .containsExactly(EstadoEntrega.LISTO_PARA_ENTREGAR, EstadoEntrega.LISTO_PARA_ENTREGAR);
         }
@@ -244,7 +243,7 @@ class PlanificacionRutasServiceTest {
 
             assertThatThrownBy(() -> servicio.planificar(dto))
                     .isInstanceOf(ProveedorRuteoIndisponibleException.class);
-            verify(entregaRepositorio, never()).guardar(any());
+            verify(rutaRepositorio, never()).guardar(any());
         }
 
         @Test
@@ -406,13 +405,11 @@ class PlanificacionRutasServiceTest {
             assertThat(rutaGuardada.getParadas()).hasSize(1);
             assertThat(rutaGuardada.getParadas().getFirst().getIdEntidadBeneficiaria()).isEqualTo(idEntidad);
 
-            verify(entregaRepositorio).guardar(entregaCaptor.capture());
-            Entrega entregaGuardada = entregaCaptor.getValue();
+            assertThat(rutaGuardada.obtenerEntregas()).hasSize(1);
+            Entrega entregaGuardada = rutaGuardada.obtenerEntregas().getFirst();
             assertThat(entregaGuardada.getIdDonacion()).isEqualTo(idDonacion);
             assertThat(entregaGuardada.getEstado()).isEqualTo(EstadoEntrega.LISTO_PARA_ENTREGAR);
             assertThat(entregaGuardada.getParada()).isEqualTo(rutaGuardada.getParadas().getFirst());
-            assertThat(rutaGuardada.obtenerEntregas()).hasSize(1);
-            assertThat(rutaGuardada.obtenerEntregas().getFirst().getId()).isEqualTo(entregaGuardada.getId());
 
             verify(loteRepositorio).guardar(loteCaptor.capture());
             assertThat(loteCaptor.getValue().getEstado()).isEqualTo(EstadoLote.COMPLETADO);
@@ -463,7 +460,8 @@ class PlanificacionRutasServiceTest {
             assertThat(camionDelViaje.getEstado()).isEqualTo(EstadoCamion.EN_RUTA);
             verify(camionRepositorio).guardar(camionDelViaje);
             assertThat(entrega.getEstado()).isEqualTo(EstadoEntrega.EN_TRASLADO);
-            verify(entregaRepositorio).guardar(entrega);
+            // Una sola escritura de la ruta, con la entrega embebida ya cambiada.
+            verify(rutaRepositorio).guardar(ruta);
         }
 
         @Test

@@ -14,8 +14,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * La entrega no tiene colección: vive embebida en la ruta.
- * Guardar una entrega reescribe el documento de su ruta.
+ * La entrega no tiene colección: vive embebida en la ruta. Este repositorio
+ * solo la busca dentro de las rutas; un cambio se guarda guardando la ruta.
  */
 @Repository
 public class EntregaRepository implements EntregaRepositoryInterface {
@@ -24,28 +24,6 @@ public class EntregaRepository implements EntregaRepositoryInterface {
 
     public EntregaRepository(MongoTemplate mongo) {
         this.mongo = mongo;
-    }
-
-    @Override
-    public void guardar(Entrega entrega) {
-        Ruta ruta = mongo.findOne(
-                Query.query(Criteria.where("paradas.entregas.id").is(entrega.getId())), Ruta.class);
-        if (ruta == null || ruta.getParadas() == null) {
-            throw new IllegalStateException("No hay una ruta que contenga la entrega " + entrega.getId());
-        }
-        boolean reemplazada = false;
-        for (var parada : ruta.getParadas()) {
-            if (parada.getEntregas() != null
-                    && parada.getEntregas().stream().anyMatch(e -> entrega.getId().equals(e.getId()))) {
-                parada.reemplazarEntrega(entrega);
-                reemplazada = true;
-                break;
-            }
-        }
-        if (!reemplazada) {
-            throw new IllegalStateException("No hay una ruta que contenga la entrega " + entrega.getId());
-        }
-        mongo.save(ruta);
     }
 
     @Override

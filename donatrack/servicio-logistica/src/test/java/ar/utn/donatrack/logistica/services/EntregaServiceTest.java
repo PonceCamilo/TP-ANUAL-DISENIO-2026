@@ -6,7 +6,6 @@ import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
 import ar.utn.donatrack.logistica.eventos.EntregaEvento;
 import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
 import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
-import ar.utn.donatrack.logistica.exceptions.RutaNoEncontradaException;
 import ar.utn.donatrack.logistica.exceptions.TransicionEntregaIlegalException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
@@ -207,7 +206,6 @@ class EntregaServiceTest {
         void pasaAEntregada() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
             Ruta ruta = rutaQueContiene(entrega, camion());
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
             when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             servicio.confirmar(entrega.getId(), dtoConfirmar());
@@ -217,7 +215,19 @@ class EntregaServiceTest {
             assertThat(entrega.getFechaEntrega()).isNotNull();
             assertThat(entrega.getHistorial()).hasSize(1);
             assertThat(entrega.getHistorial().getFirst().getEstado()).isEqualTo(EstadoEntrega.ENTREGADA);
-            verify(repositorio).guardar(entrega);
+        }
+
+        @Test
+        @DisplayName("La entrega está embebida: se guarda una sola vez la ruta que la contiene")
+        void guardaLaRutaUnaVez() {
+            Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
+            Ruta ruta = rutaQueContiene(entrega, camion());
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
+
+            servicio.confirmar(entrega.getId(), dtoConfirmar());
+
+            verify(rutaRepositorio).guardar(ruta);
+            verifyNoInteractions(repositorio);
         }
 
         @Test
@@ -226,7 +236,6 @@ class EntregaServiceTest {
             Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
             Camion camion = camion();
             Ruta ruta = rutaQueContiene(entrega, camion);
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
             when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             servicio.confirmar(entrega.getId(), dtoConfirmar());
@@ -246,7 +255,6 @@ class EntregaServiceTest {
         void consultaFinalizacionDeRuta() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
             Ruta ruta = rutaQueContiene(entrega, camion());
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
             when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             servicio.confirmar(entrega.getId(), dtoConfirmar());
@@ -255,14 +263,14 @@ class EntregaServiceTest {
         }
 
         @Test
-        @DisplayName("Si no hay ruta para la entrega, lanza 404 y no consulta finalización")
+        @DisplayName("Si ninguna ruta contiene la entrega, lanza 404 y no guarda ni consulta finalización")
         void sinRutaNoConsultaFinalizacion() {
-            Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
-            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.empty());
+            UUID entregaId = UUID.randomUUID();
+            when(rutaRepositorio.buscarPorEntregaId(entregaId)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> servicio.confirmar(entrega.getId(), dtoConfirmar()))
-                    .isInstanceOf(RutaNoEncontradaException.class);
+            assertThatThrownBy(() -> servicio.confirmar(entregaId, dtoConfirmar()))
+                    .isInstanceOf(EntregaNoEncontradaException.class);
+            verify(rutaRepositorio, never()).guardar(any());
             verify(planificacionService, never()).finalizarRutaSiCorresponde(any());
         }
 
@@ -270,13 +278,13 @@ class EntregaServiceTest {
         @DisplayName("Una entrega LISTO_PARA_ENTREGAR no puede confirmarse: no se guarda ni se publica")
         void estadoIncompatible() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.LISTO_PARA_ENTREGAR);
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
+            Ruta ruta = rutaQueContiene(entrega, camion());
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             assertThatThrownBy(() -> servicio.confirmar(entrega.getId(), dtoConfirmar()))
                     .isInstanceOf(TransicionEntregaIlegalException.class);
-            verify(repositorio, never()).guardar(any());
+            verify(rutaRepositorio, never()).guardar(any());
             verifyNoInteractions(eventPublisher);
-            verify(rutaRepositorio, never()).buscarPorEntregaId(any());
             verifyNoInteractions(planificacionService);
         }
     }
@@ -286,18 +294,17 @@ class EntregaServiceTest {
     class NoRecibida {
 
         @Test
-        @DisplayName("Pasa la entrega a NO_RECIBIDA y guarda el motivo en el historial")
+        @DisplayName("Pasa la entrega a NO_RECIBIDA, guarda el motivo en el historial y guarda la ruta")
         void pasaANoRecibida() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
             Ruta ruta = rutaQueContiene(entrega, camion());
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
             when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             servicio.marcarNoRecibida(entrega.getId(), dtoNoRecibida(MotivoFalloEntrega.ENTIDAD_AUSENTE));
 
             assertThat(entrega.getEstado()).isEqualTo(EstadoEntrega.NO_RECIBIDA);
             assertThat(entrega.getHistorial().getLast().getMotivoFallo()).isEqualTo(MotivoFalloEntrega.ENTIDAD_AUSENTE);
-            verify(repositorio).guardar(entrega);
+            verify(rutaRepositorio).guardar(ruta);
         }
 
         @Test
@@ -306,7 +313,6 @@ class EntregaServiceTest {
             Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
             Camion camion = camion();
             Ruta ruta = rutaQueContiene(entrega, camion);
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
             when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             servicio.marcarNoRecibida(entrega.getId(), dtoNoRecibida(MotivoFalloEntrega.ENTIDAD_AUSENTE));
@@ -325,7 +331,6 @@ class EntregaServiceTest {
         void motivoNoReplanificable() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
             Ruta ruta = rutaQueContiene(entrega, camion());
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
             when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             servicio.marcarNoRecibida(entrega.getId(), dtoNoRecibida(MotivoFalloEntrega.MERCADERIA_ROTA));
@@ -340,7 +345,6 @@ class EntregaServiceTest {
         void consultaFinalizacionDeRuta() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.EN_TRASLADO);
             Ruta ruta = rutaQueContiene(entrega, camion());
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
             when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             servicio.marcarNoRecibida(entrega.getId(), dtoNoRecibida(MotivoFalloEntrega.ENTIDAD_AUSENTE));
@@ -352,12 +356,13 @@ class EntregaServiceTest {
         @DisplayName("Una entrega que no está EN_TRASLADO no puede marcarse como no recibida")
         void estadoIncompatible() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.LISTO_PARA_ENTREGAR);
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
+            Ruta ruta = rutaQueContiene(entrega, camion());
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             assertThatThrownBy(() -> servicio.marcarNoRecibida(
                     entrega.getId(), dtoNoRecibida(MotivoFalloEntrega.ENTIDAD_AUSENTE)))
                     .isInstanceOf(TransicionEntregaIlegalException.class);
-            verify(repositorio, never()).guardar(any());
+            verify(rutaRepositorio, never()).guardar(any());
             verifyNoInteractions(eventPublisher);
         }
     }
@@ -370,13 +375,14 @@ class EntregaServiceTest {
         @DisplayName("Una entrega NO_RECIBIDA vuelve a LISTO_PARA_ENTREGAR sin publicar eventos")
         void vuelveAListoParaEntregar() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.NO_RECIBIDA);
-            when(repositorio.buscarPorId(entrega.getId())).thenReturn(entrega);
+            Ruta ruta = rutaQueContiene(entrega, camion());
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
             servicio.regresarADeposito(entrega.getId());
 
             assertThat(entrega.getEstado()).isEqualTo(EstadoEntrega.LISTO_PARA_ENTREGAR);
             assertThat(entrega.getObservacion()).isEqualTo("Regreso a depósito");
-            verify(repositorio).guardar(entrega);
+            verify(rutaRepositorio).guardar(ruta);
             verifyNoInteractions(eventPublisher);
             verifyNoInteractions(planificacionService);
         }

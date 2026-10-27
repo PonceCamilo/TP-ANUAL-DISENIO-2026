@@ -157,6 +157,8 @@ services:
   # para cuando una operación escriba ruta y camión juntos.
   # El miembro se anuncia como 127.0.0.1; las aplicaciones usan directConnection
   # para no tener que resolver ese nombre.
+  # Con directConnection el driver no espera la elección: por eso el healthcheck
+  # recién da OK cuando el nodo ya es primario y acepta escrituras.
   mongo:
     image: mongo:7
     container_name: donatrack-mongo
@@ -166,7 +168,7 @@ services:
     volumes:
       - datos-mongo:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "try { if (rs.status().ok) { quit(0); } } catch (e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'127.0.0.1:27017'}]}); } quit(1);"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status(); } catch (e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'127.0.0.1:27017'}]}); quit(1); } quit(db.hello().isWritablePrimary ? 0 : 1);"]
       interval: 5s
       timeout: 10s
       retries: 20

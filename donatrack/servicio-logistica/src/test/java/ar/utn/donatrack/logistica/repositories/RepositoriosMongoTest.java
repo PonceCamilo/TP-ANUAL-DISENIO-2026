@@ -117,7 +117,6 @@ class RepositoriosMongoTest {
                 .estado(EstadoRuta.PLANIFICADA)
                 .build();
         rutas.guardar(ruta);
-        entregas.guardar(entrega);
         return ruta;
     }
 
@@ -146,16 +145,17 @@ class RepositoriosMongoTest {
     }
 
     @Test
-    @DisplayName("guardar una entrega reescribe el historial y las fotos dentro de la ruta")
+    @DisplayName("guardar la ruta persiste el historial y las fotos de su entrega embebida")
     void persisteHistorialYFotos() {
         Ruta ruta = rutaConEntrega(camion("AD789GH"));
         UUID entregaId = ruta.obtenerEntregas().getFirst().getId();
 
-        Entrega entrega = entregas.buscarPorId(entregaId);
+        Ruta rutaDeLaEntrega = rutas.buscarPorEntregaId(entregaId).orElseThrow();
+        Entrega entrega = rutaDeLaEntrega.buscarEntrega(entregaId).orElseThrow();
         entrega.registrarCambio(EstadoEntrega.EN_TRASLADO, "Inicio de ruta");
         entrega.getFotosComprobante().addAll(List.of("https://fotos/1.jpg", "https://fotos/2.jpg"));
         entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, MotivoFalloEntrega.ENTIDAD_AUSENTE, null);
-        entregas.guardar(entrega);
+        rutas.guardar(rutaDeLaEntrega);
 
         Entrega leida = entregas.buscarPorId(entregaId);
         assertThat(leida.getEstado()).isEqualTo(EstadoEntrega.NO_RECIBIDA);
