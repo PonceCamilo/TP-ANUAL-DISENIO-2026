@@ -15,9 +15,11 @@ import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
+import com.opencsv.exceptions.CsvMalformedLineException;
 import com.opencsv.exceptions.CsvValidationException;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionOperations;
 
@@ -31,6 +33,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Orquestador del proceso de importación masiva de personas donantes por CSV.
@@ -44,6 +47,7 @@ import java.util.Map;
  *  - Acumular resultados en un ImportReport sin detener el proceso ante errores parciales.
  */
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CsvImportService {
@@ -84,12 +88,13 @@ public class CsvImportService {
         ImportReport report = new ImportReport();
         int tamanioLote = propiedades.importacion().tamanioLote();
         List<DonanteImportDto> lote = new ArrayList<>(tamanioLote);
+        int linea = 1;
 
         try (CSVReader lector = new CSVReaderBuilder(
             new InputStreamReader(csvStream, StandardCharsets.UTF_8)).build()) {
 
             lector.readNext(); // encabezado
-            int linea = Math.toIntExact(lector.getLinesRead()) + 1;
+            linea = Math.toIntExact(lector.getLinesRead()) + 1;
             String[] columnas;
 
             while ((columnas = lector.readNext()) != null) {
@@ -103,14 +108,18 @@ public class CsvImportService {
                 linea = Math.toIntExact(lector.getLinesRead()) + 1;
             }
 
-            if (!lote.isEmpty()) {
-                procesarLote(lote, report);
-            }
-
-        } catch (CsvValidationException e) {
-            throw new IOException("Error al leer el archivo CSV: " + e.getMessage(), e);
+        } catch (CsvValidationException | CsvMalformedLineException e) {
+            // Los lotes anteriores ya se guardaron: en lugar de responder un error
+            // sin decir qué se importó, se informa dónde se cortó la lectura y se
+            // devuelve el informe de todo lo procesado hasta ahí.
+            log.warn("[IMPORTACION] Lectura interrumpida en la línea {}: {}", linea, e.getMessage());
+            report.agregar(ImportFilaCSV.error(linea, "",
+                    "Lectura interrumpida en esta línea, el resto del archivo no se procesó: " + e.getMessage()));
         }
 
+        if (!lote.isEmpty()) {
+            procesarLote(lote, report);
+        }
         return report;
     }
 
@@ -147,13 +156,20 @@ public class CsvImportService {
      *
      * Si el lote no se puede guardar, se procesa otra vez fila por fila, cada una
      * en su propia transacción, para que una fila mala no se lleve puestas a las
-     * demás: el error queda en el reporte solo para esa fila.
+     * demás: el error queda en el reporte solo para esa fila. Lo mismo pasa si
+     * una fila falla de forma inesperada en el camino rápido: se aborta la
+     * transacción del lote (así ninguna persona queda guardada con cambios a
+     * medias) y se reprocesa fila por fila. La causa queda en el log.
      */
     private void procesarLote(List<DonanteImportDto> lote, ImportReport report) {
         List<ImportFilaCSV> resultados;
         try {
-            resultados = transaccion.execute(estado -> procesarLoteEnUnaTransaccion(lote));
+            resultados = Objects.requireNonNull(
+                    transaccion.execute(estado -> procesarLoteEnUnaTransaccion(lote)),
+                    "el lote no devolvió resultados");
         } catch (Exception errorDelLote) {
+            log.warn("[IMPORTACION] El lote que empieza en la línea {} no se pudo guardar junto; "
+                    + "se reprocesa fila por fila.", lote.getFirst().linea(), errorDelLote);
             resultados = lote.stream().map(this::procesarFila).toList();
         }
         resultados.forEach(report::agregar);
@@ -168,23 +184,19 @@ public class CsvImportService {
         for (DonanteImportDto dto : lote) {
             int linea = dto.linea();
             String clave = NormalizadorEmail.normalizar(dto.email());
-            try {
-                PersonaDonante existente = porEmail.get(clave);
-                String conflicto = existente == null ? null : conflictoDeTipo(existente, dto);
-                if (conflicto != null) {
-                    resultados.add(ImportFilaCSV.error(linea, dto.email(), conflicto));
-                } else if (existente != null) {
-                    actualizar(existente, dto);
-                    aGuardar.put(clave, existente);
-                    resultados.add(ImportFilaCSV.actualizado(linea, dto.email()));
-                } else {
-                    PersonaDonante nueva = factory.crearPersona(dto);
-                    porEmail.put(clave, nueva);
-                    aGuardar.put(clave, nueva);
-                    resultados.add(ImportFilaCSV.creado(linea, dto.email()));
-                }
-            } catch (Exception e) {
-                resultados.add(ImportFilaCSV.error(linea, dto.email(), "Error inesperado: " + e.getMessage()));
+            PersonaDonante existente = porEmail.get(clave);
+            String conflicto = existente == null ? null : conflictoDeTipo(existente, dto);
+            if (conflicto != null) {
+                resultados.add(ImportFilaCSV.error(linea, dto.email(), conflicto));
+            } else if (existente != null) {
+                actualizar(existente, dto);
+                aGuardar.put(clave, existente);
+                resultados.add(ImportFilaCSV.actualizado(linea, dto.email()));
+            } else {
+                PersonaDonante nueva = factory.crearPersona(dto);
+                porEmail.put(clave, nueva);
+                aGuardar.put(clave, nueva);
+                resultados.add(ImportFilaCSV.creado(linea, dto.email()));
             }
         }
 

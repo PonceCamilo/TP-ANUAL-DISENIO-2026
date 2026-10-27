@@ -483,6 +483,28 @@ class CsvImportServiceTest {
     }
 
     @Nested
+    @DisplayName("Lectura interrumpida a mitad de archivo")
+    class LecturaInterrumpida {
+
+        @Test
+        @DisplayName("Devuelve el informe de lo procesado y marca dónde se cortó la lectura")
+        void informeParcial() throws IOException {
+            // Una comilla sin cerrar al final hace que OpenCSV no pueda terminar de leer el archivo.
+            String contenido = ENCABEZADO
+                    + "HUMANA,DNI,111,Ana Uno,a@x.com,\n"
+                    + "HUMANA,DNI,333,\"Sin cerrar,c@x.com,\n";
+
+            ImportReport reporte = servicio.importar(csv(contenido));
+
+            assertThat(reporte.totalCreados()).isEqualTo(1);
+            assertThat(reporte.getErrores()).singleElement().satisfies(error -> {
+                assertThat(error.getNumeroLinea()).isEqualTo(3);
+                assertThat(error.getDetalle()).startsWith("Lectura interrumpida");
+            });
+        }
+    }
+
+    @Nested
     @DisplayName("Contenido del reporte final")
     class ReporteFinal {
 
