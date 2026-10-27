@@ -35,7 +35,7 @@ public abstract class NotificadorBase implements NotificadorInterface {
         } catch (Exception e) {
             log.error("[{}] Falló el envío a {}: {}",
                     getEtiqueta(), notificacion.getDestinatario(), e.getMessage());
-            notificacion.marcarFallida();
+            notificacion.marcarFallida(e.getMessage());
         }
     }
 
