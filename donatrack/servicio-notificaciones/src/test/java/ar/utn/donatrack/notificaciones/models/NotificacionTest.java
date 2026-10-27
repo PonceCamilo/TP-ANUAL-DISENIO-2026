@@ -93,6 +93,32 @@ class NotificacionTest {
             n.marcarFallida();
             assertThat(n.getFechaEnvio()).isNull();
         }
+
+        @Test
+        @DisplayName("marcarFallida(motivo) deja FALLIDA y guarda el motivo")
+        void marcarFallidaConMotivo() {
+            Notificacion n = notificacionBase();
+            n.marcarFallida("credencial inválida");
+            assertThat(n.getEstado()).isEqualTo(EstadoNotificacion.FALLIDA);
+            assertThat(n.getMotivoFallo()).isEqualTo("credencial inválida");
+        }
+
+        @Test
+        @DisplayName("marcarFallida(motivo) recorta el motivo a 500 caracteres (largo de la columna)")
+        void marcarFallidaRecortaMotivo() {
+            Notificacion n = notificacionBase();
+            n.marcarFallida("x".repeat(800));
+            assertThat(n.getMotivoFallo()).hasSize(500);
+        }
+
+        @Test
+        @DisplayName("marcarFallida(null) no rompe y deja el motivo vacío")
+        void marcarFallidaMotivoNull() {
+            Notificacion n = notificacionBase();
+            n.marcarFallida(null);
+            assertThat(n.getEstado()).isEqualTo(EstadoNotificacion.FALLIDA);
+            assertThat(n.getMotivoFallo()).isNull();
+        }
     }
 
     @Nested
