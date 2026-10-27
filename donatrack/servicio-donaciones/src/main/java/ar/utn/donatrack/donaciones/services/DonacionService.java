@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
@@ -106,6 +108,7 @@ public class DonacionService implements DonacionServiceInterface {
 
   public CandidatosAsignacionResponseDTO obtenerCandidatos(UUID idDonacion) {
     Donacion donacion = validador.validarYObtenerDonacion(idDonacion);
+    rechazarSiTieneBienesVencidos(donacion);
     AsignacionDonacionesService.ResultadoMatchmaking ranking = asignacionService.generarRanking(donacion);
     Map<UUID, EntidadBeneficiariaResponseDTO> entidades = cargarEntidades(List.of(
         ranking.getRankingSemantico(), ranking.getRankingSubAtendidos(), ranking.getCoincidencias()));
@@ -147,6 +150,7 @@ public class DonacionService implements DonacionServiceInterface {
 
   public void asignar(UUID idDonacion, AsignacionRequestDTO dto) {
     Donacion donacion = validador.validarYObtenerDonacion(idDonacion);
+    rechazarSiTieneBienesVencidos(donacion);
     EntidadBeneficiaria entidad = entidadesValidator.validarYObtenerEntidad(dto.getIdEntidadBeneficiaria());
 
     donacion.asignarA(entidad);
@@ -168,6 +172,12 @@ public class DonacionService implements DonacionServiceInterface {
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  private static void rechazarSiTieneBienesVencidos(Donacion donacion) {
+    if (donacion.tieneBienesVencidosAl(FechaHoraArgentina.hoy())) {
+      throw new DonacionConBienesVencidosException(donacion.getId());
+    }
+  }
 
   /** Carga en una sola consulta todas las entidades que aparecen en los rankings. */
   private Map<UUID, EntidadBeneficiariaResponseDTO> cargarEntidades(List<List<ResultadoAsignacion>> rankings) {

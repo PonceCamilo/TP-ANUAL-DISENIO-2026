@@ -61,7 +61,7 @@ public class DonacionesController {
   @Operation(
       summary = "Listar donaciones (paginado)",
       description = "Devuelve una página de donaciones, de la más nueva a la más vieja, con filtros opcionales "
-          + "por estado, persona donante, subcategoría y entidad beneficiaria. Las páginas empiezan en 0; "
+          + "por estado, persona donante, subcategoría, entidad beneficiaria y bienes vencidos. Las páginas empiezan en 0; "
           + "el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
           + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
       responses = {
@@ -79,12 +79,15 @@ public class DonacionesController {
       @RequestParam(required = false) String subcategoria,
       @Parameter(description = "ID de la entidad beneficiaria a la que fueron asignadas")
       @RequestParam(required = false) UUID idEntidad,
+      @Parameter(description = "true: solo las que tienen algún perecedero ya vencido (para pasarlas a VENCIDA)")
+      @RequestParam(required = false) Boolean vencidas,
       @Parameter(description = "Número de página, desde 0", example = "0")
       @RequestParam(required = false) Integer page,
       @Parameter(description = "Elementos por página (1 a 100)", example = "20")
       @RequestParam(required = false) Integer size
   ) {
-    FiltroDonaciones filtro = new FiltroDonaciones(estado, idDonante, subcategoria, idEntidad);
+    FiltroDonaciones filtro = new FiltroDonaciones(estado, idDonante, subcategoria, idEntidad,
+        Boolean.TRUE.equals(vencidas));
     return ResponseEntity.ok(donacionService.obtenerDonaciones(filtro, SolicitudPagina.de(page, size)));
   }
 

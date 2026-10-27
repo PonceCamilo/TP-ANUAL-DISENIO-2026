@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.dtos.request;
 
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.models.donacion.bien.TipoBien;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.AssertTrue;
@@ -47,6 +48,17 @@ public class BienRequestDTO {
       return TipoBien.PERECIBLE;
     }
     return esNuevo != null ? TipoBien.CON_ESTADO : TipoBien.GENERICO;
+  }
+
+  /**
+   * Un perecedero ya vencido no se registra: no podría asignarse a ninguna
+   * entidad. Vencer hoy está permitido. La fecha de referencia es la de
+   * Argentina, no la del servidor.
+   */
+  @JsonIgnore
+  @AssertTrue(message = "la fecha de vencimiento ya pasó: no se puede registrar un bien vencido")
+  public boolean isVencimientoVigente() {
+    return fechaVencimiento == null || !fechaVencimiento.isBefore(FechaHoraArgentina.hoy());
   }
 
   /**

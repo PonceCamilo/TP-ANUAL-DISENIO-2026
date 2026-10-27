@@ -119,6 +119,30 @@ class DonacionTest {
     }
 
     @Nested
+    @DisplayName("tieneBienesVencidosAl(): perecederos vencidos")
+    class BienesVencidos {
+
+        @Test
+        @DisplayName("Detecta un perecedero vencido antes de la fecha; vencer ese mismo día no cuenta")
+        void detectaVencidos() {
+            donacion.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("arroz"))
+                    .descripcion("arroz").cantidad(1).unidad("kg").fechaVencimiento(LocalDate.of(2026, 5, 10)).build());
+
+            assertThat(donacion.tieneBienesVencidosAl(LocalDate.of(2026, 5, 11))).isTrue();
+            assertThat(donacion.tieneBienesVencidosAl(LocalDate.of(2026, 5, 10))).isFalse();
+        }
+
+        @Test
+        @DisplayName("Los bienes que no vencen nunca cuentan como vencidos")
+        void noPerecederos() {
+            donacion.getBienes().add(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
+                    .descripcion("arroz").cantidad(1).unidad("kg").build());
+
+            assertThat(donacion.tieneBienesVencidosAl(LocalDate.of(2099, 1, 1))).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("Estado inicial")
     class EstadoInicial {
 

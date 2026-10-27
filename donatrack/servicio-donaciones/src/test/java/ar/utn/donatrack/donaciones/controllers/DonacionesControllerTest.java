@@ -178,7 +178,7 @@ class DonacionesControllerTest {
                     .andExpect(status().isOk());
 
             verify(donacionService).obtenerDonaciones(
-                    new FiltroDonaciones("EN_DEPOSITO", idDonante, "arroz", idEntidad),
+                    new FiltroDonaciones("EN_DEPOSITO", idDonante, "arroz", idEntidad, false),
                     new SolicitudPagina(2, 50));
         }
 

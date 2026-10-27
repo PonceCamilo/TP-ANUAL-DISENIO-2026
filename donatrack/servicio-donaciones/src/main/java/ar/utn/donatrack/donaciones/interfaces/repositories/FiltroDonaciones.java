@@ -11,8 +11,15 @@ import java.util.UUID;
  * @param idDonante    donaciones de una persona donante ("mis donaciones")
  * @param subcategoria subcategoría, sin distinguir mayúsculas
  * @param idEntidad    donaciones asignadas a una entidad beneficiaria
+ * @param soloConBienesVencidos donaciones con algún perecedero ya vencido (las
+ *                     que la persona administradora tiene que pasar a VENCIDA)
  */
-public record FiltroDonaciones(String estado, UUID idDonante, String subcategoria, UUID idEntidad) {
+public record FiltroDonaciones(String estado, UUID idDonante, String subcategoria, UUID idEntidad,
+                               boolean soloConBienesVencidos) {
+
+    public FiltroDonaciones(String estado, UUID idDonante, String subcategoria, UUID idEntidad) {
+        this(estado, idDonante, subcategoria, idEntidad, false);
+    }
 
     public static FiltroDonaciones sinFiltros() {
         return new FiltroDonaciones(null, null, null, null);

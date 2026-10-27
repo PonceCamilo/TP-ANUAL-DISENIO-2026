@@ -1,5 +1,11 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.ListJoin;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
+import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.models.asignacion.RecepcionDiariaEntidad;
@@ -144,6 +150,18 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
       String normalizada = new Subcategoria(filtro.subcategoria()).getTipoNormalizado();
       spec = spec.and((raiz, consulta, cb) ->
           cb.equal(raiz.get("subcategoria").get("tipoNormalizado"), normalizada));
+    }
+    if (filtro.soloConBienesVencidos()) {
+      LocalDate hoy = FechaHoraArgentina.hoy();
+      spec = spec.and((raiz, consulta, cb) -> {
+        Subquery<UUID> vencidos = consulta.subquery(UUID.class);
+        Root<Donacion> donacion = vencidos.from(Donacion.class);
+        ListJoin<Donacion, Bien> bien = donacion.joinList("bienes");
+        vencidos.select(donacion.get("id")).where(
+            cb.equal(donacion.get("id"), raiz.get("id")),
+            cb.lessThan(cb.treat(bien, BienPerecible.class).get("fechaVencimiento"), hoy));
+        return cb.exists(vencidos);
+      });
     }
     return spec;
   }

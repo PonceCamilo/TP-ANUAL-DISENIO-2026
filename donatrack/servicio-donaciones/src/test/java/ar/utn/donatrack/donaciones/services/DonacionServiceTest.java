@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConVariosBienesException;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
@@ -129,6 +130,33 @@ class DonacionServiceTest {
                 candidatosRepositorio);
 
         donacion = donacionDe("arroz", idDonante);
+    }
+
+    /** Donación EN_DEPOSITO con un perecedero que ya venció. */
+    private Donacion donacionVencida() {
+        Donacion vencida = new Donacion();
+        vencida.setIdDonante(idDonante);
+        vencida.setSubcategoria(new Subcategoria("leche"));
+        vencida.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("leche"))
+                .descripcion("Leche").cantidad(2).unidad("litros")
+                .fechaVencimiento(LocalDate.of(2020, 1, 1)).build());
+        return vencida;
+    }
+
+    @Test
+    @DisplayName("Una donación con bienes vencidos no se asigna ni se le buscan candidatas")
+    void donacionVencidaNoSeAsigna() {
+        Donacion vencida = donacionVencida();
+        when(repositorio.obtenerPorId(vencida.getId())).thenReturn(vencida);
+        AsignacionRequestDTO pedido = new AsignacionRequestDTO();
+        pedido.setIdEntidadBeneficiaria(UUID.randomUUID());
+
+        assertThatThrownBy(() -> servicio.asignar(vencida.getId(), pedido))
+                .isInstanceOf(DonacionConBienesVencidosException.class);
+        assertThatThrownBy(() -> servicio.obtenerCandidatos(vencida.getId()))
+                .isInstanceOf(DonacionConBienesVencidosException.class);
+        verify(repositorio, never()).guardarAsignacion(any());
+        assertThat(vencida.estaEnEstado("EN_DEPOSITO")).isTrue();
     }
 
     /** Donación EN_DEPOSITO con un bien genérico de la subcategoría indicada. */

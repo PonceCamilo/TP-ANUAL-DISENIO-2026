@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import java.util.Optional;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienIncompatibleConDonacionException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienNoEncontradoException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConVariosBienesException;
@@ -223,6 +224,17 @@ public class Donacion implements Persistable<UUID> {
             }
         }
         throw new BienNoEncontradoException(id, idBien);
+    }
+
+    /**
+     * Si algún bien perecedero ya venció a la fecha indicada. Una donación así no
+     * entra al matching ni se asigna; la persona administradora la pasa a VENCIDA.
+     */
+    public boolean tieneBienesVencidosAl(LocalDate fecha) {
+        return bienes.stream()
+                .map(Bien::vencimiento)
+                .flatMap(Optional::stream)
+                .anyMatch(vencimiento -> vencimiento.isBefore(fecha));
     }
 
     public boolean esPerecible() {

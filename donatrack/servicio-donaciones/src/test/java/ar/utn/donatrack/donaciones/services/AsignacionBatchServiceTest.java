@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
@@ -114,6 +115,24 @@ class AsignacionBatchServiceTest {
 
             verify(asignacionService, times(2)).generarRanking(any(), any());
             verify(candidatosRepositorio, times(2)).guardar(any());
+        }
+
+        @Test
+        @DisplayName("Las donaciones con bienes vencidos quedan fuera de la bandeja")
+        void dejaAfueraLasVencidas() {
+            Donacion vencida = donacionEnDeposito("leche");
+            vencida.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("leche"))
+                    .descripcion("Leche").cantidad(1).unidad("litros")
+                    .fechaVencimiento(java.time.LocalDate.of(2020, 1, 1)).build());
+            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
+                    .thenReturn(List.of(vencida, donacionEnDeposito("arroz")));
+            when(asignacionService.generarRanking(any(), any()))
+                    .thenReturn(matchmaking(List.of(), List.of(resultado(1.0)), List.of()));
+
+            servicio.ejecutarMatchmakingNocturno();
+
+            verify(asignacionService, times(1)).generarRanking(any(), any());
+            verify(asignacionService, never()).generarRanking(eq(vencida), any());
         }
 
         @Test

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import java.time.LocalDate;
 import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
@@ -54,6 +55,17 @@ public class AsignacionBatchService {
     @Scheduled(cron = "${donaciones.procesos.cron-matchmaking:0 30 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     public void ejecutarMatchmakingNocturno() {
         List<Donacion> enDeposito = donacionesRepositorio.obtenerPorEstado(ESTADO_EN_DEPOSITO);
+
+        // Una donación con bienes vencidos no se le recomienda a nadie: queda
+        // fuera de la bandeja hasta que la persona administradora la pase a
+        // VENCIDA (GET /donaciones?vencidas=true las lista).
+        LocalDate hoy = FechaHoraArgentina.hoy();
+        List<Donacion> conVencidos = enDeposito.stream().filter(d -> d.tieneBienesVencidosAl(hoy)).toList();
+        if (!conVencidos.isEmpty()) {
+            log.warn("[ASIGNACION] {} donaciones en depósito tienen bienes vencidos y quedan fuera del matchmaking: {}",
+                    conVencidos.size(), conVencidos.stream().map(Donacion::getId).toList());
+            enDeposito = enDeposito.stream().filter(d -> !d.tieneBienesVencidosAl(hoy)).toList();
+        }
 
         log.info("[ASIGNACION] Inicio del matchmaking nocturno. Donaciones en depósito: {}", enDeposito.size());
 

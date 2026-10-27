@@ -42,6 +42,14 @@ class BienRequestDTOTest {
     }
 
     @Test
+    @DisplayName("un perecedero ya vencido no se registra; vencer hoy sí se permite")
+    void vencimientoPasado() {
+        LocalDate hoy = ar.utn.donatrack.donaciones.util.FechaHoraArgentina.hoy();
+        assertThat(validador.validate(bien(null, null, hoy.minusDays(1)))).isNotEmpty();
+        assertThat(validador.validate(bien(null, null, hoy))).isEmpty();
+    }
+
+    @Test
     @DisplayName("el tipo explícito exige su dato propio y ninguno ajeno")
     void tipoExplicitoCoherente() {
         assertThat(validador.validate(bien(TipoBien.PERECIBLE, null, LocalDate.of(2027, 1, 1)))).isEmpty();

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -84,6 +85,27 @@ class DonacionesRepositoryTest {
             arrozDeBetoAsignado.setIdEntidadBeneficiaria(comedor);
             arrozDeBetoAsignado.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
             persistirYLimpiar(List.of(arrozDeAna, ropaDeAna, arrozDeBetoAsignado));
+        }
+
+        @Test
+        @DisplayName("vencidas=true devuelve solo las que tienen algún perecedero ya vencido")
+        void soloConBienesVencidos() {
+            Donacion vencida = donacion(ana, "Leche", base.plusHours(3));
+            vencida.getBienes().clear();
+            vencida.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("Leche"))
+                    .descripcion("leche").cantidad(1).unidad("litros")
+                    .fechaVencimiento(java.time.LocalDate.of(2020, 1, 1)).build());
+            Donacion vigente = donacion(ana, "Yogur", base.plusHours(4));
+            vigente.getBienes().clear();
+            vigente.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("Yogur"))
+                    .descripcion("yogur").cantidad(1).unidad("litros")
+                    .fechaVencimiento(java.time.LocalDate.of(2099, 1, 1)).build());
+            persistirYLimpiar(List.of(vencida, vigente));
+
+            Pagina<Donacion> pagina = repositorio.buscar(
+                    new FiltroDonaciones(null, null, null, null, true), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactly(vencida.getId());
         }
 
         private List<UUID> ids(Pagina<Donacion> pagina) {
