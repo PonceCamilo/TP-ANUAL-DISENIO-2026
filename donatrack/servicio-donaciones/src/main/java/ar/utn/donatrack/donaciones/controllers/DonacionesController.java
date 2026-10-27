@@ -5,7 +5,6 @@ import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EnvioLogisticaRequestDTO;
-import ar.utn.donatrack.donaciones.models.donacion.CargaDonacion;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
@@ -14,11 +13,8 @@ import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.services.DonacionServiceInterface;
 import ar.utn.donatrack.donaciones.interfaces.services.SegmentadorDonacionesServiceInterface;
-import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
-import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.services.PlanificacionEntregasService;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
-import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -55,8 +51,6 @@ public class DonacionesController {
   private final DonacionServiceInterface donacionService;
   private final SegmentadorDonacionesServiceInterface segmentadorDonacionesService;
   private final PlanificacionEntregasService planificacionEntregasService;
-  private final PersonasValidator personasValidator;
-  private final DonacionMapper mapper;
 
   @Operation(
       summary = "Listar donaciones (paginado)",
@@ -114,17 +108,15 @@ public class DonacionesController {
           @ApiResponse(responseCode = "201", description = "Donaciones segmentadas y creadas",
               content = @Content(array = @ArraySchema(schema = @Schema(implementation = DonacionResponseDTO.class)))),
           @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-          @ApiResponse(responseCode = "404", description = "Persona donante no encontrada")
+          @ApiResponse(responseCode = "404", description = "Persona donante no encontrada"),
+          @ApiResponse(responseCode = "422", description = "La persona donante está BLOQUEADA")
       }
   )
   @PostMapping
   public ResponseEntity<List<DonacionResponseDTO>> registrar(
       @RequestBody @Valid DonacionRequestDTO dto
   ) {
-    personasValidator.validarExistenciaPersona(dto.getIdDonante());
-    CargaDonacion carga = mapper.toCargaDonacion(dto);
-    List<Donacion> donacionesCreadas = segmentadorDonacionesService.segmentar(carga);
-    return ResponseEntity.status(HttpStatus.CREATED).body(mapper.toDTOList(donacionesCreadas));
+    return ResponseEntity.status(HttpStatus.CREATED).body(segmentadorDonacionesService.registrar(dto));
   }
 
   @Operation(

@@ -1,5 +1,10 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
+import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
+import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
@@ -23,12 +28,33 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
   private final DonacionesRepositoryInterface donacionesRepository;
   private final PersonaDonanteRepositoryInterface donanteRepository;
   private final IncentivosClient incentivosClient;
+  private final PersonasValidator personasValidator;
+  private final DonacionMapper mapper;
+
+  /**
+   * Registra una carga de donación: valida a la persona donante, segmenta los
+   * bienes en donaciones, las guarda y avisa a incentivos. Antes este flujo
+   * estaba repartido en el controller.
+   *
+   * Una persona donante BLOQUEADA no puede registrar donaciones (422).
+   */
+  public List<DonacionResponseDTO> registrar(DonacionRequestDTO dto) {
+    PersonaDonante donante = personasValidator.validarYObtenerPersona(dto.getIdDonante());
+    if (donante.estaBloqueada()) {
+      throw new DonanteBloqueadoException(donante.getId());
+    }
+    return mapper.toDTOList(registrarCarga(mapper.toCargaDonacion(dto), donante));
+  }
 
   public List<Donacion> segmentar(CargaDonacion carga) {
+    return registrarCarga(carga, donanteRepository.obtenerPersona(carga.getIdDonante()));
+  }
+
+  private List<Donacion> registrarCarga(CargaDonacion carga, PersonaDonante donante) {
     List<Donacion> resultado = carga.segmentar();
 
     cargarDonaciones(resultado);
-    notificarIncentivos(carga.getIdDonante(), carga.getBienes());
+    notificarIncentivos(donante, carga.getBienes());
 
     return resultado;
   }
@@ -37,8 +63,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
     donacionesRepository.cargarDonaciones(donaciones);
   }
 
-  private void notificarIncentivos(UUID idDonante, List<Bien> bienes) {
-    PersonaDonante donante = donanteRepository.obtenerPersona(idDonante);
+  private void notificarIncentivos(PersonaDonante donante, List<Bien> bienes) {
     if (donante == null || donante.obtenerEmail() == null) {
       return;
     }
@@ -49,6 +74,6 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
         .filter(Objects::nonNull)
         .distinct()
         .toList();
-    incentivosClient.notificarDonacionRegistrada(idDonante, donante.obtenerEmail(), "EMAIL", bienes.size(), categorias);
+    incentivosClient.notificarDonacionRegistrada(donante.getId(), donante.obtenerEmail(), "EMAIL", bienes.size(), categorias);
   }
 }

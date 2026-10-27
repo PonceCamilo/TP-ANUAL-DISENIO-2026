@@ -1,5 +1,13 @@
 package ar.utn.donatrack.donaciones.services;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.mockito.Spy;
+import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
+import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
+import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
@@ -59,6 +67,12 @@ class SegmentadorDonacionesServiceTest {
 
     @Mock
     private IncentivosClient incentivosClient;
+
+    @Mock
+    private PersonasValidator personasValidator;
+
+    @Spy
+    private DonacionMapper mapper = new DonacionMapper();
 
     @InjectMocks
     private SegmentadorDonacionesService servicio;
@@ -197,6 +211,54 @@ class SegmentadorDonacionesServiceTest {
             assertThat(resultado).hasSize(1);
             verify(incentivosClient, never()).notificarDonacionRegistrada(
                     any(), anyString(), anyString(), anyInt(), anyList());
+        }
+    }
+
+    @Nested
+    @DisplayName("registrar(): el caso de uso completo desde la API")
+    class Registrar {
+
+        private DonacionRequestDTO pedido() {
+            BienRequestDTO bien = new BienRequestDTO();
+            bien.setSubcategoria("arroz");
+            bien.setCantidad(3);
+            bien.setUnidad("kg");
+            return new DonacionRequestDTO(idDonante, "Colecta", List.of(bien));
+        }
+
+        private PersonaHumana donante(String estado) {
+            PersonaHumana persona = PersonaHumana.builder().id(idDonante).email("ana@mail.com").build();
+            if (!"ACTIVO".equals(estado)) {
+                persona.cambiarEstado(estado, "motivo");
+            }
+            return persona;
+        }
+
+        @Test
+        @DisplayName("Segmenta, guarda y devuelve las donaciones creadas")
+        void registraLaCarga() {
+            when(personasValidator.validarYObtenerPersona(idDonante)).thenReturn(donante("ACTIVO"));
+
+            List<DonacionResponseDTO> creadas = servicio.registrar(pedido());
+
+            assertThat(creadas).singleElement().satisfies(d -> {
+                assertThat(d.getEstado()).isEqualTo("EN_DEPOSITO");
+                assertThat(d.getSubcategoria()).isEqualTo("arroz");
+            });
+            verify(donacionesRepository).cargarDonaciones(anyList());
+            // El donante ya está cargado: no se vuelve a buscar para avisar a incentivos.
+            verify(donanteRepository, never()).obtenerPersona(any());
+        }
+
+        @Test
+        @DisplayName("Una persona donante BLOQUEADA no puede registrar donaciones")
+        void donanteBloqueado() {
+            when(personasValidator.validarYObtenerPersona(idDonante)).thenReturn(donante("BLOQUEADO"));
+
+            assertThatThrownBy(() -> servicio.registrar(pedido()))
+                    .isInstanceOf(DonanteBloqueadoException.class);
+            verify(donacionesRepository, never()).cargarDonaciones(any());
+            verifyNoInteractions(incentivosClient);
         }
     }
 }

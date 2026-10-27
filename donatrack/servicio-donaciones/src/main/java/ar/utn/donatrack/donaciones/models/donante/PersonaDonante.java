@@ -206,6 +206,10 @@ public abstract class PersonaDonante implements Persistable<UUID> {
      */
     public abstract void actualizarNombreImportado(String nombreORazonSocial);
 
+    public boolean estaBloqueada() {
+        return "BLOQUEADO".equals(estadoNombre);
+    }
+
     public String obtenerEmail() {
         return this.email;
     }

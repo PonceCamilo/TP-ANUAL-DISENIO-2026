@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
@@ -90,9 +91,6 @@ class DonacionesControllerTest {
 
     @MockitoBean
     private SegmentadorDonacionesServiceInterface segmentadorService;
-
-    @MockitoBean
-    private PersonasValidator personasValidator;
 
     @MockitoBean
     private PlanificacionEntregasService planificacionEntregasService;
@@ -262,8 +260,8 @@ class DonacionesControllerTest {
         void registroOk() throws Exception {
             // El POST devuelve el cuerpo con las donaciones creadas para que el
             // cliente conozca los ids generados por la segmentación.
-            doNothing().when(personasValidator).validarExistenciaPersona(idDonante);
-            when(segmentadorService.segmentar(any())).thenReturn(List.of(donacionSegmentada()));
+            when(segmentadorService.registrar(any()))
+                    .thenReturn(new DonacionMapper().toDTOList(List.of(donacionSegmentada())));
 
             mockMvc.perform(post("/donaciones")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -278,15 +276,23 @@ class DonacionesControllerTest {
         @Test
         @DisplayName("Devuelve 404 si el donante indicado no existe, sin segmentar nada")
         void donanteInexistente() throws Exception {
-            doThrow(new PersonaDonanteNoEncontradaException(idDonante))
-                    .when(personasValidator).validarExistenciaPersona(idDonante);
+            when(segmentadorService.registrar(any())).thenThrow(new PersonaDonanteNoEncontradaException(idDonante));
 
             mockMvc.perform(post("/donaciones")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(requestValido())))
                     .andExpect(status().isNotFound());
+        }
 
-            verify(segmentadorService, never()).segmentar(any());
+        @Test
+        @DisplayName("Devuelve 422 si la persona donante está bloqueada")
+        void donanteBloqueado() throws Exception {
+            when(segmentadorService.registrar(any())).thenThrow(new DonanteBloqueadoException(idDonante));
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestValido())))
+                    .andExpect(status().isUnprocessableEntity());
         }
 
         @Test
@@ -327,14 +333,14 @@ class DonacionesControllerTest {
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("tipo de bien")));
 
-            verify(segmentadorService, never()).segmentar(any());
+            verify(segmentadorService, never()).registrar(any());
         }
 
         @Test
         @DisplayName("Acepta el tipo explícito cuando trae solo el dato que le corresponde")
         void tipoExplicito() throws Exception {
-            doNothing().when(personasValidator).validarExistenciaPersona(idDonante);
-            when(segmentadorService.segmentar(any())).thenReturn(List.of(donacionSegmentada()));
+            when(segmentadorService.registrar(any()))
+                    .thenReturn(new DonacionMapper().toDTOList(List.of(donacionSegmentada())));
             DonacionRequestDTO conTipo = requestValido();
             conTipo.getBienes().getFirst().setTipo(TipoBien.CON_ESTADO);
             conTipo.getBienes().getFirst().setEsNuevo(false);
@@ -348,8 +354,8 @@ class DonacionesControllerTest {
         @Test
         @DisplayName("Cada bien de la respuesta informa su id y su tipo")
         void respuestaConIdYTipoDelBien() throws Exception {
-            doNothing().when(personasValidator).validarExistenciaPersona(idDonante);
-            when(segmentadorService.segmentar(any())).thenReturn(List.of(donacionSegmentada()));
+            when(segmentadorService.registrar(any()))
+                    .thenReturn(new DonacionMapper().toDTOList(List.of(donacionSegmentada())));
 
             mockMvc.perform(post("/donaciones")
                             .contentType(MediaType.APPLICATION_JSON)
