@@ -6,6 +6,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -31,7 +32,10 @@ import java.util.UUID;
  * sería peor: el representante es el mismo concepto en los dos casos.
  */
 @Entity
-@Table(name = "representante")
+@Table(name = "representante", indexes = {
+        @Index(name = "idx_representante_juridica", columnList = "persona_juridica_id"),
+        @Index(name = "idx_representante_entidad", columnList = "entidad_id")
+})
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

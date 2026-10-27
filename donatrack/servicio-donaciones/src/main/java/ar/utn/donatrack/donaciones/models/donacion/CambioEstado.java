@@ -6,6 +6,7 @@ import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,7 +25,7 @@ import java.util.UUID;
  * EstadosDonacion, así que ni el mapper ni los tests notaron el cambio.
  */
 @Entity
-@Table(name = "cambio_estado")
+@Table(name = "cambio_estado", indexes = @Index(name = "idx_cambio_estado_donacion", columnList = "donacion_id"))
 @Getter
 @NoArgsConstructor
 public class CambioEstado {

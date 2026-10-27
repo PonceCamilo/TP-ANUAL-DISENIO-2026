@@ -6,6 +6,7 @@ import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
@@ -32,7 +33,7 @@ import java.util.UUID;
  * distinguiendo perecederos de bienes con estado al recuperarlos.
  */
 @Entity
-@Table(name = "bien")
+@Table(name = "bien", indexes = @Index(name = "idx_bien_donacion", columnList = "donacion_id"))
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "tipo_bien")
 @SuperBuilder

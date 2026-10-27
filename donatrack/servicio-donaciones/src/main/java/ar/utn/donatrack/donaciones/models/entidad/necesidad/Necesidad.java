@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
@@ -25,7 +26,7 @@ import java.util.UUID;
  * JOINED hace que la base misma impida esa inconsistencia.
  */
 @Entity
-@Table(name = "necesidad")
+@Table(name = "necesidad", indexes = @Index(name = "idx_necesidad_campania", columnList = "campania_id"))
 @Inheritance(strategy = InheritanceType.JOINED)
 @NoArgsConstructor
 @Getter

@@ -12,6 +12,7 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
@@ -62,7 +63,11 @@ import java.time.LocalDateTime;
  * rehidrata en @PostLoad.
  */
 @Entity
-@Table(name = "persona_donante")
+@Table(name = "persona_donante", indexes = {
+        @Index(name = "idx_persona_estado", columnList = "estado"),
+        // Proceso nocturno de inactividad: busca por fecha de última interacción.
+        @Index(name = "idx_persona_ultima_interaccion", columnList = "ultima_interaccion")
+})
 @Inheritance(strategy = InheritanceType.JOINED)
 @SuperBuilder
 @NoArgsConstructor

@@ -14,6 +14,7 @@ import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
@@ -47,7 +48,17 @@ import java.util.UUID;
  * rehidratación y deja la columna legible en el DER.
  */
 @Entity
-@Table(name = "donacion")
+@Table(name = "donacion", indexes = {
+        // Filtros de GET /donaciones y de los procesos nocturnos (por estado).
+        @Index(name = "idx_donacion_estado", columnList = "estado"),
+        // "Mis donaciones": un donante filtra las suyas, casi siempre por estado.
+        @Index(name = "idx_donacion_donante_estado", columnList = "id_donante, estado"),
+        // Donaciones de una entidad y reconciliación del contador de recepciones.
+        @Index(name = "idx_donacion_entidad_fecha", columnList = "id_entidad_beneficiaria, fecha_asignacion"),
+        @Index(name = "idx_donacion_subcategoria", columnList = "subcategoria_tipo_normalizado"),
+        // Orden de la paginación: más nuevas primero, el id desempata.
+        @Index(name = "idx_donacion_fecha", columnList = "fecha_donacion DESC, id")
+})
 @Getter
 public class Donacion {
 

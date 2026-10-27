@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
@@ -24,7 +25,11 @@ import java.util.UUID;
  * JOIN por cada contacto leído; con tabla única alcanza el discriminador.
  */
 @Entity
-@Table(name = "medio_de_contacto")
+@Table(name = "medio_de_contacto", indexes = {
+        @Index(name = "idx_contacto_persona", columnList = "persona_donante_id"),
+        @Index(name = "idx_contacto_representante", columnList = "representante_id"),
+        @Index(name = "idx_contacto_entidad", columnList = "entidad_id")
+})
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "tipo_medio")
 @Getter
