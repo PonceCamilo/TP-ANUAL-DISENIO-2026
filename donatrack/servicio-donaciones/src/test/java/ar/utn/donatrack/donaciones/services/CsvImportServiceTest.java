@@ -5,6 +5,7 @@ import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
 import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
+import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
 import ar.utn.donatrack.donaciones.importacion.ImportReport;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
@@ -377,6 +378,62 @@ class CsvImportServiceTest {
 
             assertThat(existente.getContactos()).singleElement()
                     .extracting(contacto -> contacto.getValor()).isEqualTo("2222-2222");
+        }
+    }
+
+    @Nested
+    @DisplayName("Números de línea del reporte")
+    class NumerosDeLinea {
+
+        private int lineaDe(ImportReport reporte, String email) {
+            return reporte.getResultados().stream()
+                    .filter(fila -> email.equals(fila.getEmail()))
+                    .findFirst().orElseThrow()
+                    .getNumeroLinea();
+        }
+
+        @Test
+        @DisplayName("Una fila con error en el medio del lote no corre la numeración de las demás")
+        void errorEnElMedioNoDesfasa() throws IOException {
+            String contenido = ENCABEZADO
+                    + "HUMANA,DNI,111,Ana Uno,a@x.com,\n"
+                    + "HUMANA,DNI,,Beto Dos,b@x.com,\n"
+                    + "HUMANA,DNI,333,Cara Tres,c@x.com,\n";
+
+            ImportReport reporte = servicio.importar(csv(contenido));
+
+            assertThat(lineaDe(reporte, "a@x.com")).isEqualTo(2);
+            assertThat(lineaDe(reporte, "c@x.com")).isEqualTo(4);
+            assertThat(reporte.getErrores()).extracting(ImportFilaCSV::getNumeroLinea).containsExactly(3);
+        }
+
+        @Test
+        @DisplayName("Las líneas en blanco o con solo separadores se saltean sin informarse como error")
+        void lineasEnBlancoSeSaltean() throws IOException {
+            String contenido = ENCABEZADO
+                    + "HUMANA,DNI,111,Ana Uno,a@x.com,\n"
+                    + "\n"
+                    + ",,,,,\n"
+                    + "HUMANA,DNI,333,Cara Tres,c@x.com,\n";
+
+            ImportReport reporte = servicio.importar(csv(contenido));
+
+            assertThat(reporte.tieneErrores()).isFalse();
+            assertThat(reporte.totalProcesadas()).isEqualTo(2);
+            assertThat(lineaDe(reporte, "c@x.com")).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("Un campo entre comillas con salto de línea no corre la numeración de las filas siguientes")
+        void campoMultilinea() throws IOException {
+            String contenido = ENCABEZADO
+                    + "HUMANA,DNI,111,\"Ana\nUno\",a@x.com,\n"
+                    + "HUMANA,DNI,333,Cara Tres,c@x.com,\n";
+
+            ImportReport reporte = servicio.importar(csv(contenido));
+
+            assertThat(lineaDe(reporte, "a@x.com")).isEqualTo(2);
+            assertThat(lineaDe(reporte, "c@x.com")).isEqualTo(4);
         }
     }
 

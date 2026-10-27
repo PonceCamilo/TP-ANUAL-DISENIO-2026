@@ -37,7 +37,7 @@ class DonanteFactoryTest {
     }
 
     private DonanteImportDto dto(String tipoPersona, String tipoDoc, String documento, String nombre, String email) {
-        return new DonanteImportDto(tipoPersona, tipoDoc, documento, nombre, email, null);
+        return new DonanteImportDto(2, tipoPersona, tipoDoc, documento, nombre, email, null);
     }
 
     @Nested

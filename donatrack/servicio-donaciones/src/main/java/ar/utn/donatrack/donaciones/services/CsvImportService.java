@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -72,38 +73,40 @@ public class CsvImportService {
                 propiedades.importacion().maxErroresEnRespuesta());
     }
 
+    /**
+     * Lee el archivo y lo procesa por lotes.
+     *
+     * Cada fila guarda su propio número de línea al parsearse: antes la línea se
+     * reconstruía con la posición dentro del lote, y una fila con error de formato
+     * en el medio corría la numeración de las siguientes. La línea es la física
+     * del archivo donde empieza el registro (un campo entre comillas puede ocupar
+     * varias), así que coincide con la que se ve al abrir el CSV.
+     */
     public ImportReport importar(InputStream csvStream) throws IOException {
         ImportReport report = new ImportReport();
+        int tamanioLote = propiedades.importacion().tamanioLote();
+        List<DonanteImportDto> lote = new ArrayList<>(tamanioLote);
 
-        try (CSVReader csvReader = new CSVReaderBuilder(
-            new InputStreamReader(csvStream, StandardCharsets.UTF_8))
-            .withSkipLines(1)
-            .build()) {
+        try (CSVReader lector = new CSVReaderBuilder(
+            new InputStreamReader(csvStream, StandardCharsets.UTF_8)).build()) {
 
-            int tamanioLote = propiedades.importacion().tamanioLote();
-            List<DonanteImportDto> lote = new ArrayList<>(tamanioLote);
+            lector.readNext(); // encabezado
+            int linea = Math.toIntExact(lector.getLinesRead()) + 1;
             String[] columnas;
-            int numeroLinea = 2;
 
-            while ((columnas = csvReader.readNext()) != null) {
-                if (columnas.length == 0) { numeroLinea++; continue; }
-
-                try {
-                    DonanteImportDto dto = parser.parsear(columnas, numeroLinea);
-                    lote.add(dto);
-                } catch (CsvFormatoException e) {
-                    report.agregar(ImportFilaCSV.error(numeroLinea, "", e.getMessage()));
+            while ((columnas = lector.readNext()) != null) {
+                if (!esLineaEnBlanco(columnas)) {
+                    agregarSiEsValida(columnas, linea, lote, report);
                 }
-
                 if (lote.size() >= tamanioLote) {
-                    procesarLote(lote, report, numeroLinea - lote.size() + 1);
+                    procesarLote(lote, report);
                     lote.clear();
                 }
-                numeroLinea++;
+                linea = Math.toIntExact(lector.getLinesRead()) + 1;
             }
 
             if (!lote.isEmpty()) {
-                procesarLote(lote, report, numeroLinea - lote.size());
+                procesarLote(lote, report);
             }
 
         } catch (CsvValidationException e) {
@@ -111,6 +114,25 @@ public class CsvImportService {
         }
 
         return report;
+    }
+
+    /**
+     * Una línea vacía (o que solo tiene separadores) no es un registro: se saltea
+     * sin informarla. OpenCSV la devuelve como una columna vacía y no como cero
+     * columnas, por eso la comparación con length == 0 que había antes nunca se
+     * cumplía y cada línea en blanco terminaba informada como error.
+     */
+    private static boolean esLineaEnBlanco(String[] columnas) {
+        return Arrays.stream(columnas).allMatch(columna -> columna == null || columna.isBlank());
+    }
+
+    /** Agrega la fila al lote, o la informa como error si no tiene el formato esperado. */
+    private void agregarSiEsValida(String[] columnas, int linea, List<DonanteImportDto> lote, ImportReport report) {
+        try {
+            lote.add(parser.parsear(columnas, linea));
+        } catch (CsvFormatoException e) {
+            report.agregar(ImportFilaCSV.error(linea, "", e.getMessage()));
+        }
     }
 
     /**
@@ -129,28 +151,24 @@ public class CsvImportService {
      * en su propia transacción, para que una fila mala no se lleve puestas a las
      * demás: el error queda en el reporte solo para esa fila.
      */
-    private void procesarLote(List<DonanteImportDto> lote, ImportReport report, int lineaInicio) {
+    private void procesarLote(List<DonanteImportDto> lote, ImportReport report) {
         List<ImportFilaCSV> resultados;
         try {
-            resultados = transaccion.execute(estado -> procesarLoteEnUnaTransaccion(lote, lineaInicio));
+            resultados = transaccion.execute(estado -> procesarLoteEnUnaTransaccion(lote));
         } catch (Exception errorDelLote) {
-            resultados = new ArrayList<>(lote.size());
-            int linea = lineaInicio;
-            for (DonanteImportDto dto : lote) {
-                resultados.add(procesarFila(dto, linea++));
-            }
+            resultados = lote.stream().map(this::procesarFila).toList();
         }
         resultados.forEach(report::agregar);
     }
 
-    private List<ImportFilaCSV> procesarLoteEnUnaTransaccion(List<DonanteImportDto> lote, int lineaInicio) {
+    private List<ImportFilaCSV> procesarLoteEnUnaTransaccion(List<DonanteImportDto> lote) {
         Map<String, PersonaDonante> porEmail = new HashMap<>(donanteRepository.obtenerPorEmails(
                 lote.stream().map(DonanteImportDto::email).toList()));
         Map<String, PersonaDonante> aGuardar = new LinkedHashMap<>();
         List<ImportFilaCSV> resultados = new ArrayList<>(lote.size());
 
-        int linea = lineaInicio;
         for (DonanteImportDto dto : lote) {
+            int linea = dto.linea();
             String clave = NormalizadorEmail.normalizar(dto.email());
             try {
                 PersonaDonante existente = porEmail.get(clave);
@@ -167,7 +185,6 @@ public class CsvImportService {
             } catch (Exception e) {
                 resultados.add(ImportFilaCSV.error(linea, dto.email(), "Error inesperado: " + e.getMessage()));
             }
-            linea++;
         }
 
         if (!aGuardar.isEmpty()) {
@@ -177,7 +194,8 @@ public class CsvImportService {
     }
 
     /** Camino de respaldo: una fila con su propia búsqueda y su propio guardado. */
-    private ImportFilaCSV procesarFila(DonanteImportDto dto, int linea) {
+    private ImportFilaCSV procesarFila(DonanteImportDto dto) {
+        int linea = dto.linea();
         try {
             PersonaDonante existente = donanteRepository.obtenerPorEmail(dto.email());
             if (existente != null) {

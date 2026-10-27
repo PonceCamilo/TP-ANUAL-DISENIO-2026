@@ -43,7 +43,7 @@ public class DonanteCsvRowParser {
         }
 
         return new DonanteImportDto(
-            tipoPersona, tipoDoc, doc, nombre, email,
+            numeroLinea, tipoPersona, tipoDoc, doc, nombre, email,
                 (tel != null && tel.isBlank()) ? null : tel
         );
     }
