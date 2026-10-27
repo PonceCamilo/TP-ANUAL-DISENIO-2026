@@ -21,6 +21,10 @@ skinparam class {
     BorderColor<<abstracta>> #5A5A5A
     BackgroundColor<<embeddable>> #EAF3E6
     BorderColor<<embeddable>> #5E8C4A
+    BackgroundColor<<desnormalizada>> #FFF4D6
+    BorderColor<<desnormalizada>> #B8860B
+    BackgroundColor<<interface>> #E8EEF7
+    BorderColor<<interface>> #4A6A9A
 }
 
 skinparam package {
@@ -34,6 +38,20 @@ skinparam package {
 ' Modelo de dominio de servicio-donaciones (paquete ar.utn.donatrack.donaciones.models).
 ' No se dibujan getters/setters/builders generados por Lombok.
 ' {transient}: atributo @Transient (no se persiste). <<embeddable>>: @Embeddable.
+' {unique}: columna con UNIQUE en la base. {readOnly}: se lee de la base, no se escribe.
+' <<desnormalizada>>: tabla de lectura derivable de otras (Entrega 5).
+
+interface "Persistable<UUID>" as Persistable <<interface>> {
+    public getId(): UUID
+    public isNew(): boolean
+}
+
+note top of Persistable
+    Interfaz de Spring Data (Entrega 5).
+    El id se asigna antes de guardar: sin isNew()
+    Spring Data haría un SELECT previo a cada INSERT.
+    nueva = true hasta @PostPersist / @PostLoad.
+end note
 
 package donante {
 
@@ -46,10 +64,14 @@ package donante {
         protected estado: EstadoDonante {transient}
         protected medioContactoPredeterminado: MedioDeContacto
         protected ultimaInteraccion: LocalDateTime
-        protected email: String
+        protected email: String {unique}
         protected contactos: List<MedioDeContacto>
+        protected nueva: boolean {transient}
 
+        public isNew(): boolean
         private rehidratarEstado(): void «@PostLoad»
+        private marcarPersistida(): void «@PostPersist»
+        private normalizarEmail(): void «@PrePersist, @PreUpdate»
         public cambiarEstado(estadoDestino: String, justificacion: String): void
         public setEstado(estado: EstadoDonante): void
         public reemplazarContacto(medio: MedioDeContacto): void
@@ -57,6 +79,16 @@ package donante {
         public registrarInteraccion(): void
         public estaInactivoDesde(fechaLimite: LocalDateTime): boolean
     }
+
+    note as NotaEmailDonante
+        email: identidad de la persona (Entrega 5).
+        Se fija en el alta y no cambia después.
+        Se guarda en forma canónica
+        (NormalizadorEmail: trim, NFC, minúsculas)
+        y la base garantiza que sea único.
+    end note
+
+    NotaEmailDonante .. PersonaDonante
 
     class PersonaHumana {
         private nombre: String
@@ -147,6 +179,7 @@ package contacto {
     }
 
     class Email {
+        private normalizarValor(): void «@PrePersist, @PreUpdate»
     }
 
     class Telefono {
@@ -172,8 +205,11 @@ package donacion {
         protected fechaAsignacion: LocalDate
         protected proveedorLogistica: String
         protected idSeguimientoLogistica: String
+        protected nueva: boolean {transient}
 
+        public isNew(): boolean
         private rehidratarEstado(): void «@PostLoad»
+        private marcarPersistida(): void «@PostPersist»
         public cambiarEstado(estadoDestino: String, nombreTransicion: String, justificacion: String): void
         public esPerecible(): boolean
         public requiereEstado(): boolean
@@ -288,13 +324,6 @@ package donacion {
 
 package categoria {
 
-    class Categoria {
-        private id: UUID
-        private nombre: String
-        private tipoBien: TipoBien
-        private subcategorias: List<Subcategoria>
-    }
-
     class Subcategoria <<embeddable>> {
         private tipo: String
         private tipoNormalizado: String
@@ -304,18 +333,13 @@ package categoria {
         public toString(): String
     }
 
-    enum TipoBien <<enum>> {
-        PERECIBLE
-        CON_ESTADO
-        GENERICO
-    }
-
-    note as NotaCategoria
-        Categoria y TipoBien no están mapeadas
-        con JPA ni se usan desde otras clases.
-        Subcategoria compara por tipoNormalizado
-        (trim + minúsculas).
+    note as NotaSubcategoria
+        Compara por tipoNormalizado
+        (trim + minúsculas), que es también
+        la columna indexada para buscar.
     end note
+
+    NotaSubcategoria .. Subcategoria
 }
 
 package entidad {
@@ -354,7 +378,7 @@ package entidad {
 
         class Campania {
             private idCampania: UUID
-            private idEntidad: UUID
+            private idEntidad: UUID {readOnly}
             private fechaInicio: LocalDate
             private fechaFin: LocalDate
             private descripcionGeneral: String
@@ -411,21 +435,45 @@ package entidad {
 
 package asignacion {
 
-    class ResultadoAsignacion {
+    class ResultadoAsignacion <<embeddable>> {
         private idEntidad: UUID
         private puntaje: double
     }
 
-    class RankingPrecalculado {
+    class RankingPrecalculado <<desnormalizada>> {
         private idDonacion: UUID
-        private coincidencias: List<ResultadoAsignacion>
-        private rankingSemantico: List<ResultadoAsignacion>
-        private rankingSubAtendidos: List<ResultadoAsignacion>
+        private coincidencias: List<ResultadoAsignacion> {ordered}
+        private rankingSemantico: List<ResultadoAsignacion> {ordered}
+        private rankingSubAtendidos: List<ResultadoAsignacion> {ordered}
         private fechaCalculo: LocalDateTime
 
         public huboCoincidencias(): boolean
         public sinCandidatas(): boolean
     }
+
+    class RecepcionDiariaEntidad <<desnormalizada>> {
+        private clave: Clave
+        private cantidad: long
+    }
+
+    class "RecepcionDiariaEntidad.Clave" as ClaveRecepcion <<embeddable>> {
+        private idEntidad: UUID
+        private fecha: LocalDate
+    }
+
+    note as NotaAsignacion
+        Tablas de lectura de la Entrega 5:
+        derivables de donacion y necesidad.
+        ..
+        RankingPrecalculado: lo escribe el proceso
+        nocturno de matchmaking; la bandeja lo lee
+        tal cual (antes vivía en memoria).
+        ..
+        RecepcionDiariaEntidad: donaciones asignadas
+        por entidad y día. Se actualiza en la misma
+        transacción que la asignación y se reconcilia
+        cada noche desde la tabla donacion.
+    end note
 }
 
 ' ─────────────── HERENCIA ───────────────
@@ -450,6 +498,8 @@ EntregaFallidaState --|> EstadoDonacionBase
 VencidaState --|> EstadoDonacionBase
 NecesidadExtraordinaria --|> Necesidad
 NecesidadRecurrente --|> Necesidad
+PersonaDonante ..|> Persistable
+Donacion ..|> Persistable
 
 ' ─────────────── DONANTES Y CONTACTOS ───────────────
 ' Composición (*--): colecciones con cascade ALL + orphanRemoval y objetos @Embeddable.
@@ -479,9 +529,6 @@ CambioEstado ..> EstadosDonacion
 EstadosDonacion ..> EstadoDonacionBase : <<crea>>
 Bien *-- "0..1" Subcategoria
 
-Categoria --> "0..*" Subcategoria
-Categoria --> "0..1" TipoBien
-
 ' ─────────────── ENTIDADES BENEFICIARIAS ───────────────
 
 EntidadBeneficiaria *-- "0..1" Direccion
@@ -495,6 +542,10 @@ Localidad *-- "0..1" Provincia
 
 ' ─────────────── ASIGNACIÓN ───────────────
 
-RankingPrecalculado --> "0..*" ResultadoAsignacion : coincidencias\nrankingSemantico\nrankingSubAtendidos
+' Composición: @ElementCollection de objetos @Embeddable (una tabla por lista).
+' Las referencias por id (idDonacion, idEntidad) no son asociaciones de objetos.
+
+RankingPrecalculado *-- "0..*\n{ordered}" ResultadoAsignacion : coincidencias\nrankingSemantico\nrankingSubAtendidos
+RecepcionDiariaEntidad *-- "1" ClaveRecepcion
 
 @enduml

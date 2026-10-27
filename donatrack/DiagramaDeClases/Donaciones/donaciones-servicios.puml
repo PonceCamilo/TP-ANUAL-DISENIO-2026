@@ -23,6 +23,8 @@ skinparam class {
     BorderColor<<enum>> #B8860B
     BackgroundColor<<record>> #F4F4F4
     BorderColor<<record>> #7A7A7A
+    BackgroundColor<<proyeccion>> #F4F4F4
+    BorderColor<<proyeccion>> #7A7A7A
 }
 
 skinparam interface {
@@ -40,8 +42,9 @@ skinparam package {
 
 ' Capa de servicios de servicio-donaciones y sus colaboradores (paquete ar.utn.donatrack.donaciones).
 ' Las clases del modelo y los DTOs aparecen solo como tipos (ver donaciones-modelo.puml).
-' No se dibujan los controllers, los DTOs, las excepciones ni OpenApiConfig.
+' No se dibujan los controllers, los DTOs (salvo PaginaResponseDTO), las excepciones ni OpenApiConfig.
 ' --> asociación (atributo), ..> dependencia, ..|> realización, --|> herencia, +-- clase anidada.
+': método transaccional (readOnly: solo lectura).
 
 package interfaces.services {
 
@@ -55,7 +58,7 @@ package interfaces.services {
     }
 
     interface DonacionServiceInterface {
-        public obtenerDonaciones(estado: String, idDonante: UUID, subcategoria: String): List<DonacionResponseDTO>
+        public obtenerDonaciones(filtro: FiltroDonaciones, pagina: SolicitudPagina): PaginaResponseDTO<DonacionResponseDTO>
         public obtenerPorId(id: UUID): DonacionResponseDTO
         public cambiarEstado(id: UUID, dto: CambioEstadoRequestDTO): void
         public modificarBien(id: UUID, dto: BienRequestDTO): void
@@ -68,7 +71,7 @@ package interfaces.services {
     interface PersonaDonanteServiceInterface {
         public registrar(dto: PersonaDonanteRequestDTO): PersonaDonanteResponseDTO
         public obtenerDonante(id: UUID): PersonaDonanteResponseDTO
-        public obtenerDonantes(estado: String): List<PersonaDonanteResponseDTO>
+        public obtenerDonantes(estado: String, pagina: SolicitudPagina): PaginaResponseDTO<PersonaDonanteResponseDTO>
         public cambiarEstado(id: UUID, dto: EstadoDonanteRequestDTO): void
         public modificarContacto(id: UUID, dto: MedioDeContactoRequestDTO): void
         public modificarRepresentante(id: UUID, dto: RepresentanteRequestDTO): void
@@ -106,7 +109,7 @@ package services {
         private entidadesValidator: EntidadesBeneficiariasValidator
         private candidatosRepositorio: CandidatosAsignacionRepositoryInterface
 
-        public obtenerDonaciones(estado: String, idDonante: UUID, subcategoria: String): List<DonacionResponseDTO>
+        public obtenerDonaciones(filtro: FiltroDonaciones, pagina: SolicitudPagina): PaginaResponseDTO<DonacionResponseDTO>
         public obtenerPorId(id: UUID): DonacionResponseDTO
         public cambiarEstado(id: UUID, dto: CambioEstadoRequestDTO): void
         public modificarBien(id: UUID, dto: BienRequestDTO): void
@@ -114,7 +117,8 @@ package services {
         public obtenerCandidatosPendientes(): List<CandidatosPendientesResponseDTO>
         public asignar(idDonacion: UUID, dto: AsignacionRequestDTO): void
         public eliminar(id: UUID): void
-        private mapearRanking(ranking: List<ResultadoAsignacion>): List<EntidadBeneficiariaResponseDTO>
+        private cargarEntidades(rankings: List<List<ResultadoAsignacion>>): Map<UUID, EntidadBeneficiariaResponseDTO>
+        private mapearRanking(ranking: List<ResultadoAsignacion>, entidades: Map<UUID, EntidadBeneficiariaResponseDTO>): List<EntidadBeneficiariaResponseDTO>
         private notificarDonacionExitosa(donacion: Donacion): void
         private notificarAsignacion(donacion: Donacion, entidad: EntidadBeneficiaria): void
     }
@@ -131,12 +135,13 @@ package services {
 
     class PersonaDonanteService {
         private repositorio: PersonaDonanteRepositoryInterface
+        private donaciones: DonacionesRepositoryInterface
         private validador: PersonasValidator
         private mapper: PersonaDonanteMapper
 
         public registrar(dto: PersonaDonanteRequestDTO): PersonaDonanteResponseDTO
         public obtenerDonante(id: UUID): PersonaDonanteResponseDTO
-        public obtenerDonantes(estado: String): List<PersonaDonanteResponseDTO>
+        public obtenerDonantes(estado: String, pagina: SolicitudPagina): PaginaResponseDTO<PersonaDonanteResponseDTO>
         public cambiarEstado(id: UUID, dto: EstadoDonanteRequestDTO): void
         public modificarContacto(id: UUID, dto: MedioDeContactoRequestDTO): void
         public modificarRepresentante(id: UUID, dto: RepresentanteRequestDTO): void
@@ -146,6 +151,7 @@ package services {
 
     class EntidadesBeneficiariasService {
         private repositorio: EntidadesBeneficiariasRepositoryInterface
+        private donaciones: DonacionesRepositoryInterface
         private validador: EntidadesBeneficiariasValidator
         private mapper: EntidadBeneficiariaMapper
         private dependenciasMapper: PersonaDonanteMapper
@@ -163,6 +169,14 @@ package services {
         public eliminarNecesidad(entidadId: UUID, campaniaId: UUID, necesidadId: UUID): void
     }
 
+    note as NotaBorrados
+        Entrega 5: PersonaDonanteService.eliminar y
+        EntidadesBeneficiariasService.eliminarEntidad
+        rechazan con 409 el borrado si hay donaciones
+        (PersonaConDonacionesException /
+        EntidadConDonacionesException).
+    end note
+
     class InactividadDonantesService {
         {static} private DIAS_LIMITE_INACTIVIDAD: int = 20
         private donanteRepository: PersonaDonanteRepositoryInterface
@@ -178,11 +192,23 @@ package services {
         private donanteRepository: PersonaDonanteRepositoryInterface
         private parser: DonanteCsvRowParser
         private factory: DonanteFactory
+        private transaccion: TransactionOperations
 
         public importar(csvStream: InputStream): ImportReport
         private procesarLote(lote: List<DonanteImportDto>, report: ImportReport, lineaInicio: int): void
+        private procesarLoteEnUnaTransaccion(lote: List<DonanteImportDto>, lineaInicio: int): List<ImportFilaCSV>
         private procesarFila(dto: DonanteImportDto, linea: int): ImportFilaCSV
+        private actualizar(existente: PersonaDonante, dto: DonanteImportDto): void
+        {static} private tieneTelefono(persona: PersonaDonante, telefono: String): boolean
     }
+
+    note as NotaCsv
+        Entrega 5: cada lote de 500 filas es una transacción.
+        Busca los emails del lote en una consulta
+        (obtenerPorEmails) y guarda con guardarTodos
+        (inserts en batch de 50). Si el lote falla, lo
+        reprocesa fila por fila para informar el error exacto.
+    end note
 
     class AsignacionDonacionesService {
         private algoritmoSemantico: AlgoritmoCompatibilidadSemantica
@@ -190,6 +216,7 @@ package services {
         private entidadesRepository: EntidadesBeneficiariasRepositoryInterface
 
         public generarRanking(donacion: Donacion): ResultadoMatchmaking
+        public generarRanking(donacion: Donacion, entidades: List<EntidadBeneficiaria>): ResultadoMatchmaking
         private intersectar(a: List<ResultadoAsignacion>, b: List<ResultadoAsignacion>): List<ResultadoAsignacion>
     }
 
@@ -206,9 +233,16 @@ package services {
         private donacionesRepositorio: DonacionesRepositoryInterface
         private asignacionService: AsignacionDonacionesService
         private candidatosRepositorio: CandidatosAsignacionRepositoryInterface
+        private entidadesRepositorio: EntidadesBeneficiariasRepositoryInterface
 
         public ejecutarMatchmakingNocturno(): void «@Scheduled 0 30 3 * * *»
-        private calcularRanking(donacion: Donacion): RankingPrecalculado
+        private calcularRanking(donacion: Donacion, entidades: List<EntidadBeneficiaria>): RankingPrecalculado
+    }
+
+    class ReconciliacionRecepcionesService {
+        private recepciones: RecepcionesEntidadRepositoryInterface
+
+        public reconciliar(): void «@Scheduled 0 0 3 * * *»
     }
 
     class PlanificacionEntregasService {
@@ -253,13 +287,16 @@ package services {
         Las dependencias de cada service hacia las interfaces de
         interfaces.repositories figuran como atributos tipados y no se
         dibujan como flechas, para no saturar el diagrama.
-        Los métodos «@Scheduled» indican la expresión cron del proceso nocturno.
+        Los métodos «@Scheduled» indican la expresión cron del proceso
+        nocturno; todos usan la zona America/Argentina/Buenos_Aires
+        (FechaHoraArgentina.ZONA_ID), no la del servidor.
     end note
 
     abstract class AlgoritmoAsignacionBase <<abstracta>> {
         {static} protected TOP_N: int = 10
 
         public final evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
+        protected prepararPuntaje(donacion: Donacion, entidades: List<EntidadBeneficiaria>): ToDoubleFunction<EntidadBeneficiaria>
         {abstract} protected calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
         protected incluir(puntaje: double): boolean
     }
@@ -271,10 +308,21 @@ package services {
 
     class AlgoritmoPrioridadSubAtendidos {
         {static} private MESES_TRIMESTRE: int = 3
-        private donacionesRepository: DonacionesRepositoryInterface
+        private recepciones: RecepcionesEntidadRepositoryInterface
 
+        protected prepararPuntaje(donacion: Donacion, entidades: List<EntidadBeneficiaria>): ToDoubleFunction<EntidadBeneficiaria>
         protected calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+        {static} private inicioDelTrimestre(): LocalDate
+        {static} private puntaje(donacionesRecibidas: long): double
     }
+
+    note as NotaAlgoritmos
+        Template method: evaluar() llama una vez a
+        prepararPuntaje() por ranking. SubAtendidos lo
+        redefine para leer en UNA consulta las recepciones
+        del trimestre de todas las entidades
+        (tabla entidad_recepcion_diaria, Entrega 5).
+    end note
 }
 
 package validations.donaciones {
@@ -303,7 +351,7 @@ package validations.entidades {
 package validations.personas {
 
     class PersonasValidator {
-        {static} private EMAIL_REGEX: String
+        {static} private EMAIL: Pattern
         private repositorio: PersonaDonanteRepositoryInterface
 
         public validarEmail(email: String): void
@@ -408,35 +456,107 @@ package importacion {
     }
 }
 
+package util {
+
+    class "Pagina<T>" as Pagina <<record>> {
+        contenido: List<T>
+        numero: int
+        tamanio: int
+        totalElementos: long
+
+        public totalPaginas(): int
+        public map(transformacion: Function<T, R>): Pagina<R>
+    }
+
+    class SolicitudPagina <<record>> {
+        {static} public TAMANIO_POR_DEFECTO: int = 20
+        {static} public TAMANIO_MAXIMO: int = 100
+        numero: int
+        tamanio: int
+
+        {static} public de(numero: Integer, tamanio: Integer): SolicitudPagina
+    }
+
+    class NormalizadorEmail {
+        {static} public normalizar(email: String): String
+    }
+
+    class FechaHoraArgentina {
+        {static} public ZONA_ID: String = "America/Argentina/Buenos_Aires"
+        {static} public ZONA: ZoneId
+
+        {static} public ahora(): LocalDateTime
+        {static} public hoy(): LocalDate
+    }
+
+    note as NotaUtil
+        SolicitudPagina valida en su constructor page >= 0 y
+        1 <= size <= 100 (de(): sin valor, 0 y 20);
+        si no, PaginaInvalidaException → 400.
+        NormalizadorEmail: trim + NFC + minúsculas (Locale.ROOT).
+        Es la forma con la que se guarda y se busca el email; lo usan
+        PersonasValidator, PersonaDonanteRepository y CsvImportService.
+        Los services de donaciones y donantes devuelven
+        PaginaResponseDTO.desde(Pagina) en los listados.
+    end note
+}
+
+package dtos.response {
+
+    class "PaginaResponseDTO<T>" as PaginaResponseDTO {
+        private contenido: List<T>
+        private pagina: int
+        private tamanio: int
+        private totalElementos: long
+        private totalPaginas: int
+
+        {static} public desde(pagina: Pagina<T>): PaginaResponseDTO<T>
+    }
+}
+
 package interfaces.repositories {
 
     interface DonacionesRepositoryInterface {
         public cargarDonaciones(donaciones: List<Donacion>): void
         public guardar(donacion: Donacion): void
-        public obtenerTodas(): List<Donacion>
+        public guardarAsignacion(donacion: Donacion): void
         public obtenerPorEstado(estado: String): List<Donacion>
-        public obtenerPorDonante(idDonante: UUID): List<Donacion>
+        public buscar(filtro: FiltroDonaciones, pagina: SolicitudPagina): Pagina<Donacion>
         public obtenerPorId(id: UUID): Donacion
+        public existenDelDonante(idDonante: UUID): boolean
+        public existenAsignadasA(idEntidad: UUID): boolean
         public eliminar(idDonacion: UUID): void
+    }
+
+    class FiltroDonaciones <<record>> {
+        estado: String
+        idDonante: UUID
+        subcategoria: String
+        idEntidad: UUID
+
+        {static} public sinFiltros(): FiltroDonaciones
     }
 
     interface EntidadesBeneficiariasRepositoryInterface {
         public guardar(entidad: EntidadBeneficiaria): void
         public buscarTodas(): List<EntidadBeneficiaria>
         public obtenerPorId(id: UUID): EntidadBeneficiaria
+        public obtenerPorIds(ids: Collection<UUID>): List<EntidadBeneficiaria>
         public existePorId(id: UUID): boolean
         public eliminar(id: UUID): void
     }
 
     interface PersonaDonanteRepositoryInterface {
-        public obtenerTodosDonantes(): List<PersonaDonante>
+        public buscar(estado: String, pagina: SolicitudPagina): Pagina<PersonaDonante>
+        public obtenerInactivasDesde(limite: LocalDateTime): List<PersonaDonante>
         public guardar(donante: PersonaDonante): void
+        public guardarTodos(donantes: Collection<PersonaDonante>): void
         public modificarRepresentante(idDonante: UUID, representante: Representante): void
         public existePorId(id: UUID): boolean
         public existePorEmail(email: String): boolean
         public obtenerPersona(id: UUID): PersonaDonante
         public obtenerPorEmail(email: String): PersonaDonante
-        public obtenerPorEstado(estado: String): List<PersonaDonante>
+        public obtenerPorEmails(emails: Collection<String>): Map<String, PersonaDonante>
         public eliminar(id: UUID): void
     }
 
@@ -447,20 +567,32 @@ package interfaces.repositories {
         public eliminar(idDonacion: UUID): void
         public limpiar(): void
     }
+
+    interface RecepcionesEntidadRepositoryInterface {
+        public contarRecepcionesDesde(desde: LocalDate): Map<UUID, Long>
+        public contarRecepcionesDesde(idEntidad: UUID, desde: LocalDate): long
+        public reconciliar(): int
+    }
 }
 
 package repositories {
 
     class DonacionesRepository {
+        {static} private ORDEN_LISTADO: Sort = fechaDonacion DESC, id ASC
         private jpa: DonacionJpaRepository
+        private recepciones: RecepcionDiariaJpaRepository
 
         public cargarDonaciones(cargaDonaciones: List<Donacion>): void
         public guardar(donacion: Donacion): void
-        public obtenerTodas(): List<Donacion>
+        public guardarAsignacion(donacion: Donacion): void
         public obtenerPorEstado(estado: String): List<Donacion>
-        public obtenerPorDonante(idDonante: UUID): List<Donacion>
+        public buscar(filtro: FiltroDonaciones, pagina: SolicitudPagina): Pagina<Donacion>
         public obtenerPorId(id: UUID): Donacion
+        public existenDelDonante(idDonante: UUID): boolean
+        public existenAsignadasA(idEntidad: UUID): boolean
         public eliminar(idDonacion: UUID): void
+        private ajustarRecepciones(idEntidad: UUID, fecha: LocalDate, delta: long): void
+        {static} private especificacion(filtro: FiltroDonaciones): Specification<Donacion>
     }
 
     class EntidadesBeneficiariasRepository {
@@ -469,26 +601,30 @@ package repositories {
         public guardar(entidad: EntidadBeneficiaria): void
         public buscarTodas(): List<EntidadBeneficiaria>
         public obtenerPorId(id: UUID): EntidadBeneficiaria
+        public obtenerPorIds(ids: Collection<UUID>): List<EntidadBeneficiaria>
         public existePorId(id: UUID): boolean
         public eliminar(id: UUID): void
     }
 
     class PersonaDonanteRepository {
+        {static} private ORDEN_LISTADO: Sort = email ASC
         private jpa: PersonaDonanteJpaRepository
 
         public guardar(personaDonante: PersonaDonante): void
+        public guardarTodos(donantes: Collection<PersonaDonante>): void
         public obtenerPersona(id: UUID): PersonaDonante
-        public obtenerTodosDonantes(): List<PersonaDonante>
+        public buscar(estado: String, pagina: SolicitudPagina): Pagina<PersonaDonante>
+        public obtenerInactivasDesde(limite: LocalDateTime): List<PersonaDonante>
         public modificarRepresentante(idPersonaJuridica: UUID, representante: Representante): void
         public existePorId(id: UUID): boolean
         public existePorEmail(email: String): boolean
         public obtenerPorEmail(email: String): PersonaDonante
-        public obtenerPorEstado(estado: String): List<PersonaDonante>
+        public obtenerPorEmails(emails: Collection<String>): Map<String, PersonaDonante>
         public eliminar(id: UUID): void
     }
 
     class CandidatosAsignacionRepository {
-        private almacenamiento: Map<UUID, RankingPrecalculado>
+        private jpa: RankingPrecalculadoJpaRepository
 
         public guardar(ranking: RankingPrecalculado): void
         public obtenerPorDonacion(idDonacion: UUID): RankingPrecalculado
@@ -497,28 +633,72 @@ package repositories {
         public limpiar(): void
     }
 
+    class RecepcionesEntidadRepository {
+        private jpa: RecepcionDiariaJpaRepository
+
+        public contarRecepcionesDesde(desde: LocalDate): Map<UUID, Long>
+        public contarRecepcionesDesde(idEntidad: UUID, desde: LocalDate): long
+        public reconciliar(): int
+    }
+
     package jpa {
 
         interface DonacionJpaRepository {
             public findByEstadoNombre(estadoNombre: String): List<Donacion>
-            public findByIdDonante(idDonante: UUID): List<Donacion>
+            public existsByIdDonante(idDonante: UUID): boolean
+            public existsByIdEntidadBeneficiaria(idEntidadBeneficiaria: UUID): boolean
+            public buscarAsignacion(id: UUID): Optional<AsignacionActual> «@Query»
+        }
+
+        interface "DonacionJpaRepository.AsignacionActual" as AsignacionActual <<proyeccion>> {
+            public getIdEntidadBeneficiaria(): UUID
+            public getFechaAsignacion(): LocalDate
         }
 
         interface EntidadBeneficiariaJpaRepository {
         }
 
         interface PersonaDonanteJpaRepository {
-            public findByEmailIgnoreCase(email: String): Optional<PersonaDonante>
-            public existsByEmailIgnoreCase(email: String): boolean
-            public findByEstadoNombre(estadoNombre: String): List<PersonaDonante>
+            public findByEmail(email: String): Optional<PersonaDonante>
+            public existsByEmail(email: String): boolean
+            public findByEmailIn(emails: Collection<String>): List<PersonaDonante>
+            public findByEstadoNombre(estadoNombre: String, pagina: Pageable): Page<PersonaDonante>
+            public findByUltimaInteraccionBeforeOrUltimaInteraccionIsNull(limite: LocalDateTime): List<PersonaDonante>
+        }
+
+        interface RankingPrecalculadoJpaRepository {
+            public vaciarCoincidencias(): void «@Modifying nativa»
+            public vaciarRankingSemantico(): void «@Modifying nativa»
+            public vaciarRankingSubAtendidos(): void «@Modifying nativa»
+            public vaciarRankings(): void «@Modifying nativa»
+        }
+
+        interface RecepcionDiariaJpaRepository {
+            public totalesDesde(desde: LocalDate): List<TotalPorEntidad> «@Query»
+            public totalDesde(idEntidad: UUID, desde: LocalDate): long «@Query»
+            public sumar(idEntidad: UUID, fecha: LocalDate, delta: long): int «@Modifying»
+            public vaciar(): void «@Modifying nativa»
+            public recalcularDesdeDonaciones(): int «@Modifying nativa»
+        }
+
+        interface "RecepcionDiariaJpaRepository.TotalPorEntidad" as TotalPorEntidad <<proyeccion>> {
+            public getIdEntidad(): UUID
+            public getTotal(): Long
         }
     }
 
     note as NotaRepositorios
-        DonacionesRepository, EntidadesBeneficiariasRepository y
-        PersonaDonanteRepository son adapters sobre Spring Data JPA
-        (base donaciones_db). CandidatosAsignacionRepository guarda
-        los rankings en memoria (ConcurrentHashMap): no se persisten.
+        Adapters sobre Spring Data JPA (base donaciones_db).
+        Cada método es @Transactional (las lecturas, readOnly).
+        Entrega 5:
+        - CandidatosAsignacionRepository persiste los rankings
+          (tablas ranking_*); antes vivían en un ConcurrentHashMap.
+        - DonacionesRepository.guardarAsignacion guarda la donación
+          y mueve el contador entidad_recepcion_diaria en la misma
+          transacción (eliminar también lo descuenta).
+        - RecepcionesEntidadRepository.reconciliar vacía el contador
+          y lo recalcula con un INSERT ... SELECT ... GROUP BY.
+        - Los listados (buscar) paginan y ordenan en la base.
     end note
 }
 
@@ -527,10 +707,19 @@ package "Spring Data JPA" as springdata {
     interface "JpaRepository<Donacion, UUID>" as JpaDonacion <<externa>> #BFDFF2 {
     }
 
+    interface "JpaSpecificationExecutor<Donacion>" as SpecDonacion <<externa>> #BFDFF2 {
+    }
+
     interface "JpaRepository<EntidadBeneficiaria, UUID>" as JpaEntidad <<externa>> #BFDFF2 {
     }
 
     interface "JpaRepository<PersonaDonante, UUID>" as JpaPersona <<externa>> #BFDFF2 {
+    }
+
+    interface "JpaRepository<RankingPrecalculado, UUID>" as JpaRanking <<externa>> #BFDFF2 {
+    }
+
+    interface "JpaRepository<RecepcionDiariaEntidad, Clave>" as JpaRecepcion <<externa>> #BFDFF2 {
     }
 }
 
@@ -673,10 +862,14 @@ DonacionesRepository ..|> DonacionesRepositoryInterface
 EntidadesBeneficiariasRepository ..|> EntidadesBeneficiariasRepositoryInterface
 PersonaDonanteRepository ..|> PersonaDonanteRepositoryInterface
 CandidatosAsignacionRepository ..|> CandidatosAsignacionRepositoryInterface
+RecepcionesEntidadRepository ..|> RecepcionesEntidadRepositoryInterface
 
 DonacionJpaRepository --|> JpaDonacion
+DonacionJpaRepository --|> SpecDonacion
 EntidadBeneficiariaJpaRepository --|> JpaEntidad
 PersonaDonanteJpaRepository --|> JpaPersona
+RankingPrecalculadoJpaRepository --|> JpaRanking
+RecepcionDiariaJpaRepository --|> JpaRecepcion
 
 NotificacionTransportRest ..|> NotificacionTransport
 NotificacionTransportAmqp ..|> NotificacionTransport
@@ -687,6 +880,7 @@ AsignacionDonacionesService --> AlgoritmoCompatibilidadSemantica
 AsignacionDonacionesService --> AlgoritmoPrioridadSubAtendidos
 AsignacionDonacionesService +-- ResultadoMatchmaking
 AsignacionBatchService --> AsignacionDonacionesService
+NotaAlgoritmos .. AlgoritmoPrioridadSubAtendidos
 
 ' ─────────────── DONACIONES ───────────────
 
@@ -710,6 +904,8 @@ LogisticaEventosService --> IncentivosClient
 
 PersonaDonanteService --> PersonasValidator
 PersonaDonanteService --> PersonaDonanteMapper
+NotaBorrados .. PersonaDonanteService
+NotaBorrados .. EntidadesBeneficiariasService
 
 EntidadesBeneficiariasService --> EntidadesBeneficiariasValidator
 EntidadesBeneficiariasService --> EntidadBeneficiariaMapper
@@ -721,6 +917,7 @@ InactividadDonantesService --> NotificacionClient
 CsvImportService --> DonanteCsvRowParser
 CsvImportService --> DonanteFactory
 CsvImportService ..> ImportReport : <<crea>>
+NotaCsv .. CsvImportService
 ImportReport --> "0..*" ImportFilaCSV
 ImportFilaCSV --> EstadoImport
 DonanteCsvRowParser ..> DonanteImportDto : <<crea>>
@@ -729,11 +926,25 @@ DonacionesValidator --> DonacionesRepositoryInterface
 EntidadesBeneficiariasValidator --> EntidadesBeneficiariasRepositoryInterface
 PersonasValidator --> PersonaDonanteRepositoryInterface
 
+' ─────────────── PAGINACIÓN ───────────────
+
+DonacionesRepositoryInterface ..> FiltroDonaciones
+DonacionesRepositoryInterface ..> Pagina
+DonacionesRepositoryInterface ..> SolicitudPagina
+PersonaDonanteRepositoryInterface ..> Pagina
+PersonaDonanteRepositoryInterface ..> SolicitudPagina
+PaginaResponseDTO ..> Pagina : desde()
+
 ' ─────────────── PERSISTENCIA ───────────────
 
 DonacionesRepository --> DonacionJpaRepository
+DonacionesRepository --> RecepcionDiariaJpaRepository
 EntidadesBeneficiariasRepository --> EntidadBeneficiariaJpaRepository
 PersonaDonanteRepository --> PersonaDonanteJpaRepository
+CandidatosAsignacionRepository --> RankingPrecalculadoJpaRepository
+RecepcionesEntidadRepository --> RecepcionDiariaJpaRepository
+DonacionJpaRepository +-- AsignacionActual
+RecepcionDiariaJpaRepository +-- TotalPorEntidad
 
 ' ─────────────── INTEGRACIONES ───────────────
 

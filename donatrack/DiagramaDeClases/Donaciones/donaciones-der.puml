@@ -4,11 +4,15 @@ hide circle
 skinparam linetype ortho
 skinparam nodesep 40
 skinparam ranksep 55
+skinparam class {
+  BackgroundColor<<desnormalizada>> #FFF4D6
+  BorderColor<<desnormalizada>> #B8860B
+}
 
-' DER físico de la base donaciones_db (PostgreSQL 16).
+' DER físico de la base donaciones_db (PostgreSQL 16), Entrega 5.
 ' Es el esquema que Hibernate genera a partir de las entidades JPA de
 ' servicio-donaciones (spring.jpa.hibernate.ddl-auto=update): mismos nombres
-' de tabla y columna, mismos tipos, PK, FK y restricciones.
+' de tabla y columna, mismos tipos, PK, FK, restricciones e índices.
 
 ' ─────────────── PERSONAS DONANTES (herencia JOINED) ───────────────
 
@@ -17,9 +21,9 @@ entity persona_donante {
   --
   tipo_documento : varchar(255)
   numero_documento : varchar(255)
-  email : varchar(255)
-  estado : varchar(255) <<NN>>
-  ultima_interaccion : timestamp(6)
+  email : varchar(255) <<UQ>>
+  estado : varchar(255) <<NN, IX>>
+  ultima_interaccion : timestamp(6) <<IX>>
   direccion_calle : varchar(255)
   direccion_numero : integer
   direccion_codigo_postal : varchar(255)
@@ -53,8 +57,8 @@ entity representante {
   nombre : varchar(255)
   apellido : varchar(255)
   email : varchar(255)
-  persona_juridica_id : uuid <<FK>>
-  entidad_id : uuid <<FK>>
+  persona_juridica_id : uuid <<FK, IX>>
+  entidad_id : uuid <<FK, IX>>
 }
 
 entity medio_de_contacto {
@@ -62,9 +66,9 @@ entity medio_de_contacto {
   --
   tipo_medio : varchar(31) <<NN>>
   valor : varchar(255)
-  persona_donante_id : uuid <<FK>>
-  representante_id : uuid <<FK>>
-  entidad_id : uuid <<FK>>
+  persona_donante_id : uuid <<FK, IX>>
+  representante_id : uuid <<FK, IX>>
+  entidad_id : uuid <<FK, IX>>
 }
 
 ' ─────────────── ENTIDADES BENEFICIARIAS ───────────────
@@ -83,11 +87,10 @@ entity entidad_beneficiaria {
 entity campania {
   id_campania : uuid <<PK>>
   --
-  id_entidad : uuid
   fecha_inicio : date
   fecha_fin : date
   descripcion_general : varchar(1000)
-  entidad_id : uuid <<FK>>
+  entidad_id : uuid <<FK, IX>>
 }
 
 entity necesidad {
@@ -98,7 +101,7 @@ entity necesidad {
   fecha_registro : date
   cantidad_objetivo : integer
   cantidad_recibida : integer
-  campania_id : uuid <<FK>>
+  campania_id : uuid <<FK, IX>>
 }
 
 entity necesidad_extraordinaria {
@@ -117,14 +120,14 @@ entity necesidad_recurrente {
 entity donacion {
   id : uuid <<PK>>
   --
-  estado : varchar(255) <<NN>>
+  estado : varchar(255) <<NN, IX, D>>
   descripcion : varchar(1000)
-  fecha_donacion : timestamp(6)
-  fecha_asignacion : date
-  subcategoria_tipo : varchar(255)
-  subcategoria_tipo_normalizado : varchar(255)
-  id_donante : uuid
-  id_entidad_beneficiaria : uuid
+  fecha_donacion : timestamp(6) <<IX>>
+  fecha_asignacion : date <<IX>>
+  subcategoria_tipo : varchar(255) <<D>>
+  subcategoria_tipo_normalizado : varchar(255) <<IX, D>>
+  id_donante : uuid <<IX>>
+  id_entidad_beneficiaria : uuid <<IX>>
   proveedor_logistica : varchar(255)
   id_seguimiento_logistica : varchar(255)
 }
@@ -141,7 +144,7 @@ entity bien {
   subcategoria_tipo_normalizado : varchar(255)
   es_nuevo : boolean
   fecha_vencimiento : date
-  donacion_id : uuid <<FK>>
+  donacion_id : uuid <<FK, IX>>
 }
 
 entity cambio_estado {
@@ -152,7 +155,46 @@ entity cambio_estado {
   nombre_transicion : varchar(255)
   justificacion : varchar(1000)
   fecha_hora : timestamp(6) <<NN>>
-  donacion_id : uuid <<FK>>
+  donacion_id : uuid <<FK, IX>>
+}
+
+' ─────────────── TABLAS DE LECTURA (Entrega 5) ───────────────
+
+entity ranking_precalculado <<desnormalizada>> {
+  id_donacion : uuid <<PK>>
+  --
+  fecha_calculo : timestamp(6)
+}
+
+entity ranking_coincidencia <<desnormalizada>> {
+  id_donacion : uuid <<PK, FK>>
+  posicion : integer <<PK>>
+  --
+  id_entidad : uuid
+  puntaje : float(53)
+}
+
+entity ranking_semantico <<desnormalizada>> {
+  id_donacion : uuid <<PK, FK>>
+  posicion : integer <<PK>>
+  --
+  id_entidad : uuid
+  puntaje : float(53)
+}
+
+entity ranking_subatendidos <<desnormalizada>> {
+  id_donacion : uuid <<PK, FK>>
+  posicion : integer <<PK>>
+  --
+  id_entidad : uuid
+  puntaje : float(53)
+}
+
+entity entidad_recepcion_diaria <<desnormalizada>> {
+  entidad_id : uuid <<PK>>
+  fecha : date <<PK, IX>>
+  --
+  cantidad : bigint <<NN>>
 }
 
 ' ─────────────── RELACIONES (FK reales) ───────────────
@@ -180,16 +222,42 @@ necesidad ||--o| necesidad_recurrente
 donacion |o--o{ bien
 donacion |o--o{ cambio_estado
 
+ranking_precalculado ||--o{ ranking_coincidencia
+ranking_precalculado ||--o{ ranking_semantico
+ranking_precalculado ||--o{ ranking_subatendidos
+
 ' ─────────────── REFERENCIAS POR ID SIN FK ───────────────
-' donacion.id_donante y donacion.id_entidad_beneficiaria.
 
 persona_donante |o..o{ donacion
 entidad_beneficiaria |o..o{ donacion
+donacion |o..o| ranking_precalculado
+entidad_beneficiaria |o..o{ entidad_recepcion_diaria
 
 legend right
   <b>Referencias</b>
   PK: clave primaria · FK: clave foránea · UQ: única · NN: NOT NULL · CK: CHECK
+  IX: columna con índice · D: dato derivado (desnormalización)
   Línea continua: FK real · línea punteada: referencia por id sin FK
+  Tablas en amarillo: tablas de lectura desnormalizadas (Entrega 5)
+  ----
+  <b>Índices (Entrega 5)</b>
+  donacion: (estado) · (id_donante, estado) · (id_entidad_beneficiaria, fecha_asignacion)
+             (subcategoria_tipo_normalizado) · (fecha_donacion DESC, id)
+  persona_donante: (estado) · (ultima_interaccion) · email UNIQUE
+  Columnas FK de las colecciones: bien, cambio_estado, medio_de_contacto,
+             representante, campania, necesidad · entidad_recepcion_diaria: (fecha)
+  ----
+  <b>Desnormalizaciones</b>
+  ranking_*: ranking del matchmaking nocturno, precalculado (derivable de donaciones y necesidades)
+  entidad_recepcion_diaria: donaciones asignadas por entidad y día (derivable de donacion);
+             se mantiene en la misma transacción que la asignación y se reconcilia cada noche
+  donacion.estado: estado actual (derivable del último cambio_estado)
+  donacion.subcategoria_*: subcategoría de sus bienes · *_tipo_normalizado: forma de búsqueda
+  ----
+  <b>Integridad</b>
+  persona_donante.email: identidad de la persona, UNIQUE, guardada en forma canónica
+             (trim, NFC, minúsculas); no cambia después del alta
+  Borrar una persona o entidad con donaciones se rechaza con 409 (no hay FK hacia donacion)
   ----
   <b>CHECK</b>
   persona_humana.genero ∈ {MASCULINO, FEMENINO, NO_BINARIO, OTRO, PREFIERO_NO_DECIR}
@@ -207,9 +275,7 @@ legend right
   estado / estado_previo guardan el nombre del objeto State (EN_DEPOSITO, ACTIVO, ...).
   Direccion (con Localidad y Provincia) y Subcategoria son @Embeddable:
   sus columnas viven en la tabla que las contiene.
-  campania.id_entidad guarda el id de la entidad (sin FK); la FK de la relación es entidad_id.
-  No se persisten: RankingPrecalculado (en memoria), CargaDonacion,
-  Categoria y TipoBien.
+  No se persiste CargaDonacion (objeto de un solo uso para segmentar).
 endlegend
 
 @enduml
