@@ -325,6 +325,40 @@ class DonacionServiceTest {
 
             assertThat(donacion.fueEntregada()).isTrue();
         }
+
+        @Test
+        @DisplayName("Si la donación deja EN_DEPOSITO, sale de la bandeja de pendientes")
+        void salirDelDepositoLimpiaElRanking() {
+            // Una donación vencida no se puede asignar: su ranking no debe seguir
+            // en la bandeja hasta el matchmaking de la noche siguiente.
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+
+            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
+
+            verify(candidatosRepositorio).eliminar(donacion.getId());
+        }
+
+        @Test
+        @DisplayName("Un cambio entre estados fuera del depósito no toca la bandeja")
+        void cambioFueraDelDepositoNoTocaLaBandeja() {
+            donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+
+            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("LISTA_PARA_ENTREGAR", null));
+
+            verifyNoInteractions(candidatosRepositorio);
+        }
+
+        @Test
+        @DisplayName("Un cambio ilegal no saca la donación de la bandeja")
+        void cambioIlegalNoTocaLaBandeja() {
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+
+            assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
+                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+
+            verifyNoInteractions(candidatosRepositorio);
+        }
     }
 
     @Nested
@@ -628,6 +662,16 @@ class DonacionServiceTest {
         }
 
         @Test
+        @DisplayName("eliminar() también saca la donación de la bandeja de pendientes")
+        void eliminarLimpiaElRanking() {
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+
+            servicio.eliminar(donacion.getId());
+
+            verify(candidatosRepositorio).eliminar(donacion.getId());
+        }
+
+        @Test
         @DisplayName("eliminar() lanza 404 y no borra nada si la donación no existe")
         void eliminarInexistente() {
             UUID idInexistente = UUID.randomUUID();
@@ -636,6 +680,7 @@ class DonacionServiceTest {
             assertThatThrownBy(() -> servicio.eliminar(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);
             verify(repositorio, never()).eliminar(any());
+            verifyNoInteractions(candidatosRepositorio);
         }
     }
 }

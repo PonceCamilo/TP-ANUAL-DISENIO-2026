@@ -41,6 +41,8 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 public class DonacionService implements DonacionServiceInterface {
 
+  private static final String ESTADO_EN_DEPOSITO = "EN_DEPOSITO";
+
   private final DonacionesRepositoryInterface repositorio;
   private final DonacionMapper mapper;
   private final AsignacionDonacionesService asignacionService;
@@ -68,8 +70,15 @@ public class DonacionService implements DonacionServiceInterface {
 
   public void cambiarEstado(UUID id, CambioEstadoRequestDTO dto) {
     Donacion donacion = validador.validarYObtenerDonacion(id);
+    boolean estabaEnDeposito = donacion.estaEnEstado(ESTADO_EN_DEPOSITO);
     donacion.cambiarEstado(dto.getEstado(), dto.getNombreTransicion(), dto.getJustificacion());
     repositorio.guardar(donacion);
+
+    // Si dejó el depósito (por ejemplo, venció), su ranking ya no sirve: sale de
+    // la bandeja ahora y no recién en el matchmaking de la noche siguiente.
+    if (estabaEnDeposito && !donacion.estaEnEstado(ESTADO_EN_DEPOSITO)) {
+      candidatosRepositorio.eliminar(id);
+    }
 
     if (donacion.fueEntregada()) {
       notificarDonacionExitosa(donacion);
@@ -142,6 +151,8 @@ public class DonacionService implements DonacionServiceInterface {
   public void eliminar(UUID id) {
     validador.validarYObtenerDonacion(id);
     repositorio.eliminar(id);
+    // Sin su donación, el ranking precalculado quedaría huérfano en la bandeja.
+    candidatosRepositorio.eliminar(id);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
