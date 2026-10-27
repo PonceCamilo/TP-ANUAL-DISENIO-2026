@@ -80,7 +80,7 @@ public class BrokerLogisticaClient {
             List<String> proveedoresDescartados,
             List<EnvioAsignado> envios) {}
 
-    /** idSeguimiento es el id con el que el proveedor sigue la donación (lote o trackingId). */
+    /** idSeguimiento es el id con el que el proveedor sigue la donación (id de la entrega en DONATRACK, trackingId en EXTERNA). */
     public record EnvioAsignado(
             UUID idDonacion,
             String proveedor,

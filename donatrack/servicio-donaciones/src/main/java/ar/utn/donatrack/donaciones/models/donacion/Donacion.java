@@ -105,7 +105,7 @@ public class Donacion {
 
     /**
      * Qué proveedor de logística tomó la donación ("DONATRACK" o "EXTERNA") y con
-     * qué identificador la sigue él (el id del lote en DONATRACK, un trackingId
+     * qué identificador la sigue él (el id de la entrega en DONATRACK, un trackingId
      * como EXT-7838BF20 en EXTERNA). Los asigna el broker al despachar el envío.
      */
     @Setter

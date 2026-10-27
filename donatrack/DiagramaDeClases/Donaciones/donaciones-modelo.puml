@@ -19,6 +19,8 @@ skinparam class {
     BorderColor<<enum>> #B8860B
     BackgroundColor<<abstracta>> #EFEFEF
     BorderColor<<abstracta>> #5A5A5A
+    BackgroundColor<<embeddable>> #EAF3E6
+    BorderColor<<embeddable>> #5E8C4A
 }
 
 skinparam package {
@@ -29,22 +31,31 @@ skinparam package {
     FontColor #444444
 }
 
+' Modelo de dominio de servicio-donaciones (paquete ar.utn.donatrack.donaciones.models).
+' No se dibujan getters/setters/builders generados por Lombok.
+' {transient}: atributo @Transient (no se persiste). <<embeddable>>: @Embeddable.
+
 package donante {
 
     abstract class PersonaDonante <<abstracta>> {
-        private tipoDocumento: String
-        private numeroDocumento: String
-        private direccion: Direccion
-        private estado: EstadoDonante
-        private medioContactoPredeterminado: MedioDeContacto
-        private ultimaInteraccion: LocalDateTime
-        private email: String
-        private contactos: List<MedioDeContacto>
+        protected id: UUID
+        protected tipoDocumento: String
+        protected numeroDocumento: String
+        protected direccion: Direccion
+        protected estadoNombre: String
+        protected estado: EstadoDonante {transient}
+        protected medioContactoPredeterminado: MedioDeContacto
+        protected ultimaInteraccion: LocalDateTime
+        protected email: String
+        protected contactos: List<MedioDeContacto>
 
+        private rehidratarEstado(): void «@PostLoad»
+        public cambiarEstado(estadoDestino: String, justificacion: String): void
+        public setEstado(estado: EstadoDonante): void
+        public reemplazarContacto(medio: MedioDeContacto): void
         public obtenerEmail(): String
         public registrarInteraccion(): void
         public estaInactivoDesde(fechaLimite: LocalDateTime): boolean
-        public cambiarEstado(estadoDestino: String, justificacion: String): void
     }
 
     class PersonaHumana {
@@ -52,8 +63,6 @@ package donante {
         private apellido: String
         private fechaNacimiento: LocalDate
         private genero: Genero
-
-        public edad(hoy: LocalDate): int
     }
 
     class PersonaJuridica {
@@ -66,28 +75,11 @@ package donante {
     }
 
     class Representante {
+        private id: UUID
         private nombre: String
         private apellido: String
         private email: String
         private contactos: List<MedioDeContacto>
-    }
-
-    abstract class EstadoDonante <<abstracta>> {
-        private nombre: String
-        private transiciones: Map<String, Supplier<EstadoDonante>>
-
-        public transicionarA(estadoDestino: String, justificacion: String): EstadoDonante
-        public nombre(): String
-    }
-
-    class ActivoState {
-        public transicionarA(estadoDestino: String, justificacion: String): EstadoDonante
-    }
-
-    class InactivoState {
-    }
-
-    class BloqueadoState {
     }
 
     enum Genero <<enum>> {
@@ -104,65 +96,114 @@ package donante {
         EMPRESA
         INSTITUCION
     }
+
+    package estado {
+
+        abstract class EstadoDonante <<abstracta>> {
+            private nombre: String
+            private transiciones: Map<String, Supplier<EstadoDonante>>
+
+            public transicionarA(estadoDestino: String, justificacion: String): EstadoDonante
+            public nombre(): String
+        }
+
+        class ActivoState {
+            public transicionarA(estadoDestino: String, justificacion: String): EstadoDonante
+        }
+
+        class InactivoState {
+        }
+
+        class BloqueadoState {
+        }
+
+        class EstadosDonante {
+            {static} private POR_NOMBRE: Map<String, Supplier<EstadoDonante>>
+
+            {static} public inicial(): EstadoDonante
+            {static} public desde(nombre: String): EstadoDonante
+        }
+
+        note as NotaEstadosDonante
+            Transiciones válidas (estado inicial: ACTIVO):
+            ACTIVO → INACTIVO | BLOQUEADO
+            INACTIVO → ACTIVO
+            BLOQUEADO → ACTIVO
+            ..
+            Excepciones:
+            mismo estado → PersonaConMismoEstadoException
+            transición no válida → CambioEstadoPersonaIlegalException
+            BLOQUEADO sin justificación → FaltaJustificacionException
+            nombre desconocido en EstadosDonante → TipoDesconocidoException
+        end note
+    }
 }
 
 package contacto {
 
     abstract class MedioDeContacto <<abstracta>> {
-        private valor: String
-
-        public tipoNotificacion(): String
+        protected id: UUID
+        protected valor: String
     }
 
     class Email {
-        public tipoNotificacion(): String
     }
 
     class Telefono {
-        public tipoNotificacion(): String
     }
 
     class Whatsapp {
-        public tipoNotificacion(): String
     }
 }
 
 package donacion {
 
     class Donacion {
-        private bienes: List<Bien>
-        private subcategoria: Subcategoria
-        private estado: EstadoDonacionBase
-        private historialEstados: List<CambioEstado>
-        private donante: PersonaDonante
-        private entidadBeneficiaria: EntidadBeneficiaria
-        private descripcion: String
-        private fechaDonacion: LocalDateTime
-        private fechaAsignacion: LocalDate
+        protected id: UUID
+        protected bienes: List<Bien>
+        protected subcategoria: Subcategoria
+        protected estadoNombre: String
+        protected estado: EstadoDonacionBase {transient}
+        protected historialEstados: List<CambioEstado>
+        protected idDonante: UUID
+        protected idEntidadBeneficiaria: UUID
+        protected descripcion: String
+        protected fechaDonacion: LocalDateTime
+        protected fechaAsignacion: LocalDate
+        protected proveedorLogistica: String
+        protected idSeguimientoLogistica: String
 
+        private rehidratarEstado(): void «@PostLoad»
         public cambiarEstado(estadoDestino: String, nombreTransicion: String, justificacion: String): void
+        public esPerecible(): boolean
+        public requiereEstado(): boolean
+        public despacharA(proveedor: String, idSeguimiento: String): void
         public asignarA(entidad: EntidadBeneficiaria): void
         public estaEnEstado(nombreEstado: String): boolean
         public esDeSubcategoria(subcategoria: String): boolean
         public fueEntregada(): boolean
-        public esPerecible(): boolean
-        public requiereEstado(): boolean
     }
 
     class CargaDonacion {
-        private donante: PersonaDonante
+        private idDonante: UUID
         private descripcion: String
         private bienes: List<Bien>
 
         public segmentar(): List<Donacion>
+        private crearDonacion(subcategoria: Subcategoria, grupo: List<? extends Bien>): Donacion
     }
 
     class CambioEstado {
-        private estadoPrevio: EstadoDonacionBase
-        private estado: EstadoDonacionBase
+        private id: UUID
+        private estadoPrevioNombre: String
+        private estadoNombre: String
         private nombreTransicion: String
         private justificacion: String
         private fechaHora: LocalDateTime
+
+        {static} public de(estadoPrevio: EstadoDonacionBase, estado: EstadoDonacionBase, nombreTransicion: String, justificacion: String): CambioEstado
+        public getEstadoPrevio(): EstadoDonacionBase
+        public getEstado(): EstadoDonacionBase
     }
 
     package estado {
@@ -197,39 +238,50 @@ package donacion {
         class VencidaState {
         }
 
-        class CambioEstadoDonacionIlegalException {
+        class EstadosDonacion {
+            {static} private POR_NOMBRE: Map<String, Supplier<EstadoDonacionBase>>
+
+            {static} public inicial(): EstadoDonacionBase
+            {static} public desde(nombre: String): EstadoDonacionBase
+            {static} public desdeONull(nombre: String): EstadoDonacionBase
         }
 
-        class FaltaJustificacionDonacionException {
-        }
+        note as NotaEstadosDonacion
+            Transiciones válidas (estado inicial: EN_DEPOSITO):
+            EN_DEPOSITO → ASIGNACION_REALIZADA | VENCIDA
+            ASIGNACION_REALIZADA → LISTA_PARA_ENTREGAR
+            LISTA_PARA_ENTREGAR → EN_TRASLADO
+            EN_TRASLADO → ENTREGADA | ENTREGA_FALLIDA
+            ENTREGA_FALLIDA → EN_DEPOSITO | EN_TRASLADO
+            ENTREGADA y VENCIDA son finales
+            ..
+            Excepciones:
+            transición no válida → CambioEstadoDonacionIlegalException
+            ENTREGA_FALLIDA sin justificación → FaltaJustificacionDonacionException
+            nombre desconocido en EstadosDonacion → TipoDesconocidoException
+        end note
     }
 
     package bien {
 
         abstract class Bien <<abstracta>> {
-            private subcategoria: Subcategoria
-            private descripcion: String
-            private foto: String
-            private cantidad: int
-            private unidad: String
-
-            public claveDeSegmentacion(): String
+            protected id: UUID
+            protected subcategoria: Subcategoria
+            protected descripcion: String
+            protected foto: String
+            protected cantidad: int
+            protected unidad: String
         }
 
         class BienGenerico {
-            public claveDeSegmentacion(): String
         }
 
         class BienConEstado {
             private esNuevo: boolean
-
-            public claveDeSegmentacion(): String
         }
 
         class BienPerecible {
             private fechaVencimiento: LocalDate
-
-            public claveDeSegmentacion(): String
         }
     }
 }
@@ -237,16 +289,18 @@ package donacion {
 package categoria {
 
     class Categoria {
+        private id: UUID
         private nombre: String
         private tipoBien: TipoBien
         private subcategorias: List<Subcategoria>
     }
 
-    class Subcategoria {
+    class Subcategoria <<embeddable>> {
         private tipo: String
         private tipoNormalizado: String
 
-        public coincideCon(otroTipo: String): boolean
+        public equals(o: Object): boolean
+        public hashCode(): int
         public toString(): String
     }
 
@@ -255,11 +309,19 @@ package categoria {
         CON_ESTADO
         GENERICO
     }
+
+    note as NotaCategoria
+        Categoria y TipoBien no están mapeadas
+        con JPA ni se usan desde otras clases.
+        Subcategoria compara por tipoNormalizado
+        (trim + minúsculas).
+    end note
 }
 
 package entidad {
 
     class EntidadBeneficiaria {
+        private id: UUID
         private razonSocial: String
         private direccion: Direccion
         private contactos: List<MedioDeContacto>
@@ -272,44 +334,50 @@ package entidad {
         public contarNecesidadesCompatiblesCon(subcategoria: String): int
     }
 
-    class Direccion {
+    class Direccion <<embeddable>> {
         private calle: String
         private numero: int
         private localidad: Localidad
         private codigoPostal: String
     }
 
-    class Localidad {
+    class Localidad <<embeddable>> {
         private nombre: String
         private provincia: Provincia
     }
 
-    class Provincia {
+    class Provincia <<embeddable>> {
         private nombre: String
     }
 
     package necesidad {
 
         class Campania {
+            private idCampania: UUID
+            private idEntidad: UUID
             private fechaInicio: LocalDate
             private fechaFin: LocalDate
             private descripcionGeneral: String
             private necesidades: List<Necesidad>
 
             public agregarNecesidad(necesidad: Necesidad): void
+            public buscarNecesidad(necesidadId: UUID): Optional<Necesidad>
+            public eliminarNecesidad(necesidadId: UUID): boolean
             public necesidadesCompatiblesCon(subcategoria: String): List<Necesidad>
         }
 
         abstract class Necesidad <<abstracta>> {
-            private nombre: String
-            private descripcion: String
-            private fechaRegistro: LocalDate
-            private cantidadObjetivo: int
-            private cantidadRecibida: int
+            protected id: UUID
+            protected nombre: String
+            protected descripcion: String
+            protected fechaRegistro: LocalDate
+            protected cantidadObjetivo: int
+            protected cantidadRecibida: int
 
             public recibirDonacion(cantidad: int): void
             public esCompatibleCon(subcategoria: String): boolean
-            public estaSatisfecha(): boolean
+            private contieneTexto(texto: String, objetivo: String): boolean
+            {abstract} public estaSatisfecha(): boolean
         }
 
         class NecesidadExtraordinaria {
@@ -325,13 +393,18 @@ package entidad {
             public estaSatisfecha(): boolean
         }
 
-        enum Periodicidad <<enum>> {
-            SEMANAL
-            MENSUAL
-            CUATRIMESTRAL
-            ANUAL
+        package periodicidades {
 
-            public getDias(): int
+            enum Periodicidad <<enum>> {
+                {field} SEMANAL(7)
+                {field} MENSUAL(30)
+                {field} CUATRIMESTRAL(120)
+                {field} ANUAL(365)
+                --
+                private dias: int
+
+                public getDias(): int
+            }
         }
     }
 }
@@ -339,10 +412,23 @@ package entidad {
 package asignacion {
 
     class ResultadoAsignacion {
-        private entidad: EntidadBeneficiaria
+        private idEntidad: UUID
         private puntaje: double
     }
+
+    class RankingPrecalculado {
+        private idDonacion: UUID
+        private coincidencias: List<ResultadoAsignacion>
+        private rankingSemantico: List<ResultadoAsignacion>
+        private rankingSubAtendidos: List<ResultadoAsignacion>
+        private fechaCalculo: LocalDateTime
+
+        public huboCoincidencias(): boolean
+        public sinCandidatas(): boolean
+    }
 }
+
+' ─────────────── HERENCIA ───────────────
 
 PersonaHumana --|> PersonaDonante
 PersonaJuridica --|> PersonaDonante
@@ -365,38 +451,50 @@ VencidaState --|> EstadoDonacionBase
 NecesidadExtraordinaria --|> Necesidad
 NecesidadRecurrente --|> Necesidad
 
-PersonaDonante -- EstadoDonante
-PersonaDonante -- Direccion
-PersonaDonante -- MedioDeContacto
-PersonaHumana -- Genero
-PersonaJuridica -- TipoPersonaJuridica
-PersonaJuridica -- Representante
-Representante -- MedioDeContacto
+' ─────────────── DONANTES Y CONTACTOS ───────────────
+' Composición (*--): colecciones con cascade ALL + orphanRemoval y objetos @Embeddable.
 
-Donacion -- Bien
-Donacion -- CambioEstado
-Donacion -- EstadoDonacionBase
-Donacion -- Subcategoria
-Donacion -- PersonaDonante
-Donacion -- EntidadBeneficiaria
-CargaDonacion -- Bien
-CargaDonacion -- PersonaDonante
-CargaDonacion -- Donacion
-CambioEstado -- EstadoDonacionBase
-Bien -- Subcategoria
+PersonaDonante *-- "0..1" Direccion
+PersonaDonante --> "1" EstadoDonante
+PersonaDonante *-- "0..*\ncontactos" MedioDeContacto
+PersonaDonante --> "0..1\nmedioContactoPredeterminado" MedioDeContacto
+PersonaDonante ..> EstadosDonante
+PersonaHumana --> "0..1" Genero
+PersonaJuridica --> "0..1" TipoPersonaJuridica
+PersonaJuridica *-- "0..*" Representante
+Representante *-- "0..*" MedioDeContacto
+EstadosDonante ..> EstadoDonante : <<crea>>
 
-Categoria -- Subcategoria
-Categoria -- TipoBien
+' ─────────────── DONACIONES ───────────────
 
-EntidadBeneficiaria -- Direccion
-EntidadBeneficiaria -- MedioDeContacto
-EntidadBeneficiaria -- Representante
-EntidadBeneficiaria -- Campania
-Campania -- Necesidad
-NecesidadRecurrente -- Periodicidad
-Direccion -- Localidad
-Localidad -- Provincia
+Donacion *-- "0..*" Bien
+Donacion *-- "0..*\n{ordered}" CambioEstado
+Donacion --> "1" EstadoDonacionBase
+Donacion *-- "0..1" Subcategoria
+Donacion ..> EstadosDonacion
+Donacion ..> EntidadBeneficiaria : asignarA()
+CargaDonacion --> "0..*" Bien
+CargaDonacion ..> Donacion : <<crea>>
+CambioEstado ..> EstadosDonacion
+EstadosDonacion ..> EstadoDonacionBase : <<crea>>
+Bien *-- "0..1" Subcategoria
 
-ResultadoAsignacion -- EntidadBeneficiaria
+Categoria --> "0..*" Subcategoria
+Categoria --> "0..1" TipoBien
+
+' ─────────────── ENTIDADES BENEFICIARIAS ───────────────
+
+EntidadBeneficiaria *-- "0..1" Direccion
+EntidadBeneficiaria *-- "0..*" MedioDeContacto
+EntidadBeneficiaria *-- "0..*" Representante
+EntidadBeneficiaria *-- "0..*" Campania
+Campania *-- "0..*" Necesidad
+NecesidadRecurrente --> "0..1" Periodicidad
+Direccion *-- "0..1" Localidad
+Localidad *-- "0..1" Provincia
+
+' ─────────────── ASIGNACIÓN ───────────────
+
+RankingPrecalculado --> "0..*" ResultadoAsignacion : coincidencias\nrankingSemantico\nrankingSubAtendidos
 
 @enduml

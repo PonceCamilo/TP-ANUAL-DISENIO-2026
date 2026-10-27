@@ -46,7 +46,7 @@ public class EnvioLogisticaResponseDTO {
     public static class EnvioDonacionDTO {
         private UUID idDonacion;
         private String proveedor;
-        /** Id con el que el proveedor sigue la donación (lote en DONATRACK, trackingId en EXTERNA). */
+        /** Id con el que el proveedor sigue la donación (id de la entrega en DONATRACK, trackingId en EXTERNA). */
         private String idSeguimiento;
         private LocalDateTime fechaAsignacion;
     }

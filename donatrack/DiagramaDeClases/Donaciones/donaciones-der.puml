@@ -5,206 +5,211 @@ skinparam linetype ortho
 skinparam nodesep 40
 skinparam ranksep 55
 
-' ─────────────── UBICACION ───────────────
+' DER físico de la base donaciones_db (PostgreSQL 16).
+' Es el esquema que Hibernate genera a partir de las entidades JPA de
+' servicio-donaciones (spring.jpa.hibernate.ddl-auto=update): mismos nombres
+' de tabla y columna, mismos tipos, PK, FK y restricciones.
 
-entity provincia {
-  id : UUID <<PK>>
-  --
-  nombre : varchar(100)
-}
-
-entity localidad {
-  id : UUID <<PK>>
-  --
-  nombre : varchar(100)
-  provincia_id : UUID <<FK>>
-}
-
-entity direccion {
-  id : UUID <<PK>>
-  --
-  calle : varchar(150)
-  numero : int
-  codigo_postal : varchar(20)
-  localidad_id : UUID <<FK>>
-}
-
-' ─────────────── PERSONAS DONANTES ───────────────
+' ─────────────── PERSONAS DONANTES (herencia JOINED) ───────────────
 
 entity persona_donante {
-  id : UUID <<PK>>
+  id : uuid <<PK>>
   --
-  email : varchar(255) <<UQ>>
-  estado : varchar(20)
-  tipo_documento : varchar(10)
-  numero_documento : varchar(20)
-  ultima_interaccion : timestamp
-  direccion_id : UUID <<FK>>
+  tipo_documento : varchar(255)
+  numero_documento : varchar(255)
+  email : varchar(255)
+  estado : varchar(255) <<NN>>
+  ultima_interaccion : timestamp(6)
+  direccion_calle : varchar(255)
+  direccion_numero : integer
+  direccion_codigo_postal : varchar(255)
+  localidad_nombre : varchar(255)
+  provincia_nombre : varchar(255)
+  medio_predeterminado_id : uuid <<FK, UQ>>
 }
 
 entity persona_humana {
-  persona_donante_id : UUID <<PK, FK>>
+  id : uuid <<PK, FK>>
   --
-  nombre : varchar(100)
-  apellido : varchar(100)
+  nombre : varchar(255)
+  apellido : varchar(255)
   fecha_nacimiento : date
-  genero : varchar(20)
+  genero : varchar(255) <<CK>>
 }
 
 entity persona_juridica {
-  persona_donante_id : UUID <<PK, FK>>
+  id : uuid <<PK, FK>>
   --
-  razon_social : varchar(200)
-  tipo : varchar(20)
-  rubro : varchar(100)
+  razon_social : varchar(255)
+  tipo : varchar(255) <<CK>>
+  rubro : varchar(255)
 }
 
 ' ─────────────── COMPARTIDAS PERSONA / ENTIDAD ───────────────
 
 entity representante {
-  id : UUID <<PK>>
+  id : uuid <<PK>>
   --
-  nombre : varchar(100)
-  apellido : varchar(100)
+  nombre : varchar(255)
+  apellido : varchar(255)
   email : varchar(255)
-  persona_juridica_id : UUID <<FK>>
-  entidad_beneficiaria_id : UUID <<FK>>
+  persona_juridica_id : uuid <<FK>>
+  entidad_id : uuid <<FK>>
 }
 
-entity medio_contacto {
-  id : UUID <<PK>>
+entity medio_de_contacto {
+  id : uuid <<PK>>
   --
-  tipo : varchar(20)
+  tipo_medio : varchar(31) <<NN>>
   valor : varchar(255)
-  es_predeterminado : boolean
-  persona_donante_id : UUID <<FK>>
-  representante_id : UUID <<FK>>
-  entidad_beneficiaria_id : UUID <<FK>>
+  persona_donante_id : uuid <<FK>>
+  representante_id : uuid <<FK>>
+  entidad_id : uuid <<FK>>
 }
 
 ' ─────────────── ENTIDADES BENEFICIARIAS ───────────────
 
 entity entidad_beneficiaria {
-  id : UUID <<PK>>
+  id : uuid <<PK>>
   --
-  razon_social : varchar(200)
-  direccion_id : UUID <<FK>>
+  razon_social : varchar(255)
+  direccion_calle : varchar(255)
+  direccion_numero : integer
+  direccion_codigo_postal : varchar(255)
+  localidad_nombre : varchar(255)
+  provincia_nombre : varchar(255)
 }
 
 entity campania {
-  id : UUID <<PK>>
+  id_campania : uuid <<PK>>
   --
-  entidad_beneficiaria_id : UUID <<FK>>
-  descripcion_general : text
+  id_entidad : uuid
   fecha_inicio : date
   fecha_fin : date
+  descripcion_general : varchar(1000)
+  entidad_id : uuid <<FK>>
 }
 
 entity necesidad {
-  id : UUID <<PK>>
+  id : uuid <<PK>>
   --
-  campania_id : UUID <<FK>>
-  tipo : varchar(20)
-  nombre : varchar(150)
-  descripcion : text
+  nombre : varchar(255)
+  descripcion : varchar(1000)
   fecha_registro : date
-  cantidad_objetivo : int
-  cantidad_recibida : int
-  periodo : varchar(20)
+  cantidad_objetivo : integer
+  cantidad_recibida : integer
+  campania_id : uuid <<FK>>
+}
+
+entity necesidad_extraordinaria {
+  id : uuid <<PK, FK>>
+}
+
+entity necesidad_recurrente {
+  id : uuid <<PK, FK>>
+  --
+  periodo : varchar(255) <<CK>>
   fecha_inicio_periodo : date
-}
-
-' ─────────────── CATEGORIAS ───────────────
-
-entity categoria {
-  id : UUID <<PK>>
-  --
-  nombre : varchar(100)
-  tipo_bien : varchar(20)
-}
-
-entity subcategoria {
-  id : UUID <<PK>>
-  --
-  categoria_id : UUID <<FK>>
-  tipo : varchar(100)
-  tipo_normalizado : varchar(100) <<UQ>>
 }
 
 ' ─────────────── DONACIONES ───────────────
 
-entity carga_donacion {
-  id : UUID <<PK>>
-  --
-  persona_donante_id : UUID <<FK>>
-  descripcion : text
-  fecha_carga : timestamp
-}
-
 entity donacion {
-  id : UUID <<PK>>
+  id : uuid <<PK>>
   --
-  carga_donacion_id : UUID <<FK>>
-  entidad_beneficiaria_id : UUID <<FK>>
-  subcategoria_id : UUID <<FK>>
-  estado : varchar(30)
-  descripcion : text
-  fecha_donacion : timestamp
+  estado : varchar(255) <<NN>>
+  descripcion : varchar(1000)
+  fecha_donacion : timestamp(6)
   fecha_asignacion : date
+  subcategoria_tipo : varchar(255)
+  subcategoria_tipo_normalizado : varchar(255)
+  id_donante : uuid
+  id_entidad_beneficiaria : uuid
+  proveedor_logistica : varchar(255)
+  id_seguimiento_logistica : varchar(255)
 }
 
 entity bien {
-  id : UUID <<PK>>
+  id : uuid <<PK>>
   --
-  donacion_id : UUID <<FK>>
-  subcategoria_id : UUID <<FK>>
-  tipo : varchar(20)
-  descripcion : text
+  tipo_bien : varchar(31) <<NN>>
+  descripcion : varchar(255)
   foto : varchar(255)
-  cantidad : int
-  unidad : varchar(20)
+  cantidad : integer
+  unidad : varchar(255)
+  subcategoria_tipo : varchar(255)
+  subcategoria_tipo_normalizado : varchar(255)
   es_nuevo : boolean
   fecha_vencimiento : date
+  donacion_id : uuid <<FK>>
 }
 
 entity cambio_estado {
-  id : UUID <<PK>>
+  id : uuid <<PK>>
   --
-  donacion_id : UUID <<FK>>
-  estado_previo : varchar(30)
-  estado : varchar(30)
-  nombre_transicion : varchar(50)
-  justificacion : text
-  fecha_hora : timestamp
+  estado_previo : varchar(255)
+  estado : varchar(255) <<NN>>
+  nombre_transicion : varchar(255)
+  justificacion : varchar(1000)
+  fecha_hora : timestamp(6) <<NN>>
+  donacion_id : uuid <<FK>>
 }
 
-' ─────────────── RELACIONES ───────────────
+' ─────────────── RELACIONES (FK reales) ───────────────
+' Las FK de las colecciones (@OneToMany + @JoinColumn) son nullable,
+' por eso el lado de la tabla referenciada se marca 0..1 (|o).
 
-provincia ||--o{ localidad
-localidad ||--o{ direccion
-
-direccion ||--o{ persona_donante
 persona_donante ||--o| persona_humana
 persona_donante ||--o| persona_juridica
 
-persona_juridica ||--o{ representante
-persona_donante ||--o{ medio_contacto
-representante ||--o{ medio_contacto
+' Solo se rotulan las dos relaciones entre persona_donante y medio_de_contacto,
+' que son las únicas que unen el mismo par de tablas.
 
-direccion ||--o{ entidad_beneficiaria
-entidad_beneficiaria ||--o{ representante
-entidad_beneficiaria ||--o{ medio_contacto
-entidad_beneficiaria ||--o{ campania
-campania ||--o{ necesidad
+persona_donante |o--o{ medio_de_contacto : persona_donante_id
+medio_de_contacto |o--o| persona_donante : medio_predeterminado_id
+persona_juridica |o--o{ representante
+representante |o--o{ medio_de_contacto
 
-categoria ||--o{ subcategoria
+entidad_beneficiaria |o--o{ medio_de_contacto
+entidad_beneficiaria |o--o{ representante
+entidad_beneficiaria |o--o{ campania
+campania |o--o{ necesidad
+necesidad ||--o| necesidad_extraordinaria
+necesidad ||--o| necesidad_recurrente
 
-persona_donante ||--o{ carga_donacion
-carga_donacion ||--|{ donacion
-entidad_beneficiaria ||--o{ donacion
-subcategoria ||--o{ donacion
-donacion ||--|{ bien
-subcategoria ||--o{ bien
-donacion ||--o{ cambio_estado
+donacion |o--o{ bien
+donacion |o--o{ cambio_estado
+
+' ─────────────── REFERENCIAS POR ID SIN FK ───────────────
+' donacion.id_donante y donacion.id_entidad_beneficiaria.
+
+persona_donante |o..o{ donacion
+entidad_beneficiaria |o..o{ donacion
+
+legend right
+  <b>Referencias</b>
+  PK: clave primaria · FK: clave foránea · UQ: única · NN: NOT NULL · CK: CHECK
+  Línea continua: FK real · línea punteada: referencia por id sin FK
+  ----
+  <b>CHECK</b>
+  persona_humana.genero ∈ {MASCULINO, FEMENINO, NO_BINARIO, OTRO, PREFIERO_NO_DECIR}
+  persona_juridica.tipo ∈ {GUBERNAMENTAL, ONG, EMPRESA, INSTITUCION}
+  necesidad_recurrente.periodo ∈ {SEMANAL, MENSUAL, CUATRIMESTRAL, ANUAL}
+  ----
+  <b>Herencia</b>
+  JOINED: persona_donante → persona_humana | persona_juridica
+             necesidad → necesidad_extraordinaria | necesidad_recurrente
+  SINGLE_TABLE (discriminador):
+             bien.tipo_bien ∈ {PERECIBLE, CON_ESTADO, GENERICO}
+             medio_de_contacto.tipo_medio ∈ {EMAIL, TELEFONO, WHATSAPP}
+  ----
+  <b>Notas</b>
+  estado / estado_previo guardan el nombre del objeto State (EN_DEPOSITO, ACTIVO, ...).
+  Direccion (con Localidad y Provincia) y Subcategoria son @Embeddable:
+  sus columnas viven en la tabla que las contiene.
+  campania.id_entidad guarda el id de la entidad (sin FK); la FK de la relación es entidad_id.
+  No se persisten: RankingPrecalculado (en memoria), CargaDonacion,
+  Categoria y TipoBien.
+endlegend
 
 @enduml
