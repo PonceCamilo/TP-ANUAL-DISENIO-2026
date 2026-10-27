@@ -72,8 +72,13 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
     }
 
     @Transactional(readOnly = true)
-    public List<PersonaDonante> obtenerInactivasDesde(LocalDateTime limite) {
-        return jpa.findByUltimaInteraccionBeforeOrUltimaInteraccionIsNull(limite);
+    public List<PersonaDonante> obtenerParaAvisoDeInactividad(LocalDateTime limite, int cantidad) {
+        return jpa.buscarParaAvisoDeInactividad(limite, PageRequest.of(0, cantidad, Sort.by("id")));
+    }
+
+    @Transactional
+    public void registrarAvisoDeInactividad(Collection<UUID> ids, LocalDateTime cuando) {
+        jpa.registrarAvisoDeInactividad(ids, cuando);
     }
 
     @Transactional

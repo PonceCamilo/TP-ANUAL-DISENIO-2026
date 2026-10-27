@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.mockito.Spy;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
@@ -246,6 +247,8 @@ class SegmentadorDonacionesServiceTest {
                 assertThat(d.getSubcategoria()).isEqualTo("arroz");
             });
             verify(donacionesRepository).cargarDonaciones(anyList());
+            // Donar es interactuar con la plataforma: reinicia el plazo de inactividad.
+            verify(donanteRepository).guardar(argThat(persona -> persona.getUltimaInteraccion() != null));
             // El donante ya está cargado: no se vuelve a buscar para avisar a incentivos.
             verify(donanteRepository, never()).obtenerPersona(any());
         }

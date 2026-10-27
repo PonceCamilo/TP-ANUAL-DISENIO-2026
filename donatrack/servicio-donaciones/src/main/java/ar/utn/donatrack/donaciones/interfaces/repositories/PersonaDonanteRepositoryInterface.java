@@ -27,7 +27,11 @@ public interface PersonaDonanteRepositoryInterface {
      * El filtro lo resuelve la base con el índice de ultima_interaccion: el
      * proceso nocturno ya no carga la tabla entera.
      */
-    List<PersonaDonante> obtenerInactivasDesde(LocalDateTime limite);
+    /** Hasta `cantidad` personas a las que corresponde avisar por inactividad (ver la consulta). */
+    List<PersonaDonante> obtenerParaAvisoDeInactividad(LocalDateTime limite, int cantidad);
+
+    /** Deja registrado que a esas personas se les avisó por inactividad en ese momento. */
+    void registrarAvisoDeInactividad(Collection<UUID> ids, LocalDateTime cuando);
     void guardar(PersonaDonante donante);
 
     /**

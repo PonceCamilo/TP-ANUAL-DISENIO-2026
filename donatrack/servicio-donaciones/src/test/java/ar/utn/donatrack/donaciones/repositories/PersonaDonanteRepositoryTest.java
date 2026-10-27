@@ -114,7 +114,7 @@ class PersonaDonanteRepositoryTest {
     }
 
     @Test
-    @DisplayName("La consulta de inactividad trae a quienes no interactúan desde el límite o nunca interactuaron")
+    @DisplayName("La consulta de inactividad trae a quienes no interactúan desde el límite o nunca interactuaron, salvo bloqueadas o ya avisadas")
     void consultaDeInactivos() {
         LocalDateTime ahora = LocalDateTime.of(2026, 10, 26, 0, 0);
         PersonaHumana reciente = humana("reciente@mail.com");
@@ -123,16 +123,28 @@ class PersonaDonanteRepositoryTest {
         vieja.setUltimaInteraccion(ahora.minusDays(30));
         PersonaHumana nunca = humana("nunca@mail.com");
         nunca.setUltimaInteraccion(null);
+        PersonaHumana bloqueada = humana("bloqueada@mail.com");
+        bloqueada.setUltimaInteraccion(ahora.minusDays(30));
+        bloqueada.cambiarEstado("BLOQUEADO", "fraude");
+        PersonaHumana yaAvisada = humana("avisada@mail.com");
+        yaAvisada.setUltimaInteraccion(ahora.minusDays(30));
+        yaAvisada.setUltimoAvisoInactividad(ahora.minusDays(3));
         repositorio.guardar(reciente);
         repositorio.guardar(vieja);
         repositorio.guardar(nunca);
+        repositorio.guardar(bloqueada);
+        repositorio.guardar(yaAvisada);
         jpa.flush();
         em.clear();
 
-        List<PersonaDonante> inactivas = repositorio.obtenerInactivasDesde(ahora.minusDays(20));
+        List<PersonaDonante> inactivas = repositorio.obtenerParaAvisoDeInactividad(ahora.minusDays(20), 100);
 
         assertThat(inactivas).extracting(PersonaDonante::getEmail)
                 .containsExactlyInAnyOrder("vieja@mail.com", "nunca@mail.com");
+
+        // Una vez avisadas, dejan de aparecer hasta que pase otro período.
+        repositorio.registrarAvisoDeInactividad(inactivas.stream().map(PersonaDonante::getId).toList(), ahora);
+        assertThat(repositorio.obtenerParaAvisoDeInactividad(ahora.minusDays(20), 100)).isEmpty();
     }
 
     @Test

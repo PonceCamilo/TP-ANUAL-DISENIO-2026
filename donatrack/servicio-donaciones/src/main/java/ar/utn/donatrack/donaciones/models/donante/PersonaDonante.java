@@ -119,6 +119,14 @@ public abstract class PersonaDonante implements Persistable<UUID> {
     @Column(name = "ultima_interaccion")
     protected LocalDateTime ultimaInteraccion;
 
+    /**
+     * Cuándo se le avisó por última vez que estaba inactiva. Evita repetir el
+     * aviso todas las noches: se vuelve a avisar recién cuando pasa otro período
+     * completo de inactividad.
+     */
+    @Column(name = "ultimo_aviso_inactividad")
+    protected LocalDateTime ultimoAvisoInactividad;
+
     @Column(name = "email", unique = true)
     protected String email;
 

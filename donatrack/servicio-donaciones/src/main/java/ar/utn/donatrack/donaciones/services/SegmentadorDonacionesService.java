@@ -54,6 +54,11 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
     List<Donacion> resultado = carga.segmentar();
 
     cargarDonaciones(resultado);
+    if (donante != null) {
+      // Donar es interactuar con la plataforma: reinicia el plazo de inactividad.
+      donante.registrarInteraccion();
+      donanteRepository.guardar(donante);
+    }
     notificarIncentivos(donante, carga.getBienes());
 
     return resultado;
