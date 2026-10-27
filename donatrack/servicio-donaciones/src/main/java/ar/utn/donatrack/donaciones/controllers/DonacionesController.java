@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -143,12 +144,35 @@ public class DonacionesController {
   }
 
   @Operation(
-      summary = "Modificar el bien de una donación",
-      description = "Reemplaza el primer bien registrado en la donación.",
+      summary = "Modificar un bien de una donación",
+      description = "Reemplaza el bien indicado por su versión corregida, mientras la donación está EN_DEPOSITO. "
+          + "El bien tiene que seguir siendo de la subcategoría de la donación y, si hay otros bienes, del mismo tipo "
+          + "y con el mismo vencimiento o estado. El bien reemplazado recibe un id nuevo.",
+      responses = {
+          @ApiResponse(responseCode = "200", description = "Bien actualizado; devuelve la donación",
+              content = @Content(schema = @Schema(implementation = DonacionResponseDTO.class))),
+          @ApiResponse(responseCode = "400", description = "Datos del bien inválidos"),
+          @ApiResponse(responseCode = "404", description = "Donación o bien no encontrados"),
+          @ApiResponse(responseCode = "422", description = "La donación ya salió del depósito o el bien no encaja en ella")
+      }
+  )
+  @PutMapping("/{id}/bienes/{idBien}")
+  public ResponseEntity<DonacionResponseDTO> modificarBien(
+      @Parameter(description = "ID de la donación") @PathVariable UUID id,
+      @Parameter(description = "ID del bien") @PathVariable UUID idBien,
+      @RequestBody @Valid BienRequestDTO dto
+  ) {
+    return ResponseEntity.ok(donacionService.modificarBien(id, idBien, dto));
+  }
+
+  @Operation(
+      summary = "Modificar el bien de una donación de un solo bien",
+      description = "Endpoint anterior al que modifica por id: solo sirve si la donación tiene un único bien.",
       responses = {
           @ApiResponse(responseCode = "204", description = "Bien actualizado"),
           @ApiResponse(responseCode = "404", description = "Donación no encontrada"),
-          @ApiResponse(responseCode = "409", description = "La donación no tiene bienes para modificar")
+          @ApiResponse(responseCode = "409", description = "La donación no tiene bienes o tiene más de uno"),
+          @ApiResponse(responseCode = "422", description = "La donación ya salió del depósito o el bien no encaja en ella")
       }
   )
   @PatchMapping("/{id}/bien")
@@ -156,7 +180,7 @@ public class DonacionesController {
       @Parameter(description = "ID de la donación") @PathVariable UUID id,
       @RequestBody @Valid BienRequestDTO dto
   ) {
-    donacionService.modificarBien(id, dto);
+    donacionService.modificarUnicoBien(id, dto);
     return ResponseEntity.noContent().build();
   }
 

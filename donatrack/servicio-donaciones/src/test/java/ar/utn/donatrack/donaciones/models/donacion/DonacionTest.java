@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoModificableException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienNoEncontradoException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienIncompatibleConDonacionException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
@@ -43,6 +47,75 @@ class DonacionTest {
         donacion.setIdDonante(UUID.randomUUID());
         donacion.setDescripcion("Donación de prueba");
         donacion.setSubcategoria(new Subcategoria("arroz"));
+    }
+
+    @Nested
+    @DisplayName("reemplazarBien(): corregir un bien sin romper la segmentación")
+    class ReemplazarBien {
+
+        private Bien generico(String subcategoria) {
+            return BienGenerico.builder().subcategoria(new Subcategoria(subcategoria))
+                    .descripcion("bien").cantidad(1).unidad("kg").build();
+        }
+
+        private Bien perecedero(String subcategoria, LocalDate vence) {
+            return BienPerecible.builder().subcategoria(new Subcategoria(subcategoria))
+                    .descripcion("bien").cantidad(1).unidad("kg").fechaVencimiento(vence).build();
+        }
+
+        @Test
+        @DisplayName("Reemplaza el bien indicado; el nuevo conserva su propio id")
+        void reemplaza() {
+            Bien original = generico("arroz");
+            donacion.getBienes().add(original);
+            Bien corregido = generico("arroz");
+
+            donacion.reemplazarBien(original.getId(), corregido);
+
+            assertThat(donacion.getBienes()).containsExactly(corregido);
+        }
+
+        @Test
+        @DisplayName("Un id que no es de la donación es un 404")
+        void bienInexistente() {
+            donacion.getBienes().add(generico("arroz"));
+
+            assertThatThrownBy(() -> donacion.reemplazarBien(UUID.randomUUID(), generico("arroz")))
+                    .isInstanceOf(BienNoEncontradoException.class);
+        }
+
+        @Test
+        @DisplayName("El bien no puede cambiar de subcategoría: la donación tiene una sola")
+        void otraSubcategoria() {
+            Bien original = generico("arroz");
+            donacion.getBienes().add(original);
+
+            assertThatThrownBy(() -> donacion.reemplazarBien(original.getId(), generico("fideos")))
+                    .isInstanceOf(BienIncompatibleConDonacionException.class);
+        }
+
+        @Test
+        @DisplayName("Con otros bienes, el corregido tiene que compartir su vencimiento")
+        void rompeLaSegmentacion() {
+            Bien uno = perecedero("arroz", LocalDate.of(2027, 1, 1));
+            Bien otro = perecedero("arroz", LocalDate.of(2027, 1, 1));
+            donacion.getBienes().add(uno);
+            donacion.getBienes().add(otro);
+
+            assertThatThrownBy(() -> donacion.reemplazarBien(uno.getId(), perecedero("arroz", LocalDate.of(2028, 1, 1))))
+                    .isInstanceOf(BienIncompatibleConDonacionException.class);
+        }
+
+        @Test
+        @DisplayName("Fuera del depósito los bienes ya no se modifican")
+        void fueraDelDeposito() {
+            Bien original = generico("arroz");
+            donacion.getBienes().add(original);
+            donacion.cambiarEstado("VENCIDA", "vencida", null);
+
+            assertThatThrownBy(() -> donacion.reemplazarBien(original.getId(), generico("arroz")))
+                    .isInstanceOf(DonacionNoModificableException.class);
+        }
     }
 
     @Nested

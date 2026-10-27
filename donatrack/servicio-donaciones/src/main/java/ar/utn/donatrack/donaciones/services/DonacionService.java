@@ -85,10 +85,22 @@ public class DonacionService implements DonacionServiceInterface {
     }
   }
 
-  public void modificarBien(UUID id, BienRequestDTO dto) {
+  /** Corrige un bien puntual de la donación (ver Donacion.reemplazarBien para las reglas). */
+  public DonacionResponseDTO modificarBien(UUID id, UUID idBien, BienRequestDTO dto) {
     Donacion donacion = validador.validarYObtenerDonacion(id);
-    validador.validarTieneBienes(donacion);
-    donacion.getBienes().set(0, mapper.toBien(dto));
+    donacion.reemplazarBien(idBien, mapper.toBien(dto));
+    repositorio.guardar(donacion);
+    return mapper.toDTO(donacion);
+  }
+
+  /**
+   * Endpoint anterior (PATCH /donaciones/{id}/bien): reemplazaba siempre el
+   * primer bien. Ahora solo funciona si la donación tiene un único bien; con
+   * varios hay que indicar cuál.
+   */
+  public void modificarUnicoBien(UUID id, BienRequestDTO dto) {
+    Donacion donacion = validador.validarYObtenerDonacion(id);
+    donacion.reemplazarUnicoBien(mapper.toBien(dto));
     repositorio.guardar(donacion);
   }
 

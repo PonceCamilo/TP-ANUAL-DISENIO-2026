@@ -1,5 +1,10 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienIncompatibleConDonacionException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienNoEncontradoException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConVariosBienesException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoModificableException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
@@ -168,6 +173,56 @@ public class Donacion implements Persistable<UUID> {
         this.estado = this.estado.transicionarA(estadoDestino, justificacion);
         this.estadoNombre = this.estado.nombre();
         historialEstados.add(CambioEstado.de(estadoPrevio, this.estado, nombreTransicion, justificacion));
+    }
+
+    /**
+     * Reemplaza un bien por su versión corregida.
+     *
+     * Solo mientras la donación está EN_DEPOSITO, y sin romper la segmentación:
+     * el bien sigue siendo de la subcategoría de la donación y, si la donación
+     * tiene otros bienes, comparte con ellos la clave de segmentación (mismo tipo
+     * y mismo vencimiento o mismo estado). Con un solo bien, la clave puede
+     * cambiar, porque es la de toda la donación.
+     *
+     * El bien nuevo tiene su propio id: se reemplaza el objeto, no se edita.
+     */
+    public void reemplazarBien(UUID idBien, Bien nuevo) {
+        if (!estaEnEstado("EN_DEPOSITO")) {
+            throw new DonacionNoModificableException(id, estadoNombre);
+        }
+        int posicion = posicionDelBien(idBien);
+        if (subcategoria != null && !subcategoria.equals(nuevo.getSubcategoria())) {
+            throw new BienIncompatibleConDonacionException(
+                    "la donación es de la subcategoría '" + subcategoria + "' y el bien de '" + nuevo.getSubcategoria() + "'.");
+        }
+        boolean rompeLaSegmentacion = bienes.stream()
+                .filter(bien -> !bien.getId().equals(idBien))
+                .anyMatch(otro -> !otro.claveDeSegmentacion().equals(nuevo.claveDeSegmentacion()));
+        if (rompeLaSegmentacion) {
+            throw new BienIncompatibleConDonacionException(
+                    "los demás bienes de la donación tienen otro tipo, vencimiento o estado.");
+        }
+        bienes.set(posicion, nuevo);
+    }
+
+    /** Para donaciones de un solo bien, que es lo que suele producir la segmentación. */
+    public void reemplazarUnicoBien(Bien nuevo) {
+        if (bienes.isEmpty()) {
+            throw new DonacionSinBienesException(id);
+        }
+        if (bienes.size() > 1) {
+            throw new DonacionConVariosBienesException(id, bienes.size());
+        }
+        reemplazarBien(bienes.getFirst().getId(), nuevo);
+    }
+
+    private int posicionDelBien(UUID idBien) {
+        for (int i = 0; i < bienes.size(); i++) {
+            if (bienes.get(i).getId().equals(idBien)) {
+                return i;
+            }
+        }
+        throw new BienNoEncontradoException(id, idBien);
     }
 
     public boolean esPerecible() {

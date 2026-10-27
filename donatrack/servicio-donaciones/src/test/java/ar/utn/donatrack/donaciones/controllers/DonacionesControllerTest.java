@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
@@ -504,10 +505,24 @@ class DonacionesControllerTest {
         }
 
         @Test
+        @DisplayName("PUT /donaciones/{id}/bienes/{idBien} devuelve 200 con la donación actualizada")
+        void modificacionPorIdOk() throws Exception {
+            UUID idBien = UUID.randomUUID();
+            when(donacionService.modificarBien(eq(idDonacion), eq(idBien), any()))
+                    .thenReturn(respuesta("EN_DEPOSITO", "arroz"));
+
+            mockMvc.perform(put("/donaciones/{id}/bienes/{idBien}", idDonacion, idBien)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("arroz", 10)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(idDonacion.toString()));
+        }
+
+        @Test
         @DisplayName("Devuelve 409 si la donación no tiene bienes que modificar")
         void sinBienes409() throws Exception {
             doThrow(new DonacionSinBienesException(idDonacion))
-                    .when(donacionService).modificarBien(eq(idDonacion), any());
+                    .when(donacionService).modificarUnicoBien(eq(idDonacion), any());
 
             mockMvc.perform(patch("/donaciones/{id}/bien", idDonacion)
                             .contentType(MediaType.APPLICATION_JSON)

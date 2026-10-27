@@ -16,7 +16,8 @@ public interface DonacionServiceInterface {
   PaginaResponseDTO<DonacionResponseDTO> obtenerDonaciones(FiltroDonaciones filtro, SolicitudPagina pagina);
   DonacionResponseDTO obtenerPorId(UUID id);
   void cambiarEstado(UUID id, CambioEstadoRequestDTO dto);
-  void modificarBien(UUID id, BienRequestDTO dto);
+  DonacionResponseDTO modificarBien(UUID id, UUID idBien, BienRequestDTO dto);
+  void modificarUnicoBien(UUID id, BienRequestDTO dto);
   void eliminar(UUID id);
   CandidatosAsignacionResponseDTO obtenerCandidatos(UUID idDonacion);
   List<CandidatosPendientesResponseDTO> obtenerCandidatosPendientes();

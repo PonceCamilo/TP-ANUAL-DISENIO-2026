@@ -1,7 +1,6 @@
 package ar.utn.donatrack.donaciones.validations.donaciones;
 
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
-import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +21,5 @@ public class DonacionesValidator {
             throw new DonacionNoEncontradaException(id);
         }
         return donacion;
-    }
-
-    /** Verifica que la donación tenga al menos un bien para poder modificarlo. */
-    public void validarTieneBienes(Donacion donacion) {
-        if (donacion.getBienes().isEmpty()) {
-            throw new DonacionSinBienesException(donacion.getId());
-        }
     }
 }

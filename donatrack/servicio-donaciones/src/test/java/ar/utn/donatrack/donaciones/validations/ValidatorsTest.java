@@ -1,7 +1,6 @@
 package ar.utn.donatrack.donaciones.validations;
 
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
-import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
@@ -95,28 +94,6 @@ class ValidatorsTest {
                     .isInstanceOf(DonacionNoEncontradaException.class);
         }
 
-        @Test
-        @DisplayName("validarTieneBienes() pasa si la donación tiene al menos un bien")
-        void pasaSiTieneBienes() {
-            Donacion donacion = new Donacion();
-            donacion.setBienes(List.of(BienGenerico.builder()
-                    .subcategoria(new Subcategoria("ropa"))
-                    .descripcion("Camperas")
-                    .cantidad(1)
-                    .unidad("unidades")
-                    .build()));
-
-            assertThatCode(() -> validador.validarTieneBienes(donacion)).doesNotThrowAnyException();
-        }
-
-        @Test
-        @DisplayName("validarTieneBienes() lanza DonacionSinBienes si la donación está vacía")
-        void lanzaSiNoTieneBienes() {
-            // Protege el endpoint que modifica el bien de una donación: sin bienes
-            // no hay nada que modificar y un acceso por índice explotaría.
-            assertThatThrownBy(() -> validador.validarTieneBienes(new Donacion()))
-                    .isInstanceOf(DonacionSinBienesException.class);
-        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

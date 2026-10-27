@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConVariosBienesException;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
@@ -621,7 +622,7 @@ class DonacionServiceTest {
         void modificaElBien() {
             when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
-            servicio.modificarBien(donacion.getId(), dtoBien("arroz", null));
+            servicio.modificarUnicoBien(donacion.getId(), dtoBien("arroz", null));
 
             assertThat(donacion.getBienes()).hasSize(1);
             assertThat(donacion.getBienes().getFirst().getDescripcion()).isEqualTo("Bien corregido");
@@ -635,7 +636,7 @@ class DonacionServiceTest {
             // presentes en el request; la corrección puede cambiarlo.
             when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
-            servicio.modificarBien(donacion.getId(), dtoBien("arroz", LocalDate.of(2027, 1, 1)));
+            servicio.modificarUnicoBien(donacion.getId(), dtoBien("arroz", LocalDate.of(2027, 1, 1)));
 
             assertThat(donacion.getBienes().getFirst()).isInstanceOf(BienPerecible.class);
             assertThat(donacion.esPerecible()).isTrue();
@@ -647,8 +648,32 @@ class DonacionServiceTest {
             Donacion sinBienes = new Donacion();
             when(repositorio.obtenerPorId(sinBienes.getId())).thenReturn(sinBienes);
 
-            assertThatThrownBy(() -> servicio.modificarBien(sinBienes.getId(), dtoBien("arroz", null)))
+            assertThatThrownBy(() -> servicio.modificarUnicoBien(sinBienes.getId(), dtoBien("arroz", null)))
                     .isInstanceOf(DonacionSinBienesException.class);
+        }
+
+        @Test
+        @DisplayName("modificarBien() reemplaza el bien indicado por id y devuelve la donación")
+        void modificaUnBienPorId() {
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            UUID idBien = donacion.getBienes().getFirst().getId();
+
+            DonacionResponseDTO respuesta = servicio.modificarBien(donacion.getId(), idBien, dtoBien("arroz", null));
+
+            assertThat(respuesta.getBienes()).singleElement()
+                    .satisfies(bien -> assertThat(bien.getDescripcion()).isEqualTo("Bien corregido"));
+            verify(repositorio).guardar(donacion);
+        }
+
+        @Test
+        @DisplayName("modificarUnicoBien() con varios bienes pide indicar cuál (409)")
+        void variosBienesPideIndicarCual() {
+            donacion.getBienes().add(BienGenerico.builder()
+                    .subcategoria(new Subcategoria("arroz")).descripcion("Otro").cantidad(1).unidad("kg").build());
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+
+            assertThatThrownBy(() -> servicio.modificarUnicoBien(donacion.getId(), dtoBien("arroz", null)))
+                    .isInstanceOf(DonacionConVariosBienesException.class);
         }
 
         @Test
