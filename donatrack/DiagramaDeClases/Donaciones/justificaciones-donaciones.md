@@ -78,10 +78,10 @@ Las tablas desnormalizadas se marcan en amarillo en el DER y las columnas deriva
 **Cómo se mantiene consistente.**
 
 - El proceso de las 03:30 borra los rankings de la corrida anterior y los recalcula: si las necesidades cambiaron durante el día, una recomendación vieja es peor que ninguna.
-- Al asignar una donación se borra su ranking (sale de la bandeja).
+- Una donación sale de la bandeja en cuanto deja de estar en depósito: al asignarla, al borrarla o al pasar a otro estado (por ejemplo, `VENCIDA`). En los tres casos se borra su ranking.
 - `fecha_calculo` le dice a quien administra qué tan vigente es lo que está viendo.
 
-**Costo.** Durante el día el ranking puede quedar desactualizado respecto de las necesidades. Se acepta porque el enunciado plantea el matchmaking como proceso nocturno. Ver también la sección 9.
+**Costo.** Durante el día el ranking puede quedar desactualizado respecto de las necesidades. Se acepta porque el enunciado plantea el matchmaking como proceso nocturno. Las donaciones que entran al depósito durante el día (por ejemplo, después de una entrega fallida) recién tienen ranking en la corrida siguiente.
 
 **Alternativas descartadas.**
 
@@ -215,7 +215,6 @@ Hibernate los crea a partir de `@Table(indexes = ...)`. PostgreSQL no indexa sol
 - **Medido en H2, no en PostgreSQL.** La cantidad de sentencias es la misma, pero no se corrió `EXPLAIN` sobre PostgreSQL para confirmar que el planificador use cada índice.
 - **No se probó con el stack de Docker.** La colección de Postman se verificó contra el servicio levantado localmente (87 requests, 172 tests en verde), sin PostgreSQL, RabbitMQ ni el broker. La carpeta 05, que necesita broker y logística, no se corrió.
 - **Base existente de la Entrega 4.** No se probó `ddl-auto=update` sobre una base ya creada. Hibernate no borra columnas: la vieja `campania.id_entidad` quedaría sin uso. Si había emails duplicados, el `UNIQUE` no se puede crear. Para arrancar limpio: `docker compose down -v`.
-- **Bandeja después de borrar o vencer una donación.** Si una donación se borra, o deja `EN_DEPOSITO` por un cambio de estado manual, su ranking sigue en la bandeja hasta el matchmaking siguiente. Pasaba igual con el mapa en memoria; ahora además sobrevive a un reinicio.
 - **Borrado sin FK.** El bloqueo de borrados es una verificación del servicio. Si se registra una donación justo mientras se borra a su donante, podría quedar huérfana. Una FK con `ON DELETE RESTRICT` lo cerraría del lado de la base.
 - **Fuera del alcance de la Entrega 5:**
   - `Necesidad.cantidadRecibida` no se actualiza al asignar (`recibirDonacion` existe pero nadie la llama).

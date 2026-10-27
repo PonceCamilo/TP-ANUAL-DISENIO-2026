@@ -97,6 +97,7 @@ package interfaces.services {
 package services {
 
     class DonacionService {
+        {static} private ESTADO_EN_DEPOSITO: String = "EN_DEPOSITO"
         private repositorio: DonacionesRepositoryInterface
         private mapper: DonacionMapper
         private asignacionService: AsignacionDonacionesService
