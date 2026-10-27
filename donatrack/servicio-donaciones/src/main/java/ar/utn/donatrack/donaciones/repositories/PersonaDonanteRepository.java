@@ -16,8 +16,12 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Persistencia de personas donantes en base relacional (Entrega 4).
@@ -44,6 +48,13 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
             personaDonante.setId(UUID.randomUUID());
         }
         jpa.save(personaDonante);
+    }
+
+    @Transactional
+    public void guardarTodos(Collection<PersonaDonante> donantes) {
+        donantes.stream().filter(persona -> persona.getId() == null)
+                .forEach(persona -> persona.setId(UUID.randomUUID()));
+        jpa.saveAll(donantes);
     }
 
     @Transactional(readOnly = true)
@@ -87,6 +98,16 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
     @Transactional(readOnly = true)
     public PersonaDonante obtenerPorEmail(String email) {
         return email == null ? null : jpa.findByEmail(NormalizadorEmail.normalizar(email)).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, PersonaDonante> obtenerPorEmails(Collection<String> emails) {
+        List<String> normalizados = emails.stream().map(NormalizadorEmail::normalizar).distinct().toList();
+        if (normalizados.isEmpty()) {
+            return Map.of();
+        }
+        return jpa.findByEmailIn(normalizados).stream()
+                .collect(Collectors.toMap(PersonaDonante::getEmail, Function.identity()));
     }
 
     @Transactional

@@ -19,17 +19,20 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import org.hibernate.annotations.BatchSize;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.springframework.data.domain.Persistable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,7 +77,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Getter
 @Setter
-public abstract class PersonaDonante {
+public abstract class PersonaDonante implements Persistable<UUID> {
 
     @Id
     @Column(name = "id")
@@ -125,10 +128,34 @@ public abstract class PersonaDonante {
     @JoinColumn(name = "persona_donante_id")
     protected List<MedioDeContacto> contactos = new ArrayList<>();
 
+    /**
+     * ESCRITURA (Entrega 5): el id se asigna antes de guardar, así que Spring
+     * Data no puede deducir si la persona es nueva y hace un merge, que es un
+     * SELECT previo a cada INSERT. Con este indicador las altas (sobre todo la
+     * importación de miles de filas) van directo al INSERT. Una persona leída o
+     * ya guardada deja de ser nueva y sus cambios se guardan con merge.
+     */
+    @Transient
+    @Builder.Default
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
+    protected boolean nueva = true;
+
+    @Override
+    public boolean isNew() {
+        return nueva;
+    }
+
     /** Reconstruye el objeto de estado después de cargar la fila. */
     @PostLoad
     private void rehidratarEstado() {
         this.estado = EstadosDonante.desde(this.estadoNombre);
+        this.nueva = false;
+    }
+
+    @PostPersist
+    private void marcarPersistida() {
+        this.nueva = false;
     }
 
     /**

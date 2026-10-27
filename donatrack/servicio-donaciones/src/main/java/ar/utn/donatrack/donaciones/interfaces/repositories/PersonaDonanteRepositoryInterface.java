@@ -7,7 +7,9 @@ import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 /**
  * Interfaz mínima para persistir y buscar donantes desde el servicio de importación.
@@ -27,10 +29,23 @@ public interface PersonaDonanteRepositoryInterface {
      */
     List<PersonaDonante> obtenerInactivasDesde(LocalDateTime limite);
     void guardar(PersonaDonante donante);
+
+    /**
+     * Guarda varias personas en una sola transacción, con inserciones por lotes
+     * (Entrega 5). Lo usa la importación masiva por CSV.
+     */
+    void guardarTodos(Collection<PersonaDonante> donantes);
     void modificarRepresentante(UUID idDonante, Representante representante);
     boolean existePorId(UUID id);
     boolean existePorEmail(String email);
     PersonaDonante obtenerPersona(UUID id);
     PersonaDonante obtenerPorEmail(String email);
+
+    /**
+     * Busca en una sola consulta a las personas de varios emails. La clave del
+     * mapa es el email en forma canónica (ver NormalizadorEmail). Los emails que
+     * no están registrados no aparecen.
+     */
+    Map<String, PersonaDonante> obtenerPorEmails(Collection<String> emails);
     void eliminar(UUID id);
 }

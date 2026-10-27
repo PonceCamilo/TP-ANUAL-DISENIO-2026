@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.contacto.Telefono;
+import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
 import ar.utn.donatrack.donaciones.importacion.DonanteFactory;
 import ar.utn.donatrack.donaciones.importacion.ImportReport;
@@ -8,6 +10,7 @@ import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
+import org.springframework.transaction.support.TransactionOperations;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -22,8 +25,15 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -57,13 +67,16 @@ class CsvImportServiceTest {
     private PersonaDonanteRepositoryInterface donanteRepository;
 
     @Captor
-    private ArgumentCaptor<PersonaDonante> donanteCaptor;
+    private ArgumentCaptor<Collection<PersonaDonante>> loteCaptor;
 
     private CsvImportService servicio;
 
     @BeforeEach
     void crearServicio() {
-        servicio = new CsvImportService(donanteRepository, new DonanteCsvRowParser(), new DonanteFactory());
+        // Sin transacción real: el repositorio está mockeado. La transacción por
+        // lote se prueba contra la base en MedicionConsultasTest.
+        servicio = new CsvImportService(donanteRepository, new DonanteCsvRowParser(), new DonanteFactory(),
+                TransactionOperations.withoutTransaction());
     }
 
     /** Convierte el contenido de un CSV en el stream que recibe el servicio. */
@@ -94,7 +107,6 @@ class CsvImportServiceTest {
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,1155667788\n"
                     + "JURIDICA,CUIT,30-11122233-4,Fundación Ejemplo,contacto@fundacion.org,\n";
-            when(donanteRepository.obtenerPorEmail(anyString())).thenReturn(null);
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -110,13 +122,14 @@ class CsvImportServiceTest {
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
                     + "JURIDICA,CUIT,30-11122233-4,Fundación Ejemplo,contacto@fundacion.org,\n";
-            when(donanteRepository.obtenerPorEmail(anyString())).thenReturn(null);
 
             servicio.importar(csv(contenido));
 
-            verify(donanteRepository, org.mockito.Mockito.times(2)).guardar(donanteCaptor.capture());
-            assertThat(donanteCaptor.getAllValues().get(0)).isInstanceOf(PersonaHumana.class);
-            assertThat(donanteCaptor.getAllValues().get(1)).isInstanceOf(PersonaJuridica.class);
+            verify(donanteRepository).guardarTodos(loteCaptor.capture());
+            List<PersonaDonante> guardadas = List.copyOf(loteCaptor.getValue());
+            assertThat(guardadas).hasSize(2);
+            assertThat(guardadas.get(0)).isInstanceOf(PersonaHumana.class);
+            assertThat(guardadas.get(1)).isInstanceOf(PersonaJuridica.class);
         }
 
         @Test
@@ -125,7 +138,6 @@ class CsvImportServiceTest {
             // Si el encabezado no se salteara, se intentaría crear un donante
             // llamado "Nombre" con email "Email" y el reporte tendría un error.
             String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n";
-            when(donanteRepository.obtenerPorEmail(anyString())).thenReturn(null);
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -139,7 +151,7 @@ class CsvImportServiceTest {
             ImportReport reporte = servicio.importar(csv(ENCABEZADO));
 
             assertThat(reporte.totalProcesadas()).isZero();
-            verify(donanteRepository, never()).guardar(any());
+            verify(donanteRepository, never()).guardarTodos(anyCollection());
         }
     }
 
@@ -153,7 +165,7 @@ class CsvImportServiceTest {
             // Regla central: reimportar el mismo archivo no debe generar donantes
             // repetidos, solo refrescar sus datos.
             String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n";
-            when(donanteRepository.obtenerPorEmail("juan@example.com")).thenReturn(donanteExistente("juan@example.com"));
+            when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("juan@example.com", donanteExistente("juan@example.com")));
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -166,7 +178,7 @@ class CsvImportServiceTest {
         void actualizaLosDatosIdentificatorios() throws IOException {
             String contenido = ENCABEZADO + "HUMANA,LC,99999999,Juan Carlos Pérez,juan@example.com,\n";
             PersonaHumana existente = donanteExistente("juan@example.com");
-            when(donanteRepository.obtenerPorEmail("juan@example.com")).thenReturn(existente);
+            when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("juan@example.com", existente));
 
             servicio.importar(csv(contenido));
 
@@ -181,7 +193,7 @@ class CsvImportServiceTest {
         void elEmailNoSeModifica() throws IOException {
             String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n";
             PersonaHumana existente = donanteExistente("juan@example.com");
-            when(donanteRepository.obtenerPorEmail("juan@example.com")).thenReturn(existente);
+            when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("juan@example.com", existente));
 
             servicio.importar(csv(contenido));
 
@@ -198,7 +210,7 @@ class CsvImportServiceTest {
                     .email("contacto@fundacion.org")
                     .estado(new ActivoState())
                     .build();
-            when(donanteRepository.obtenerPorEmail("contacto@fundacion.org")).thenReturn(existente);
+            when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("contacto@fundacion.org", existente));
 
             servicio.importar(csv(contenido));
 
@@ -211,8 +223,8 @@ class CsvImportServiceTest {
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
                     + "HUMANA,DNI,30333444,Ana Gómez,ana@example.com,\n";
-            when(donanteRepository.obtenerPorEmail("juan@example.com")).thenReturn(donanteExistente("juan@example.com"));
-            when(donanteRepository.obtenerPorEmail("ana@example.com")).thenReturn(null);
+            when(donanteRepository.obtenerPorEmails(anyCollection()))
+                    .thenReturn(Map.of("juan@example.com", donanteExistente("juan@example.com")));
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -235,7 +247,6 @@ class CsvImportServiceTest {
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
                     + "EMPRESA,CUIT,30-11122233-4,Fundación Ejemplo,contacto@fundacion.org,\n"
                     + "HUMANA,DNI,30333444,Ana Gómez,ana@example.com,\n";
-            when(donanteRepository.obtenerPorEmail(anyString())).thenReturn(null);
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -251,7 +262,6 @@ class CsvImportServiceTest {
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
                     + "HUMANA,DNI,30333444,Ana Gómez,,\n";
-            when(donanteRepository.obtenerPorEmail(anyString())).thenReturn(null);
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -267,7 +277,7 @@ class CsvImportServiceTest {
             ImportReport reporte = servicio.importar(csv(contenido));
 
             assertThat(reporte.getErrores()).hasSize(1);
-            verify(donanteRepository, never()).guardar(any());
+            verify(donanteRepository, never()).guardarTodos(anyCollection());
         }
 
         @Test
@@ -281,19 +291,91 @@ class CsvImportServiceTest {
         }
 
         @Test
-        @DisplayName("Si el repositorio falla al guardar una fila, se registra el error y sigue con las demás")
+        @DisplayName("Si falla el guardado del lote, reintenta persona por persona y solo marca error en la que falla")
         void errorAlGuardarNoDetieneElProceso() throws IOException {
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
                     + "HUMANA,DNI,30333444,Ana Gómez,ana@example.com,\n";
-            when(donanteRepository.obtenerPorEmail("juan@example.com"))
-                    .thenThrow(new RuntimeException("Fallo de persistencia"));
-            when(donanteRepository.obtenerPorEmail("ana@example.com")).thenReturn(null);
+            doThrow(new RuntimeException("Fallo del lote")).when(donanteRepository).guardarTodos(anyCollection());
+            doThrow(new RuntimeException("Fallo de persistencia")).when(donanteRepository)
+                    .guardar(argThat(persona -> persona != null && "juan@example.com".equals(persona.getEmail())));
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
             assertThat(reporte.getErrores()).hasSize(1);
+            assertThat(reporte.getErrores().getFirst().getEmail()).isEqualTo("juan@example.com");
+            assertThat(reporte.getErrores().getFirst().getDetalle()).contains("Fallo de persistencia");
             assertThat(reporte.totalCreados()).isEqualTo(1);
+        }
+    }
+
+    @Nested
+    @DisplayName("Procesamiento por lotes y datos de contacto (Entrega 5)")
+    class LotesYContacto {
+
+        @Test
+        @DisplayName("Un lote hace una sola búsqueda por email y un solo guardado")
+        void unaBusquedaYUnGuardadoPorLote() throws IOException {
+            String contenido = ENCABEZADO
+                    + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
+                    + "HUMANA,DNI,30333444,Ana Gómez,ana@example.com,\n"
+                    + "JURIDICA,CUIT,30-11122233-4,Fundación Ejemplo,contacto@fundacion.org,\n";
+
+            servicio.importar(csv(contenido));
+
+            verify(donanteRepository, times(1)).obtenerPorEmails(anyCollection());
+            verify(donanteRepository, times(1)).guardarTodos(anyCollection());
+            verify(donanteRepository, never()).obtenerPorEmail(anyString());
+        }
+
+        @Test
+        @DisplayName("Un email repetido en el archivo: la primera fila crea y la segunda actualiza a la misma persona")
+        void emailRepetidoEnElArchivo() throws IOException {
+            // El CSV de 20.000 filas del enunciado trae 14 emails repetidos.
+            String contenido = ENCABEZADO
+                    + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
+                    + "HUMANA,DNI,30111222,Juan Carlos Pérez,Juan@Example.com,\n";
+
+            ImportReport reporte = servicio.importar(csv(contenido));
+
+            assertThat(reporte.totalCreados()).isEqualTo(1);
+            assertThat(reporte.totalActualizados()).isEqualTo(1);
+            verify(donanteRepository).guardarTodos(loteCaptor.capture());
+            assertThat(loteCaptor.getValue()).hasSize(1);
+            PersonaHumana unica = (PersonaHumana) loteCaptor.getValue().iterator().next();
+            assertThat(unica.getApellido()).isEqualTo("Carlos Pérez");
+        }
+
+        @Test
+        @DisplayName("Al crear, guarda el teléfono como contacto y el email como medio predeterminado")
+        void guardaTelefonoYMedioPredeterminado() throws IOException {
+            String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,+54 11 5555-1111\n";
+
+            servicio.importar(csv(contenido));
+
+            verify(donanteRepository).guardarTodos(loteCaptor.capture());
+            PersonaDonante creada = loteCaptor.getValue().iterator().next();
+            assertThat(creada.getMedioContactoPredeterminado()).isInstanceOf(Email.class);
+            assertThat(creada.getMedioContactoPredeterminado().getValor()).isEqualTo("juan@example.com");
+            assertThat(creada.getContactos()).singleElement()
+                    .satisfies(contacto -> {
+                        assertThat(contacto).isInstanceOf(Telefono.class);
+                        assertThat(contacto.getValor()).isEqualTo("+54 11 5555-1111");
+                    });
+        }
+
+        @Test
+        @DisplayName("Al actualizar, reemplaza el teléfono que tenía la persona")
+        void actualizaElTelefono() throws IOException {
+            PersonaHumana existente = donanteExistente("juan@example.com");
+            existente.reemplazarContacto(Telefono.builder().valor("1111-1111").build());
+            when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("juan@example.com", existente));
+            String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,2222-2222\n";
+
+            servicio.importar(csv(contenido));
+
+            assertThat(existente.getContactos()).singleElement()
+                    .extracting(contacto -> contacto.getValor()).isEqualTo("2222-2222");
         }
     }
 
@@ -308,8 +390,8 @@ class CsvImportServiceTest {
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
                     + "HUMANA,DNI,30333444,Ana Gómez,ana@example.com,\n"
                     + "EMPRESA,CUIT,30-11122233-4,Fundación,info@fundacion.org,\n";
-            when(donanteRepository.obtenerPorEmail("juan@example.com")).thenReturn(donanteExistente("juan@example.com"));
-            when(donanteRepository.obtenerPorEmail("ana@example.com")).thenReturn(null);
+            when(donanteRepository.obtenerPorEmails(anyCollection()))
+                    .thenReturn(Map.of("juan@example.com", donanteExistente("juan@example.com")));
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -321,7 +403,6 @@ class CsvImportServiceTest {
         @DisplayName("Cada resultado exitoso guarda el email de la fila para poder rastrearla")
         void guardaElEmailDeCadaFila() throws IOException {
             String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n";
-            when(donanteRepository.obtenerPorEmail(anyString())).thenReturn(null);
 
             ImportReport reporte = servicio.importar(csv(contenido));
 

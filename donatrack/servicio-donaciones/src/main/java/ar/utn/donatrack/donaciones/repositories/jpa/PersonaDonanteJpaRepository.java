@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +24,8 @@ public interface PersonaDonanteJpaRepository extends JpaRepository<PersonaDonant
     Optional<PersonaDonante> findByEmail(String email);
 
     boolean existsByEmail(String email);
+
+    List<PersonaDonante> findByEmailIn(Collection<String> emails);
 
     Page<PersonaDonante> findByEstadoNombre(String estadoNombre, Pageable pagina);
 
