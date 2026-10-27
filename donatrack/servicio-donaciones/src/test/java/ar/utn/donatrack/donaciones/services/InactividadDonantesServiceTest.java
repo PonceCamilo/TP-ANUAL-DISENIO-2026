@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import static org.mockito.Mockito.mock;
+import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import static org.mockito.Mockito.times;
 import static org.mockito.ArgumentMatchers.anyInt;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
@@ -60,8 +62,10 @@ class InactividadDonantesServiceTest {
     @Mock
     private PersonaDonanteRepositoryInterface donanteRepository;
 
-    @Mock
-    private NotificacionClient notificacionClient;
+    private final NotificacionClient notificacionClient = mock(NotificacionClient.class);
+
+    @Spy
+    private Notificador notificador = new Notificador(notificacionClient, DonacionesProperties.porDefecto());
 
     @Spy
     private DonacionesProperties propiedades = DonacionesProperties.porDefecto();
@@ -202,18 +206,30 @@ class InactividadDonantesServiceTest {
         }
 
         @Test
-        @DisplayName("Un donante inactivo SIN medio predeterminado se omite sin romper la tarea")
+        @DisplayName("Un donante sin ningún canal se omite sin romper la tarea")
         void sinMedioSeOmite() {
-            // Importante: la tarea es batch. Un donante mal cargado no puede
+            // Importante: la tarea es batch. Un donante sin ningún canal no puede
             // impedir que se notifique a los demás.
-            PersonaDonante sinMedio = donante(30, null);
+            PersonaDonante sinMedio = PersonaHumana.builder().id(UUID.randomUUID()).estado(new ActivoState()).build();
             PersonaDonante conMedio = donante(30, Email.builder().valor("ok@example.com").build());
             when(donanteRepository.obtenerParaAvisoDeInactividad(any(), anyInt()))
                     .thenReturn(List.of(sinMedio, conMedio), List.of());
 
             servicio.notificarDonantesInactivos();
 
+            verify(notificacionClient, times(1)).enviarNotificacion(anyString(), anyString(), anyString());
             verify(notificacionClient).enviarNotificacion(eq("ok@example.com"), anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("Sin canal predeterminado se le escribe al email de la persona")
+        void sinPredeterminadoUsaElEmail() {
+            when(donanteRepository.obtenerParaAvisoDeInactividad(any(), anyInt()))
+                    .thenReturn(List.of(donante(30, null)), List.of());
+
+            servicio.notificarDonantesInactivos();
+
+            verify(notificacionClient).enviarNotificacion(eq("juan@example.com"), anyString(), eq("EMAIL"));
         }
     }
 

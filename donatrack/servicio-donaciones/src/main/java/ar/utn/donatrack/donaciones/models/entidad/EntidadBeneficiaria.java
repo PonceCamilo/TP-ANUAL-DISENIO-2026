@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.entidad;
 
+import java.util.Optional;
 import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
@@ -87,6 +88,17 @@ public class EntidadBeneficiaria {
                 .map(MedioDeContacto::getValor)
                 .findFirst()
                 .orElse(null);
+    }
+
+    /** Contacto por el que se le avisa: su primer email o, si no tiene, su primer contacto. */
+    public Optional<MedioDeContacto> contactoParaNotificar() {
+        if (contactos == null || contactos.isEmpty()) {
+            return Optional.empty();
+        }
+        return contactos.stream()
+                .filter(contacto -> contacto.canal() == Canal.EMAIL)
+                .findFirst()
+                .or(() -> Optional.of(contactos.getFirst()));
     }
 
     /** Puntaje del algoritmo de compatibilidad semántica: a más coincidencias, más prioridad. */

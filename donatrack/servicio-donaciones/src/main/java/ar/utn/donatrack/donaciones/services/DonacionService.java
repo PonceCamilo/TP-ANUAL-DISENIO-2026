@@ -3,7 +3,7 @@ package ar.utn.donatrack.donaciones.services;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
-import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
+import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
@@ -51,7 +51,7 @@ public class DonacionService implements DonacionServiceInterface {
   private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
   private final EntidadBeneficiariaMapper entidadMapper;
   private final PersonaDonanteRepositoryInterface donanteRepositorio;
-  private final NotificacionClient notificacionClient;
+  private final Notificador notificador;
   private final IncentivosClient incentivosClient;
   private final DonacionesValidator validador;
   private final EntidadesBeneficiariasValidator entidadesValidator;
@@ -161,7 +161,7 @@ public class DonacionService implements DonacionServiceInterface {
     // Ya tiene destino: sale de la bandeja de pendientes del administrador.
     candidatosRepositorio.eliminar(idDonacion);
 
-    notificarAsignacion(donacion, entidad);
+    notificador.donacionAsignada(donanteRepositorio.obtenerPersona(donacion.getIdDonante()), entidad);
   }
 
   public void eliminar(UUID id) {
@@ -211,29 +211,7 @@ public class DonacionService implements DonacionServiceInterface {
 
   /** Avisa a incentivos que la donación llegó a destino (actualiza donaciones exitosas / organizaciones ayudadas). */
   private void notificarDonacionExitosa(Donacion donacion) {
-    PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
-    if (donante != null && donante.obtenerEmail() != null) {
-      incentivosClient.notificarDonacionExitosa(donacion, donante.obtenerEmail(), "EMAIL");
-    }
-  }
-
-  private void notificarAsignacion(Donacion donacion, EntidadBeneficiaria entidad) {
-    String emailEntidad = entidad.obtenerEmail();
-    if (emailEntidad != null) {
-      notificacionClient.enviarNotificacion(
-              emailEntidad,
-              "Se te asignó una nueva donación según tus necesidades registradas.",
-              "EMAIL"
-      );
-    }
-
-    PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
-    if (donante != null && donante.obtenerEmail() != null) {
-      notificacionClient.enviarNotificacion(
-              donante.obtenerEmail(),
-              "Tu donación fue asignada a " + entidad.getRazonSocial() + ".",
-              "EMAIL"
-      );
-    }
+    notificador.destinoDe(donanteRepositorio.obtenerPersona(donacion.getIdDonante())).ifPresent(destino ->
+        incentivosClient.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name()));
   }
 }

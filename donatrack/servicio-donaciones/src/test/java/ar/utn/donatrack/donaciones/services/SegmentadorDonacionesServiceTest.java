@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.services;
 
+import static org.mockito.Mockito.mock;
+import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
+import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.mockito.Spy;
@@ -68,6 +72,9 @@ class SegmentadorDonacionesServiceTest {
 
     @Mock
     private IncentivosClient incentivosClient;
+
+    @Spy
+    private Notificador notificador = new Notificador(mock(NotificacionClient.class), DonacionesProperties.porDefecto());
 
     @Mock
     private PersonasValidator personasValidator;

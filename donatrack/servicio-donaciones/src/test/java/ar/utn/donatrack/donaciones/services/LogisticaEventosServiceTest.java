@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import static org.mockito.Mockito.mock;
+import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
@@ -77,8 +79,10 @@ class LogisticaEventosServiceTest {
     @Mock
     private PersonaDonanteRepositoryInterface donanteRepositorio;
 
-    @Mock
-    private NotificacionClient notificacionClient;
+    private final NotificacionClient notificacionClient = mock(NotificacionClient.class);
+
+    @Spy
+    private Notificador notificador = new Notificador(notificacionClient, DonacionesProperties.porDefecto());
 
     @Mock
     private IncentivosClient incentivosClient;
@@ -212,7 +216,7 @@ class LogisticaEventosServiceTest {
         }
 
         @Test
-        @DisplayName("Si la entidad no tiene email se notifica igual al donante")
+        @DisplayName("Si la entidad no tiene email se le avisa por su otro contacto (SMS), y al donante igual")
         void entidadSinEmail() {
             prepararParaInicioDeRuta();
             EntidadBeneficiaria sinEmail = EntidadBeneficiaria.builder()
@@ -226,7 +230,7 @@ class LogisticaEventosServiceTest {
 
             servicio.procesarInicioRuta(evento(donacion.getId()));
 
-            verify(notificacionClient, times(1)).enviarNotificacion(anyString(), anyString(), anyString());
+            verify(notificacionClient).enviarNotificacion(eq("1155667788"), anyString(), eq("SMS"));
             verify(notificacionClient).enviarNotificacion(eq(EMAIL_DONANTE), anyString(), anyString());
         }
 

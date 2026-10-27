@@ -1,9 +1,8 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
+import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +32,7 @@ import java.util.List;
 public class InactividadDonantesService {
 
     private final PersonaDonanteRepositoryInterface donanteRepository;
-    private final NotificacionClient notificacionClient;
+    private final Notificador notificador;
     private final DonacionesProperties propiedades;
 
     @Scheduled(cron = "${donaciones.inactividad.cron:0 0 0 * * *}", zone = FechaHoraArgentina.ZONA_ID)
@@ -63,16 +62,8 @@ public class InactividadDonantesService {
     }
 
     private void notificarDonante(PersonaDonante donante) {
-        MedioDeContacto medio = donante.getMedioContactoPredeterminado();
-        if (medio == null) {
-            log.warn("[INACTIVIDAD] Donante {} sin medio de contacto predeterminado, se omite", donante.getId());
-            return;
+        if (!notificador.inactividad(donante)) {
+            log.warn("[INACTIVIDAD] Donante {} sin ningún canal de contacto, se omite", donante.getId());
         }
-
-        String tipoMedio = medio.canal().name();
-        String mensaje = "¡Hace más de " + propiedades.inactividad().dias() + " días que no tenemos noticias tuyas! "
-                + "Tu ayuda hace la diferencia: ingresá a DonaTrack y sumá una nueva donación.";
-
-        notificacionClient.enviarNotificacion(medio.getValor(), mensaje, tipoMedio);
     }
 }

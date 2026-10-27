@@ -1,8 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.models.contacto.Canal;
-import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
-import ar.utn.donatrack.donaciones.config.DonacionesProperties;
+import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.InicioRutaCallbackDTO;
@@ -10,20 +8,14 @@ import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEnc
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
-import ar.utn.donatrack.donaciones.models.donacion.estado.EnTrasladoState;
-import ar.utn.donatrack.donaciones.models.donacion.estado.EntregadaState;
-import ar.utn.donatrack.donaciones.models.donacion.estado.EntregaFallidaState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -42,9 +34,8 @@ public class LogisticaEventosService {
     private final DonacionesRepositoryInterface donacionesRepositorio;
     private final EntidadesBeneficiariasRepositoryInterface entidadesRepositorio;
     private final PersonaDonanteRepositoryInterface donanteRepositorio;
-    private final NotificacionClient notificacionClient;
+    private final Notificador notificador;
     private final IncentivosClient incentivosClient;
-    private final DonacionesProperties propiedades;
 
     // ── INICIO DE RUTA ─────────────────────────────────────────────────────────
 
@@ -62,35 +53,8 @@ public class LogisticaEventosService {
             donacion.cambiarEstado("EN_TRASLADO", "Inicio de ruta", "Chofer inició el recorrido. Ruta: " + dto.idRuta());
             donacionesRepositorio.guardar(donacion);
 
-
-            notificarInicioRutaEntidad(donacion, dto.urlMapaInteractivo());
-            notificarInicioRutaDonante(donacion, dto.urlMapaInteractivo());
+            notificador.inicioDeRuta(donanteDe(donacion), entidadDe(donacion), dto.urlMapaInteractivo());
         }
-    }
-
-    private void notificarInicioRutaEntidad(Donacion donacion, String urlMapa) {
-        if (donacion.getIdEntidadBeneficiaria() == null) return;
-
-        EntidadBeneficiaria entidad = entidadesRepositorio.obtenerPorId(donacion.getIdEntidadBeneficiaria());
-        if (entidad == null) return;
-
-        String email = obtenerEmail(entidad.getContactos());
-        if (email == null) return;
-
-        String mensaje = "El camión con tu donación está en camino. "
-                + "Podés seguir la entrega en tiempo real: " + urlMapa;
-
-        notificacionClient.enviarNotificacion(email, mensaje, "EMAIL");
-    }
-
-    private void notificarInicioRutaDonante(Donacion donacion, String urlMapa) {
-        PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
-        if (donante == null || donante.getEmail() == null) return;
-
-        String mensaje = "Tu donación está siendo entregada. "
-                + "Seguí el recorrido en tiempo real: " + urlMapa;
-
-        notificacionClient.enviarNotificacion(donante.getEmail(), mensaje, "EMAIL");
     }
 
     // ── ENTREGA EXITOSA ────────────────────────────────────────────────────────
@@ -108,42 +72,12 @@ public class LogisticaEventosService {
         donacion.cambiarEstado("ENTREGADA", "Entrega confirmada", "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega());
         donacionesRepositorio.guardar(donacion);
 
-        String comprobante = armarComprobante(dto);
-
-        notificarEntregaExitosaEntidad(donacion, comprobante);
-        notificarEntregaExitosaDonante(donacion, comprobante);
+        PersonaDonante donante = donanteDe(donacion);
+        notificador.entregaExitosa(donante, entidadDe(donacion), armarComprobante(dto));
 
         // notificar a incentivos: DonacionesExitosas depende de entregas confirmadas por logística
-        PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
-        if (donante != null && donante.getEmail() != null) {
-            incentivosClient.notificarDonacionExitosa(
-                    donacion,
-                    donante.getEmail(),
-                    "EMAIL"
-            );
-        }
-    }
-    private void notificarEntregaExitosaEntidad(Donacion donacion, String comprobante) {
-        if (donacion.getIdEntidadBeneficiaria() == null) return;
-
-        EntidadBeneficiaria entidad = entidadesRepositorio.obtenerPorId(donacion.getIdEntidadBeneficiaria());
-        if (entidad == null) return;
-
-        String email = obtenerEmail(entidad.getContactos());
-        if (email == null) return;
-
-        String mensaje = "¡La donación fue recibida exitosamente! " + comprobante;
-
-        notificacionClient.enviarNotificacion(email, mensaje, "EMAIL");
-    }
-
-    private void notificarEntregaExitosaDonante(Donacion donacion, String comprobante) {
-        PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
-        if (donante == null || donante.getEmail() == null) return;
-
-        String mensaje = "¡Tu donación llegó a destino! " + comprobante;
-
-        notificacionClient.enviarNotificacion(donante.getEmail(), mensaje, "EMAIL");
+        notificador.destinoDe(donante).ifPresent(destino ->
+                incentivosClient.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name()));
     }
 
     private String armarComprobante(EntregaExitosaCallbackDTO dto) {
@@ -169,44 +103,8 @@ public class LogisticaEventosService {
         donacion.cambiarEstado("ENTREGA_FALLIDA", "Entrega fallida", justificacion);
         donacionesRepositorio.guardar(donacion);
 
-        notificarEntregaFallidaEntidad(donacion, dto.motivoFallo(), dto.replanificable());
-        notificarEntregaFallidaDonante(donacion, dto.motivoFallo(), dto.replanificable());
-        notificarEntregaFallidaAdmin(donacion, dto.motivoFallo(), dto.replanificable());
-    }
-
-    private void notificarEntregaFallidaEntidad(Donacion donacion, String motivo, boolean replanificable) {
-        if (donacion.getIdEntidadBeneficiaria() == null) return;
-
-        EntidadBeneficiaria entidad = entidadesRepositorio.obtenerPorId(donacion.getIdEntidadBeneficiaria());
-        if (entidad == null) return;
-
-        String email = obtenerEmail(entidad.getContactos());
-        if (email == null) return;
-
-        String mensaje = "La entrega de tu donación no pudo realizarse. Motivo: " + motivo
-                + (replanificable ? " Será replanificada próximamente." : "");
-
-        notificacionClient.enviarNotificacion(email, mensaje, "EMAIL");
-    }
-
-    private void notificarEntregaFallidaDonante(Donacion donacion, String motivo, boolean replanificable) {
-        PersonaDonante donante = donanteRepositorio.obtenerPersona(donacion.getIdDonante());
-        if (donante == null || donante.getEmail() == null) return;
-
-        String mensaje = "La entrega de tu donación no pudo concretarse. Motivo: " + motivo
-                + (replanificable ? " Se intentará nuevamente." : "");
-
-        notificacionClient.enviarNotificacion(donante.getEmail(), mensaje, "EMAIL");
-    }
-
-    private void notificarEntregaFallidaAdmin(Donacion donacion, String motivo, boolean replanificable) {
-        // El destinatario sale de la configuración (donaciones.notificaciones.email-admin).
-        String emailAdmin = propiedades.notificaciones().emailAdmin();
-        String mensaje = "ALERTA: Entrega fallida para donación " + donacion.getId()
-                + ". Motivo: " + motivo
-                + (replanificable ? " | Replanificable." : " | No replanificable.");
-
-        notificacionClient.enviarNotificacion(emailAdmin, mensaje, "EMAIL");
+        notificador.entregaFallida(donacion.getId(), donanteDe(donacion), entidadDe(donacion),
+                dto.motivoFallo(), dto.replanificable());
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -219,12 +117,12 @@ public class LogisticaEventosService {
         return donacion;
     }
 
-    private String obtenerEmail(List<MedioDeContacto> contactos) {
-        if (contactos == null) return null;
-        return contactos.stream()
-                .filter(contacto -> contacto.canal() == Canal.EMAIL)
-                .map(MedioDeContacto::getValor)
-                .findFirst()
-                .orElse(null);
+    private PersonaDonante donanteDe(Donacion donacion) {
+        return donanteRepositorio.obtenerPersona(donacion.getIdDonante());
+    }
+
+    private EntidadBeneficiaria entidadDe(Donacion donacion) {
+        UUID idEntidad = donacion.getIdEntidadBeneficiaria();
+        return idEntidad == null ? null : entidadesRepositorio.obtenerPorId(idEntidad);
     }
 }

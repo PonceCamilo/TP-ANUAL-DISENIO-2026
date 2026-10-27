@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import java.util.Optional;
+import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
@@ -28,6 +30,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
   private final DonacionesRepositoryInterface donacionesRepository;
   private final PersonaDonanteRepositoryInterface donanteRepository;
   private final IncentivosClient incentivosClient;
+  private final Notificador notificador;
   private final PersonasValidator personasValidator;
   private final DonacionMapper mapper;
 
@@ -69,7 +72,8 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
   }
 
   private void notificarIncentivos(PersonaDonante donante, List<Bien> bienes) {
-    if (donante == null || donante.obtenerEmail() == null) {
+    Optional<Notificador.Destino> destino = notificador.destinoDe(donante);
+    if (destino.isEmpty()) {
       return;
     }
     List<String> categorias = bienes.stream()
@@ -79,6 +83,7 @@ public class SegmentadorDonacionesService implements SegmentadorDonacionesServic
         .filter(Objects::nonNull)
         .distinct()
         .toList();
-    incentivosClient.notificarDonacionRegistrada(donante.getId(), donante.obtenerEmail(), "EMAIL", bienes.size(), categorias);
+    incentivosClient.notificarDonacionRegistrada(donante.getId(), destino.get().valor(), destino.get().canal().name(),
+        bienes.size(), categorias);
   }
 }

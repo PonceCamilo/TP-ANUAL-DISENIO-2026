@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
+import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConVariosBienesException;
@@ -124,7 +126,7 @@ class DonacionServiceTest {
                 entidadesRepositorio,
                 entidadMapper,
                 donanteRepositorio,
-                notificacionClient,
+                new Notificador(notificacionClient, DonacionesProperties.porDefecto()),
                 incentivosClient,
                 new DonacionesValidator(repositorio),
                 new EntidadesBeneficiariasValidator(entidadesRepositorio),
