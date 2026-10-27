@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
@@ -23,6 +24,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+@Transactional
 @Service
 @RequiredArgsConstructor
 public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServiceInterface {
@@ -39,10 +41,12 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         return mapper.toDTO(entidad);
     }
 
+    @Transactional(readOnly = true)
     public List<EntidadBeneficiariaResponseDTO> obtenerTodas() {
         return repositorio.buscarTodas().stream().map(mapper::toDTO).toList();
     }
 
+    @Transactional(readOnly = true)
     public EntidadBeneficiariaResponseDTO obtenerPorId(UUID id) {
         validador.validarExistenciaEntidad(id);
         return mapper.toDTO(repositorio.obtenerPorId(id));
@@ -56,11 +60,11 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         entidadExistente.setDireccion(dependenciasMapper.toDireccion(dtoNueva.getDireccion()));
 
         if (dtoNueva.getContactos() != null) {
-            entidadExistente.setContactos(dtoNueva.getContactos().stream()
+            entidadExistente.reemplazarContactos(dtoNueva.getContactos().stream()
                     .map(dependenciasMapper::toContacto).toList());
         }
         if (dtoNueva.getRepresentantes() != null) {
-            entidadExistente.setRepresentantes(dependenciasMapper.toRepresentantes(dtoNueva.getRepresentantes()));
+            entidadExistente.reemplazarRepresentantes(dependenciasMapper.toRepresentantes(dtoNueva.getRepresentantes()));
         }
 
         repositorio.guardar(entidadExistente);
@@ -106,6 +110,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         return mapper.toNecesidadDTO(nuevaNecesidad);
     }
 
+    @Transactional(readOnly = true)
     public List<NecesidadResponseDTO> obtenerNecesidadesDeCampania(UUID entidadId, UUID campaniaId) {
         EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
         Campania campania = validador.validarYObtenerCampania(entidad, campaniaId);
@@ -113,6 +118,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         return campania.getNecesidades().stream().map(mapper::toNecesidadDTO).toList();
     }
 
+    @Transactional(readOnly = true)
     public NecesidadResponseDTO obtenerNecesidad(UUID entidadId, UUID campaniaId, UUID necesidadId) {
         EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
         Campania campania = validador.validarYObtenerCampania(entidad, campaniaId);

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
@@ -26,6 +27,7 @@ import java.util.ArrayList;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Transactional
 @Service
 @RequiredArgsConstructor
 public class PersonaDonanteService implements PersonaDonanteServiceInterface {
@@ -47,11 +49,13 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
     return mapper.toDTO(persona);
   }
 
+  @Transactional(readOnly = true)
   @Override
   public PersonaDonanteResponseDTO obtenerDonante(UUID id) {
     return mapper.toDTO(validador.validarYObtenerPersona(id));
   }
 
+  @Transactional(readOnly = true)
   @Override
   public PaginaResponseDTO<PersonaDonanteResponseDTO> obtenerDonantes(String estado, SolicitudPagina pagina) {
     return PaginaResponseDTO.desde(repositorio.buscar(estado, pagina).map(mapper::toDTO));
@@ -103,9 +107,7 @@ public class PersonaDonanteService implements PersonaDonanteServiceInterface {
       persona.setDireccion(mapper.toDireccion(dto.getDireccion()));
     }
     if (dto.getContactos() != null) {
-      persona.setContactos(dto.getContactos().stream()
-          .map(mapper::toContacto)
-          .collect(Collectors.toCollection(ArrayList::new)));
+      persona.reemplazarContactos(dto.getContactos().stream().map(mapper::toContacto).toList());
     }
     persona.registrarInteraccion();
 

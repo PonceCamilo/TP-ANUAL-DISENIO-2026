@@ -4,7 +4,6 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.RecepcionesEntidadRep
 import ar.utn.donatrack.donaciones.repositories.jpa.RecepcionDiariaJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -17,7 +16,6 @@ public class RecepcionesEntidadRepository implements RecepcionesEntidadRepositor
 
     private final RecepcionDiariaJpaRepository jpa;
 
-    @Transactional(readOnly = true)
     public Map<UUID, Long> contarRecepcionesDesde(LocalDate desde) {
         return jpa.totalesDesde(desde).stream()
                 .collect(Collectors.toMap(
@@ -25,13 +23,14 @@ public class RecepcionesEntidadRepository implements RecepcionesEntidadRepositor
                         RecepcionDiariaJpaRepository.TotalPorEntidad::getTotal));
     }
 
-    @Transactional(readOnly = true)
     public long contarRecepcionesDesde(UUID idEntidad, LocalDate desde) {
         return jpa.totalDesde(idEntidad, desde);
     }
 
-    /** Vaciar y recalcular van en la misma transacción: nadie ve el contador a medias. */
-    @Transactional
+    /**
+     * Vaciar y recalcular tienen que ir en la misma transacción (la abre
+     * ReconciliacionRecepcionesService): así nadie ve el contador a medias.
+     */
     public int reconciliar() {
         jpa.vaciar();
         return jpa.recalcularDesdeDonaciones();

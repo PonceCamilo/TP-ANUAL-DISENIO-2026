@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
@@ -39,6 +40,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Transactional
 @Service
 @RequiredArgsConstructor
 public class DonacionService implements DonacionServiceInterface {
@@ -62,10 +64,12 @@ public class DonacionService implements DonacionServiceInterface {
    * cargaban todas las donaciones con sus bienes e historial y se filtraba en
    * memoria, así que el costo crecía con el total de donaciones del sistema.
    */
+  @Transactional(readOnly = true)
   public PaginaResponseDTO<DonacionResponseDTO> obtenerDonaciones(FiltroDonaciones filtro, SolicitudPagina pagina) {
     return PaginaResponseDTO.desde(repositorio.buscar(filtro, pagina).map(mapper::toDTO));
   }
 
+  @Transactional(readOnly = true)
   public DonacionResponseDTO obtenerPorId(UUID id) {
     return mapper.toDTO(validador.validarYObtenerDonacion(id));
   }
@@ -106,6 +110,7 @@ public class DonacionService implements DonacionServiceInterface {
     repositorio.guardar(donacion);
   }
 
+  @Transactional(readOnly = true)
   public CandidatosAsignacionResponseDTO obtenerCandidatos(UUID idDonacion) {
     Donacion donacion = validador.validarYObtenerDonacion(idDonacion);
     rechazarSiTieneBienesVencidos(donacion);
@@ -130,6 +135,7 @@ public class DonacionService implements DonacionServiceInterface {
    * buscaba cada entidad por separado, y con 30 donaciones en la bandeja eran
    * miles de consultas para armar una sola respuesta.
    */
+  @Transactional(readOnly = true)
   public List<CandidatosPendientesResponseDTO> obtenerCandidatosPendientes() {
     List<RankingPrecalculado> rankings = candidatosRepositorio.obtenerTodos();
     Map<UUID, EntidadBeneficiariaResponseDTO> entidades = cargarEntidades(rankings.stream()

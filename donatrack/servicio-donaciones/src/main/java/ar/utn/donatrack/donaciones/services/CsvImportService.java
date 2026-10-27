@@ -59,10 +59,10 @@ public class CsvImportService {
     private final DonacionesProperties propiedades;
 
     /**
-     * Cada lote se procesa en una transacción propia. Es la única excepción a la
-     * regla del servicio de dejar las transacciones en los repositorios: el lote
-     * necesita leer y escribir en la misma transacción para no releer a cada
-     * persona antes de actualizarla.
+     * Cada lote (y, en el camino de respaldo, cada fila) se procesa en una
+     * transacción propia y no en una sola para todo el archivo: un archivo de
+     * miles de filas no puede quedar sin importar por una fila mala, y lo ya
+     * importado queda confirmado aunque la lectura se corte después.
      */
     private final TransactionOperations transaccion;
 
@@ -171,7 +171,9 @@ public class CsvImportService {
         } catch (Exception errorDelLote) {
             log.warn("[IMPORTACION] El lote que empieza en la línea {} no se pudo guardar junto; "
                     + "se reprocesa fila por fila.", lote.getFirst().linea(), errorDelLote);
-            resultados = lote.stream().map(this::procesarFila).toList();
+            resultados = lote.stream()
+                    .map(dto -> Objects.requireNonNull(transaccion.execute(estado -> procesarFila(dto))))
+                    .toList();
         }
         resultados.forEach(report::agregar);
     }

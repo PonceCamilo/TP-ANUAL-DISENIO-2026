@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.support.TransactionOperations;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
@@ -81,7 +82,8 @@ class PlanificacionEntregasServiceTest {
                 donacionesRepositorio,
                 entidadesRepositorio,
                 brokerClient,
-                new DonacionesValidator(donacionesRepositorio));
+                new DonacionesValidator(donacionesRepositorio),
+                TransactionOperations.withoutTransaction());
 
         entidad = EntidadBeneficiaria.builder()
                 .id(UUID.randomUUID())

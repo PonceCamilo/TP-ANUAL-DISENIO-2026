@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import java.util.Optional;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+@Transactional
 @Service
 @RequiredArgsConstructor
 public class SegmentadorDonacionesService implements SegmentadorDonacionesServiceInterface {

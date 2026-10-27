@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
@@ -27,6 +28,7 @@ import java.util.UUID;
  * información y es el Servicio de Donaciones quien orquesta las notificaciones.
  */
 @Slf4j
+@Transactional
 @Service
 @RequiredArgsConstructor
 public class LogisticaEventosService {

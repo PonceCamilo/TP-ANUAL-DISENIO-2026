@@ -47,21 +47,40 @@ public class EntidadBeneficiaria extends EntidadPersistible {
     @Embedded
     private Direccion direccion;
 
+    @Builder.Default
     @BatchSize(size = 100)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "entidad_id")
-    private List<MedioDeContacto> contactos;
+    private List<MedioDeContacto> contactos = new ArrayList<>();
 
+    @Builder.Default
     @BatchSize(size = 100)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "entidad_id")
-    private List<Representante> representantes;
+    private List<Representante> representantes = new ArrayList<>();
 
     @Builder.Default
     @BatchSize(size = 100)
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "entidad_id")
     private List<Campania> campanias = new ArrayList<>();
+
+    /**
+     * Reemplaza los contactos modificando la lista existente: es una colección
+     * con orphanRemoval y Hibernate no admite que se la cambie por otra. Antes se
+     * asignaba una lista nueva (a veces inmutable) y funcionaba solo porque la
+     * entidad se guardaba desprendida, con merge.
+     */
+    public void reemplazarContactos(List<MedioDeContacto> nuevos) {
+        contactos.clear();
+        contactos.addAll(nuevos);
+    }
+
+    /** Igual que reemplazarContactos, para los representantes. */
+    public void reemplazarRepresentantes(List<Representante> nuevos) {
+        representantes.clear();
+        representantes.addAll(nuevos);
+    }
 
     public void agregarCampania(Campania campania) {
         campanias.add(campania);

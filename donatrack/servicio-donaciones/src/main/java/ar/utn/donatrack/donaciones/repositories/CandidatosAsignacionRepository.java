@@ -5,7 +5,6 @@ import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.repositories.jpa.RankingPrecalculadoJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,27 +24,22 @@ public class CandidatosAsignacionRepository implements CandidatosAsignacionRepos
     private final RankingPrecalculadoJpaRepository jpa;
 
     /** El id es el de la donación: guardar un ranking para la misma donación pisa el anterior. */
-    @Transactional
     public void guardar(RankingPrecalculado ranking) {
         jpa.save(ranking);
     }
 
-    @Transactional(readOnly = true)
     public RankingPrecalculado obtenerPorDonacion(UUID idDonacion) {
         return jpa.findById(idDonacion).orElse(null);
     }
 
-    @Transactional(readOnly = true)
     public List<RankingPrecalculado> obtenerTodos() {
         return jpa.findAll();
     }
 
-    @Transactional
     public void eliminar(UUID idDonacion) {
         jpa.deleteById(idDonacion);
     }
 
-    @Transactional
     public void limpiar() {
         jpa.vaciarCoincidencias();
         jpa.vaciarRankingSemantico();

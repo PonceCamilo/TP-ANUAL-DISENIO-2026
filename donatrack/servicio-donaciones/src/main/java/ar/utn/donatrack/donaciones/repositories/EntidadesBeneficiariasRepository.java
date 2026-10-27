@@ -5,7 +5,6 @@ import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.repositories.jpa.EntidadBeneficiariaJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -25,32 +24,26 @@ public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasR
 
     private final EntidadBeneficiariaJpaRepository jpa;
 
-    @Transactional
     public void guardar(EntidadBeneficiaria entidad) {
         jpa.save(entidad);
     }
 
-    @Transactional(readOnly = true)
     public List<EntidadBeneficiaria> buscarTodas() {
         return jpa.findAll();
     }
 
-    @Transactional(readOnly = true)
     public EntidadBeneficiaria obtenerPorId(UUID id) {
         return jpa.findById(id).orElse(null);
     }
 
-    @Transactional(readOnly = true)
     public List<EntidadBeneficiaria> obtenerPorIds(Collection<UUID> ids) {
         return jpa.findAllById(ids);
     }
 
-    @Transactional(readOnly = true)
     public boolean existePorId(UUID id) {
         return jpa.existsById(id);
     }
 
-    @Transactional
     public void eliminar(UUID id) {
         jpa.deleteById(id);
     }

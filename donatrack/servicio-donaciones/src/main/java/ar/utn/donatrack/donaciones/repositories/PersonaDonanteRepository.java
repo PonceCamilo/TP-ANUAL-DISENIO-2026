@@ -13,7 +13,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -42,22 +41,18 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
 
     private final PersonaDonanteJpaRepository jpa;
 
-    @Transactional
     public void guardar(PersonaDonante personaDonante) {
         jpa.save(personaDonante);
     }
 
-    @Transactional
     public void guardarTodos(Collection<PersonaDonante> donantes) {
         jpa.saveAll(donantes);
     }
 
-    @Transactional(readOnly = true)
     public PersonaDonante obtenerPersona(UUID id) {
         return jpa.findById(id).orElse(null);
     }
 
-    @Transactional(readOnly = true)
     public Pagina<PersonaDonante> buscar(String estado, SolicitudPagina pagina) {
         PageRequest pedido = PageRequest.of(pagina.numero(), pagina.tamanio(), ORDEN_LISTADO);
         Page<PersonaDonante> resultado = (estado == null || estado.isBlank())
@@ -66,17 +61,14 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
         return new Pagina<>(resultado.getContent(), pagina.numero(), pagina.tamanio(), resultado.getTotalElements());
     }
 
-    @Transactional(readOnly = true)
     public List<PersonaDonante> obtenerParaAvisoDeInactividad(LocalDateTime limite, int cantidad) {
         return jpa.buscarParaAvisoDeInactividad(limite, PageRequest.of(0, cantidad, Sort.by("id")));
     }
 
-    @Transactional
     public void registrarAvisoDeInactividad(Collection<UUID> ids, LocalDateTime cuando) {
         jpa.registrarAvisoDeInactividad(ids, cuando);
     }
 
-    @Transactional
     public void modificarRepresentante(UUID idPersonaJuridica, Representante representante) {
         PersonaDonante persona = obtenerPersona(idPersonaJuridica);
         if (persona instanceof PersonaJuridica juridica) {
@@ -85,22 +77,18 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
         }
     }
 
-    @Transactional(readOnly = true)
     public boolean existePorId(UUID id) {
         return jpa.existsById(id);
     }
 
-    @Transactional(readOnly = true)
     public boolean existePorEmail(String email) {
         return email != null && jpa.existsByEmail(NormalizadorEmail.normalizar(email));
     }
 
-    @Transactional(readOnly = true)
     public PersonaDonante obtenerPorEmail(String email) {
         return email == null ? null : jpa.findByEmail(NormalizadorEmail.normalizar(email)).orElse(null);
     }
 
-    @Transactional(readOnly = true)
     public Map<String, PersonaDonante> obtenerPorEmails(Collection<String> emails) {
         List<String> normalizados = emails.stream().map(NormalizadorEmail::normalizar).distinct().toList();
         if (normalizados.isEmpty()) {
@@ -110,7 +98,6 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
                 .collect(Collectors.toMap(PersonaDonante::getEmail, Function.identity()));
     }
 
-    @Transactional
     public void eliminar(UUID id) {
         jpa.deleteById(id);
     }

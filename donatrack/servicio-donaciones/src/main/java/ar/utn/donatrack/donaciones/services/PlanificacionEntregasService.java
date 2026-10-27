@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.support.TransactionOperations;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
@@ -52,6 +53,13 @@ public class PlanificacionEntregasService {
     private final BrokerLogisticaClient brokerClient;
     private final DonacionesValidator validador;
 
+    /**
+     * El despacho usa dos transacciones cortas y deja afuera la llamada al
+     * broker: no tiene sentido tener una conexión a la base abierta mientras se
+     * espera a un servicio externo.
+     */
+    private final TransactionOperations transaccion;
+
     // ── Despacho a demanda (endpoint) ──────────────────────────────────────────
 
     /**
@@ -66,24 +74,12 @@ public class PlanificacionEntregasService {
      *                  broker elija por prioridad con fallback.
      */
     public EnvioLogisticaResponseDTO despachar(List<UUID> idsDonaciones, String proveedor) {
-        Map<UUID, Donacion> donaciones = validarYObtener(idsDonaciones);
-
-        List<BrokerLogisticaClient.DonacionEnvio> pedido = donaciones.values().stream()
-                .map(this::aDonacionEnvio)
-                .toList();
+        List<BrokerLogisticaClient.DonacionEnvio> pedido = transaccion.execute(estado ->
+                validarYObtener(idsDonaciones).values().stream().map(this::aDonacionEnvio).toList());
 
         BrokerLogisticaClient.ResultadoEnvio resultado = llamarAlBroker(proveedor, pedido);
 
-        for (BrokerLogisticaClient.EnvioAsignado envio : resultado.envios()) {
-            Donacion donacion = donaciones.get(envio.idDonacion());
-            if (donacion == null) {
-                log.warn("[LOGISTICA] El broker devolvió un envío para la donación {}, que no estaba en el pedido.",
-                        envio.idDonacion());
-                continue;
-            }
-            donacion.despacharA(envio.proveedor(), envio.idSeguimiento());
-            donacionesRepositorio.guardar(donacion);
-        }
+        transaccion.executeWithoutResult(estado -> registrarDespacho(idsDonaciones, resultado));
 
         log.info("[LOGISTICA] {} donaciones despachadas por '{}'. Proveedores descartados: {}",
                 resultado.envios().size(), resultado.proveedor(), resultado.proveedoresDescartados());
@@ -101,13 +97,14 @@ public class PlanificacionEntregasService {
      */
     @Scheduled(cron = "${donaciones.procesos.cron-despacho:0 0 4 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     public void despacharPendientesDelDia() {
-        List<Donacion> asignadas = donacionesRepositorio.obtenerPorEstado(ESTADO_ASIGNADA);
-        log.info("[LOGISTICA] Barrido nocturno. Donaciones con asignación realizada: {}", asignadas.size());
-
-        List<UUID> despachables = asignadas.stream()
-                .filter(this::tieneDireccionResoluble)
-                .map(Donacion::getId)
-                .toList();
+        List<UUID> despachables = transaccion.execute(estado -> {
+            List<Donacion> asignadas = donacionesRepositorio.obtenerPorEstado(ESTADO_ASIGNADA);
+            log.info("[LOGISTICA] Barrido nocturno. Donaciones con asignación realizada: {}", asignadas.size());
+            return asignadas.stream()
+                    .filter(this::tieneDireccionResoluble)
+                    .map(Donacion::getId)
+                    .toList();
+        });
 
         if (despachables.isEmpty()) {
             log.info("[LOGISTICA] No hay donaciones en condiciones de despacharse.");
@@ -124,6 +121,22 @@ public class PlanificacionEntregasService {
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /** Marca como despachadas las donaciones que el broker aceptó, todas en una transacción. */
+    private void registrarDespacho(List<UUID> pedidas, BrokerLogisticaClient.ResultadoEnvio resultado) {
+        for (BrokerLogisticaClient.EnvioAsignado envio : resultado.envios()) {
+            Donacion donacion = pedidas.contains(envio.idDonacion())
+                    ? donacionesRepositorio.obtenerPorId(envio.idDonacion())
+                    : null;
+            if (donacion == null) {
+                log.warn("[LOGISTICA] El broker devolvió un envío para la donación {}, que no estaba en el pedido.",
+                        envio.idDonacion());
+                continue;
+            }
+            donacion.despacharA(envio.proveedor(), envio.idSeguimiento());
+            donacionesRepositorio.guardar(donacion);
+        }
+    }
 
     /**
      * Recupera las donaciones y verifica que todas estén en condiciones de

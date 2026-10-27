@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.repositories.jpa;
 
+import org.springframework.data.jpa.repository.QueryHints;
+import jakarta.persistence.QueryHint;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -37,6 +39,12 @@ public interface DonacionJpaRepository extends JpaRepository<Donacion, UUID>, Jp
         LocalDate getFechaAsignacion();
     }
 
+    /**
+     * Se lee sin vaciar antes los cambios pendientes (flush mode COMMIT): la
+     * donación que se está guardando puede estar gestionada y ya modificada, y un
+     * vaciado automático escribiría la asignación nueva antes de esta consulta.
+     */
+    @QueryHints(@QueryHint(name = "org.hibernate.flushMode", value = "COMMIT"))
     @Query("SELECT d.idEntidadBeneficiaria AS idEntidadBeneficiaria, d.fechaAsignacion AS fechaAsignacion "
             + "FROM Donacion d WHERE d.id = :id")
     Optional<AsignacionActual> buscarAsignacion(@Param("id") UUID id);

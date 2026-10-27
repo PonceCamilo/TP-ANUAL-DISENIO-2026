@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
@@ -36,6 +37,7 @@ public class InactividadDonantesService {
     private final DonacionesProperties propiedades;
 
     @Scheduled(cron = "${donaciones.inactividad.cron:0 0 0 * * *}", zone = FechaHoraArgentina.ZONA_ID)
+    @Transactional
     public void notificarDonantesInactivos() {
         int dias = propiedades.inactividad().dias();
         LocalDateTime fechaLimite = FechaHoraArgentina.ahora().minusDays(dias);

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import ar.utn.donatrack.donaciones.interfaces.repositories.CandidatosAsignacionRepositoryInterface;
 import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
@@ -53,6 +54,7 @@ public class AsignacionBatchService {
      * dependía de la zona del servidor (UTC en un contenedor).
      */
     @Scheduled(cron = "${donaciones.procesos.cron-matchmaking:0 30 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
+    @Transactional
     public void ejecutarMatchmakingNocturno() {
         List<Donacion> enDeposito = donacionesRepositorio.obtenerPorEstado(ESTADO_EN_DEPOSITO);
 

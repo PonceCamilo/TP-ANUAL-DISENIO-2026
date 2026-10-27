@@ -21,7 +21,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -49,12 +48,10 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
   private final DonacionJpaRepository jpa;
   private final RecepcionDiariaJpaRepository recepciones;
 
-  @Transactional
   public void cargarDonaciones(List<Donacion> cargaDonaciones) {
     jpa.saveAll(cargaDonaciones);
   }
 
-  @Transactional
   public void guardar(Donacion donacion) {
     jpa.save(donacion);
   }
@@ -64,7 +61,6 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
    * y este adapter mueve el contador de la entidad anterior (si la había) a la
    * nueva, todo en una transacción.
    */
-  @Transactional
   public void guardarAsignacion(Donacion donacion) {
     Optional<DonacionJpaRepository.AsignacionActual> previa = jpa.buscarAsignacion(donacion.getId());
     jpa.save(donacion);
@@ -79,12 +75,10 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
     ajustarRecepciones(donacion.getIdEntidadBeneficiaria(), donacion.getFechaAsignacion(), 1);
   }
 
-  @Transactional(readOnly = true)
   public List<Donacion> obtenerPorEstado(String estado) {
     return jpa.findByEstadoNombre(estado);
   }
 
-  @Transactional(readOnly = true)
   public Pagina<Donacion> buscar(FiltroDonaciones filtro, SolicitudPagina pagina) {
     Page<Donacion> resultado = jpa.findAll(
         especificacion(filtro),
@@ -93,22 +87,18 @@ public class DonacionesRepository implements DonacionesRepositoryInterface {
   }
 
   /** Devuelve null y no Optional para no cambiar el contrato que ya usaban los services. */
-  @Transactional(readOnly = true)
   public Donacion obtenerPorId(UUID id) {
     return jpa.findById(id).orElse(null);
   }
 
-  @Transactional(readOnly = true)
   public boolean existenDelDonante(UUID idDonante) {
     return jpa.existsByIdDonante(idDonante);
   }
 
-  @Transactional(readOnly = true)
   public boolean existenAsignadasA(UUID idEntidad) {
     return jpa.existsByIdEntidadBeneficiaria(idEntidad);
   }
 
-  @Transactional
   public void eliminar(UUID idDonacion) {
     Optional<DonacionJpaRepository.AsignacionActual> previa = jpa.buscarAsignacion(idDonacion);
     jpa.deleteById(idDonacion);
