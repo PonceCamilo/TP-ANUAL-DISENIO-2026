@@ -10,9 +10,9 @@ import java.util.UUID;
  * (AsignacionBatchService), para que la persona administradora pueda confirmar
  * el destino final sin esperar a que los algoritmos se ejecuten otra vez.
  *
- * Igual que el resto de los repositorios del servicio, hoy la implementación es
- * en memoria; la interfaz existe para poder reemplazarla por una con JPA sin
- * tocar a quienes la usan.
+ * Desde la Entrega 5 la implementación es JPA (tablas ranking_*). Hasta la
+ * Entrega 4 era en memoria; la interfaz permitió cambiarla sin tocar a quienes
+ * la usan.
  */
 public interface CandidatosAsignacionRepositoryInterface {
 
