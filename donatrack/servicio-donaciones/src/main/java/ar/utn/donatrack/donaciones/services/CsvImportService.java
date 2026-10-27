@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.exceptions.csvExceptions.CsvFormatoException;
 import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
@@ -60,6 +61,16 @@ public class CsvImportService {
      * persona antes de actualizarla.
      */
     private final TransactionOperations transaccion;
+
+    /**
+     * Importa y devuelve el resumen que expone la API: las filas correctas se
+     * cuentan y de los errores se detallan los primeros
+     * (donaciones.importacion.max-errores-en-respuesta).
+     */
+    public ImportacionResumenResponseDTO importarYResumir(InputStream csvStream) throws IOException {
+        return ImportacionResumenResponseDTO.desde(importar(csvStream),
+                propiedades.importacion().maxErroresEnRespuesta());
+    }
 
     public ImportReport importar(InputStream csvStream) throws IOException {
         ImportReport report = new ImportReport();

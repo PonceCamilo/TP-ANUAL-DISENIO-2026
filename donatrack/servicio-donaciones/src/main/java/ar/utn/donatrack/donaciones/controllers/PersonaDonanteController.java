@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
@@ -7,7 +8,6 @@ import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
-import ar.utn.donatrack.donaciones.importacion.ImportReport;
 import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
 import ar.utn.donatrack.donaciones.services.CsvImportService;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
@@ -112,11 +112,15 @@ public class PersonaDonanteController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * Importación masiva por CSV. Responde 200 aunque haya filas con error (el
+   * archivo se procesó) con un resumen y el detalle de esas filas; si el archivo
+   * supera el límite de subida responde 413.
+   */
   @PostMapping("/import")
-  public ResponseEntity<ImportReport> importarDonantes(
+  public ResponseEntity<ImportacionResumenResponseDTO> importarDonantes(
       @RequestParam("file") MultipartFile file
   ) throws IOException {
-    ImportReport report = csvImportService.importar(file.getInputStream());
-    return ResponseEntity.ok(report);
+    return ResponseEntity.ok(csvImportService.importarYResumir(file.getInputStream()));
   }
 }

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
@@ -479,12 +480,12 @@ class PersonaDonanteControllerTest {
     class Importacion {
 
         @Test
-        @DisplayName("Devuelve 200 con el reporte de la importación")
+        @DisplayName("Devuelve 200 con el resumen de la importación, sin una entrada por fila")
         void importacionOk() throws Exception {
             ImportReport reporte = new ImportReport();
             reporte.agregar(ImportFilaCSV.creado(2, "juan@example.com"));
             reporte.agregar(ImportFilaCSV.actualizado(3, "ana@example.com"));
-            when(csvImportService.importar(any())).thenReturn(reporte);
+            when(csvImportService.importarYResumir(any())).thenReturn(ImportacionResumenResponseDTO.desde(reporte, 100));
 
             MockMultipartFile archivo = new MockMultipartFile(
                     "file", "donantes.csv", "text/csv",
@@ -493,7 +494,12 @@ class PersonaDonanteControllerTest {
 
             mockMvc.perform(multipart("/donantes/import").file(archivo))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.resultados", org.hamcrest.Matchers.hasSize(2)));
+                    .andExpect(jsonPath("$.totalProcesadas").value(2))
+                    .andExpect(jsonPath("$.creadas").value(1))
+                    .andExpect(jsonPath("$.actualizadas").value(1))
+                    .andExpect(jsonPath("$.conError").value(0))
+                    .andExpect(jsonPath("$.errores", org.hamcrest.Matchers.hasSize(0)))
+                    .andExpect(jsonPath("$.resultados").doesNotExist());
         }
 
         @Test
@@ -504,15 +510,18 @@ class PersonaDonanteControllerTest {
             ImportReport reporte = new ImportReport();
             reporte.agregar(ImportFilaCSV.creado(2, "juan@example.com"));
             reporte.agregar(ImportFilaCSV.error(3, "", "Tipo de persona inválido"));
-            when(csvImportService.importar(any())).thenReturn(reporte);
+            when(csvImportService.importarYResumir(any())).thenReturn(ImportacionResumenResponseDTO.desde(reporte, 100));
 
             MockMultipartFile archivo = new MockMultipartFile(
                     "file", "donantes.csv", "text/csv", "contenido".getBytes(StandardCharsets.UTF_8));
 
             mockMvc.perform(multipart("/donantes/import").file(archivo))
                     .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.conError").value(1))
                     .andExpect(jsonPath("$.errores", org.hamcrest.Matchers.hasSize(1)))
-                    .andExpect(jsonPath("$.errores[0].numeroLinea").value(3));
+                    .andExpect(jsonPath("$.errores[0].numeroLinea").value(3))
+                    .andExpect(jsonPath("$.errores[0].detalle").value("Tipo de persona inválido"))
+                    .andExpect(jsonPath("$.erroresOmitidos").value(0));
         }
     }
 }

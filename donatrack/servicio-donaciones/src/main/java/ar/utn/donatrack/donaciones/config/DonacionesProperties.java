@@ -34,7 +34,7 @@ public record DonacionesProperties(
         return new DonacionesProperties(
                 new Inactividad(20, "0 0 0 * * *"),
                 new Procesos("0 0 3 * * *", "0 30 3 * * *", "0 0 4 * * *"),
-                new Importacion(500),
+                new Importacion(500, 100),
                 new Notificaciones("admin@donatrack.org"));
     }
 
@@ -54,9 +54,13 @@ public record DonacionesProperties(
             @DefaultValue("0 0 4 * * *") @NotBlank String cronDespacho) {
     }
 
-    /** Importación masiva por CSV: cuántas filas se procesan por transacción. */
+    /**
+     * Importación masiva por CSV: cuántas filas se procesan por transacción y
+     * cuántos errores se devuelven en la respuesta (el resto se cuenta).
+     */
     public record Importacion(
-            @DefaultValue("500") @Positive int tamanioLote) {
+            @DefaultValue("500") @Positive int tamanioLote,
+            @DefaultValue("100") @Positive int maxErroresEnRespuesta) {
     }
 
     /**
