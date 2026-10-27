@@ -22,6 +22,7 @@ import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
+import ar.utn.donatrack.donaciones.models.donacion.bien.TipoBien;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.LogisticaNoDisponibleException;
@@ -310,6 +311,50 @@ class DonacionesControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(sinBienes)))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si un bien trae fechaVencimiento y esNuevo sin indicar el tipo")
+        void bienAmbiguo() throws Exception {
+            DonacionRequestDTO ambiguo = requestValido();
+            ambiguo.getBienes().getFirst().setEsNuevo(true);
+            ambiguo.getBienes().getFirst().setFechaVencimiento(java.time.LocalDate.of(2027, 1, 31));
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(ambiguo)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("tipo de bien")));
+
+            verify(segmentadorService, never()).segmentar(any());
+        }
+
+        @Test
+        @DisplayName("Acepta el tipo explícito cuando trae solo el dato que le corresponde")
+        void tipoExplicito() throws Exception {
+            doNothing().when(personasValidator).validarExistenciaPersona(idDonante);
+            when(segmentadorService.segmentar(any())).thenReturn(List.of(donacionSegmentada()));
+            DonacionRequestDTO conTipo = requestValido();
+            conTipo.getBienes().getFirst().setTipo(TipoBien.CON_ESTADO);
+            conTipo.getBienes().getFirst().setEsNuevo(false);
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(conTipo)))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("Cada bien de la respuesta informa su id y su tipo")
+        void respuestaConIdYTipoDelBien() throws Exception {
+            doNothing().when(personasValidator).validarExistenciaPersona(idDonante);
+            when(segmentadorService.segmentar(any())).thenReturn(List.of(donacionSegmentada()));
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestValido())))
+                    .andExpect(jsonPath("$[0].bienes[0].id").exists())
+                    .andExpect(jsonPath("$[0].bienes[0].tipo").value("GENERICO"));
         }
 
         @Test

@@ -15,6 +15,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -69,4 +71,34 @@ public abstract class Bien {
     /** ej: "kg", "litros", "unidades". */
     @Column(name = "unidad")
     protected String unidad;
+
+    /** Qué tipo de bien es; lo responde cada subclase. */
+    public abstract TipoBien tipo();
+
+    /** Fecha de vencimiento, si el bien vence. */
+    public Optional<LocalDate> vencimiento() {
+        return Optional.empty();
+    }
+
+    /** Si es nuevo o usado, para los bienes en los que importa. */
+    public Optional<Boolean> nuevo() {
+        return Optional.empty();
+    }
+
+    /**
+     * La segmentación de una carga pone en la misma donación a los bienes con la
+     * misma clave: misma subcategoría, mismo tipo y mismo criterio propio del tipo
+     * (la fecha de vencimiento en un perecedero, nuevo/usado en un bien con estado).
+     * Cada subclase aporta su criterio, así la segmentación no pregunta con
+     * instanceof qué clase de bien es.
+     */
+    public ClaveDeSegmentacion claveDeSegmentacion() {
+        return new ClaveDeSegmentacion(subcategoria, tipo(), criterioDeSegmentacion());
+    }
+
+    /** El dato que separa en donaciones distintas a dos bienes del mismo tipo y subcategoría. */
+    protected abstract Object criterioDeSegmentacion();
+
+    public record ClaveDeSegmentacion(Subcategoria subcategoria, TipoBien tipo, Object criterio) {
+    }
 }

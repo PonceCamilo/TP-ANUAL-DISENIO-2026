@@ -18,4 +18,15 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @Setter
 public class BienGenerico extends Bien {
+
+    @Override
+    public TipoBien tipo() {
+        return TipoBien.GENERICO;
+    }
+
+    /** Todos los genéricos de una subcategoría van juntos. */
+    @Override
+    protected Object criterioDeSegmentacion() {
+        return null;
+    }
 }

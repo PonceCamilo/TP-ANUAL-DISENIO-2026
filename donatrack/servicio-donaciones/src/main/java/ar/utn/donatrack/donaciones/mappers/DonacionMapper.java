@@ -48,34 +48,27 @@ public class DonacionMapper {
     );
   }
 
+  /** Arma la subclase que corresponde al tipo del bien (indicado o deducido, ver BienRequestDTO). */
   public Bien toBien(BienRequestDTO dto) {
-    if (dto.getFechaVencimiento() != null) {
-      return BienPerecible.builder()
-          .subcategoria(new Subcategoria(dto.getSubcategoria()))
-          .descripcion(dto.getDescripcion())
-          .foto(dto.getFoto())
-          .cantidad(dto.getCantidad())
-          .unidad(dto.getUnidad())
+    return switch (dto.tipoResuelto()) {
+      case PERECIBLE -> conDatosComunes(BienPerecible.builder(), dto)
           .fechaVencimiento(dto.getFechaVencimiento())
           .build();
-    }
-    if (dto.getEsNuevo() != null) {
-      return BienConEstado.builder()
-          .subcategoria(new Subcategoria(dto.getSubcategoria()))
-          .descripcion(dto.getDescripcion())
-          .foto(dto.getFoto())
-          .cantidad(dto.getCantidad())
-          .unidad(dto.getUnidad())
+      case CON_ESTADO -> conDatosComunes(BienConEstado.builder(), dto)
           .esNuevo(dto.getEsNuevo())
           .build();
-    }
-    return BienGenerico.builder()
+      case GENERICO -> conDatosComunes(BienGenerico.builder(), dto).build();
+    };
+  }
+
+  private static <C extends Bien, B extends Bien.BienBuilder<C, B>> B conDatosComunes(
+      Bien.BienBuilder<C, B> builder, BienRequestDTO dto) {
+    return builder
         .subcategoria(new Subcategoria(dto.getSubcategoria()))
         .descripcion(dto.getDescripcion())
         .foto(dto.getFoto())
         .cantidad(dto.getCantidad())
-        .unidad(dto.getUnidad())
-        .build();
+        .unidad(dto.getUnidad());
   }
 
   private List<BienResponseDTO> toBienesDTO(List<Bien> bienes) {
@@ -83,21 +76,17 @@ public class DonacionMapper {
   }
 
   private BienResponseDTO toBienDTO(Bien bien) {
-    BienResponseDTO.BienResponseDTOBuilder builder = BienResponseDTO.builder()
+    return BienResponseDTO.builder()
+        .id(bien.getId())
+        .tipo(bien.tipo())
         .subcategoria(bien.getSubcategoria() != null ? bien.getSubcategoria().getTipo() : null)
         .descripcion(bien.getDescripcion())
         .foto(bien.getFoto())
         .cantidad(bien.getCantidad())
-        .unidad(bien.getUnidad());
-
-    if (bien instanceof BienConEstado bienConEstado) {
-      builder.esNuevo(bienConEstado.isEsNuevo());
-    }
-    if (bien instanceof BienPerecible bienPerecible) {
-      builder.fechaVencimiento(bienPerecible.getFechaVencimiento());
-    }
-
-    return builder.build();
+        .unidad(bien.getUnidad())
+        .esNuevo(bien.nuevo().orElse(null))
+        .fechaVencimiento(bien.vencimiento().orElse(null))
+        .build();
   }
 
   private List<CambioEstadoResponseDTO> toHistorialDTO(List<CambioEstado> historial) {
