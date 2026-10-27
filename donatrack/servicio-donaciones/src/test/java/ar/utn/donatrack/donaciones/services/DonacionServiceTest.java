@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConVariosBienesException;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
@@ -264,10 +265,22 @@ class DonacionServiceTest {
         void cambioValido() {
             when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ASIGNACION_REALIZADA", null));
+            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
-            assertThat(donacion.estaEnEstado("ASIGNACION_REALIZADA")).isTrue();
+            assertThat(donacion.estaEnEstado("VENCIDA")).isTrue();
             assertThat(donacion.getHistorialEstados()).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("No se puede pasar a ASIGNACION_REALIZADA a mano: eso se hace asignando (422)")
+        void asignacionManualRechazada() {
+            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+
+            assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ASIGNACION_REALIZADA", null)))
+                    .isInstanceOf(TransicionReservadaException.class);
+
+            verify(repositorio, never()).guardar(any());
+            assertThat(donacion.getIdEntidadBeneficiaria()).isNull();
         }
 
         @Test
@@ -279,7 +292,7 @@ class DonacionServiceTest {
             // apareció recién al probar contra PostgreSQL real.
             when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ASIGNACION_REALIZADA", null));
+            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
             verify(repositorio).guardar(donacion);
         }
@@ -323,7 +336,7 @@ class DonacionServiceTest {
         void otrosEstadosNoNotificanAIncentivos() {
             when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
 
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ASIGNACION_REALIZADA", null));
+            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
             verifyNoInteractions(incentivosClient);
         }

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
 import java.util.Optional;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienIncompatibleConDonacionException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienNoEncontradoException;
@@ -235,6 +236,23 @@ public class Donacion implements Persistable<UUID> {
                 .map(Bien::vencimiento)
                 .flatMap(Optional::stream)
                 .anyMatch(vencimiento -> vencimiento.isBefore(fecha));
+    }
+
+    /**
+     * Cambio de estado pedido por la persona administradora (PATCH .../estado).
+     *
+     * ASIGNACION_REALIZADA queda afuera: a ese estado se llega asignando la
+     * donación, que además registra la entidad, la fecha y el contador de
+     * recepciones. Antes se podía pasar a mano y la donación quedaba asignada a
+     * nadie. Las demás transiciones manuales siguen permitidas como intervención
+     * de la persona administradora.
+     */
+    public void cambiarEstadoManualmente(String estadoDestino, String nombreTransicion, String justificacion) {
+        if ("ASIGNACION_REALIZADA".equals(estadoDestino)) {
+            throw new TransicionReservadaException(estadoDestino,
+                    "se llega asignando la donación (PATCH /donaciones/" + id + "/asignar).");
+        }
+        cambiarEstado(estadoDestino, nombreTransicion, justificacion);
     }
 
     public boolean esPerecible() {

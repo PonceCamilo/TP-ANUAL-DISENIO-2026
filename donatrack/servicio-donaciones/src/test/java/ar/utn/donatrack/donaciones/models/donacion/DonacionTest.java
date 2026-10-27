@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoModificableException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienNoEncontradoException;
@@ -139,6 +140,29 @@ class DonacionTest {
                     .descripcion("arroz").cantidad(1).unidad("kg").build());
 
             assertThat(donacion.tieneBienesVencidosAl(LocalDate.of(2099, 1, 1))).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("cambiarEstadoManualmente(): lo que puede hacer la persona administradora")
+    class CambioManual {
+
+        @Test
+        @DisplayName("No puede pasar a ASIGNACION_REALIZADA: eso se hace asignando")
+        void noAsignaAMano() {
+            assertThatThrownBy(() -> donacion.cambiarEstadoManualmente("ASIGNACION_REALIZADA", "asignar", null))
+                    .isInstanceOf(TransicionReservadaException.class)
+                    .hasMessageContaining("/asignar");
+            assertThat(donacion.estaEnEstado("EN_DEPOSITO")).isTrue();
+            assertThat(donacion.getHistorialEstados()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Sí puede marcarla VENCIDA, como pide el enunciado")
+        void marcaVencida() {
+            donacion.cambiarEstadoManualmente("VENCIDA", "vencida", "Se pasó la fecha");
+
+            assertThat(donacion.estaEnEstado("VENCIDA")).isTrue();
         }
     }
 
