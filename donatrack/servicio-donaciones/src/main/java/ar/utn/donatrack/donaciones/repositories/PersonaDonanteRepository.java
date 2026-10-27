@@ -5,6 +5,7 @@ import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.repositories.jpa.PersonaDonanteJpaRepository;
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,14 +16,12 @@ import java.util.UUID;
 /**
  * Persistencia de personas donantes en base relacional (Entrega 4).
  *
- * Reemplaza al ConcurrentHashMap con índice por email que había antes. Dos cosas
- * que mejoran con el cambio:
- *   - La unicidad del email la garantiza la base, no un Map que se vacía al
- *     reiniciar el proceso.
- *   - La búsqueda por email ya no depende de mantener un índice a mano y en
- *     sincronía con el almacenamiento principal.
+ * Reemplaza al ConcurrentHashMap con índice por email que había antes. Desde la
+ * Entrega 5 la unicidad del email la garantiza un UNIQUE de la base, y la
+ * búsqueda por email usa el índice que crea esa restricción.
  *
- * La interfaz no cambió, así que los services y sus tests siguen igual.
+ * Todo email que entra por esta clase se normaliza antes de consultar: así el
+ * resto del servicio puede pasar el email tal como lo escribió la persona.
  */
 @Repository
 @RequiredArgsConstructor
@@ -64,12 +63,12 @@ public class PersonaDonanteRepository implements PersonaDonanteRepositoryInterfa
 
     @Transactional(readOnly = true)
     public boolean existePorEmail(String email) {
-        return email != null && jpa.existsByEmailIgnoreCase(email);
+        return email != null && jpa.existsByEmail(NormalizadorEmail.normalizar(email));
     }
 
     @Transactional(readOnly = true)
     public PersonaDonante obtenerPorEmail(String email) {
-        return email == null ? null : jpa.findByEmailIgnoreCase(email).orElse(null);
+        return email == null ? null : jpa.findByEmail(NormalizadorEmail.normalizar(email)).orElse(null);
     }
 
     @Transactional(readOnly = true)

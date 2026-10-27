@@ -18,8 +18,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PostLoad;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -36,6 +39,14 @@ import java.time.LocalDateTime;
  *
  * El email es un campo directo y no un elemento de `contactos` porque es la
  * clave de idempotencia de la importación masiva por CSV y de las búsquedas.
+ * Es la identidad de la persona: se fija en el alta y no se cambia después.
+ * Los contactos de tipo EMAIL que se agreguen más tarde son canales adicionales,
+ * no reemplazan a esta identidad.
+ *
+ * UNICIDAD (Entrega 5): la columna `email` tiene un UNIQUE en la base y se
+ * guarda siempre en su forma canónica (ver NormalizadorEmail). Antes la unicidad
+ * dependía solo de una consulta previa del servicio; dos altas simultáneas o una
+ * diferencia de mayúsculas podían dejar duplicados.
  *
  * MAPEO DE LA HERENCIA (Entrega 4): JOINED.
  *
@@ -72,11 +83,19 @@ public abstract class PersonaDonante {
     @Embedded
     protected Direccion direccion;
 
-    /** Nombre del estado: ACTIVO, INACTIVO o BLOQUEADO. */
+    /**
+     * Nombre del estado: ACTIVO, INACTIVO o BLOQUEADO.
+     *
+     * @Builder.Default hace falta porque la clase usa @SuperBuilder: sin él, una
+     * persona construida con builder() quedaba con el estado en null y fallaba
+     * al guardarse (la columna es NOT NULL).
+     */
+    @Builder.Default
     @Column(name = "estado", nullable = false)
     protected String estadoNombre = EstadosDonante.inicial().nombre();
 
     /** El objeto de estado, con sus transiciones válidas. No se persiste. */
+    @Builder.Default
     @Transient
     protected EstadoDonante estado = EstadosDonante.inicial();
 
@@ -91,7 +110,7 @@ public abstract class PersonaDonante {
     @Column(name = "ultima_interaccion")
     protected LocalDateTime ultimaInteraccion;
 
-    @Column(name = "email")
+    @Column(name = "email", unique = true)
     protected String email;
 
     @Builder.Default
@@ -103,6 +122,16 @@ public abstract class PersonaDonante {
     @PostLoad
     private void rehidratarEstado() {
         this.estado = EstadosDonante.desde(this.estadoNombre);
+    }
+
+    /**
+     * Garantiza que a la base solo llegue la forma canónica del email, venga de
+     * donde venga la persona (alta por la API, builder o importación CSV).
+     */
+    @PrePersist
+    @PreUpdate
+    private void normalizarEmail() {
+        this.email = NormalizadorEmail.normalizar(this.email);
     }
 
     public void cambiarEstado(String estadoDestino, String justificacion) {

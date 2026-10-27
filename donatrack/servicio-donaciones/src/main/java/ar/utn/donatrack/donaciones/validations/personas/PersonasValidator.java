@@ -9,6 +9,7 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteReposit
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,13 +22,21 @@ public class PersonasValidator {
 
   private final PersonaDonanteRepositoryInterface repositorio;
 
-  private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
+  /**
+   * La parte local admite letras y dígitos Unicode (\p{L}, \p{N}): los emails con
+   * tilde, como los del CSV de prueba del enunciado, son válidos. Antes solo se
+   * admitían letras sin tilde, así que un donante importado por CSV no podía
+   * registrarse por la API con su mismo email. @Email de Bean Validation ya los
+   * aceptaba; esta expresión era la única que los rechazaba.
+   */
+  private static final Pattern EMAIL = Pattern.compile("^[\\p{L}\\p{N}+_.-]+@(.+)$");
 
   public void validarEmail(String email) {
-    if (email == null || !Pattern.compile(EMAIL_REGEX).matcher(email).matches()) {
+    String normalizado = NormalizadorEmail.normalizar(email);
+    if (normalizado == null || !EMAIL.matcher(normalizado).matches()) {
       throw new EmailInvalidoException(email);
     }
-    if (repositorio.existePorEmail(email)) {
+    if (repositorio.existePorEmail(normalizado)) {
       throw new EmailYaRegistradoException(email);
     }
   }

@@ -10,15 +10,16 @@ import java.util.UUID;
 /**
  * Acceso JPA a la jerarquía persona_donante / persona_humana / persona_juridica.
  *
- * La búsqueda por email reemplaza al índice en memoria que mantenía el
- * repositorio anterior: ahora el índice es un UNIQUE de la base, que además
- * garantiza la unicidad de verdad y no solo mientras el proceso esté vivo.
+ * Las búsquedas por email comparan por igualdad exacta contra la forma canónica
+ * (ver NormalizadorEmail): así usan el índice que crea el UNIQUE de la columna.
+ * Una comparación sin distinguir mayúsculas (lower(email) = ...) no podría usarlo.
+ * Quien llama tiene que pasar el email ya normalizado.
  */
 public interface PersonaDonanteJpaRepository extends JpaRepository<PersonaDonante, UUID> {
 
-    Optional<PersonaDonante> findByEmailIgnoreCase(String email);
+    Optional<PersonaDonante> findByEmail(String email);
 
-    boolean existsByEmailIgnoreCase(String email);
+    boolean existsByEmail(String email);
 
     List<PersonaDonante> findByEstadoNombre(String estadoNombre);
 }

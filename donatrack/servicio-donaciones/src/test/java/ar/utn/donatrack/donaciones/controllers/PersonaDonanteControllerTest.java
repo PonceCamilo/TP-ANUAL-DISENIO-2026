@@ -24,12 +24,14 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -220,6 +222,34 @@ class PersonaDonanteControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(cuerpoAltaHumana("juan@example.com")))
                     .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("Devuelve 409 si el UNIQUE de la base rechaza el email (alta simultánea)")
+        void emailDuplicadoEnLaBase() throws Exception {
+            // Dos altas simultáneas pasan la validación previa: la segunda la
+            // frena el UNIQUE de la columna, con el estado SQL de clave duplicada.
+            when(personaDonanteService.registrar(any()))
+                    .thenThrow(new DataIntegrityViolationException("duplicado",
+                            new SQLException("unique violation", "23505")));
+
+            mockMvc.perform(post("/donantes")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpoAltaHumana("juan@example.com")))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("Otra violación de integridad (no de unicidad) sigue siendo un 500")
+        void otraViolacionDeIntegridad() throws Exception {
+            when(personaDonanteService.registrar(any()))
+                    .thenThrow(new DataIntegrityViolationException("not null",
+                            new SQLException("null value", "23502")));
+
+            mockMvc.perform(post("/donantes")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpoAltaHumana("juan@example.com")))
+                    .andExpect(status().isInternalServerError());
         }
 
         @Test

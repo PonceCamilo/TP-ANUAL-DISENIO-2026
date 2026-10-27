@@ -20,6 +20,8 @@ import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPer
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
+import org.springframework.core.NestedExceptionUtils;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -28,11 +30,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  /** Estado SQL estándar de clave duplicada (violación de UNIQUE o de PK). */
+  private static final String CLAVE_DUPLICADA = "23505";
 
   private Map<String, Object> construirCuerpoError(HttpStatus status, String error, String mensaje) {
     Map<String, Object> cuerpo = new HashMap<>();
@@ -150,6 +156,28 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(IllegalStateException.class)
   public ResponseEntity<Map<String, Object>> manejarEstadoIlegal(IllegalStateException ex) {
     return new ResponseEntity<>(construirCuerpoError(HttpStatus.CONFLICT, "Conflict", ex.getMessage()), HttpStatus.CONFLICT);
+  }
+
+  /**
+   * Restricciones de la base (Entrega 5). Una violación de UNIQUE —por ejemplo,
+   * dos altas simultáneas con el mismo email, que pasan las dos la validación
+   * previa del servicio— es un conflicto de datos y se informa como 409, igual
+   * que EmailYaRegistradoException. Cualquier otra violación (un NOT NULL, una
+   * FK) es un error de programación y sigue siendo un 500.
+   *
+   * El estado SQL 23505 es el de clave duplicada en el estándar SQL, y lo usan
+   * tanto PostgreSQL como H2 (la base de los tests).
+   */
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<Map<String, Object>> manejarViolacionDeIntegridad(DataIntegrityViolationException ex) {
+    if (NestedExceptionUtils.getMostSpecificCause(ex) instanceof SQLException sql
+        && CLAVE_DUPLICADA.equals(sql.getSQLState())) {
+      return new ResponseEntity<>(
+          construirCuerpoError(HttpStatus.CONFLICT, "Conflict",
+              "Ya existe un registro con ese valor único (por ejemplo, el email)."),
+          HttpStatus.CONFLICT);
+    }
+    return manejarErrorGeneral(ex);
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -183,6 +183,30 @@ class ValidatorsTest {
                 assertThatThrownBy(() -> validador.validarEmail("juan@example.com"))
                         .isInstanceOf(EmailYaRegistradoException.class);
             }
+
+            @ParameterizedTest(name = "\"{0}\" es un email válido")
+            @ValueSource(strings = {
+                    "benjamíncastro8929@yahoo.com",
+                    "sofíagarcía1520@gmail.com",
+                    "muñoz@mail.com"
+            })
+            @DisplayName("Acepta emails con tilde o ñ, como los del CSV de prueba del enunciado")
+            void aceptaEmailsConTilde(String email) {
+                when(repositorio.existePorEmail(email)).thenReturn(false);
+
+                assertThatCode(() -> validador.validarEmail(email)).doesNotThrowAnyException();
+            }
+
+            @Test
+            @DisplayName("Detecta un duplicado aunque difiera en mayúsculas o espacios (409)")
+            void detectaDuplicadoConOtrasMayusculas() {
+                // El repositorio guarda y busca la forma canónica: el validador
+                // tiene que consultar con esa misma forma.
+                when(repositorio.existePorEmail("juan@example.com")).thenReturn(true);
+
+                assertThatThrownBy(() -> validador.validarEmail("  Juan@Example.COM "))
+                        .isInstanceOf(EmailYaRegistradoException.class);
+            }
         }
 
         @Nested
