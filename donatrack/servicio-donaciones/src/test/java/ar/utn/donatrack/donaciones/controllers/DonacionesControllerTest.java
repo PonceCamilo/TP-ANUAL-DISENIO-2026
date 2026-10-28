@@ -3,7 +3,6 @@ package ar.utn.donatrack.donaciones.controllers;
 import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
 import ar.utn.donatrack.donaciones.services.DonacionService;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
@@ -58,6 +57,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -381,7 +381,6 @@ class DonacionesControllerTest {
         private String cuerpo(String estado, String justificacion) throws Exception {
             CambioEstadoRequestDTO dto = new CambioEstadoRequestDTO();
             dto.setEstado(estado);
-            dto.setNombreTransicion("transicion");
             dto.setJustificacion(justificacion);
             return objectMapper.writeValueAsString(dto);
         }

@@ -13,7 +13,6 @@ import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
@@ -156,7 +155,6 @@ class MedicionConsultasTest {
                     .email("donante" + i + "@mail.com")
                     .build();
             persona.definirContactoPredeterminado(Email.builder().valor("donante" + i + "@mail.com").build());
-            persona.setEstado(new ActivoState());
             // La mitad interactuó hace 30 días: son las que detecta el proceso de inactividad.
             persona.setUltimaInteraccion(i % 2 == 0
                     ? FechaHoraArgentina.ahora()

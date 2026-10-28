@@ -150,7 +150,7 @@ class DonacionTest {
         @Test
         @DisplayName("No puede pasar a ASIGNACION_REALIZADA: eso se hace asignando")
         void noAsignaAMano() {
-            assertThatThrownBy(() -> donacion.cambiarEstadoManualmente("ASIGNACION_REALIZADA", "asignar", null))
+            assertThatThrownBy(() -> donacion.cambiarEstadoManualmente("ASIGNACION_REALIZADA", null))
                     .isInstanceOf(TransicionReservadaException.class)
                     .hasMessageContaining("/asignar");
             assertThat(donacion.estaEnEstado("EN_DEPOSITO")).isTrue();
@@ -160,9 +160,20 @@ class DonacionTest {
         @Test
         @DisplayName("Sí puede marcarla VENCIDA, como pide el enunciado")
         void marcaVencida() {
-            donacion.cambiarEstadoManualmente("VENCIDA", "vencida", "Se pasó la fecha");
+            donacion.cambiarEstadoManualmente("VENCIDA", "Se pasó la fecha");
 
             assertThat(donacion.estaEnEstado("VENCIDA")).isTrue();
+        }
+
+        @Test
+        @DisplayName("El nombre de la transición manual se deriva del origen y el destino")
+        void nombreDerivado() {
+            donacion.cambiarEstadoManualmente("VENCIDA", "Se pasó la fecha");
+
+            CambioEstado registro = donacion.getHistorialEstados().getLast();
+            assertThat(registro.getNombreTransicion()).isEqualTo("Cambio manual de EN_DEPOSITO a VENCIDA");
+            assertThat(registro.getEstadoPrevio().nombre()).isEqualTo("EN_DEPOSITO");
+            assertThat(registro.getJustificacion()).isEqualTo("Se pasó la fecha");
         }
     }
 

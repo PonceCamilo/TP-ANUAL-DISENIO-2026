@@ -12,7 +12,6 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
@@ -40,7 +39,6 @@ public class PersonaDonanteService {
     validador.validarEmail(dto.getEmail());
 
     PersonaDonante persona = mapper.toModel(dto);
-    persona.setEstado(new ActivoState());
     persona.registrarInteraccion();
 
     repositorio.guardar(persona);

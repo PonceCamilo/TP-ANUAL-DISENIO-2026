@@ -1,13 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
-import static org.mockito.Mockito.mock;
-import ar.utn.donatrack.donaciones.notificaciones.Notificador;
-import static org.mockito.Mockito.times;
-import static org.mockito.ArgumentMatchers.anyInt;
-import ar.utn.donatrack.donaciones.config.DonacionesProperties;
-import java.time.LocalDateTime;
-import org.mockito.ArgumentCaptor;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
@@ -15,26 +9,31 @@ import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.contacto.Whatsapp;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
+import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -82,7 +81,6 @@ class InactividadDonantesServiceTest {
                 .id(UUID.randomUUID())
                 .nombre("Juan")
                 .email("juan@example.com")
-                .estado(new ActivoState())
                 .ultimaInteraccion(FechaHoraArgentina.ahora().minusDays(diasSinInteractuar))
                 .build();
         if (medioPredeterminado != null) {
@@ -131,7 +129,6 @@ class InactividadDonantesServiceTest {
             // pero todavía no hicieron nada, así que entran al circuito de reactivación.
             PersonaDonante nuevo = PersonaHumana.builder()
                     .id(UUID.randomUUID())
-                    .estado(new ActivoState())
                     .build();
             nuevo.definirContactoPredeterminado(Email.builder().valor("nuevo@example.com").build());
             when(donanteRepository.obtenerParaAvisoDeInactividad(any(), anyInt()))
@@ -210,7 +207,7 @@ class InactividadDonantesServiceTest {
         void sinMedioSeOmite() {
             // Importante: la tarea es batch. Un donante sin ningún canal no puede
             // impedir que se notifique a los demás.
-            PersonaDonante sinMedio = PersonaHumana.builder().id(UUID.randomUUID()).estado(new ActivoState()).build();
+            PersonaDonante sinMedio = PersonaHumana.builder().id(UUID.randomUUID()).build();
             PersonaDonante conMedio = donante(30, Email.builder().valor("ok@example.com").build());
             when(donanteRepository.obtenerParaAvisoDeInactividad(any(), anyInt()))
                     .thenReturn(List.of(sinMedio, conMedio), List.of());

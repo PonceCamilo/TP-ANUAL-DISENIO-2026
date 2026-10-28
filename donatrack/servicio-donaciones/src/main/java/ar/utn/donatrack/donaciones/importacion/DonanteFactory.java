@@ -3,7 +3,6 @@ package ar.utn.donatrack.donaciones.importacion;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
@@ -57,8 +56,8 @@ public class DonanteFactory {
             persona.reemplazarContacto(Telefono.builder().valor(dto.telefono()).build());
         }
 
-        // Todo donante importado arranca ACTIVO y con interacción inicial registrada
-        persona.setEstado(new ActivoState());
+        // Todo donante importado arranca ACTIVO (el estado inicial) y con la
+        // interacción inicial registrada.
         persona.registrarInteraccion();
         return persona;
     }

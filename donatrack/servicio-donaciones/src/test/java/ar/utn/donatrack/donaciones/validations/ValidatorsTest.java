@@ -19,7 +19,6 @@ import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
@@ -206,7 +205,7 @@ class ValidatorsTest {
             @DisplayName("validarYObtenerPersona() devuelve el donante cuando existe")
             void obtenerPersonaOk() {
                 UUID id = UUID.randomUUID();
-                PersonaHumana persona = PersonaHumana.builder().id(id).estado(new ActivoState()).build();
+                PersonaHumana persona = PersonaHumana.builder().id(id).build();
                 when(repositorio.buscarPorId(id)).thenReturn(Optional.of(persona));
 
                 assertThat(validador.validarYObtenerPersona(id)).isSameAs(persona);
@@ -218,7 +217,7 @@ class ValidatorsTest {
                 // Solo las personas jurídicas tienen representantes, así que este
                 // chequeo protege ese endpoint.
                 UUID id = UUID.randomUUID();
-                PersonaJuridica juridica = PersonaJuridica.builder().id(id).estado(new ActivoState()).build();
+                PersonaJuridica juridica = PersonaJuridica.builder().id(id).build();
                 when(repositorio.buscarPorId(id)).thenReturn(Optional.of(juridica));
 
                 assertThat(validador.validarYObtenerJuridica(id)).isSameAs(juridica);
@@ -230,7 +229,7 @@ class ValidatorsTest {
             void esJuridicaFallaConHumana() {
                 UUID id = UUID.randomUUID();
                 when(repositorio.buscarPorId(id))
-                        .thenReturn(Optional.of(PersonaHumana.builder().id(id).estado(new ActivoState()).build()));
+                        .thenReturn(Optional.of(PersonaHumana.builder().id(id).build()));
 
                 assertThatThrownBy(() -> validador.validarYObtenerJuridica(id))
                         .isInstanceOf(TipoPersonaIlegalException.class);

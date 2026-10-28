@@ -19,6 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGADA;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGA_FALLIDA;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_TRASLADO;
+
 /**
  * Recibe los callbacks de eventos logísticos y dispara las notificaciones
  * correspondientes hacia el Servicio de Notificaciones.
@@ -52,7 +56,7 @@ public class LogisticaEventosService {
         for (UUID idDonacion : dto.idsDonaciones()) {
             Donacion donacion = obtenerDonacionOFallar(idDonacion);
 
-            donacion.cambiarEstado("EN_TRASLADO", "Inicio de ruta", "Chofer inició el recorrido. Ruta: " + dto.idRuta());
+            donacion.cambiarEstado(EN_TRASLADO, "Inicio de ruta", "Chofer inició el recorrido. Ruta: " + dto.idRuta());
             donacionesRepositorio.guardar(donacion);
 
             notificador.inicioDeRuta(donanteDe(donacion), entidadDe(donacion), dto.urlMapaInteractivo());
@@ -71,7 +75,7 @@ public class LogisticaEventosService {
 
         Donacion donacion = obtenerDonacionOFallar(dto.idDonacion());
 
-        donacion.cambiarEstado("ENTREGADA", "Entrega confirmada", "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega());
+        donacion.cambiarEstado(ENTREGADA, "Entrega confirmada", "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega());
         donacionesRepositorio.guardar(donacion);
 
         PersonaDonante donante = donanteDe(donacion);
@@ -103,7 +107,7 @@ public class LogisticaEventosService {
         String justificacion = dto.motivoFallo()
                 + (dto.replanificable() ? " | Puede ser replanificada." : " | No puede ser replanificada.");
 
-        donacion.cambiarEstado("ENTREGA_FALLIDA", "Entrega fallida", justificacion);
+        donacion.cambiarEstado(ENTREGA_FALLIDA, "Entrega fallida", justificacion);
         donacionesRepositorio.guardar(donacion);
 
         notificador.entregaFallida(donacion.getId(), donanteDe(donacion), entidadDe(donacion),

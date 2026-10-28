@@ -6,6 +6,7 @@ import ar.utn.donatrack.donaciones.models.donante.estado.EstadoDonante;
 import ar.utn.donatrack.donaciones.models.donante.estado.EstadosDonante;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -18,12 +19,9 @@ import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
-import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
-import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import org.hibernate.annotations.BatchSize;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -61,8 +59,8 @@ import java.time.LocalDateTime;
  * un JOIN y a cambio deja un modelo de datos normalizado, que es lo que se
  * evalúa en el DER.
  *
- * El estado se mapea igual que en Donacion: se guarda el nombre y el objeto se
- * rehidrata en @PostLoad.
+ * El estado se mapea igual que en Donacion: se guarda solo el nombre y
+ * getEstado() arma el objeto al vuelo.
  */
 @Entity
 @Table(name = "persona_donante", indexes = {
@@ -94,13 +92,9 @@ public abstract class PersonaDonante extends EntidadPersistible {
      * al guardarse (la columna es NOT NULL).
      */
     @Builder.Default
+    @Setter(AccessLevel.NONE)
     @Column(name = "estado", nullable = false)
     protected String estadoNombre = EstadosDonante.inicial().nombre();
-
-    /** El objeto de estado, con sus transiciones válidas. No se persiste. */
-    @Builder.Default
-    @Transient
-    protected EstadoDonante estado = EstadosDonante.inicial();
 
     @Column(name = "ultima_interaccion")
     protected LocalDateTime ultimaInteraccion;
@@ -122,12 +116,6 @@ public abstract class PersonaDonante extends EntidadPersistible {
     @JoinColumn(name = "persona_donante_id")
     protected List<MedioDeContacto> contactos = new ArrayList<>();
 
-    /** Reconstruye el objeto de estado después de cargar la fila. */
-    @PostLoad
-    private void rehidratarEstado() {
-        this.estado = EstadosDonante.desde(this.estadoNombre);
-    }
-
     /**
      * Garantiza que a la base solo llegue la forma canónica del email, venga de
      * donde venga la persona (alta por la API, builder o importación CSV).
@@ -138,18 +126,13 @@ public abstract class PersonaDonante extends EntidadPersistible {
         this.email = NormalizadorEmail.normalizar(this.email);
     }
 
-    public void cambiarEstado(String estadoDestino, String justificacion) {
-        this.estado = this.estado.transicionarA(estadoDestino, justificacion);
-        this.estadoNombre = this.estado.nombre();
+    /** El objeto de estado, con sus transiciones válidas, armado a partir del nombre guardado. */
+    public EstadoDonante getEstado() {
+        return EstadosDonante.desde(estadoNombre);
     }
 
-    /**
-     * Mantiene sincronizados el objeto de estado y el nombre que se persiste.
-     * Sin esto, un setEstado() directo dejaría la columna con el valor viejo.
-     */
-    public void setEstado(EstadoDonante estado) {
-        this.estado = estado;
-        this.estadoNombre = estado == null ? null : estado.nombre();
+    public void cambiarEstado(String estadoDestino, String justificacion) {
+        this.estadoNombre = getEstado().transicionarA(estadoDestino, justificacion).nombre();
     }
 
     /**
@@ -217,7 +200,7 @@ public abstract class PersonaDonante extends EntidadPersistible {
     public abstract void actualizarNombreImportado(String nombreORazonSocial);
 
     public boolean estaBloqueada() {
-        return "BLOQUEADO".equals(estadoNombre);
+        return EstadosDonante.BLOQUEADO.equals(estadoNombre);
     }
 
     public String obtenerEmail() {

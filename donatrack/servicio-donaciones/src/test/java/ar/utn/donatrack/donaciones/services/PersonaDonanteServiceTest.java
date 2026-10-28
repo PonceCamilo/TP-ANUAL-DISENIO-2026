@@ -155,7 +155,6 @@ class PersonaDonanteServiceTest {
                 .tipoDocumento("DNI")
                 .numeroDocumento("30111222")
                 .email("juan@example.com")
-                .estado(new ActivoState())
                 .build();
     }
 
@@ -166,7 +165,6 @@ class PersonaDonanteServiceTest {
                 .rubro("Alimentos")
                 .tipo(TipoPersonaJuridica.ONG)
                 .email("contacto@fundacion.org")
-                .estado(new ActivoState())
                 .build();
     }
 

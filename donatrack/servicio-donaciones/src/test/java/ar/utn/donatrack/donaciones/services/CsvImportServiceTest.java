@@ -11,7 +11,6 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDo
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import org.springframework.transaction.support.TransactionOperations;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -95,7 +94,6 @@ class CsvImportServiceTest {
                 .tipoDocumento("DNI")
                 .numeroDocumento("00000000")
                 .email(email)
-                .estado(new ActivoState())
                 .build();
     }
 
@@ -210,7 +208,6 @@ class CsvImportServiceTest {
                     .id(UUID.randomUUID())
                     .razonSocial("Fundación Vieja")
                     .email("contacto@fundacion.org")
-                    .estado(new ActivoState())
                     .build();
             when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("contacto@fundacion.org", existente));
 
@@ -267,7 +264,6 @@ class CsvImportServiceTest {
                     .tipoDocumento("CUIT")
                     .numeroDocumento("30-11122233-4")
                     .email("contacto@fundacion.org")
-                    .estado(new ActivoState())
                     .build();
             when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("contacto@fundacion.org", juridica));
             String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,contacto@fundacion.org,\n";

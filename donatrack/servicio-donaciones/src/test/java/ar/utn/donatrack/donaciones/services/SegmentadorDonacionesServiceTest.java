@@ -3,8 +3,6 @@ package ar.utn.donatrack.donaciones.services;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
@@ -21,7 +19,6 @@ import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -38,10 +35,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -108,7 +107,6 @@ class SegmentadorDonacionesServiceTest {
                 .id(idDonante)
                 .nombre("Juan")
                 .email(email)
-                .estado(new ActivoState())
                 .build();
     }
 

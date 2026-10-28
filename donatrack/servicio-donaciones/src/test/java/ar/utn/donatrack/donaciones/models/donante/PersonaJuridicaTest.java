@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,7 +31,6 @@ class PersonaJuridicaTest {
                 .tipoDocumento("CUIT")
                 .numeroDocumento("30-11122233-4")
                 .email("contacto@fundacionejemplo.org")
-                .estado(new ActivoState())
                 .build();
     }
 

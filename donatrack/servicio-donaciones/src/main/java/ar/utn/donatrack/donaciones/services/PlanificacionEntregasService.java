@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ASIGNACION_REALIZADA;
+
 /**
  * Deriva las donaciones asignadas al broker de logística para que les asigne un
  * proveedor y las incluya en una ruta.
@@ -46,7 +48,6 @@ import java.util.UUID;
 public class PlanificacionEntregasService {
 
     /** Único estado desde el que una donación puede despacharse a logística. */
-    private static final String ESTADO_ASIGNADA = "ASIGNACION_REALIZADA";
 
     private final RepositorioDonaciones donacionesRepositorio;
     private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
@@ -98,7 +99,7 @@ public class PlanificacionEntregasService {
     @Scheduled(cron = "${donaciones.procesos.cron-despacho:0 0 4 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     public void despacharPendientesDelDia() {
         List<UUID> despachables = transaccion.execute(estado -> {
-            List<Donacion> asignadas = donacionesRepositorio.obtenerPorEstado(ESTADO_ASIGNADA);
+            List<Donacion> asignadas = donacionesRepositorio.obtenerPorEstado(ASIGNACION_REALIZADA);
             log.info("[LOGISTICA] Barrido nocturno. Donaciones con asignación realizada: {}", asignadas.size());
             return asignadas.stream()
                     .filter(this::tieneDireccionResoluble)
@@ -153,10 +154,10 @@ public class PlanificacionEntregasService {
             // Lanza DonacionNoEncontradaException (404) si no existe.
             Donacion donacion = validador.validarYObtenerDonacion(id);
 
-            if (!donacion.estaEnEstado(ESTADO_ASIGNADA)) {
+            if (!donacion.estaEnEstado(ASIGNACION_REALIZADA)) {
                 throw new DonacionNoDespachableException(
                         "La donación " + id + " está en " + donacion.getEstado().nombre()
-                                + " y solo se puede despachar desde " + ESTADO_ASIGNADA + ".");
+                                + " y solo se puede despachar desde " + ASIGNACION_REALIZADA + ".");
             }
             if (!tieneDireccionResoluble(donacion)) {
                 throw new DonacionNoDespachableException(

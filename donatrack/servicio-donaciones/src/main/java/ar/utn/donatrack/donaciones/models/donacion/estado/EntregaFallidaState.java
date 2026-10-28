@@ -2,6 +2,10 @@ package ar.utn.donatrack.donaciones.models.donacion.estado;
 
 import java.util.Map;
 
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_TRASLADO;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGA_FALLIDA;
+
 /**
  * La entrega no pudo concretarse.
  *
@@ -25,10 +29,8 @@ import java.util.Map;
 public class EntregaFallidaState extends EstadoDonacionBase {
 
     public EntregaFallidaState() {
-        super("ENTREGA_FALLIDA", Map.of(
-            "EN_DEPOSITO", EnDepositoState::new,
-            "EN_TRASLADO", EnTrasladoState::new
-        ));
+        super(ENTREGA_FALLIDA, Map.of(
+                EN_DEPOSITO, EnDepositoState::new,
+                EN_TRASLADO, EnTrasladoState::new));
     }
-
 }

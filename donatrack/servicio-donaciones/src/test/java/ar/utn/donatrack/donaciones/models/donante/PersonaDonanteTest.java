@@ -40,7 +40,6 @@ class PersonaDonanteTest {
                 .tipoDocumento("DNI")
                 .numeroDocumento("30111222")
                 .email("juan.perez@example.com")
-                .estado(new ActivoState())
                 .build();
     }
 
@@ -132,7 +131,6 @@ class PersonaDonanteTest {
         void sinEmailDevuelveNull() {
             PersonaHumana sinEmail = PersonaHumana.builder()
                     .id(UUID.randomUUID())
-                    .estado(new ActivoState())
                     .build();
 
             assertThat(sinEmail.obtenerEmail()).isNull();

@@ -41,16 +41,22 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ASIGNACION_REALIZADA;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGADA;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.LISTA_PARA_ENTREGAR;
+
 /**
  * Una donación ya segmentada: pertenece a una única subcategoría y es la unidad
  * mínima de asignación del sistema.
  *
  * MAPEO DEL PATRÓN STATE (Entrega 4) — el punto más interesante del mapeo:
  *
- * `estado` es un objeto de la jerarquía EstadoDonacionBase, no un enum, y NO se
- * persiste. Lo que se guarda es su nombre en la columna `estado`. Al cargar la
- * donación, @PostLoad vuelve a instanciar la clase correspondiente con
- * EstadosDonacion.desde(...).
+ * el estado es un objeto de la jerarquía EstadoDonacionBase, no un enum, y NO se
+ * persiste. Lo único que se guarda es su nombre, en la columna `estado`, y
+ * getEstado() arma el objeto al vuelo con EstadosDonacion, igual que
+ * CambioEstado. Antes había dos campos (el nombre y el objeto) que había que
+ * mantener sincronizados con un @PostLoad; con uno solo no pueden desfasarse.
  *
  * Por qué así y no con un enum: el estado no es un dato, es comportamiento —cada
  * clase conoce sus transiciones válidas. Convertirlo en enum para que JPA lo
@@ -90,13 +96,9 @@ public class Donacion extends EntidadPersistible {
     @Embedded
     protected Subcategoria subcategoria;
 
-    /** Nombre del estado actual. Es la única forma en que el estado llega a la base. */
+    /** Nombre del estado actual: el único dato del estado que llega a la base. */
     @Column(name = "estado", nullable = false)
     protected String estadoNombre = EstadosDonacion.inicial().nombre();
-
-    /** El objeto de estado: se rehidrata desde estadoNombre, nunca se persiste. */
-    @Transient
-    protected EstadoDonacionBase estado = EstadosDonacion.inicial();
 
     /** Historial ordenado por fecha: es la trazabilidad que exige el enunciado. */
     @BatchSize(size = 100)
@@ -148,13 +150,6 @@ public class Donacion extends EntidadPersistible {
     @Getter(AccessLevel.NONE)
     private Asignacion asignacionGuardada = Asignacion.NINGUNA;
 
-    /** Después de leer la fila: reconstruye el objeto de estado y recuerda la asignación. */
-    @PostLoad
-    private void alCargar() {
-        this.estado = EstadosDonacion.desde(this.estadoNombre);
-        marcarAsignacionGuardada();
-    }
-
     public Asignacion asignacion() {
         return new Asignacion(idEntidadBeneficiaria, fechaAsignacion);
     }
@@ -168,18 +163,24 @@ public class Donacion extends EntidadPersistible {
         return !asignacion().equals(asignacionGuardada);
     }
 
-    /** Lo llama el repositorio al guardar, y JPA al insertar o actualizar la fila. */
+    /** Lo llama el repositorio al guardar, y JPA al leer, insertar o actualizar la fila. */
+    @PostLoad
     @PostPersist
     @PostUpdate
     public void marcarAsignacionGuardada() {
         this.asignacionGuardada = asignacion();
     }
 
+    /** El objeto de estado, armado a partir del nombre guardado. */
+    public EstadoDonacionBase getEstado() {
+        return EstadosDonacion.desde(estadoNombre);
+    }
+
     public void cambiarEstado(String estadoDestino, String nombreTransicion, String justificacion) {
-        EstadoDonacionBase estadoPrevio = this.estado;
-        this.estado = this.estado.transicionarA(estadoDestino, justificacion);
-        this.estadoNombre = this.estado.nombre();
-        historialEstados.add(CambioEstado.de(estadoPrevio, this.estado, nombreTransicion, justificacion));
+        EstadoDonacionBase previo = getEstado();
+        EstadoDonacionBase nuevo = previo.transicionarA(estadoDestino, justificacion);
+        this.estadoNombre = nuevo.nombre();
+        historialEstados.add(CambioEstado.de(previo, nuevo, nombreTransicion, justificacion));
     }
 
     /**
@@ -194,7 +195,7 @@ public class Donacion extends EntidadPersistible {
      * El bien nuevo tiene su propio id: se reemplaza el objeto, no se edita.
      */
     public void reemplazarBien(UUID idBien, Bien nuevo) {
-        if (!estaEnEstado("EN_DEPOSITO")) {
+        if (!estaEnEstado(EN_DEPOSITO)) {
             throw new DonacionNoModificableException(id, estadoNombre);
         }
         int posicion = posicionDelBien(idBien);
@@ -251,13 +252,17 @@ public class Donacion extends EntidadPersistible {
      * recepciones. Antes se podía pasar a mano y la donación quedaba asignada a
      * nadie. Las demás transiciones manuales siguen permitidas como intervención
      * de la persona administradora.
+     *
+     * El nombre de la transición se deriva del estado de origen y el de destino
+     * ("Cambio manual de EN_DEPOSITO a VENCIDA"): antes lo mandaba el cliente como
+     * texto libre y el historial podía decir cualquier cosa.
      */
-    public void cambiarEstadoManualmente(String estadoDestino, String nombreTransicion, String justificacion) {
-        if ("ASIGNACION_REALIZADA".equals(estadoDestino)) {
+    public void cambiarEstadoManualmente(String estadoDestino, String justificacion) {
+        if (ASIGNACION_REALIZADA.equals(estadoDestino)) {
             throw new TransicionReservadaException(estadoDestino,
                     "se llega asignando la donación (PATCH /donaciones/" + id + "/asignar).");
         }
-        cambiarEstado(estadoDestino, nombreTransicion, justificacion);
+        cambiarEstado(estadoDestino, "Cambio manual de " + estadoNombre + " a " + estadoDestino, justificacion);
     }
 
     public boolean esPerecible() {
@@ -280,18 +285,18 @@ public class Donacion extends EntidadPersistible {
     public void despacharA(String proveedor, String idSeguimiento) {
         this.proveedorLogistica = proveedor;
         this.idSeguimientoLogistica = idSeguimiento;
-        cambiarEstado("LISTA_PARA_ENTREGAR", "envio a logistica",
+        cambiarEstado(LISTA_PARA_ENTREGAR, "envio a logistica",
                 "Tomada por " + proveedor + " (seguimiento " + idSeguimiento + ")");
     }
 
     public void asignarA(EntidadBeneficiaria entidad) {
         this.idEntidadBeneficiaria = entidad.getId();
         this.fechaAsignacion = FechaHoraArgentina.hoy();
-        cambiarEstado("ASIGNACION_REALIZADA", "asignar", "Asignada a " + entidad.getRazonSocial());
+        cambiarEstado(ASIGNACION_REALIZADA, "asignar", "Asignada a " + entidad.getRazonSocial());
     }
 
     public boolean estaEnEstado(String nombreEstado) {
-        return this.estado.nombre().equals(nombreEstado);
+        return estadoNombre.equals(nombreEstado);
     }
 
     public boolean esDeSubcategoria(String subcategoria) {
@@ -301,6 +306,6 @@ public class Donacion extends EntidadPersistible {
     }
 
     public boolean fueEntregada() {
-        return estaEnEstado("ENTREGADA");
+        return estaEnEstado(ENTREGADA);
     }
 }

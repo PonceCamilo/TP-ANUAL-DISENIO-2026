@@ -1,7 +1,5 @@
 package ar.utn.donatrack.donaciones.services;
 
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDate;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
@@ -13,8 +11,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
+
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
 
 /**
  * Ejecuta el matchmaking de todas las donaciones que están EN_DEPOSITO.
@@ -41,7 +43,6 @@ import java.util.List;
 public class AsignacionBatchService {
 
     /** Estado de las donaciones que todavía esperan destino. */
-    private static final String ESTADO_EN_DEPOSITO = "EN_DEPOSITO";
 
     private final RepositorioDonaciones donacionesRepositorio;
     private final AsignacionDonacionesService asignacionService;
@@ -56,7 +57,7 @@ public class AsignacionBatchService {
     @Scheduled(cron = "${donaciones.procesos.cron-matchmaking:0 30 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     @Transactional
     public void ejecutarMatchmakingNocturno() {
-        List<Donacion> enDeposito = donacionesRepositorio.obtenerPorEstado(ESTADO_EN_DEPOSITO);
+        List<Donacion> enDeposito = donacionesRepositorio.obtenerPorEstado(EN_DEPOSITO);
 
         // Una donación con bienes vencidos no se le recomienda a nadie: queda
         // fuera de la bandeja hasta que la persona administradora la pase a

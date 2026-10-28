@@ -37,7 +37,6 @@ import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.validations.donaciones.DonacionesValidator;
 import ar.utn.donatrack.donaciones.validations.entidades.EntidadesBeneficiariasValidator;
@@ -193,14 +192,12 @@ class DonacionServiceTest {
                 .nombre("Juan")
                 .apellido("Pérez")
                 .email(email)
-                .estado(new ActivoState())
                 .build();
     }
 
     private CambioEstadoRequestDTO dtoCambioEstado(String estado, String justificacion) {
         CambioEstadoRequestDTO dto = new CambioEstadoRequestDTO();
         dto.setEstado(estado);
-        dto.setNombreTransicion("transicion");
         dto.setJustificacion(justificacion);
         return dto;
     }

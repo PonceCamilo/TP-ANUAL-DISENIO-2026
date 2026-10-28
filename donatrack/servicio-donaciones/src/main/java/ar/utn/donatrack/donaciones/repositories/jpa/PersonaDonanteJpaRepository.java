@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Query;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
+import ar.utn.donatrack.donaciones.models.donante.estado.EstadosDonante;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -36,7 +37,7 @@ public interface PersonaDonanteJpaRepository extends JpaRepository<PersonaDonant
      * Personas a las que corresponde avisar por inactividad: sin interacción desde
      * el límite (o nunca), sin un aviso desde el límite y que no estén BLOQUEADAS.
      */
-    @Query("SELECT p FROM PersonaDonante p WHERE p.estadoNombre <> 'BLOQUEADO' "
+    @Query("SELECT p FROM PersonaDonante p WHERE p.estadoNombre <> '" + EstadosDonante.BLOQUEADO + "' "
             + "AND (p.ultimaInteraccion IS NULL OR p.ultimaInteraccion < :limite) "
             + "AND (p.ultimoAvisoInactividad IS NULL OR p.ultimoAvisoInactividad < :limite)")
     List<PersonaDonante> buscarParaAvisoDeInactividad(@Param("limite") LocalDateTime limite, Pageable pagina);

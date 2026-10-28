@@ -39,12 +39,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
+
 @Transactional
 @Service
 @RequiredArgsConstructor
 public class DonacionService {
 
-  private static final String ESTADO_EN_DEPOSITO = "EN_DEPOSITO";
 
   private final RepositorioDonaciones repositorio;
   private final DonacionMapper mapper;
@@ -75,13 +76,13 @@ public class DonacionService {
 
   public void cambiarEstado(UUID id, CambioEstadoRequestDTO dto) {
     Donacion donacion = validador.validarYObtenerDonacion(id);
-    boolean estabaEnDeposito = donacion.estaEnEstado(ESTADO_EN_DEPOSITO);
-    donacion.cambiarEstadoManualmente(dto.getEstado(), dto.getNombreTransicion(), dto.getJustificacion());
+    boolean estabaEnDeposito = donacion.estaEnEstado(EN_DEPOSITO);
+    donacion.cambiarEstadoManualmente(dto.getEstado(), dto.getJustificacion());
     repositorio.guardar(donacion);
 
     // Si dejó el depósito (por ejemplo, venció), su ranking ya no sirve: sale de
     // la bandeja ahora y no recién en el matchmaking de la noche siguiente.
-    if (estabaEnDeposito && !donacion.estaEnEstado(ESTADO_EN_DEPOSITO)) {
+    if (estabaEnDeposito && !donacion.estaEnEstado(EN_DEPOSITO)) {
       candidatosRepositorio.eliminar(id);
     }
 

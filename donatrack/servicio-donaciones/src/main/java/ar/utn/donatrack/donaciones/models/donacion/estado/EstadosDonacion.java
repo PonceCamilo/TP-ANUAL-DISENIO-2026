@@ -1,32 +1,38 @@
 package ar.utn.donatrack.donaciones.models.donacion.estado;
 
-import ar.utn.donatrack.donaciones.exceptions.comunes.EstadoDesconocidoException;
+import ar.utn.donatrack.donaciones.models.estado.CatalogoDeEstados;
 
 import java.util.Map;
-import java.util.function.Supplier;
 
 /**
- * Reconstruye el objeto de estado a partir de su nombre.
+ * Los nombres de los estados de una donación y el catálogo que reconstruye el
+ * objeto de estado a partir del nombre guardado.
  *
  * POR QUÉ EXISTE: el patrón State está modelado con clases, no con un enum, y
  * esos objetos NO se persisten. En la base se guarda solamente el nombre del
- * estado ("EN_DEPOSITO", "ENTREGADA", ...) y al cargar la donación se vuelve a
- * instanciar la clase correspondiente.
+ * estado y Donacion.getEstado() arma el objeto al vuelo con este catálogo.
  *
- * Es la contracara del mapeo: `Donacion.estado` es @Transient y se rehidrata en
- * @PostLoad con este factory. Así la base guarda un dato simple y legible —que
- * además queda bien en el DER— sin perder el comportamiento del patrón.
+ * Las constantes evitan escribir los nombres como texto suelto en services y
+ * modelos: un error de tipeo pasa a ser un error de compilación.
  */
 public final class EstadosDonacion {
 
-    private static final Map<String, Supplier<EstadoDonacionBase>> POR_NOMBRE = Map.of(
-            "EN_DEPOSITO", EnDepositoState::new,
-            "ASIGNACION_REALIZADA", AsignacionRealizadaState::new,
-            "LISTA_PARA_ENTREGAR", ListaParaEntregarState::new,
-            "EN_TRASLADO", EnTrasladoState::new,
-            "ENTREGADA", EntregadaState::new,
-            "ENTREGA_FALLIDA", EntregaFallidaState::new,
-            "VENCIDA", VencidaState::new);
+    public static final String EN_DEPOSITO = "EN_DEPOSITO";
+    public static final String ASIGNACION_REALIZADA = "ASIGNACION_REALIZADA";
+    public static final String LISTA_PARA_ENTREGAR = "LISTA_PARA_ENTREGAR";
+    public static final String EN_TRASLADO = "EN_TRASLADO";
+    public static final String ENTREGADA = "ENTREGADA";
+    public static final String ENTREGA_FALLIDA = "ENTREGA_FALLIDA";
+    public static final String VENCIDA = "VENCIDA";
+
+    private static final CatalogoDeEstados<EstadoDonacionBase> CATALOGO = new CatalogoDeEstados<>("donación", Map.of(
+            EN_DEPOSITO, EnDepositoState::new,
+            ASIGNACION_REALIZADA, AsignacionRealizadaState::new,
+            LISTA_PARA_ENTREGAR, ListaParaEntregarState::new,
+            EN_TRASLADO, EnTrasladoState::new,
+            ENTREGADA, EntregadaState::new,
+            ENTREGA_FALLIDA, EntregaFallidaState::new,
+            VENCIDA, VencidaState::new));
 
     private EstadosDonacion() {
     }
@@ -37,11 +43,7 @@ public final class EstadosDonacion {
     }
 
     public static EstadoDonacionBase desde(String nombre) {
-        Supplier<EstadoDonacionBase> factory = POR_NOMBRE.get(nombre);
-        if (factory == null) {
-            throw new EstadoDesconocidoException("donación", nombre);
-        }
-        return factory.get();
+        return CATALOGO.desde(nombre);
     }
 
     /** Tolerante a null: si la columna está vacía devuelve null en lugar de fallar. */

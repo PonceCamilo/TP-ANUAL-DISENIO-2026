@@ -18,7 +18,6 @@ import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -118,7 +117,6 @@ class LogisticaEventosServiceTest {
                 .id(idDonante)
                 .nombre("Juan")
                 .email(email)
-                .estado(new ActivoState())
                 .build();
     }
 
