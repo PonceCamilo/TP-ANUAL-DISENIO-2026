@@ -3,6 +3,10 @@ package ar.utn.donatrack.donaciones.repositories;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
+import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
+import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.repositories.jpa.RankingPrecalculadoJpaRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -168,5 +172,35 @@ class CandidatosAsignacionRepositoryTest {
         assertThat(resultado.ranking(SUBATENDIDOS)).hasSize(2);
         assertThat(resultado.coincidencias()).isEmpty();
         assertThat(resultado.huboCoincidencias()).isFalse();
+    }
+
+    private Donacion donacionGuardada() {
+        Donacion donacion = new Donacion();
+        donacion.setIdDonante(UUID.randomUUID());
+        donacion.setSubcategoria(new Subcategoria("Arroz"));
+        donacion.agregarBien(BienGenerico.builder().subcategoria(new Subcategoria("Arroz"))
+                .descripcion("Arroz").cantidad(1).unidad("kg").build());
+        return donacion;
+    }
+
+    @Test
+    @DisplayName("Descarta los rankings de donaciones que ya no están en depósito o se dieron de baja, y conserva los demás")
+    void descartaFueraDelDeposito() {
+        Donacion enDeposito = donacionGuardada();
+        Donacion asignada = donacionGuardada();
+        asignada.asignarA(EntidadBeneficiaria.builder().id(entidadA).razonSocial("Comedor").build());
+        Donacion dadaDeBaja = donacionGuardada();
+        dadaDeBaja.darDeBaja();
+        List.of(enDeposito, asignada, dadaDeBaja).forEach(em::persist);
+        UUID inexistente = UUID.randomUUID();
+
+        repositorio.reemplazarTodos(List.of(ranking(enDeposito.getId()), ranking(asignada.getId()),
+                ranking(dadaDeBaja.getId()), ranking(inexistente)));
+        repositorio.descartarFueraDelDeposito();
+        sincronizar();
+
+        assertThat(repositorio.obtenerTodos()).extracting(RankingPrecalculado::getIdDonacion)
+                .containsExactly(enDeposito.getId());
+        assertThat(filas("ranking_puesto")).isEqualTo(5);
     }
 }

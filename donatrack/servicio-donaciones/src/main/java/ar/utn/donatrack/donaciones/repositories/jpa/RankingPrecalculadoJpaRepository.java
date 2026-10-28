@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.repositories.jpa;
 
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
+import ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -23,4 +24,21 @@ public interface RankingPrecalculadoJpaRepository extends JpaRepository<RankingP
     @Modifying(clearAutomatically = true)
     @Query(value = "DELETE FROM ranking_precalculado", nativeQuery = true)
     void vaciarRankings();
+
+    /**
+     * Las donaciones que siguen en depósito. SQL nativo: la baja lógica se filtra
+     * a mano (el @SQLRestriction de Donacion no aplica acá).
+     */
+    String EN_DEPOSITO = "SELECT d.id FROM donacion d WHERE d.estado = '" + EstadosDonacion.EN_DEPOSITO
+            + "' AND d.fecha_baja IS NULL";
+
+    /** Vuelca antes los inserts pendientes de la corrida, para que también se filtren. */
+    @Modifying(flushAutomatically = true)
+    @Query(value = "DELETE FROM ranking_puesto WHERE id_donacion NOT IN (" + EN_DEPOSITO + ")", nativeQuery = true)
+    int borrarPuestosFueraDelDeposito();
+
+    @Modifying(clearAutomatically = true)
+    @Query(value = "DELETE FROM ranking_precalculado WHERE id_donacion NOT IN (" + EN_DEPOSITO + ")",
+            nativeQuery = true)
+    int borrarRankingsFueraDelDeposito();
 }

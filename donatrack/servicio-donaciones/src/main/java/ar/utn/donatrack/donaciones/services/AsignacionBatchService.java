@@ -93,8 +93,14 @@ public class AsignacionBatchService {
         // Los rankings de la corrida anterior se descartan (las necesidades de las
         // entidades pudieron cambiar durante el día y una recomendación vieja es
         // peor que ninguna), pero recién al final y de una vez: si el proceso se
-        // corta a mitad de camino, la bandeja anterior queda entera.
-        transaccion.executeWithoutResult(estado -> candidatosRepositorio.reemplazarTodos(rankings));
+        // corta a mitad de camino, la bandeja anterior queda entera. En la misma
+        // transacción se descartan las donaciones que dejaron el depósito mientras
+        // se calculaba (por ejemplo, una asignada en ese momento): si no, su
+        // ranking volvería a la bandeja hasta la noche siguiente.
+        transaccion.executeWithoutResult(estado -> {
+            candidatosRepositorio.reemplazarTodos(rankings);
+            candidatosRepositorio.descartarFueraDelDeposito();
+        });
 
         List<String> algoritmos = asignacionService.nombresDeAlgoritmos();
         long conCoincidencias = rankings.stream()

@@ -31,6 +31,12 @@ public class CandidatosAsignacionRepository implements RepositorioCandidatosAsig
         jpa.saveAll(rankings);
     }
 
+    /** Dos DELETE con una subconsulta sobre donacion: primero los puestos, después la principal. */
+    public void descartarFueraDelDeposito() {
+        jpa.borrarPuestosFueraDelDeposito();
+        jpa.borrarRankingsFueraDelDeposito();
+    }
+
     public List<RankingPrecalculado> obtenerTodos() {
         return jpa.findAll();
     }

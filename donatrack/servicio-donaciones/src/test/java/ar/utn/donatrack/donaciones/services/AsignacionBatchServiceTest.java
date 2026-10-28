@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -275,8 +277,24 @@ class AsignacionBatchServiceTest {
 
             servicio.ejecutarMatchmakingNocturno();
 
-            verify(candidatosRepositorio, times(1)).reemplazarTodos(any());
+            InOrder orden = inOrder(candidatosRepositorio);
+            orden.verify(candidatosRepositorio, times(1)).reemplazarTodos(any());
+            orden.verify(candidatosRepositorio, times(1)).descartarFueraDelDeposito();
             verifyNoMoreInteractions(candidatosRepositorio);
+        }
+
+        @Test
+        @DisplayName("Después de reemplazar la bandeja descarta las donaciones que dejaron el depósito durante la corrida")
+        void descartaLasQueDejaronElDeposito() {
+            // Una donación asignada mientras se calculaban los rankings ya salió de
+            // la bandeja vieja; su ranking nuevo no tiene que volver a ponerla.
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100)).thenReturn(List.of());
+
+            servicio.ejecutarMatchmakingNocturno();
+
+            InOrder orden = inOrder(candidatosRepositorio);
+            orden.verify(candidatosRepositorio).reemplazarTodos(any());
+            orden.verify(candidatosRepositorio).descartarFueraDelDeposito();
         }
     }
 

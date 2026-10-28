@@ -24,6 +24,15 @@ public interface RepositorioCandidatosAsignacion {
      */
     void reemplazarTodos(Collection<RankingPrecalculado> rankings);
 
+    /**
+     * Descarta los rankings de las donaciones que ya no están en depósito (o se
+     * dieron de baja). El proceso nocturno lo llama al final, en la misma
+     * transacción que reemplazarTodos: una donación asignada mientras se calculaban
+     * los rankings ya salió de la bandeja vieja, pero su ranking recién calculado
+     * la volvería a poner.
+     */
+    void descartarFueraDelDeposito();
+
     /** Devuelve todos los rankings pendientes de confirmación. */
     List<RankingPrecalculado> obtenerTodos();
 
