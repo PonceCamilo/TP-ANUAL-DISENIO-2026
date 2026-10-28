@@ -272,9 +272,11 @@ public class PlanificacionEntregasService {
         } catch (LogisticaNoDisponibleException e) {
             throw e;
         } catch (Exception e) {
+            // El detalle (URL, error de red) queda en el log; quien llamó recibe un
+            // mensaje sin datos internos de la infraestructura.
             log.error("[LOGISTICA] El broker no pudo despachar el pedido: {}", e.getMessage());
             throw new LogisticaNoDisponibleException(
-                    "No se pudo despachar a logística: " + e.getMessage());
+                    "No se pudo despachar a logística: el broker no respondió o rechazó el pedido. Reintentar más tarde.");
         }
     }
 }

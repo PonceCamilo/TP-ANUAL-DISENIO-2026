@@ -373,10 +373,14 @@ class PlanificacionEntregasServiceTest {
             // no puede quedar marcada como lista para entregar.
             Donacion donacion = donacionAsignada();
             when(brokerClient.solicitarEnvio(isNull(), anyList()))
-                    .thenThrow(new ResourceAccessException("Connection refused"));
+                    .thenThrow(new ResourceAccessException("I/O error on POST request for \"http://broker:8087/api\""));
 
+            // El mensaje que vuelve al cliente no expone la URL ni el error de red.
             assertThatThrownBy(() -> servicio.despachar(List.of(donacion.getId()), null))
-                    .isInstanceOf(LogisticaNoDisponibleException.class);
+                    .isInstanceOf(LogisticaNoDisponibleException.class)
+                    .hasMessageContaining("No se pudo despachar a logística")
+                    .hasMessageNotContaining("http://")
+                    .hasMessageNotContaining("I/O error");
 
             assertThat(donacion.estaEnEstado("ASIGNACION_REALIZADA")).isTrue();
             assertThat(donacion.getProveedorLogistica()).isNull();

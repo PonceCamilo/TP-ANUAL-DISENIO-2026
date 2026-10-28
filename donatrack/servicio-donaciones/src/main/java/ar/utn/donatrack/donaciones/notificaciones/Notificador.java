@@ -57,9 +57,12 @@ public class Notificador {
 
     // ── Avisos ─────────────────────────────────────────────────────────────
 
+    /** Si la entidad no existe (o no se pudo leer), igual avisa a la persona, sin el nombre. */
     public void donacionAsignada(PersonaDonante donante, EntidadBeneficiaria entidad) {
         enviar(destinoDe(entidad), "Se te asignó una nueva donación según tus necesidades registradas.");
-        enviar(destinoDe(donante), "Tu donación fue asignada a " + entidad.getRazonSocial() + ".");
+        enviar(destinoDe(donante), entidad == null
+                ? "Tu donación fue asignada a una entidad beneficiaria."
+                : "Tu donación fue asignada a " + entidad.getRazonSocial() + ".");
     }
 
     public void inicioDeRuta(PersonaDonante donante, EntidadBeneficiaria entidad, String urlMapa) {

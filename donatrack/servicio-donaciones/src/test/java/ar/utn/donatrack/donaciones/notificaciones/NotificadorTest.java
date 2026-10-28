@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @DisplayName("Notificador: a quién y por qué canal se avisa")
 class NotificadorTest {
@@ -80,6 +81,16 @@ class NotificadorTest {
 
         verify(cliente).enviarNotificacion(eq("2222"), contains("Comedor"), eq("WHATSAPP"));
         verify(cliente).enviarNotificacion(eq("e@mail.com"), anyString(), eq("EMAIL"));
+    }
+
+    @Test
+    @DisplayName("Sin entidad, la asignación igual se le avisa a la persona (sin el nombre) y no falla")
+    void asignacionSinEntidad() {
+        notificador.donacionAsignada(donanteCon(Canal.WHATSAPP), null);
+
+        verify(cliente).enviarNotificacion(eq("2222"), eq("Tu donación fue asignada a una entidad beneficiaria."),
+                eq("WHATSAPP"));
+        verifyNoMoreInteractions(cliente);
     }
 
     @Test
