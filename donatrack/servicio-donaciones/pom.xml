@@ -171,6 +171,21 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!--
+                            Versión de la API de Docker que usa Testcontainers en los tests contra
+                            PostgreSQL. Docker Engine 29 rechaza la que pide por defecto (1.32) y,
+                            sin esto, esos tests se saltean aunque Docker esté corriendo. La 1.44 la
+                            acepta Docker Engine 25 en adelante.
+                        -->
+                        <api.version>1.44</api.version>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
