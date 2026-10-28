@@ -70,7 +70,8 @@ public class AsignacionBatchService {
      * dependía de la zona del servidor (UTC en un contenedor).
      */
     @Scheduled(cron = "${donaciones.procesos.cron-matchmaking:0 30 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
-    @SchedulerLock(name = "matchmaking-nocturno", lockAtMostFor = "PT1H")
+    @SchedulerLock(name = "matchmaking-nocturno", lockAtMostFor = "PT1H",
+            lockAtLeastFor = "${donaciones.procesos.bloqueo-minimo:PT5M}")
     public void ejecutarMatchmakingNocturno() {
         LocalDate hoy = FechaHoraArgentina.hoy();
         int tamanio = propiedades.procesos().tamanioLote();

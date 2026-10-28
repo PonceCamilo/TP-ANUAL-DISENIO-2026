@@ -112,7 +112,8 @@ public class PlanificacionEntregasService {
      * demás salen igual.
      */
     @Scheduled(cron = "${donaciones.procesos.cron-despacho:0 0 4 * * *}", zone = FechaHoraArgentina.ZONA_ID)
-    @SchedulerLock(name = "despacho-nocturno", lockAtMostFor = "PT1H")
+    @SchedulerLock(name = "despacho-nocturno", lockAtMostFor = "PT1H",
+            lockAtLeastFor = "${donaciones.procesos.bloqueo-minimo:PT5M}")
     public void despacharPendientesDelDia() {
         int tamanio = propiedades.procesos().tamanioLote();
         int leidas = 0;

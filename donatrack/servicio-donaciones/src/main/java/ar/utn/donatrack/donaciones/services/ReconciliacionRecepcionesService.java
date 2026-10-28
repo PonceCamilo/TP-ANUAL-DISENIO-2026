@@ -30,7 +30,8 @@ public class ReconciliacionRecepcionesService {
     private final RepositorioRecepcionesEntidad recepciones;
 
     @Scheduled(cron = "${donaciones.procesos.cron-reconciliacion:0 0 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
-    @SchedulerLock(name = "reconciliacion-recepciones", lockAtMostFor = "PT30M")
+    @SchedulerLock(name = "reconciliacion-recepciones", lockAtMostFor = "PT30M",
+            lockAtLeastFor = "${donaciones.procesos.bloqueo-minimo:PT5M}")
     @Transactional
     public void reconciliar() {
         int filas = recepciones.reconciliar();

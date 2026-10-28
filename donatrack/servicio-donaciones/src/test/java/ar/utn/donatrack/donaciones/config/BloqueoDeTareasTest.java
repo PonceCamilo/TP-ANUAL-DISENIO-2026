@@ -84,6 +84,32 @@ class BloqueoDeTareasTest {
         // Sin donaciones en depósito, la corrida deja la bandeja vacía.
         matchmaking.ejecutarMatchmakingNocturno();
         assertThat(candidatos.obtenerTodos()).isEmpty();
+
+        // La corrida terminó, pero retiene el bloqueo su tiempo mínimo: una
+        // instancia que llega tarde esa misma noche no la repite.
+        UUID otraDonacion = UUID.randomUUID();
+        transaccion.executeWithoutResult(estado -> candidatos.reemplazarTodos(List.of(
+                RankingPrecalculado.de(otraDonacion, new ResultadoMatchmaking(Map.of()), LocalDateTime.now()))));
+        matchmaking.ejecutarMatchmakingNocturno();
+        assertThat(candidatos.obtenerTodos()).extracting(RankingPrecalculado::getIdDonacion).containsExactly(otraDonacion);
+    }
+
+    @Test
+    @DisplayName("Las tareas nocturnas retienen el bloqueo un tiempo mínimo después de terminar")
+    void tareasNocturnasConBloqueoMinimo() throws ClassNotFoundException {
+        ClassPathScanningCandidateComponentProvider componentes = new ClassPathScanningCandidateComponentProvider(false);
+        componentes.addIncludeFilter(new AnnotationTypeFilter(Component.class));
+        List<Method> nocturnas = new ArrayList<>();
+        for (var definicion : componentes.findCandidateComponents("ar.utn.donatrack.donaciones")) {
+            Class<?> clase = Class.forName(definicion.getBeanClassName());
+            Arrays.stream(clase.getDeclaredMethods())
+                    .filter(m -> m.isAnnotationPresent(Scheduled.class) && !m.getAnnotation(Scheduled.class).cron().isEmpty())
+                    .forEach(nocturnas::add);
+        }
+
+        assertThat(nocturnas).hasSize(5)
+                .allSatisfy(tarea -> assertThat(tarea.getAnnotation(SchedulerLock.class).lockAtLeastFor())
+                        .as(tarea.getDeclaringClass().getSimpleName() + "." + tarea.getName()).isNotEmpty());
     }
 
     @Test

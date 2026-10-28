@@ -24,6 +24,14 @@ import javax.sql.DataSource;
  * @Transactional): se libera recién después del commit, así otra instancia no
  * arranca antes de que los cambios estén confirmados. La hora es la de la base
  * (usingDbTime), no la de cada servidor.
+ *
+ * Las tareas nocturnas retienen además el bloqueo un tiempo mínimo
+ * (lockAtLeastFor, donaciones.procesos.bloqueo-minimo, 5 minutos): si una
+ * instancia arranca la tarea tarde (su planificador estaba ocupado), cuando la
+ * otra ya la terminó y soltó el bloqueo, la encontraría libre y la correría otra
+ * vez en la misma noche. Con el mínimo, la segunda la encuentra tomada. El relay
+ * de la bandeja de salida no lo necesita: corre cada pocos segundos y repetirlo
+ * no envía nada dos veces.
  */
 @Configuration
 @ConditionalOnProperty(name = "donaciones.procesos.bloqueo-distribuido", havingValue = "true", matchIfMissing = true)

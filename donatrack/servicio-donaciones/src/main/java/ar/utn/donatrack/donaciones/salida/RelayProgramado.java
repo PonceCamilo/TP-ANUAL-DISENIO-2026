@@ -32,7 +32,8 @@ public class RelayProgramado {
     }
 
     @Scheduled(cron = "${donaciones.salida.cron-limpieza:0 30 4 * * *}", zone = FechaHoraArgentina.ZONA_ID)
-    @SchedulerLock(name = "limpieza-bandeja-salida", lockAtMostFor = "PT10M")
+    @SchedulerLock(name = "limpieza-bandeja-salida", lockAtMostFor = "PT10M",
+            lockAtLeastFor = "${donaciones.procesos.bloqueo-minimo:PT5M}")
     public void borrarEnviadosAntiguos() {
         relay.borrarEnviadosAntiguos();
     }

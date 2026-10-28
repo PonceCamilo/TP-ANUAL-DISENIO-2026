@@ -38,7 +38,8 @@ public class InactividadDonantesService {
     private final DonacionesProperties propiedades;
 
     @Scheduled(cron = "${donaciones.inactividad.cron:0 0 0 * * *}", zone = FechaHoraArgentina.ZONA_ID)
-    @SchedulerLock(name = "aviso-inactividad", lockAtMostFor = "PT1H")
+    @SchedulerLock(name = "aviso-inactividad", lockAtMostFor = "PT1H",
+            lockAtLeastFor = "${donaciones.procesos.bloqueo-minimo:PT5M}")
     @Transactional
     public void notificarDonantesInactivos() {
         int dias = propiedades.inactividad().dias();
