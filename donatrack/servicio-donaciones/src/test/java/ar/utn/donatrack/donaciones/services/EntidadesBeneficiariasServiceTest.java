@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.mappers.MappersDePrueba;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDonacionesException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
@@ -15,7 +16,6 @@ import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampania
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
-import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
@@ -74,11 +74,11 @@ class EntidadesBeneficiariasServiceTest {
 
     @BeforeEach
     void prepararEscenario() {
-        PersonaDonanteMapper dependenciasMapper = new PersonaDonanteMapper();
-        EntidadBeneficiariaMapper mapper = new EntidadBeneficiariaMapper(dependenciasMapper);
+        EntidadBeneficiariaMapper mapper = MappersDePrueba.entidades();
         EntidadesBeneficiariasValidator validador = new EntidadesBeneficiariasValidator(repositorio);
 
-        servicio = new EntidadesBeneficiariasService(repositorio, donaciones, validador, mapper, dependenciasMapper);
+        servicio = new EntidadesBeneficiariasService(repositorio, donaciones, validador, mapper,
+                MappersDePrueba.DIRECCIONES, MappersDePrueba.CONTACTOS, MappersDePrueba.REPRESENTANTES);
 
         entidad = EntidadBeneficiaria.builder()
                 .id(UUID.randomUUID())

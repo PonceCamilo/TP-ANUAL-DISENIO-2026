@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.mappers.RepresentanteMapper;
+import ar.utn.donatrack.donaciones.mappers.DireccionMapper;
+import ar.utn.donatrack.donaciones.mappers.ContactoMapper;
 import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
@@ -21,9 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Transactional
 @Service
@@ -34,6 +35,9 @@ public class PersonaDonanteService {
   private final RepositorioDonaciones donaciones;
   private final PersonasValidator validador;
   private final PersonaDonanteMapper mapper;
+  private final DireccionMapper direcciones;
+  private final ContactoMapper contactos;
+  private final RepresentanteMapper representantes;
 
   public PersonaDonanteResponseDTO registrar(PersonaDonanteRequestDTO dto) {
     validador.validarEmail(dto.getEmail());
@@ -64,7 +68,7 @@ public class PersonaDonanteService {
 
   public void modificarContacto(UUID id, MedioDeContactoRequestDTO dto) {
     PersonaDonante persona = validador.validarYObtenerPersona(id);
-    MedioDeContacto medio = mapper.toContacto(dto);
+    MedioDeContacto medio = contactos.toContacto(dto);
     validador.validarMedioContacto(medio);
 
     // Todo sobre la MISMA instancia y un solo guardado: delegar el reemplazo en
@@ -79,7 +83,7 @@ public class PersonaDonanteService {
     // Una sola lectura: el validator devuelve la persona jurídica (404 si no
     // existe, 400 si es humana) y el representante se agrega en el modelo.
     PersonaJuridica juridica = validador.validarYObtenerJuridica(id);
-    juridica.agregarRepresentante(mapper.toRepresentante(dto));
+    juridica.agregarRepresentante(representantes.toRepresentante(dto));
     juridica.registrarInteraccion();
     repositorio.guardar(juridica);
   }
@@ -97,10 +101,10 @@ public class PersonaDonanteService {
     }
 
     if (dto.getDireccion() != null) {
-      persona.setDireccion(mapper.toDireccion(dto.getDireccion()));
+      persona.setDireccion(direcciones.toDireccion(dto.getDireccion()));
     }
     if (dto.getContactos() != null) {
-      persona.reemplazarContactos(dto.getContactos().stream().map(mapper::toContacto).toList());
+      persona.reemplazarContactos(contactos.toContactos(dto.getContactos()));
     }
     persona.registrarInteraccion();
 

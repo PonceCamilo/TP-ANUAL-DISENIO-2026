@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.mappers.RepresentanteMapper;
+import ar.utn.donatrack.donaciones.mappers.DireccionMapper;
+import ar.utn.donatrack.donaciones.mappers.ContactoMapper;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
@@ -11,7 +14,6 @@ import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDona
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
-import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
@@ -20,7 +22,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,7 +34,9 @@ public class EntidadesBeneficiariasService {
     private final RepositorioDonaciones donaciones;
     private final EntidadesBeneficiariasValidator validador;
     private final EntidadBeneficiariaMapper mapper;
-    private final PersonaDonanteMapper dependenciasMapper;
+    private final DireccionMapper direcciones;
+    private final ContactoMapper contactos;
+    private final RepresentanteMapper representantes;
 
     public EntidadBeneficiariaResponseDTO guardar(EntidadBeneficiariaRequestDTO dto) {
         EntidadBeneficiaria entidad = mapper.toModel(dto);
@@ -55,14 +58,13 @@ public class EntidadesBeneficiariasService {
         EntidadBeneficiaria entidadExistente = validador.validarYObtenerEntidad(id);
 
         entidadExistente.setRazonSocial(dtoNueva.getRazonSocial());
-        entidadExistente.setDireccion(dependenciasMapper.toDireccion(dtoNueva.getDireccion()));
+        entidadExistente.setDireccion(direcciones.toDireccion(dtoNueva.getDireccion()));
 
         if (dtoNueva.getContactos() != null) {
-            entidadExistente.reemplazarContactos(dtoNueva.getContactos().stream()
-                    .map(dependenciasMapper::toContacto).toList());
+            entidadExistente.reemplazarContactos(contactos.toContactos(dtoNueva.getContactos()));
         }
         if (dtoNueva.getRepresentantes() != null) {
-            entidadExistente.reemplazarRepresentantes(dependenciasMapper.toRepresentantes(dtoNueva.getRepresentantes()));
+            entidadExistente.reemplazarRepresentantes(representantes.toRepresentantes(dtoNueva.getRepresentantes()));
         }
 
         repositorio.guardar(entidadExistente);

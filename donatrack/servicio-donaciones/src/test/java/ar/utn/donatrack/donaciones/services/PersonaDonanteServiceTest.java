@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.mappers.MappersDePrueba;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
@@ -10,7 +11,6 @@ import ar.utn.donatrack.donaciones.dtos.request.DireccionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EmailRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.LocalidadRequestDTO;
-import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaHumanaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaJuridicaRequestDTO;
@@ -29,7 +29,6 @@ import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismo
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
-import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.donante.Genero;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
@@ -57,7 +56,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -98,7 +96,10 @@ class PersonaDonanteServiceTest {
                 repositorio,
                 donaciones,
                 new PersonasValidator(repositorio),
-                new PersonaDonanteMapper());
+                MappersDePrueba.personas(),
+                MappersDePrueba.DIRECCIONES,
+                MappersDePrueba.CONTACTOS,
+                MappersDePrueba.REPRESENTANTES);
     }
 
     // ── Constructores de DTOs de prueba ──────────────────────────────────────

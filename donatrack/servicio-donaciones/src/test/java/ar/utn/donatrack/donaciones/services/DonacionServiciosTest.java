@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.mappers.MappersDePrueba;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionDadaDeBaja;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionCambioDeEstado;
@@ -8,10 +9,6 @@ import java.util.Map;
 import java.util.LinkedHashMap;
 import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
-import ar.utn.donatrack.donaciones.config.DonacionesProperties;
-import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConVariosBienesException;
@@ -19,8 +16,6 @@ import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
-import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
-import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
@@ -35,10 +30,8 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatos
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
-import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
-import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
@@ -70,12 +63,8 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -116,9 +105,8 @@ class DonacionServiciosTest {
 
     @BeforeEach
     void prepararEscenario() {
-        PersonaDonanteMapper personaMapper = new PersonaDonanteMapper();
         DonacionMapper donacionMapper = new DonacionMapper();
-        EntidadBeneficiariaMapper entidadMapper = new EntidadBeneficiariaMapper(personaMapper);
+        EntidadBeneficiariaMapper entidadMapper = MappersDePrueba.entidades();
 
         comandos = new DonacionComandosService(
                 repositorio,

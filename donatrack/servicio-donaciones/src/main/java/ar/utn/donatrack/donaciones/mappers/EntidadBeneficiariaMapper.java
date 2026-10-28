@@ -21,17 +21,18 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class EntidadBeneficiariaMapper {
 
-    private final PersonaDonanteMapper dependenciasMapper;
+    private final DireccionMapper direcciones;
+    private final ContactoMapper contactos;
+    private final RepresentanteMapper representantes;
 
     // ── ENTIDAD ─────────────────────────────────────────────────────────────
 
     public EntidadBeneficiaria toModel(EntidadBeneficiariaRequestDTO dto) {
         return EntidadBeneficiaria.builder()
                 .razonSocial(dto.getRazonSocial())
-                .direccion(dependenciasMapper.toDireccion(dto.getDireccion()))
-                .contactos(dto.getContactos() != null ?
-                        dto.getContactos().stream().map(dependenciasMapper::toContacto).toList() : new ArrayList<>())
-                .representantes(dependenciasMapper.toRepresentantes(dto.getRepresentantes()))
+                .direccion(direcciones.toDireccion(dto.getDireccion()))
+                .contactos(contactos.toContactos(dto.getContactos()))
+                .representantes(representantes.toRepresentantes(dto.getRepresentantes()))
                 .campanias(new ArrayList<>())
                 .build();
     }
@@ -40,9 +41,9 @@ public class EntidadBeneficiariaMapper {
         return EntidadBeneficiariaResponseDTO.builder()
                 .id(entidad.getId())
                 .razonSocial(entidad.getRazonSocial())
-                .direccion(dependenciasMapper.toDireccionDTO(entidad.getDireccion()))
-                .contactos(dependenciasMapper.toContactosDTO(entidad.getContactos()))
-                .representantes(dependenciasMapper.toRepresentantesDTO(entidad.getRepresentantes()))
+                .direccion(direcciones.toDireccionDTO(entidad.getDireccion()))
+                .contactos(contactos.toContactosDTO(entidad.getContactos()))
+                .representantes(representantes.toRepresentantesDTO(entidad.getRepresentantes()))
                 .campanias(entidad.getCampanias() != null ?
                         entidad.getCampanias().stream().map(this::toCampaniaDTO).toList() : new ArrayList<>())
                 .build();
