@@ -15,11 +15,16 @@ import java.util.UUID;
 /** Acceso a la bandeja de salida (ver MensajeSaliente). */
 public interface MensajeSalienteJpaRepository extends JpaRepository<MensajeSaliente, UUID> {
 
-    /** Los pendientes cuyo próximo intento ya llegó, los más viejos primero. */
-    @Query("SELECT m FROM MensajeSaliente m WHERE m.estado = :estado AND m.proximoIntento <= :ahora "
-            + "ORDER BY m.creado")
-    List<MensajeSaliente> buscarListos(@Param("estado") EstadoMensaje estado, @Param("ahora") LocalDateTime ahora,
-                                       Pageable pagina);
+    /** Los destinos que tienen pendientes cuyo próximo intento ya llegó. */
+    @Query("SELECT DISTINCT m.destino FROM MensajeSaliente m WHERE m.estado = :estado AND m.proximoIntento <= :ahora "
+            + "ORDER BY m.destino")
+    List<String> buscarDestinosConListos(@Param("estado") EstadoMensaje estado, @Param("ahora") LocalDateTime ahora);
+
+    /** Los pendientes de un destino cuyo próximo intento ya llegó, los más viejos primero. */
+    @Query("SELECT m FROM MensajeSaliente m WHERE m.estado = :estado AND m.destino = :destino "
+            + "AND m.proximoIntento <= :ahora ORDER BY m.creado")
+    List<MensajeSaliente> buscarListos(@Param("estado") EstadoMensaje estado, @Param("destino") String destino,
+                                       @Param("ahora") LocalDateTime ahora, Pageable pagina);
 
     long countByEstado(EstadoMensaje estado);
 

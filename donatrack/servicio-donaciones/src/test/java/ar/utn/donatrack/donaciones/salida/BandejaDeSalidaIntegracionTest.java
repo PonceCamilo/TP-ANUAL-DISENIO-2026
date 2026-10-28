@@ -2,6 +2,7 @@ package ar.utn.donatrack.donaciones.salida;
 
 import java.time.Duration;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.interfaces.integracion.NotificacionTransport;
@@ -70,7 +71,7 @@ class BandejaDeSalidaIntegracionTest {
     private int enviarPendientes() {
         FechaHoraArgentina.usarReloj(Clock.offset(Clock.systemUTC(), Duration.ofSeconds(1)));
         try {
-            return relay.enviarPendientes();
+            return relay.enviarPendientes(Duration.ofSeconds(30));
         } finally {
             FechaHoraArgentina.restablecerReloj();
         }
@@ -133,21 +134,27 @@ class BandejaDeSalidaIntegracionTest {
     }
 
     @Test
-    @DisplayName("Si el servicio de notificaciones está caído, los avisos esperan su reintento")
+    @DisplayName("Si el servicio de notificaciones está caído, sus avisos esperan el reintento y los de Incentivos salen igual")
     void reintentaDespues() throws Exception {
         doThrow(new IllegalStateException("notificaciones caído")).when(transporte).enviar(any());
         donacionAsignada();
 
-        enviarPendientes();
+        assertThat(enviarPendientes()).isEqualTo(1);
 
-        assertThat(mensajes.findByDestino(Destinos.NOTIFICACION)).allSatisfy(m -> {
-            assertThat(m.getEstado()).isEqualTo(EstadoMensaje.PENDIENTE);
-            assertThat(m.getIntentos()).isEqualTo(1);
+        assertThat(mensajes.findByDestino(Destinos.INCENTIVOS_DONACION_REGISTRADA)).singleElement()
+                .satisfies(m -> assertThat(m.getEstado()).isEqualTo(EstadoMensaje.ENVIADO));
+        List<MensajeSaliente> avisos = mensajes.findByDestino(Destinos.NOTIFICACION);
+        assertThat(avisos).allSatisfy(m -> assertThat(m.getEstado()).isEqualTo(EstadoMensaje.PENDIENTE));
+        // El primero falló y espera su reintento; el segundo no se intentó porque su destino ya había fallado.
+        assertThat(avisos).filteredOn(m -> m.getIntentos() == 1).singleElement().satisfies(m -> {
             assertThat(m.getUltimoError()).isEqualTo("notificaciones caído");
             assertThat(m.getProximoIntento()).isAfter(m.getCreado());
         });
-        // Hasta su próximo intento, no se vuelven a tomar.
+        assertThat(avisos).filteredOn(m -> m.getIntentos() == 0).hasSize(1);
+
+        // En la corrida siguiente se intenta el segundo; el primero no se toma hasta su próximo intento.
         assertThat(enviarPendientes()).isZero();
+        assertThat(mensajes.findByDestino(Destinos.NOTIFICACION)).allSatisfy(m -> assertThat(m.getIntentos()).isEqualTo(1));
     }
 
     @Test

@@ -39,7 +39,7 @@ public class NotificacionTransportAmqp implements NotificacionTransport {
     private static final Logger log = LoggerFactory.getLogger(NotificacionTransportAmqp.class);
 
     /** Cuánto se espera la confirmación del broker antes de dar el envío por fallido. */
-    static final long TIEMPO_CONFIRMACION_MS = 5000;
+    public static final long TIEMPO_CONFIRMACION_MS = 5000;
 
     private final RabbitTemplate rabbitTemplate;
 

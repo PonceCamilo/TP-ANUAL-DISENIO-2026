@@ -80,8 +80,8 @@ public record DonacionesProperties(
 
     /**
      * Bandeja de salida (outbox): cada cuánto se envían los avisos pendientes,
-     * cuántos por vez, cuántas veces se reintenta uno antes de darlo por fallido y
-     * cuántos días se conservan los ya enviados.
+     * de a cuántos se leen los de cada destino, cuántas veces se reintenta uno
+     * antes de darlo por fallido y cuántos días se conservan los ya enviados.
      */
     public record Salida(
             @DefaultValue("true") boolean habilitada,
