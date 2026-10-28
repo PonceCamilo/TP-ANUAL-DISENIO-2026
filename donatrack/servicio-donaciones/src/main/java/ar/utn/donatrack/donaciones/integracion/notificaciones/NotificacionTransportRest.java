@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.integracion.notificaciones;
 
+import org.springframework.web.service.annotation.PostExchange;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.bind.annotation.RequestBody;
+import ar.utn.donatrack.donaciones.config.ClientesHttp;
 import ar.utn.donatrack.donaciones.interfaces.integracion.NotificacionTransport;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -22,18 +26,23 @@ import org.springframework.web.client.RestClient;
 @ConditionalOnProperty(name = "notificaciones.transporte", havingValue = "rest", matchIfMissing = true)
 public class NotificacionTransportRest implements NotificacionTransport {
 
-    private final RestClient restClient;
+    /** El endpoint del Servicio de Notificaciones. */
+    @HttpExchange
+    public interface Api {
 
-    public NotificacionTransportRest(@Value("${notificaciones.url:http://localhost:8084}") String baseUrl) {
-        this.restClient = RestClient.create(baseUrl);
+        @PostExchange("/notificaciones")
+        void enviar(@RequestBody SolicitudNotificacionMensaje solicitud);
+    }
+
+    private final Api api;
+
+    public NotificacionTransportRest(RestClient.Builder builder,
+                                     @Value("${notificaciones.url:http://localhost:8084}") String baseUrl) {
+        this.api = ClientesHttp.crear(builder, baseUrl, Api.class);
     }
 
     public void enviar(SolicitudNotificacionMensaje solicitud) {
-        restClient.post()
-                .uri("/notificaciones")
-                .body(solicitud)
-                .retrieve()
-                .toBodilessEntity();
+        api.enviar(solicitud);
     }
 
     public String nombre() {

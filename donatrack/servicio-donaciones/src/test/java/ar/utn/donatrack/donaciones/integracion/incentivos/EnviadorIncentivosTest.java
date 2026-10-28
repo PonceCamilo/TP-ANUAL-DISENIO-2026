@@ -6,6 +6,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -35,7 +36,7 @@ class EnviadorIncentivosTest {
             intercambio.close();
         });
         servidor.start();
-        enviador = new EnviadorIncentivos("http://localhost:" + servidor.getAddress().getPort());
+        enviador = new EnviadorIncentivos(RestClient.builder(), "http://localhost:" + servidor.getAddress().getPort());
     }
 
     @AfterEach
