@@ -10,8 +10,8 @@ import java.util.List;
 @SuperBuilder
 public class PersonaJuridicaResponseDTO extends PersonaDonanteResponseDTO {
 
-  private final String razonSocial;
-  private final String rubro;
-  private final TipoPersonaJuridica tipo;
-  private final List<RepresentanteResponseDTO> representantes;
+    private final String razonSocial;
+    private final String rubro;
+    private final TipoPersonaJuridica tipo;
+    private final List<RepresentanteResponseDTO> representantes;
 }

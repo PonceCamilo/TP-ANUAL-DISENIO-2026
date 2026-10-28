@@ -49,218 +49,218 @@ import java.util.UUID;
 @Tag(name = "Donaciones", description = "Registro, consulta, cambios de estado y asignación de donaciones a entidades beneficiarias")
 public class DonacionesController {
 
-  private final DonacionConsultasService consultas;
-  private final DonacionComandosService comandos;
-  private final SegmentadorDonacionesService segmentadorDonacionesService;
-  private final PlanificacionEntregasService planificacionEntregasService;
+    private final DonacionConsultasService consultas;
+    private final DonacionComandosService comandos;
+    private final SegmentadorDonacionesService segmentadorDonacionesService;
+    private final PlanificacionEntregasService planificacionEntregasService;
 
-  @Operation(
-      summary = "Listar donaciones (paginado)",
-      description = "Devuelve una página de donaciones, de la más nueva a la más vieja, con filtros opcionales "
-          + "por estado, persona donante, subcategoría, entidad beneficiaria y bienes vencidos. Las páginas empiezan en 0; "
-          + "el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
-          + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
-      responses = {
-          @ApiResponse(responseCode = "200", description = "Página de donaciones con el total de resultados"),
-          @ApiResponse(responseCode = "400", description = "Número o tamaño de página fuera de rango")
-      }
-  )
-  @GetMapping
-  public ResponseEntity<PaginaResponseDTO<DonacionResponseDTO>> obtenerDonaciones(
-      @Parameter(description = "Nombre del estado de la donación", example = "EN_DEPOSITO")
-      @RequestParam(required = false) String estado,
-      @Parameter(description = "ID de la persona donante")
-      @RequestParam(required = false) UUID idDonante,
-      @Parameter(description = "Subcategoría de los bienes", example = "Fideos secos")
-      @RequestParam(required = false) String subcategoria,
-      @Parameter(description = "ID de la entidad beneficiaria a la que fueron asignadas")
-      @RequestParam(required = false) UUID idEntidad,
-      @Parameter(description = "true: solo las que tienen algún perecedero ya vencido (para pasarlas a VENCIDA)")
-      @RequestParam(required = false) Boolean vencidas,
-      @Parameter(description = "Número de página, desde 0", example = "0")
-      @RequestParam(required = false) Integer page,
-      @Parameter(description = "Elementos por página (1 a 100)", example = "20")
-      @RequestParam(required = false) Integer size
-  ) {
-    FiltroDonaciones filtro = new FiltroDonaciones(estado, idDonante, subcategoria, idEntidad,
-        Boolean.TRUE.equals(vencidas));
-    return ResponseEntity.ok(consultas.obtenerDonaciones(filtro, SolicitudPagina.de(page, size)));
-  }
+    @Operation(
+            summary = "Listar donaciones (paginado)",
+            description = "Devuelve una página de donaciones, de la más nueva a la más vieja, con filtros opcionales "
+                    + "por estado, persona donante, subcategoría, entidad beneficiaria y bienes vencidos. Las páginas empiezan en 0; "
+                    + "el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
+                    + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Página de donaciones con el total de resultados"),
+                    @ApiResponse(responseCode = "400", description = "Número o tamaño de página fuera de rango")
+            }
+    )
+    @GetMapping
+    public ResponseEntity<PaginaResponseDTO<DonacionResponseDTO>> obtenerDonaciones(
+            @Parameter(description = "Nombre del estado de la donación", example = "EN_DEPOSITO")
+            @RequestParam(required = false) String estado,
+            @Parameter(description = "ID de la persona donante")
+            @RequestParam(required = false) UUID idDonante,
+            @Parameter(description = "Subcategoría de los bienes", example = "Fideos secos")
+            @RequestParam(required = false) String subcategoria,
+            @Parameter(description = "ID de la entidad beneficiaria a la que fueron asignadas")
+            @RequestParam(required = false) UUID idEntidad,
+            @Parameter(description = "true: solo las que tienen algún perecedero ya vencido (para pasarlas a VENCIDA)")
+            @RequestParam(required = false) Boolean vencidas,
+            @Parameter(description = "Número de página, desde 0", example = "0")
+            @RequestParam(required = false) Integer page,
+            @Parameter(description = "Elementos por página (1 a 100)", example = "20")
+            @RequestParam(required = false) Integer size
+    ) {
+        FiltroDonaciones filtro = new FiltroDonaciones(estado, idDonante, subcategoria, idEntidad,
+                Boolean.TRUE.equals(vencidas));
+        return ResponseEntity.ok(consultas.obtenerDonaciones(filtro, SolicitudPagina.de(page, size)));
+    }
 
-  @Operation(
-      summary = "Obtener una donación por ID",
-      description = "Devuelve el detalle completo de una donación, incluyendo su historial de cambios de estado.",
-      responses = {
-          @ApiResponse(responseCode = "200", description = "Donación encontrada",
-              content = @Content(schema = @Schema(implementation = DonacionResponseDTO.class))),
-          @ApiResponse(responseCode = "404", description = "Donación no encontrada")
-      }
-  )
-  @GetMapping("/{id}")
-  public ResponseEntity<DonacionResponseDTO> obtenerDonacion(
-      @Parameter(description = "ID de la donación") @PathVariable UUID id
-  ) {
-    return ResponseEntity.ok(consultas.obtenerPorId(id));
-  }
+    @Operation(
+            summary = "Obtener una donación por ID",
+            description = "Devuelve el detalle completo de una donación, incluyendo su historial de cambios de estado.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Donación encontrada",
+                            content = @Content(schema = @Schema(implementation = DonacionResponseDTO.class))),
+                    @ApiResponse(responseCode = "404", description = "Donación no encontrada")
+            }
+    )
+    @GetMapping("/{id}")
+    public ResponseEntity<DonacionResponseDTO> obtenerDonacion(
+            @Parameter(description = "ID de la donación") @PathVariable UUID id
+    ) {
+        return ResponseEntity.ok(consultas.obtenerPorId(id));
+    }
 
-  @Operation(
-      summary = "Registrar una donación",
-      description = "Recibe la carga de bienes de un donante y la segmenta automáticamente en una o más donaciones agrupadas por subcategoría.",
-      responses = {
-          @ApiResponse(responseCode = "201", description = "Donaciones segmentadas y creadas",
-              content = @Content(array = @ArraySchema(schema = @Schema(implementation = DonacionResponseDTO.class)))),
-          @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-          @ApiResponse(responseCode = "404", description = "Persona donante no encontrada"),
-          @ApiResponse(responseCode = "422", description = "La persona donante está BLOQUEADA")
-      }
-  )
-  @PostMapping
-  public ResponseEntity<List<DonacionResponseDTO>> registrar(
-      @RequestBody @Valid DonacionRequestDTO dto
-  ) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(segmentadorDonacionesService.registrar(dto));
-  }
+    @Operation(
+            summary = "Registrar una donación",
+            description = "Recibe la carga de bienes de un donante y la segmenta automáticamente en una o más donaciones agrupadas por subcategoría.",
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Donaciones segmentadas y creadas",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = DonacionResponseDTO.class)))),
+                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                    @ApiResponse(responseCode = "404", description = "Persona donante no encontrada"),
+                    @ApiResponse(responseCode = "422", description = "La persona donante está BLOQUEADA")
+            }
+    )
+    @PostMapping
+    public ResponseEntity<List<DonacionResponseDTO>> registrar(
+            @RequestBody @Valid DonacionRequestDTO dto
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(segmentadorDonacionesService.registrar(dto));
+    }
 
-  @Operation(
-      summary = "Cambiar el estado de una donación",
-      description = "Transiciona la donación al estado indicado, validando que la transición sea legal según el estado actual. Registra el cambio en el historial con el estado previo y el nombre de la transición.",
-      responses = {
-          @ApiResponse(responseCode = "204", description = "Estado actualizado"),
-          @ApiResponse(responseCode = "400", description = "Falta justificación para la transición"),
-          @ApiResponse(responseCode = "404", description = "Donación no encontrada"),
-          @ApiResponse(responseCode = "422", description = "Transición de estado no permitida")
-      }
-  )
-  @PatchMapping("/{id}/estado")
-  public ResponseEntity<Void> cambiarEstadoDonacion(
-      @Parameter(description = "ID de la donación") @PathVariable UUID id,
-      @RequestBody @Valid CambioEstadoRequestDTO dto
-  ) {
-    comandos.cambiarEstado(id, dto);
-    return ResponseEntity.noContent().build();
-  }
+    @Operation(
+            summary = "Cambiar el estado de una donación",
+            description = "Transiciona la donación al estado indicado, validando que la transición sea legal según el estado actual. Registra el cambio en el historial con el estado previo y el nombre de la transición.",
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Estado actualizado"),
+                    @ApiResponse(responseCode = "400", description = "Falta justificación para la transición"),
+                    @ApiResponse(responseCode = "404", description = "Donación no encontrada"),
+                    @ApiResponse(responseCode = "422", description = "Transición de estado no permitida")
+            }
+    )
+    @PatchMapping("/{id}/estado")
+    public ResponseEntity<Void> cambiarEstadoDonacion(
+            @Parameter(description = "ID de la donación") @PathVariable UUID id,
+            @RequestBody @Valid CambioEstadoRequestDTO dto
+    ) {
+        comandos.cambiarEstado(id, dto);
+        return ResponseEntity.noContent().build();
+    }
 
-  @Operation(
-      summary = "Modificar un bien de una donación",
-      description = "Reemplaza el bien indicado por su versión corregida, mientras la donación está EN_DEPOSITO. "
-          + "El bien tiene que seguir siendo de la subcategoría de la donación y, si hay otros bienes, del mismo tipo "
-          + "y con el mismo vencimiento o estado. El bien reemplazado recibe un id nuevo.",
-      responses = {
-          @ApiResponse(responseCode = "200", description = "Bien actualizado; devuelve la donación",
-              content = @Content(schema = @Schema(implementation = DonacionResponseDTO.class))),
-          @ApiResponse(responseCode = "400", description = "Datos del bien inválidos"),
-          @ApiResponse(responseCode = "404", description = "Donación o bien no encontrados"),
-          @ApiResponse(responseCode = "422", description = "La donación ya salió del depósito o el bien no encaja en ella")
-      }
-  )
-  @PutMapping("/{id}/bienes/{idBien}")
-  public ResponseEntity<DonacionResponseDTO> modificarBien(
-      @Parameter(description = "ID de la donación") @PathVariable UUID id,
-      @Parameter(description = "ID del bien") @PathVariable UUID idBien,
-      @RequestBody @Valid BienRequestDTO dto
-  ) {
-    return ResponseEntity.ok(comandos.modificarBien(id, idBien, dto));
-  }
+    @Operation(
+            summary = "Modificar un bien de una donación",
+            description = "Reemplaza el bien indicado por su versión corregida, mientras la donación está EN_DEPOSITO. "
+                    + "El bien tiene que seguir siendo de la subcategoría de la donación y, si hay otros bienes, del mismo tipo "
+                    + "y con el mismo vencimiento o estado. El bien reemplazado recibe un id nuevo.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Bien actualizado; devuelve la donación",
+                            content = @Content(schema = @Schema(implementation = DonacionResponseDTO.class))),
+                    @ApiResponse(responseCode = "400", description = "Datos del bien inválidos"),
+                    @ApiResponse(responseCode = "404", description = "Donación o bien no encontrados"),
+                    @ApiResponse(responseCode = "422", description = "La donación ya salió del depósito o el bien no encaja en ella")
+            }
+    )
+    @PutMapping("/{id}/bienes/{idBien}")
+    public ResponseEntity<DonacionResponseDTO> modificarBien(
+            @Parameter(description = "ID de la donación") @PathVariable UUID id,
+            @Parameter(description = "ID del bien") @PathVariable UUID idBien,
+            @RequestBody @Valid BienRequestDTO dto
+    ) {
+        return ResponseEntity.ok(comandos.modificarBien(id, idBien, dto));
+    }
 
-  @Operation(
-      summary = "Modificar el bien de una donación de un solo bien",
-      description = "Endpoint anterior al que modifica por id: solo sirve si la donación tiene un único bien.",
-      responses = {
-          @ApiResponse(responseCode = "204", description = "Bien actualizado"),
-          @ApiResponse(responseCode = "404", description = "Donación no encontrada"),
-          @ApiResponse(responseCode = "409", description = "La donación no tiene bienes o tiene más de uno"),
-          @ApiResponse(responseCode = "422", description = "La donación ya salió del depósito o el bien no encaja en ella")
-      }
-  )
-  @PatchMapping("/{id}/bien")
-  public ResponseEntity<Void> modificarBienDonacion(
-      @Parameter(description = "ID de la donación") @PathVariable UUID id,
-      @RequestBody @Valid BienRequestDTO dto
-  ) {
-    comandos.modificarUnicoBien(id, dto);
-    return ResponseEntity.noContent().build();
-  }
+    @Operation(
+            summary = "Modificar el bien de una donación de un solo bien",
+            description = "Endpoint anterior al que modifica por id: solo sirve si la donación tiene un único bien.",
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Bien actualizado"),
+                    @ApiResponse(responseCode = "404", description = "Donación no encontrada"),
+                    @ApiResponse(responseCode = "409", description = "La donación no tiene bienes o tiene más de uno"),
+                    @ApiResponse(responseCode = "422", description = "La donación ya salió del depósito o el bien no encaja en ella")
+            }
+    )
+    @PatchMapping("/{id}/bien")
+    public ResponseEntity<Void> modificarBienDonacion(
+            @Parameter(description = "ID de la donación") @PathVariable UUID id,
+            @RequestBody @Valid BienRequestDTO dto
+    ) {
+        comandos.modificarUnicoBien(id, dto);
+        return ResponseEntity.noContent().build();
+    }
 
-  @Operation(
-      summary = "Listar las donaciones pendientes de confirmar destino",
-      description = "Devuelve el resultado del matchmaking nocturno: las donaciones que siguen en depósito junto con las entidades beneficiarias que les recomendaron los algoritmos. Es la bandeja desde la que una persona administradora confirma el destino final.",
-      responses = {
-          @ApiResponse(responseCode = "200", description = "Candidatas pendientes de confirmación",
-              content = @Content(array = @ArraySchema(schema = @Schema(implementation = CandidatosPendientesResponseDTO.class))))
-      }
-  )
-  @GetMapping("/candidatos")
-  public ResponseEntity<List<CandidatosPendientesResponseDTO>> obtenerCandidatosPendientes() {
-    return ResponseEntity.ok(consultas.obtenerCandidatosPendientes());
-  }
+    @Operation(
+            summary = "Listar las donaciones pendientes de confirmar destino",
+            description = "Devuelve el resultado del matchmaking nocturno: las donaciones que siguen en depósito junto con las entidades beneficiarias que les recomendaron los algoritmos. Es la bandeja desde la que una persona administradora confirma el destino final.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Candidatas pendientes de confirmación",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = CandidatosPendientesResponseDTO.class))))
+            }
+    )
+    @GetMapping("/candidatos")
+    public ResponseEntity<List<CandidatosPendientesResponseDTO>> obtenerCandidatosPendientes() {
+        return ResponseEntity.ok(consultas.obtenerCandidatosPendientes());
+    }
 
-  @Operation(
-      summary = "Obtener ranking de entidades candidatas",
-      description = "Ejecuta los algoritmos de compatibilidad semántica y prioridad a sub-atendidos, devolviendo el ranking de entidades beneficiarias candidatas a recibir la donación.",
-      responses = {
-          @ApiResponse(responseCode = "200", description = "Rankings calculados",
-              content = @Content(schema = @Schema(implementation = CandidatosAsignacionResponseDTO.class))),
-          @ApiResponse(responseCode = "404", description = "Donación no encontrada")
-      }
-  )
-  @GetMapping("/{id}/candidatos")
-  public ResponseEntity<CandidatosAsignacionResponseDTO> obtenerCandidatos(
-      @Parameter(description = "ID de la donación") @PathVariable UUID id
-  ) {
-    return ResponseEntity.ok(consultas.obtenerCandidatos(id));
-  }
+    @Operation(
+            summary = "Obtener ranking de entidades candidatas",
+            description = "Ejecuta los algoritmos de compatibilidad semántica y prioridad a sub-atendidos, devolviendo el ranking de entidades beneficiarias candidatas a recibir la donación.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Rankings calculados",
+                            content = @Content(schema = @Schema(implementation = CandidatosAsignacionResponseDTO.class))),
+                    @ApiResponse(responseCode = "404", description = "Donación no encontrada")
+            }
+    )
+    @GetMapping("/{id}/candidatos")
+    public ResponseEntity<CandidatosAsignacionResponseDTO> obtenerCandidatos(
+            @Parameter(description = "ID de la donación") @PathVariable UUID id
+    ) {
+        return ResponseEntity.ok(consultas.obtenerCandidatos(id));
+    }
 
-  @Operation(
-      summary = "Asignar la donación a una entidad beneficiaria",
-      description = "Confirma la entidad beneficiaria destino elegida (a partir del ranking de candidatos) y transiciona la donación a ASIGNACION_REALIZADA.",
-      responses = {
-          @ApiResponse(responseCode = "204", description = "Donación asignada"),
-          @ApiResponse(responseCode = "404", description = "Donación o entidad beneficiaria no encontrada")
-      }
-  )
-  @PatchMapping("/{id}/asignar")
-  public ResponseEntity<Void> asignarEntidad(
-      @Parameter(description = "ID de la donación") @PathVariable UUID id,
-      @RequestBody @Valid AsignacionRequestDTO dto
-  ) {
-    comandos.asignar(id, dto);
-    return ResponseEntity.noContent().build();
-  }
+    @Operation(
+            summary = "Asignar la donación a una entidad beneficiaria",
+            description = "Confirma la entidad beneficiaria destino elegida (a partir del ranking de candidatos) y transiciona la donación a ASIGNACION_REALIZADA.",
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Donación asignada"),
+                    @ApiResponse(responseCode = "404", description = "Donación o entidad beneficiaria no encontrada")
+            }
+    )
+    @PatchMapping("/{id}/asignar")
+    public ResponseEntity<Void> asignarEntidad(
+            @Parameter(description = "ID de la donación") @PathVariable UUID id,
+            @RequestBody @Valid AsignacionRequestDTO dto
+    ) {
+        comandos.asignar(id, dto);
+        return ResponseEntity.noContent().build();
+    }
 
-  @Operation(
-      summary = "Despachar donaciones a logística",
-      description = "Envía al broker de logística un lote de donaciones en ASIGNACION_REALIZADA. El broker elige el proveedor (o se puede forzar uno) y devuelve el id de seguimiento de cada envío. Las donaciones aceptadas pasan a LISTA_PARA_ENTREGAR.",
-      responses = {
-          @ApiResponse(responseCode = "201", description = "Donaciones despachadas",
-              content = @Content(schema = @Schema(implementation = EnvioLogisticaResponseDTO.class))),
-          @ApiResponse(responseCode = "400", description = "Alguna donación no existe, no está en ASIGNACION_REALIZADA o su entidad no tiene dirección"),
-          @ApiResponse(responseCode = "404", description = "Donación no encontrada"),
-          @ApiResponse(responseCode = "503", description = "Ningún proveedor de logística disponible; reintentar más tarde")
-      }
-  )
-  @PostMapping("/envios")
-  public ResponseEntity<EnvioLogisticaResponseDTO> despacharALogistica(
-      @RequestBody @Valid EnvioLogisticaRequestDTO dto
-  ) {
-    EnvioLogisticaResponseDTO resultado =
-        planificacionEntregasService.despachar(dto.getIdsDonaciones(), dto.getProveedor());
-    return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
-  }
+    @Operation(
+            summary = "Despachar donaciones a logística",
+            description = "Envía al broker de logística un lote de donaciones en ASIGNACION_REALIZADA. El broker elige el proveedor (o se puede forzar uno) y devuelve el id de seguimiento de cada envío. Las donaciones aceptadas pasan a LISTA_PARA_ENTREGAR.",
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Donaciones despachadas",
+                            content = @Content(schema = @Schema(implementation = EnvioLogisticaResponseDTO.class))),
+                    @ApiResponse(responseCode = "400", description = "Alguna donación no existe, no está en ASIGNACION_REALIZADA o su entidad no tiene dirección"),
+                    @ApiResponse(responseCode = "404", description = "Donación no encontrada"),
+                    @ApiResponse(responseCode = "503", description = "Ningún proveedor de logística disponible; reintentar más tarde")
+            }
+    )
+    @PostMapping("/envios")
+    public ResponseEntity<EnvioLogisticaResponseDTO> despacharALogistica(
+            @RequestBody @Valid EnvioLogisticaRequestDTO dto
+    ) {
+        EnvioLogisticaResponseDTO resultado =
+                planificacionEntregasService.despachar(dto.getIdsDonaciones(), dto.getProveedor());
+        return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
+    }
 
-  @Operation(
-      summary = "Dar de baja una donación",
-      description = "Baja lógica: la donación queda guardada con su historial pero deja de aparecer en las "
-          + "consultas. Si estaba asignada, deja de contar como recepción de la entidad.",
-      responses = {
-          @ApiResponse(responseCode = "204", description = "Donación dada de baja"),
-          @ApiResponse(responseCode = "404", description = "Donación no encontrada")
-      }
-  )
-  @DeleteMapping("/{id}")
-  public ResponseEntity<Void> eliminarDonacion(
-      @Parameter(description = "ID de la donación") @PathVariable UUID id
-  ) {
-    comandos.eliminar(id);
-    return ResponseEntity.noContent().build();
-  }
+    @Operation(
+            summary = "Dar de baja una donación",
+            description = "Baja lógica: la donación queda guardada con su historial pero deja de aparecer en las "
+                    + "consultas. Si estaba asignada, deja de contar como recepción de la entidad.",
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Donación dada de baja"),
+                    @ApiResponse(responseCode = "404", description = "Donación no encontrada")
+            }
+    )
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarDonacion(
+            @Parameter(description = "ID de la donación") @PathVariable UUID id
+    ) {
+        comandos.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
 }

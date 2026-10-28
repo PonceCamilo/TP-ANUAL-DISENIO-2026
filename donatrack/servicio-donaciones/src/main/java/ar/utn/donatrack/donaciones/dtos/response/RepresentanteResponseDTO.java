@@ -10,8 +10,8 @@ import java.util.List;
 @Builder
 public class RepresentanteResponseDTO {
 
-  private final String nombre;
-  private final String apellido;
-  private final String email;
-  private final List<MedioDeContactoResponseDTO> contactos;
+    private final String nombre;
+    private final String apellido;
+    private final String email;
+    private final List<MedioDeContactoResponseDTO> contactos;
 }

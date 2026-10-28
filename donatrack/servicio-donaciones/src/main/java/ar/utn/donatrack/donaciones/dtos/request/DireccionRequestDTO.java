@@ -17,17 +17,17 @@ import lombok.Setter;
 @Builder
 public class DireccionRequestDTO {
 
-  @NotBlank
-  private String calle;
+    @NotBlank
+    private String calle;
 
-  @NotNull(message = "El número de calle es obligatorio")
-  @Positive
-  private Integer numero;
+    @NotNull(message = "El número de calle es obligatorio")
+    @Positive
+    private Integer numero;
 
-  @NotBlank
-  private String codigoPostal;
+    @NotBlank
+    private String codigoPostal;
 
-  @Valid
-  @NotNull
-  private LocalidadRequestDTO localidad;
+    @Valid
+    @NotNull
+    private LocalidadRequestDTO localidad;
 }

@@ -72,7 +72,7 @@ public class EntidadesBeneficiariasService {
         repositorio.guardar(entidadExistente);
     }
 
-    // NUEVO REQUERIDO: Eliminar entidad
+    /** Borra la entidad con sus campañas y necesidades, si no tiene donaciones asignadas. */
     public void eliminarEntidad(UUID id) {
         EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(id);
         // Sin FK entre donacion y entidad_beneficiaria: la integridad la cuida el
@@ -83,7 +83,7 @@ public class EntidadesBeneficiariasService {
         repositorio.eliminar(entidad);
     }
 
-    // NUEVO REQUERIDO: Crear Campaña dentro de Entidad
+    /** Agrega una campaña a la entidad; sus fechas tienen que ser coherentes. */
     public CampaniaResponseDTO agregarCampaniaAEntidad(UUID idEntidad, CampaniaRequestDTO dto) {
         EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(idEntidad);
         validador.validarFechasCampania(dto.getFechaInicio(), dto.getFechaFin());
@@ -95,7 +95,7 @@ public class EntidadesBeneficiariasService {
         return mapper.toCampaniaDTO(nuevaCampania);
     }
 
-    // ACTUALIZADO CON DTO
+    /** Agrega una necesidad a una campaña de la entidad; el DTO decide si es extraordinaria o recurrente. */
     public NecesidadResponseDTO agregarNecesidadACampania(UUID entidadId, UUID campaniaId, NecesidadRequestDTO dto) {
         EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
 

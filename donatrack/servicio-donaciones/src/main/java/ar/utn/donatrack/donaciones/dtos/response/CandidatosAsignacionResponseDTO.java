@@ -17,7 +17,7 @@ import java.util.UUID;
 @Getter
 @Builder
 public class CandidatosAsignacionResponseDTO {
-  private final UUID idDonacion;
-  private final List<RankingAlgoritmoResponseDTO> rankings;
-  private final List<EntidadBeneficiariaResponseDTO> coincidencias;
+    private final UUID idDonacion;
+    private final List<RankingAlgoritmoResponseDTO> rankings;
+    private final List<EntidadBeneficiariaResponseDTO> coincidencias;
 }

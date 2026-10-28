@@ -8,8 +8,8 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 public class PersonaHumanaResponseDTO extends PersonaDonanteResponseDTO {
 
-  private final String nombre;
-  private final String apellido;
-  private final Integer edad;
-  private final Genero genero;
+    private final String nombre;
+    private final String apellido;
+    private final Integer edad;
+    private final Genero genero;
 }

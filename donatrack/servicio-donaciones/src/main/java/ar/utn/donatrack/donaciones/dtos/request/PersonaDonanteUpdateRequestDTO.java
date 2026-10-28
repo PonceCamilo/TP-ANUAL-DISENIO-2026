@@ -22,21 +22,21 @@ import java.util.List;
 @NoArgsConstructor
 public class PersonaDonanteUpdateRequestDTO {
 
-  // Comunes
-  @Valid
-  private DireccionRequestDTO direccion;
+    // Comunes
+    @Valid
+    private DireccionRequestDTO direccion;
 
-  @Valid
-  private List<MedioDeContactoRequestDTO> contactos;
+    @Valid
+    private List<MedioDeContactoRequestDTO> contactos;
 
-  // Persona humana
-  private String nombre;
-  private String apellido;
-  private LocalDate fechaNacimiento;
-  private Genero genero;
+    // Persona humana
+    private String nombre;
+    private String apellido;
+    private LocalDate fechaNacimiento;
+    private Genero genero;
 
-  // Persona jurídica
-  private String razonSocial;
-  private String rubro;
-  private TipoPersonaJuridica tipoOrganizacion;
+    // Persona jurídica
+    private String razonSocial;
+    private String rubro;
+    private TipoPersonaJuridica tipoOrganizacion;
 }

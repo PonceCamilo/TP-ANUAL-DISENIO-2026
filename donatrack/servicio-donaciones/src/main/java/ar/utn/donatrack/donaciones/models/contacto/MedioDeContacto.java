@@ -9,6 +9,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -38,33 +39,33 @@ import java.util.UUID;
 @NoArgsConstructor
 public abstract class MedioDeContacto {
 
-  /** Id técnico: en el modelo original el contacto no tenía identidad propia. */
-  @Id
-  @Column(name = "id")
-  @lombok.Builder.Default
-  protected UUID id = UUID.randomUUID();
+    /** Id técnico: en el modelo original el contacto no tenía identidad propia. */
+    @Id
+    @Column(name = "id")
+    @Builder.Default
+    protected UUID id = UUID.randomUUID();
 
-  @Column(name = "valor")
-  protected String valor;
+    @Column(name = "valor")
+    protected String valor;
 
-  /**
-   * Si es el canal que la persona eligió para recibir notificaciones. Antes el
-   * predeterminado era una instancia aparte, fuera de la lista de contactos, y
-   * quedaba desactualizado cuando se cambiaba el contacto de ese tipo.
-   */
-  @Column(name = "predeterminado", nullable = false)
-  @ColumnDefault("false")
-  @lombok.Builder.Default
-  protected boolean predeterminado = false;
+    /**
+     * Si es el canal que la persona eligió para recibir notificaciones. Antes el
+     * predeterminado era una instancia aparte, fuera de la lista de contactos, y
+     * quedaba desactualizado cuando se cambiaba el contacto de ese tipo.
+     */
+    @Column(name = "predeterminado", nullable = false)
+    @ColumnDefault("false")
+    @Builder.Default
+    protected boolean predeterminado = false;
 
-  /** Por qué canal se le escribe a este contacto; lo responde cada subclase. */
-  public abstract Canal canal();
+    /** Por qué canal se le escribe a este contacto; lo responde cada subclase. */
+    public abstract Canal canal();
 
-  public void marcarComoPredeterminado(boolean valor) {
-    this.predeterminado = valor;
-  }
+    public void marcarComoPredeterminado(boolean valor) {
+        this.predeterminado = valor;
+    }
 
-  public boolean esDelMismoTipoQue(MedioDeContacto otro) {
-    return getClass().equals(otro.getClass());
-  }
+    public boolean esDelMismoTipoQue(MedioDeContacto otro) {
+        return getClass().equals(otro.getClass());
+    }
 }

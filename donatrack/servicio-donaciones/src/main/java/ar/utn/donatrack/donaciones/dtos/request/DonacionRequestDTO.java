@@ -23,13 +23,13 @@ import java.util.UUID;
 @AllArgsConstructor
 public class DonacionRequestDTO {
 
-  @NotNull
-  private UUID idDonante;
+    @NotNull
+    private UUID idDonante;
 
-  @NotBlank
-  private String descripcion;
+    @NotBlank
+    private String descripcion;
 
-  @NotEmpty
-  @Valid
-  private List<BienRequestDTO> bienes;
+    @NotEmpty
+    @Valid
+    private List<BienRequestDTO> bienes;
 }

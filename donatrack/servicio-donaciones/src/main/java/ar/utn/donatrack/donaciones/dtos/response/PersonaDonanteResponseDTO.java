@@ -10,19 +10,19 @@ import java.util.UUID;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "tipo")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = PersonaHumanaResponseDTO.class,  name = "HUMANA"),
-    @JsonSubTypes.Type(value = PersonaJuridicaResponseDTO.class, name = "JURIDICA")
+        @JsonSubTypes.Type(value = PersonaHumanaResponseDTO.class,  name = "HUMANA"),
+        @JsonSubTypes.Type(value = PersonaJuridicaResponseDTO.class, name = "JURIDICA")
 })
 @Getter
 @SuperBuilder
 public abstract class PersonaDonanteResponseDTO {
 
-  private final UUID id;
-  private final String tipoDocumento;
-  private final String numeroDocumento;
-  private final String email;
-  private final String estado;
-  private final MedioDeContactoResponseDTO medioContactoPredeterminado;
-  private final List<MedioDeContactoResponseDTO> contactos;
-  private final DireccionResponseDTO direccion;
+    private final UUID id;
+    private final String tipoDocumento;
+    private final String numeroDocumento;
+    private final String email;
+    private final String estado;
+    private final MedioDeContactoResponseDTO medioContactoPredeterminado;
+    private final List<MedioDeContactoResponseDTO> contactos;
+    private final DireccionResponseDTO direccion;
 }

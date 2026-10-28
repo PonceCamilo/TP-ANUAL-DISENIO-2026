@@ -27,46 +27,46 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class SegmentadorDonacionesService {
 
-  private final RepositorioDonaciones donacionesRepository;
-  private final RepositorioPersonasDonantes donanteRepository;
-  private final ApplicationEventPublisher eventos;
-  private final PersonasValidator personasValidator;
-  private final DonacionMapper mapper;
+    private final RepositorioDonaciones donacionesRepository;
+    private final RepositorioPersonasDonantes donanteRepository;
+    private final ApplicationEventPublisher eventos;
+    private final PersonasValidator personasValidator;
+    private final DonacionMapper mapper;
 
-  /**
-   * Registra una carga de donación: valida a la persona donante, segmenta los
-   * bienes en donaciones, las guarda y avisa a incentivos. Antes este flujo
-   * estaba repartido en el controller.
-   *
-   * Una persona donante BLOQUEADA no puede registrar donaciones (422).
-   */
-  public List<DonacionResponseDTO> registrar(DonacionRequestDTO dto) {
-    PersonaDonante donante = personasValidator.validarYObtenerPersona(dto.getIdDonante());
-    if (donante.estaBloqueada()) {
-      throw new DonanteBloqueadoException(donante.getId());
+    /**
+     * Registra una carga de donación: valida a la persona donante, segmenta los
+     * bienes en donaciones, las guarda y avisa a incentivos. Antes este flujo
+     * estaba repartido en el controller.
+     *
+     * Una persona donante BLOQUEADA no puede registrar donaciones (422).
+     */
+    public List<DonacionResponseDTO> registrar(DonacionRequestDTO dto) {
+        PersonaDonante donante = personasValidator.validarYObtenerPersona(dto.getIdDonante());
+        if (donante.estaBloqueada()) {
+            throw new DonanteBloqueadoException(donante.getId());
+        }
+        CargaDonacion carga = mapper.toCargaDonacion(dto);
+        List<Donacion> donaciones = carga.segmentar();
+        donacionesRepository.cargarDonaciones(donaciones);
+
+        // Donar es interactuar con la plataforma: reinicia el plazo de inactividad.
+        donante.registrarInteraccion();
+        donanteRepository.guardar(donante);
+
+        // El aviso a incentivos sale después de confirmar (AvisosOyente).
+        eventos.publishEvent(new DonacionesRegistradas(donante.getId(), carga.getBienes().size(),
+                categorias(carga.getBienes()), FechaHoraArgentina.ahora()));
+
+        return mapper.toDTOList(donaciones);
     }
-    CargaDonacion carga = mapper.toCargaDonacion(dto);
-    List<Donacion> donaciones = carga.segmentar();
-    donacionesRepository.cargarDonaciones(donaciones);
 
-    // Donar es interactuar con la plataforma: reinicia el plazo de inactividad.
-    donante.registrarInteraccion();
-    donanteRepository.guardar(donante);
-
-    // El aviso a incentivos sale después de confirmar (AvisosOyente).
-    eventos.publishEvent(new DonacionesRegistradas(donante.getId(), carga.getBienes().size(),
-        categorias(carga.getBienes()), FechaHoraArgentina.ahora()));
-
-    return mapper.toDTOList(donaciones);
-  }
-
-  private static List<String> categorias(List<Bien> bienes) {
-    return bienes.stream()
-        .map(Bien::getSubcategoria)
-        .filter(Objects::nonNull)
-        .map(Subcategoria::getTipo)
-        .filter(Objects::nonNull)
-        .distinct()
-        .toList();
-  }
+    private static List<String> categorias(List<Bien> bienes) {
+        return bienes.stream()
+                .map(Bien::getSubcategoria)
+                .filter(Objects::nonNull)
+                .map(Subcategoria::getTipo)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
 }

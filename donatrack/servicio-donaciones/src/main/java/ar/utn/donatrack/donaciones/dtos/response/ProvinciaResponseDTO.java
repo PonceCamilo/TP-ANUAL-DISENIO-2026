@@ -7,5 +7,5 @@ import lombok.Getter;
 @Builder
 public class ProvinciaResponseDTO {
 
-  private final String nombre;
+    private final String nombre;
 }

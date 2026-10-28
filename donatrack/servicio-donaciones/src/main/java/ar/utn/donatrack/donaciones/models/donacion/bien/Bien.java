@@ -10,6 +10,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.Table;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -51,7 +52,7 @@ public abstract class Bien {
      */
     @Id
     @Column(name = "id")
-    @lombok.Builder.Default
+    @Builder.Default
     protected UUID id = UUID.randomUUID();
 
     @Embedded

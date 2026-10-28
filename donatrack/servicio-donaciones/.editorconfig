@@ -1,0 +1,24 @@
+# Formato del servicio de donaciones. Lo aplican los editores que leen
+# .editorconfig (IntelliJ IDEA, VS Code y la mayoría de los demás).
+root = true
+
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.java]
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+[*.{xml,sql,properties}]
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

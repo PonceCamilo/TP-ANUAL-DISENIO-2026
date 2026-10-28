@@ -288,7 +288,7 @@ class PlanificacionEntregasServiceTest {
         @Test
         @DisplayName("PERSISTE el despacho")
         void persisteElDespacho() {
-            // Mismo motivo que en DonacionService: sin guardar, con JPA el
+            // Mismo motivo que en DonacionComandosService: sin guardar, con JPA el
             // proveedor y el id de seguimiento no llegan nunca a la base.
             Donacion donacion = donacionAsignada();
             when(brokerClient.solicitarEnvio(isNull(), anyList()))

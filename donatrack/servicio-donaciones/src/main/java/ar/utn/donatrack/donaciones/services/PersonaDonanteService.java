@@ -31,91 +31,91 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PersonaDonanteService {
 
-  private final RepositorioPersonasDonantes repositorio;
-  private final RepositorioDonaciones donaciones;
-  private final PersonasValidator validador;
-  private final PersonaDonanteMapper mapper;
-  private final DireccionMapper direcciones;
-  private final ContactoMapper contactos;
-  private final RepresentanteMapper representantes;
+    private final RepositorioPersonasDonantes repositorio;
+    private final RepositorioDonaciones donaciones;
+    private final PersonasValidator validador;
+    private final PersonaDonanteMapper mapper;
+    private final DireccionMapper direcciones;
+    private final ContactoMapper contactos;
+    private final RepresentanteMapper representantes;
 
-  public PersonaDonanteResponseDTO registrar(PersonaDonanteRequestDTO dto) {
-    validador.validarEmail(dto.getEmail());
+    public PersonaDonanteResponseDTO registrar(PersonaDonanteRequestDTO dto) {
+        validador.validarEmail(dto.getEmail());
 
-    PersonaDonante persona = mapper.toModel(dto);
-    persona.registrarInteraccion();
+        PersonaDonante persona = mapper.toModel(dto);
+        persona.registrarInteraccion();
 
-    repositorio.guardar(persona);
-    return mapper.toDTO(persona);
-  }
-
-  @Transactional(readOnly = true)
-  public PersonaDonanteResponseDTO obtenerDonante(UUID id) {
-    return mapper.toDTO(validador.validarYObtenerPersona(id));
-  }
-
-  @Transactional(readOnly = true)
-  public PaginaResponseDTO<PersonaDonanteResponseDTO> obtenerDonantes(String estado, SolicitudPagina pagina) {
-    return PaginaResponseDTO.desde(repositorio.buscar(estado, pagina).map(mapper::toDTO));
-  }
-
-  public void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto) {
-    PersonaDonante persona = validador.validarYObtenerPersona(id);
-    persona.cambiarEstado(dto.getEstado(), dto.getJustificacion());
-    persona.registrarInteraccion();
-    repositorio.guardar(persona);
-  }
-
-  public void modificarContacto(UUID id, MedioDeContactoRequestDTO dto) {
-    PersonaDonante persona = validador.validarYObtenerPersona(id);
-    MedioDeContacto medio = contactos.toContacto(dto);
-    validador.validarMedioContacto(medio);
-
-    // Todo sobre la MISMA instancia y un solo guardado: delegar el reemplazo en
-    // el repositorio haría que trabajara sobre otra instancia, y este guardado
-    // pisaría el cambio de contacto.
-    persona.reemplazarContacto(medio);
-    persona.registrarInteraccion();
-    repositorio.guardar(persona);
-  }
-
-  public void modificarRepresentante(UUID id, RepresentanteRequestDTO dto) {
-    // Una sola lectura: el validator devuelve la persona jurídica (404 si no
-    // existe, 400 si es humana) y el representante se agrega en el modelo.
-    PersonaJuridica juridica = validador.validarYObtenerJuridica(id);
-    juridica.agregarRepresentante(representantes.toRepresentante(dto));
-    juridica.registrarInteraccion();
-    repositorio.guardar(juridica);
-  }
-
-  public PersonaDonanteResponseDTO actualizar(UUID id, PersonaDonanteUpdateRequestDTO dto) {
-    PersonaDonante persona = validador.validarYObtenerPersona(id);
-
-    if (persona instanceof PersonaHumana humana) {
-      humana.actualizarDatosPersonales(dto.getNombre(), dto.getApellido(), dto.getFechaNacimiento(),
-          dto.getGenero());
-    } else if (persona instanceof PersonaJuridica juridica) {
-      juridica.actualizarDatosDeOrganizacion(dto.getRazonSocial(), dto.getRubro(), dto.getTipoOrganizacion());
+        repositorio.guardar(persona);
+        return mapper.toDTO(persona);
     }
 
-    if (dto.getDireccion() != null) {
-      persona.cambiarDireccion(direcciones.toDireccion(dto.getDireccion()));
+    @Transactional(readOnly = true)
+    public PersonaDonanteResponseDTO obtenerDonante(UUID id) {
+        return mapper.toDTO(validador.validarYObtenerPersona(id));
     }
-    if (dto.getContactos() != null) {
-      persona.reemplazarContactos(contactos.toContactos(dto.getContactos()));
-    }
-    persona.registrarInteraccion();
 
-    repositorio.guardar(persona);
-    return mapper.toDTO(persona);
-  }
-
-  public void eliminar(UUID id) {
-    PersonaDonante persona = validador.validarYObtenerPersona(id);
-    // Sin FK entre donacion y persona_donante: la integridad la cuida el servicio.
-    if (donaciones.existenDelDonante(id)) {
-      throw new PersonaConDonacionesException(id);
+    @Transactional(readOnly = true)
+    public PaginaResponseDTO<PersonaDonanteResponseDTO> obtenerDonantes(String estado, SolicitudPagina pagina) {
+        return PaginaResponseDTO.desde(repositorio.buscar(estado, pagina).map(mapper::toDTO));
     }
-    repositorio.eliminar(persona);
-  }
+
+    public void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto) {
+        PersonaDonante persona = validador.validarYObtenerPersona(id);
+        persona.cambiarEstado(dto.getEstado(), dto.getJustificacion());
+        persona.registrarInteraccion();
+        repositorio.guardar(persona);
+    }
+
+    public void modificarContacto(UUID id, MedioDeContactoRequestDTO dto) {
+        PersonaDonante persona = validador.validarYObtenerPersona(id);
+        MedioDeContacto medio = contactos.toContacto(dto);
+        validador.validarMedioContacto(medio);
+
+        // Todo sobre la MISMA instancia y un solo guardado: delegar el reemplazo en
+        // el repositorio haría que trabajara sobre otra instancia, y este guardado
+        // pisaría el cambio de contacto.
+        persona.reemplazarContacto(medio);
+        persona.registrarInteraccion();
+        repositorio.guardar(persona);
+    }
+
+    public void modificarRepresentante(UUID id, RepresentanteRequestDTO dto) {
+        // Una sola lectura: el validator devuelve la persona jurídica (404 si no
+        // existe, 400 si es humana) y el representante se agrega en el modelo.
+        PersonaJuridica juridica = validador.validarYObtenerJuridica(id);
+        juridica.agregarRepresentante(representantes.toRepresentante(dto));
+        juridica.registrarInteraccion();
+        repositorio.guardar(juridica);
+    }
+
+    public PersonaDonanteResponseDTO actualizar(UUID id, PersonaDonanteUpdateRequestDTO dto) {
+        PersonaDonante persona = validador.validarYObtenerPersona(id);
+
+        if (persona instanceof PersonaHumana humana) {
+            humana.actualizarDatosPersonales(dto.getNombre(), dto.getApellido(), dto.getFechaNacimiento(),
+                    dto.getGenero());
+        } else if (persona instanceof PersonaJuridica juridica) {
+            juridica.actualizarDatosDeOrganizacion(dto.getRazonSocial(), dto.getRubro(), dto.getTipoOrganizacion());
+        }
+
+        if (dto.getDireccion() != null) {
+            persona.cambiarDireccion(direcciones.toDireccion(dto.getDireccion()));
+        }
+        if (dto.getContactos() != null) {
+            persona.reemplazarContactos(contactos.toContactos(dto.getContactos()));
+        }
+        persona.registrarInteraccion();
+
+        repositorio.guardar(persona);
+        return mapper.toDTO(persona);
+    }
+
+    public void eliminar(UUID id) {
+        PersonaDonante persona = validador.validarYObtenerPersona(id);
+        // Sin FK entre donacion y persona_donante: la integridad la cuida el servicio.
+        if (donaciones.existenDelDonante(id)) {
+            throw new PersonaConDonacionesException(id);
+        }
+        repositorio.eliminar(persona);
+    }
 }

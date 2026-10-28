@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Lo que sale hacia afuera cuando algo le pasa a una donación. Antes se probaba
- * dentro de los tests de DonacionService y SegmentadorDonacionesService. Acá el
+ * dentro de los tests de DonacionComandosService y SegmentadorDonacionesService. Acá el
  * NotificacionClient es un mock: lo que verifica el test es qué avisos se dejan
  * (el envío real lo hace el relay de la bandeja de salida).
  */

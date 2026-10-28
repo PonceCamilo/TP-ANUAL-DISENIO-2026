@@ -14,7 +14,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class CambioEstadoRequestDTO {
-  @NotBlank
-  private String estado;
-  private String justificacion;
+    @NotBlank
+    private String estado;
+    private String justificacion;
 }
