@@ -7,29 +7,34 @@ skinparam ranksep 55
 skinparam class {
   BackgroundColor<<desnormalizada>> #FFF4D6
   BorderColor<<desnormalizada>> #B8860B
+  BackgroundColor<<infraestructura>> #EEF3FA
+  BorderColor<<infraestructura>> #5B7BA6
 }
 
 ' DER físico de la base donaciones_db (PostgreSQL 16), Entrega 5.
-' Es el esquema que Hibernate genera a partir de las entidades JPA de
-' servicio-donaciones (spring.jpa.hibernate.ddl-auto=update): mismos nombres
-' de tabla y columna, mismos tipos, PK, FK, restricciones e índices.
+' El esquema lo crean las migraciones de Flyway de servicio-donaciones
+' (db/migration: V1 esquema de la Entrega 5, V2 cambios de la revisión, V3
+' normalización de datos, V4 bloqueo de tareas) y Hibernate lo valida al
+' arrancar (ddl-auto=validate): mismos nombres de tabla y columna, mismos
+' tipos, PK, FK, restricciones e índices que las entidades JPA.
 
 ' ─────────────── PERSONAS DONANTES (herencia JOINED) ───────────────
 
 entity persona_donante {
   id : uuid <<PK>>
   --
+  version : bigint <<NN>>
   tipo_documento : varchar(255)
   numero_documento : varchar(255)
   email : varchar(255) <<UQ>>
   estado : varchar(255) <<NN, IX>>
   ultima_interaccion : timestamp(6) <<IX>>
+  ultimo_aviso_inactividad : timestamp(6)
   direccion_calle : varchar(255)
   direccion_numero : integer
   direccion_codigo_postal : varchar(255)
   localidad_nombre : varchar(255)
   provincia_nombre : varchar(255)
-  medio_predeterminado_id : uuid <<FK, UQ>>
 }
 
 entity persona_humana {
@@ -66,6 +71,7 @@ entity medio_de_contacto {
   --
   tipo_medio : varchar(31) <<NN>>
   valor : varchar(255)
+  predeterminado : boolean <<NN>>
   persona_donante_id : uuid <<FK, IX>>
   representante_id : uuid <<FK, IX>>
   entidad_id : uuid <<FK, IX>>
@@ -76,6 +82,7 @@ entity medio_de_contacto {
 entity entidad_beneficiaria {
   id : uuid <<PK>>
   --
+  version : bigint <<NN>>
   razon_social : varchar(255)
   direccion_calle : varchar(255)
   direccion_numero : integer
@@ -98,6 +105,8 @@ entity necesidad {
   --
   nombre : varchar(255)
   descripcion : varchar(1000)
+  subcategoria_tipo : varchar(255)
+  subcategoria_tipo_normalizado : varchar(255)
   fecha_registro : date
   cantidad_objetivo : integer
   cantidad_recibida : integer
@@ -120,15 +129,17 @@ entity necesidad_recurrente {
 entity donacion {
   id : uuid <<PK>>
   --
+  version : bigint <<NN>>
   estado : varchar(255) <<NN, IX, D>>
   descripcion : varchar(1000)
   fecha_donacion : timestamp(6) <<IX>>
   fecha_asignacion : date <<IX>>
+  fecha_baja : timestamp(6)
   subcategoria_tipo : varchar(255) <<D>>
   subcategoria_tipo_normalizado : varchar(255) <<IX, D>>
   id_donante : uuid <<IX>>
   id_entidad_beneficiaria : uuid <<IX>>
-  proveedor_logistica : varchar(255)
+  proveedor_logistica : varchar(255) <<CK>>
   id_seguimiento_logistica : varchar(255)
 }
 
@@ -166,25 +177,10 @@ entity ranking_precalculado <<desnormalizada>> {
   fecha_calculo : timestamp(6)
 }
 
-entity ranking_coincidencia <<desnormalizada>> {
-  id_donacion : uuid <<PK, FK>>
-  posicion : integer <<PK>>
-  --
-  id_entidad : uuid
-  puntaje : float(53)
-}
-
-entity ranking_semantico <<desnormalizada>> {
-  id_donacion : uuid <<PK, FK>>
-  posicion : integer <<PK>>
-  --
-  id_entidad : uuid
-  puntaje : float(53)
-}
-
-entity ranking_subatendidos <<desnormalizada>> {
-  id_donacion : uuid <<PK, FK>>
-  posicion : integer <<PK>>
+entity ranking_puesto <<desnormalizada>> {
+  id_donacion : uuid <<FK, NN, IX>>
+  algoritmo : varchar(255) <<NN>>
+  posicion : integer <<NN>>
   --
   id_entidad : uuid
   puntaje : float(53)
@@ -197,6 +193,29 @@ entity entidad_recepcion_diaria <<desnormalizada>> {
   cantidad : bigint <<NN>>
 }
 
+' ─────────────── INFRAESTRUCTURA ───────────────
+
+entity mensaje_saliente <<infraestructura>> {
+  id : uuid <<PK>>
+  --
+  destino : varchar(60) <<NN>>
+  payload : varchar(10000) <<NN>>
+  estado : varchar(20) <<NN, CK, IX>>
+  intentos : integer <<NN>>
+  creado : timestamp(6) <<NN>>
+  proximo_intento : timestamp(6) <<NN, IX>>
+  enviado : timestamp(6)
+  ultimo_error : varchar(1000)
+}
+
+entity shedlock <<infraestructura>> {
+  name : varchar(64) <<PK>>
+  --
+  lock_until : timestamp(3) <<NN>>
+  locked_at : timestamp(3) <<NN>>
+  locked_by : varchar(255) <<NN>>
+}
+
 ' ─────────────── RELACIONES (FK reales) ───────────────
 ' Las FK de las colecciones (@OneToMany + @JoinColumn) son nullable,
 ' por eso el lado de la tabla referenciada se marca 0..1 (|o).
@@ -204,11 +223,7 @@ entity entidad_recepcion_diaria <<desnormalizada>> {
 persona_donante ||--o| persona_humana
 persona_donante ||--o| persona_juridica
 
-' Solo se rotulan las dos relaciones entre persona_donante y medio_de_contacto,
-' que son las únicas que unen el mismo par de tablas.
-
-persona_donante |o--o{ medio_de_contacto : persona_donante_id
-medio_de_contacto |o--o| persona_donante : medio_predeterminado_id
+persona_donante |o--o{ medio_de_contacto
 persona_juridica |o--o{ representante
 representante |o--o{ medio_de_contacto
 
@@ -222,9 +237,7 @@ necesidad ||--o| necesidad_recurrente
 donacion |o--o{ bien
 donacion |o--o{ cambio_estado
 
-ranking_precalculado ||--o{ ranking_coincidencia
-ranking_precalculado ||--o{ ranking_semantico
-ranking_precalculado ||--o{ ranking_subatendidos
+ranking_precalculado ||--o{ ranking_puesto
 
 ' ─────────────── REFERENCIAS POR ID SIN FK ───────────────
 
@@ -238,31 +251,41 @@ legend right
   PK: clave primaria · FK: clave foránea · UQ: única · NN: NOT NULL · CK: CHECK
   IX: columna con índice · D: dato derivado (desnormalización)
   Línea continua: FK real · línea punteada: referencia por id sin FK
-  Tablas en amarillo: tablas de lectura desnormalizadas (Entrega 5)
+  Amarillo: tablas de lectura desnormalizadas · celeste: infraestructura
   ----
   <b>Índices (Entrega 5)</b>
   donacion: (estado) · (id_donante, estado) · (id_entidad_beneficiaria, fecha_asignacion)
              (subcategoria_tipo_normalizado) · (fecha_donacion DESC, id)
   persona_donante: (estado) · (ultima_interaccion) · email UNIQUE
+  ranking_puesto: (id_donacion) · mensaje_saliente: (estado, proximo_intento)
   Columnas FK de las colecciones: bien, cambio_estado, medio_de_contacto,
              representante, campania, necesidad · entidad_recepcion_diaria: (fecha)
   ----
   <b>Desnormalizaciones</b>
-  ranking_*: ranking del matchmaking nocturno, precalculado (derivable de donaciones y necesidades)
+  ranking_precalculado + ranking_puesto: bandeja del matchmaking nocturno, precalculada
+             (derivable de donaciones y necesidades); un puesto por algoritmo y posición
   entidad_recepcion_diaria: donaciones asignadas por entidad y día (derivable de donacion);
              se mantiene en la misma transacción que la asignación y se reconcilia cada noche
   donacion.estado: estado actual (derivable del último cambio_estado)
   donacion.subcategoria_*: subcategoría de sus bienes · *_tipo_normalizado: forma de búsqueda
+             (minúsculas, sin acentos, espacios colapsados)
   ----
   <b>Integridad</b>
   persona_donante.email: identidad de la persona, UNIQUE, guardada en forma canónica
              (trim, NFC, minúsculas); no cambia después del alta
+  tipo_documento / numero_documento: validados juntos y guardados normalizados
+  version: bloqueo optimista en las raíces de agregado (donacion, persona_donante,
+             entidad_beneficiaria); una modificación concurrente responde 409
+  donacion.fecha_baja: baja lógica; las consultas solo ven las que no tienen fecha de baja
+  medio_de_contacto.predeterminado: el contacto preferido de la persona, dentro de su lista
   Borrar una persona o entidad con donaciones se rechaza con 409 (no hay FK hacia donacion)
   ----
   <b>CHECK</b>
   persona_humana.genero ∈ {MASCULINO, FEMENINO, NO_BINARIO, OTRO, PREFIERO_NO_DECIR}
   persona_juridica.tipo ∈ {GUBERNAMENTAL, ONG, EMPRESA, INSTITUCION}
   necesidad_recurrente.periodo ∈ {SEMANAL, MENSUAL, CUATRIMESTRAL, ANUAL}
+  donacion.proveedor_logistica ∈ {DONATRACK, EXTERNA}
+  mensaje_saliente.estado ∈ {PENDIENTE, ENVIADO, FALLIDO}
   ----
   <b>Herencia</b>
   JOINED: persona_donante → persona_humana | persona_juridica
@@ -271,9 +294,15 @@ legend right
              bien.tipo_bien ∈ {PERECIBLE, CON_ESTADO, GENERICO}
              medio_de_contacto.tipo_medio ∈ {EMAIL, TELEFONO, WHATSAPP}
   ----
+  <b>Infraestructura</b>
+  mensaje_saliente: bandeja de salida (outbox) de los avisos a notificaciones e incentivos;
+             se escribe en la transacción del cambio y la envía y reintenta un relay
+  shedlock: una fila por tarea programada; con varias instancias, la corre una sola
+  flyway_schema_history (no dibujada): las migraciones aplicadas
+  ----
   <b>Notas</b>
   estado / estado_previo guardan el nombre del objeto State (EN_DEPOSITO, ACTIVO, ...).
-  Direccion (con Localidad y Provincia) y Subcategoria son @Embeddable:
+  Direccion (con Localidad y Provincia), Subcategoria y Documento son @Embeddable:
   sus columnas viven en la tabla que las contiene.
   No se persiste CargaDonacion (objeto de un solo uso para segmentar).
 endlegend

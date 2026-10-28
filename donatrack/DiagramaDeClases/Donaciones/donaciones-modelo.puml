@@ -21,10 +21,14 @@ skinparam class {
     BorderColor<<abstracta>> #5A5A5A
     BackgroundColor<<embeddable>> #EAF3E6
     BorderColor<<embeddable>> #5E8C4A
+    BackgroundColor<<valor>> #EAF3E6
+    BorderColor<<valor>> #5E8C4A
     BackgroundColor<<desnormalizada>> #FFF4D6
     BorderColor<<desnormalizada>> #B8860B
     BackgroundColor<<interface>> #E8EEF7
     BorderColor<<interface>> #4A6A9A
+    BackgroundColor<<evento>> #F3E8F7
+    BorderColor<<evento>> #7A4A9A
 }
 
 skinparam package {
@@ -38,54 +42,105 @@ skinparam package {
 ' Modelo de dominio de servicio-donaciones (paquete ar.utn.donatrack.donaciones.models).
 ' No se dibujan getters/setters/builders generados por Lombok.
 ' {transient}: atributo @Transient (no se persiste). <<embeddable>>: @Embeddable.
+' <<valor>>: objeto de valor que no se persiste aparte (record o snapshot).
 ' {unique}: columna con UNIQUE en la base. {readOnly}: se lee de la base, no se escribe.
 ' <<desnormalizada>>: tabla de lectura derivable de otras (Entrega 5).
+' <<evento>>: evento de dominio que registra el agregado y Spring publica al guardarlo.
 
 interface "Persistable<UUID>" as Persistable <<interface>> {
     public getId(): UUID
     public isNew(): boolean
 }
 
-note top of Persistable
-    Interfaz de Spring Data (Entrega 5).
-    El id se asigna antes de guardar: sin isNew()
-    Spring Data haría un SELECT previo a cada INSERT.
-    nueva = true hasta @PostPersist / @PostLoad.
+abstract class EntidadPersistible <<abstracta>> {
+    protected id: UUID
+    protected version: long «@Version»
+    protected nueva: boolean {transient}
+    private eventos: List<Object> {transient}
+
+    public isNew(): boolean
+    protected registrarEvento(evento: Object): void
+    public eventosPendientes(): List<Object> «@DomainEvents»
+    protected limpiarEventos(): void «@AfterDomainEventPublication»
+    ~marcarComoPersistida(): void «@PostLoad, @PostPersist»
+}
+
+note top of EntidadPersistible
+    Base de las raíces de agregado (Entrega 5).
+    id asignado por la aplicación + isNew():
+    sin SELECT previo a cada INSERT.
+    version: bloqueo optimista (409 si dos
+    pedidos modifican lo mismo a la vez).
+    eventos: se publican al guardar el agregado.
 end note
+
+package estado {
+
+    abstract class "Estado<E>" as Estado <<abstracta>> {
+        private nombre: String
+        private transiciones: Map<String, Supplier<E>>
+
+        public transicionarA(estadoDestino: String, justificacion: String): E {final}
+        protected validarTransicion(estadoDestino: String, justificacion: String): void
+        public nombre(): String
+        public es(nombreEstado: String): boolean
+    }
+
+    class "CatalogoDeEstados<E>" as Catalogo {
+        private porNombre: Map<String, Supplier<E>>
+
+        public desde(nombre: String): E
+    }
+
+    note as NotaEstado
+        Base común de los estados de la donación
+        y de la persona donante (patrón State).
+        Cada estado declara a dónde puede pasar;
+        validarTransicion es el gancho para sus
+        reglas propias. Se guarda solo el nombre.
+        ..
+        transición no declarada → TransicionDeEstadoIlegalException
+        nombre desconocido → EstadoDesconocidoException
+    end note
+
+    NotaEstado .. Estado
+}
 
 package donante {
 
     abstract class PersonaDonante <<abstracta>> {
-        protected id: UUID
-        protected tipoDocumento: String
-        protected numeroDocumento: String
+        protected documento: Documento
         protected direccion: Direccion
         protected estadoNombre: String
-        protected estado: EstadoDonante {transient}
-        protected medioContactoPredeterminado: MedioDeContacto
         protected ultimaInteraccion: LocalDateTime
+        protected ultimoAvisoInactividad: LocalDateTime
         protected email: String {unique}
         protected contactos: List<MedioDeContacto>
-        protected nueva: boolean {transient}
 
-        public isNew(): boolean
-        private rehidratarEstado(): void «@PostLoad»
-        private marcarPersistida(): void «@PostPersist»
-        private normalizarEmail(): void «@PrePersist, @PreUpdate»
+        public getEstado(): EstadoDonante
         public cambiarEstado(estadoDestino: String, justificacion: String): void
-        public setEstado(estado: EstadoDonante): void
-        public reemplazarContacto(medio: MedioDeContacto): void
-        public obtenerEmail(): String
+        public estaBloqueada(): boolean
         public registrarInteraccion(): void
-        public estaInactivoDesde(fechaLimite: LocalDateTime): boolean
+        public reemplazarContacto(medio: MedioDeContacto): void
+        public reemplazarContactos(nuevos: List<MedioDeContacto>): void
+        public definirContactoPredeterminado(medio: MedioDeContacto): void
+        public getMedioContactoPredeterminado(): MedioDeContacto
+        public cambiarDireccion(direccion: Direccion): void
+        public cambiarDocumento(documento: Documento): void
+        {abstract} public tipoPersona(): TipoPersona
+        {abstract} public actualizarNombreImportado(nombre: String): void
+        private normalizarEmail(): void «@PrePersist, @PreUpdate»
     }
 
     note as NotaEmailDonante
-        email: identidad de la persona (Entrega 5).
+        email: identidad de la persona.
         Se fija en el alta y no cambia después.
         Se guarda en forma canónica
         (NormalizadorEmail: trim, NFC, minúsculas)
         y la base garantiza que sea único.
+        ..
+        Sin setters: cada dato que se puede cambiar
+        tiene su método; las listas son de solo lectura.
     end note
 
     NotaEmailDonante .. PersonaDonante
@@ -95,6 +150,8 @@ package donante {
         private apellido: String
         private fechaNacimiento: LocalDate
         private genero: Genero
+
+        public actualizarDatosPersonales(nombre, apellido, fechaNacimiento, genero): void
     }
 
     class PersonaJuridica {
@@ -104,6 +161,7 @@ package donante {
         private representantes: List<Representante>
 
         public agregarRepresentante(representante: Representante): void
+        public actualizarDatosDeOrganizacion(razonSocial, rubro, tipo): void
     }
 
     class Representante {
@@ -112,7 +170,40 @@ package donante {
         private apellido: String
         private email: String
         private contactos: List<MedioDeContacto>
+
+        ~normalizarEmail(): void «@PrePersist, @PreUpdate»
     }
+
+    class Documento <<embeddable>> {
+        private tipo: String
+        private numero: String
+
+        {static} public de(tipo: String, numero: String): Documento
+        {static} public deOrganizacion(tipo: String, numero: String): Documento
+    }
+
+    enum TipoDocumento <<enum>> {
+        DNI
+        LC
+        LE
+        CUIT
+        CUIL
+        PASAPORTE
+        --
+        public normalizar(numero: String): String
+        public esValido(numeroNormalizado: String): boolean
+    }
+
+    note as NotaDocumento
+        Tipo y número se validan juntos:
+        DNI de 7 u 8 dígitos, CUIT/CUIL con
+        dígito verificador, ... El número se
+        guarda sin puntos ni guiones.
+        Una organización tiene que tener CUIT.
+        Inválido → DocumentoInvalidoException (400)
+    end note
+
+    NotaDocumento .. Documento
 
     enum Genero <<enum>> {
         MASCULINO
@@ -129,18 +220,19 @@ package donante {
         INSTITUCION
     }
 
-    package estado {
+    enum TipoPersona <<enum>> {
+        HUMANA
+        JURIDICA
+    }
+
+    package "estado " as estadoDonante {
 
         abstract class EstadoDonante <<abstracta>> {
-            private nombre: String
-            private transiciones: Map<String, Supplier<EstadoDonante>>
-
-            public transicionarA(estadoDestino: String, justificacion: String): EstadoDonante
-            public nombre(): String
+            protected validarTransicion(estadoDestino: String, justificacion: String): void
         }
 
         class ActivoState {
-            public transicionarA(estadoDestino: String, justificacion: String): EstadoDonante
+            protected validarTransicion(estadoDestino: String, justificacion: String): void
         }
 
         class InactivoState {
@@ -150,7 +242,9 @@ package donante {
         }
 
         class EstadosDonante {
-            {static} private POR_NOMBRE: Map<String, Supplier<EstadoDonante>>
+            {static} public ACTIVO: String
+            {static} public INACTIVO: String
+            {static} public BLOQUEADO: String
 
             {static} public inicial(): EstadoDonante
             {static} public desde(nombre: String): EstadoDonante
@@ -162,11 +256,9 @@ package donante {
             INACTIVO → ACTIVO
             BLOQUEADO → ACTIVO
             ..
-            Excepciones:
             mismo estado → PersonaConMismoEstadoException
-            transición no válida → CambioEstadoPersonaIlegalException
             BLOQUEADO sin justificación → FaltaJustificacionException
-            nombre desconocido en EstadosDonante → TipoDesconocidoException
+            Una persona BLOQUEADA no registra donaciones (422).
         end note
     }
 }
@@ -176,48 +268,97 @@ package contacto {
     abstract class MedioDeContacto <<abstracta>> {
         protected id: UUID
         protected valor: String
+        protected predeterminado: boolean
+
+        {abstract} public canal(): Canal
+        public marcarComoPredeterminado(valor: boolean): void
+        public esDelMismoTipoQue(otro: MedioDeContacto): boolean
     }
 
     class Email {
+        public canal(): Canal
         private normalizarValor(): void «@PrePersist, @PreUpdate»
     }
 
     class Telefono {
+        public canal(): Canal
     }
 
     class Whatsapp {
+        public canal(): Canal
+    }
+
+    enum Canal <<enum>> {
+        EMAIL
+        SMS
+        WHATSAPP
     }
 }
 
 package donacion {
 
     class Donacion {
-        protected id: UUID
         protected bienes: List<Bien>
         protected subcategoria: Subcategoria
         protected estadoNombre: String
-        protected estado: EstadoDonacionBase {transient}
         protected historialEstados: List<CambioEstado>
         protected idDonante: UUID
         protected idEntidadBeneficiaria: UUID
         protected descripcion: String
         protected fechaDonacion: LocalDateTime
         protected fechaAsignacion: LocalDate
-        protected proveedorLogistica: String
+        protected proveedorLogistica: ProveedorLogistica
         protected idSeguimientoLogistica: String
-        protected nueva: boolean {transient}
+        protected fechaBaja: LocalDateTime
+        private asignacionGuardada: Asignacion {transient}
 
-        public isNew(): boolean
-        private rehidratarEstado(): void «@PostLoad»
-        private marcarPersistida(): void «@PostPersist»
-        public cambiarEstado(estadoDestino: String, nombreTransicion: String, justificacion: String): void
-        public esPerecible(): boolean
-        public requiereEstado(): boolean
-        public despacharA(proveedor: String, idSeguimiento: String): void
+        public getEstado(): EstadoDonacionBase
+        public cambiarEstado(estadoDestino, nombreTransicion, justificacion): void
+        public cambiarEstadoManualmente(estadoDestino, justificacion): void
         public asignarA(entidad: EntidadBeneficiaria): void
+        public asignacion(): Asignacion
+        public cambioLaAsignacion(): boolean
+        public despacharA(proveedor: ProveedorLogistica, idSeguimiento: String): void
+        public iniciarTraslado(justificacion: String): boolean
+        public registrarEntrega(fechaEntrega: LocalDateTime, justificacion: String): boolean
+        public registrarEntregaFallida(justificacion: String): boolean
+        public darDeBaja(): void
+        public agregarBien(bien: Bien): void
+        public reemplazarBien(idBien: UUID, nuevo: Bien): void
+        public tieneBienesVencidosAl(fecha: LocalDate): boolean
+        public exigirSinBienesVencidosAl(fecha: LocalDate): void
         public estaEnEstado(nombreEstado: String): boolean
-        public esDeSubcategoria(subcategoria: String): boolean
-        public fueEntregada(): boolean
+        public cantidadTotal(): int
+        +marcarAsignacionGuardada(): void «@PostLoad, @PostPersist, @PostUpdate»
+    }
+
+    note as NotaDonacion
+        Baja lógica: fecha_baja + @SQLRestriction,
+        una donación dada de baja no aparece en
+        ninguna consulta.
+        ..
+        Los avisos de logística son idempotentes:
+        iniciarTraslado / registrarEntrega /
+        registrarEntregaFallida devuelven false si
+        el aviso ya se había procesado.
+        ..
+        A ASIGNACION_REALIZADA solo se llega con
+        asignarA (el cambio manual la rechaza).
+    end note
+
+    NotaDonacion .. Donacion
+
+    class Asignacion <<valor>> {
+        idEntidad: UUID
+        fecha: LocalDate
+        --
+        {static} NINGUNA: Asignacion
+        public existe(): boolean
+    }
+
+    enum ProveedorLogistica <<enum>> {
+        DONATRACK
+        EXTERNA
     }
 
     class CargaDonacion {
@@ -226,7 +367,6 @@ package donacion {
         private bienes: List<Bien>
 
         public segmentar(): List<Donacion>
-        private crearDonacion(subcategoria: Subcategoria, grupo: List<? extends Bien>): Donacion
     }
 
     class CambioEstado {
@@ -237,19 +377,14 @@ package donacion {
         private justificacion: String
         private fechaHora: LocalDateTime
 
-        {static} public de(estadoPrevio: EstadoDonacionBase, estado: EstadoDonacionBase, nombreTransicion: String, justificacion: String): CambioEstado
+        {static} public de(estadoPrevio, estado, nombreTransicion, justificacion): CambioEstado
         public getEstadoPrevio(): EstadoDonacionBase
         public getEstado(): EstadoDonacionBase
     }
 
-    package estado {
+    package "estado  " as estadoDonacion {
 
         abstract class EstadoDonacionBase <<abstracta>> {
-            private nombre: String
-            private transiciones: Map<String, Supplier<EstadoDonacionBase>>
-
-            public transicionarA(estadoDestino: String, justificacion: String): EstadoDonacionBase
-            public nombre(): String
         }
 
         class EnDepositoState {
@@ -262,7 +397,7 @@ package donacion {
         }
 
         class EnTrasladoState {
-            public transicionarA(estadoDestino: String, justificacion: String): EstadoDonacionBase
+            protected validarTransicion(estadoDestino: String, justificacion: String): void
         }
 
         class EntregadaState {
@@ -275,7 +410,7 @@ package donacion {
         }
 
         class EstadosDonacion {
-            {static} private POR_NOMBRE: Map<String, Supplier<EstadoDonacionBase>>
+            {static} public EN_DEPOSITO, ASIGNACION_REALIZADA, ...: String
 
             {static} public inicial(): EstadoDonacionBase
             {static} public desde(nombre: String): EstadoDonacionBase
@@ -291,10 +426,8 @@ package donacion {
             ENTREGA_FALLIDA → EN_DEPOSITO | EN_TRASLADO
             ENTREGADA y VENCIDA son finales
             ..
-            Excepciones:
-            transición no válida → CambioEstadoDonacionIlegalException
-            ENTREGA_FALLIDA sin justificación → FaltaJustificacionDonacionException
-            nombre desconocido en EstadosDonacion → TipoDesconocidoException
+            ENTREGA_FALLIDA sin justificación → FaltaJustificacionException
+            ASIGNACION_REALIZADA a mano → TransicionReservadaException
         end note
     }
 
@@ -307,6 +440,12 @@ package donacion {
             protected foto: String
             protected cantidad: int
             protected unidad: String
+
+            {abstract} public tipo(): TipoBien
+            public vencimiento(): Optional<LocalDate>
+            public nuevo(): Optional<Boolean>
+            public claveDeSegmentacion(): ClaveDeSegmentacion
+            {abstract} protected criterioDeSegmentacion(): Object
         }
 
         class BienGenerico {
@@ -319,6 +458,51 @@ package donacion {
         class BienPerecible {
             private fechaVencimiento: LocalDate
         }
+
+        enum TipoBien <<enum>> {
+            PERECIBLE
+            CON_ESTADO
+            GENERICO
+        }
+
+        class "Bien.ClaveDeSegmentacion" as ClaveDeSegmentacion <<valor>> {
+            subcategoria: Subcategoria
+            tipo: TipoBien
+            criterio: Object
+        }
+    }
+
+    package eventos {
+
+        class DonacionCambioDeEstado <<evento>> {
+            idDonacion: UUID
+            estadoPrevio: String
+            estadoNuevo: String
+        }
+
+        class DonacionAsignada <<evento>> {
+            idDonacion: UUID
+            idDonante: UUID
+            idEntidad: UUID
+        }
+
+        class DonacionEntregada <<evento>> {
+            idDonacion, idDonante, idEntidad: UUID
+            subcategoria: Subcategoria
+            cantidad: int
+            fechaEntrega: LocalDateTime
+        }
+
+        class DonacionDadaDeBaja <<evento>> {
+            idDonacion: UUID
+        }
+
+        class DonacionesRegistradas <<evento>> {
+            idDonante: UUID
+            cantidadBienes: int
+            categorias: List<String>
+            cuando: LocalDateTime
+        }
     }
 }
 
@@ -328,15 +512,15 @@ package categoria {
         private tipo: String
         private tipoNormalizado: String
 
-        public equals(o: Object): boolean
-        public hashCode(): int
-        public toString(): String
+        public estaVacia(): boolean
+        public coincideCon(otra: Subcategoria): boolean
+        public estaMencionadaEn(texto: String): boolean
     }
 
     note as NotaSubcategoria
-        Compara por tipoNormalizado
-        (trim + minúsculas), que es también
-        la columna indexada para buscar.
+        Compara por tipoNormalizado (NormalizadorTexto:
+        minúsculas, sin acentos, espacios colapsados),
+        que es también la columna indexada para buscar.
     end note
 
     NotaSubcategoria .. Subcategoria
@@ -345,17 +529,20 @@ package categoria {
 package entidad {
 
     class EntidadBeneficiaria {
-        private id: UUID
         private razonSocial: String
         private direccion: Direccion
         private contactos: List<MedioDeContacto>
         private representantes: List<Representante>
         private campanias: List<Campania>
 
+        public cambiarRazonSocial(razonSocial: String): void
+        public cambiarDireccion(direccion: Direccion): void
+        public reemplazarContactos(nuevos: List<MedioDeContacto>): void
+        public reemplazarRepresentantes(nuevos: List<Representante>): void
         public agregarCampania(campania: Campania): void
-        public agregarNecesidadACampania(campania: Campania, necesidad: Necesidad): void
-        public obtenerEmail(): String
-        public contarNecesidadesCompatiblesCon(subcategoria: String): int
+        public contactoParaNotificar(): Optional<MedioDeContacto>
+        public contarNecesidadesCompatiblesCon(subcategoria: Subcategoria, fecha: LocalDate): int
+        public recibirDonacion(donacion: Donacion, fecha: LocalDate): int
     }
 
     class Direccion <<embeddable>> {
@@ -387,25 +574,29 @@ package entidad {
             public agregarNecesidad(necesidad: Necesidad): void
             public buscarNecesidad(necesidadId: UUID): Optional<Necesidad>
             public eliminarNecesidad(necesidadId: UUID): boolean
-            public necesidadesCompatiblesCon(subcategoria: String): List<Necesidad>
+            public estaVigenteAl(fecha: LocalDate): boolean
+            public necesidadesAbiertasCompatiblesCon(subcategoria: Subcategoria, fecha: LocalDate): List<Necesidad>
         }
 
         abstract class Necesidad <<abstracta>> {
             protected id: UUID
             protected nombre: String
             protected descripcion: String
+            protected subcategoria: Subcategoria
             protected fechaRegistro: LocalDate
             protected cantidadObjetivo: int
             protected cantidadRecibida: int
 
-            public recibirDonacion(cantidad: int): void
-            public esCompatibleCon(subcategoria: String): boolean
-            private contieneTexto(texto: String, objetivo: String): boolean
-            {abstract} public estaSatisfecha(): boolean
+            {abstract} public tipo(): TipoNecesidad
+            public actualizarDatos(nombre, descripcion, cantidadObjetivo, subcategoria): void
+            public recibir(cantidad: int, fecha: LocalDate): void
+            public faltanteAl(fecha: LocalDate): int
+            public cantidadRecibidaAl(fecha: LocalDate): int
+            public estaSatisfechaAl(fecha: LocalDate): boolean
+            public esCompatibleCon(buscada: Subcategoria): boolean
         }
 
         class NecesidadExtraordinaria {
-            public estaSatisfecha(): boolean
         }
 
         class NecesidadRecurrente {
@@ -413,21 +604,38 @@ package entidad {
             private fechaInicioPeriodo: LocalDate
 
             public periodoVencido(referencia: LocalDate): boolean
-            public obtenerOGenerarPeriodoActual(hoy: LocalDate): void
-            public estaSatisfecha(): boolean
+            public actualizarPeriodo(hoy: LocalDate): void
+            public recibir(cantidad: int, fecha: LocalDate): void
+            public cantidadRecibidaAl(fecha: LocalDate): int
         }
+
+        enum TipoNecesidad <<enum>> {
+            EXTRAORDINARIA
+            RECURRENTE
+        }
+
+        note as NotaNecesidades
+            Al entregarse una donación, su cantidad se
+            imputa a las necesidades abiertas compatibles
+            de la entidad, en orden (recibirDonacion).
+            Una recurrente vuelve a cero al empezar cada
+            período, que avanza de a períodos enteros.
+            Sin subcategoría, la compatibilidad se busca
+            en el nombre y la descripción.
+        end note
 
         package periodicidades {
 
             enum Periodicidad <<enum>> {
-                {field} SEMANAL(7)
-                {field} MENSUAL(30)
-                {field} CUATRIMESTRAL(120)
-                {field} ANUAL(365)
+                {field} SEMANAL(1 semana)
+                {field} MENSUAL(1 mes)
+                {field} CUATRIMESTRAL(4 meses)
+                {field} ANUAL(1 año)
                 --
-                private dias: int
+                private duracion: Period
 
-                public getDias(): int
+                public finDelPeriodo(inicio: LocalDate): LocalDate
+                public inicioDelPeriodoVigente(inicio: LocalDate, fecha: LocalDate): LocalDate
             }
         }
     }
@@ -440,15 +648,31 @@ package asignacion {
         private puntaje: double
     }
 
-    class RankingPrecalculado <<desnormalizada>> {
-        private idDonacion: UUID
-        private coincidencias: List<ResultadoAsignacion> {ordered}
-        private rankingSemantico: List<ResultadoAsignacion> {ordered}
-        private rankingSubAtendidos: List<ResultadoAsignacion> {ordered}
-        private fechaCalculo: LocalDateTime
-
+    class ResultadoMatchmaking <<valor>> {
+        rankings: Map<String, List<ResultadoAsignacion>>
+        --
+        public ranking(algoritmo: String): List<ResultadoAsignacion>
+        public coincidencias(): List<ResultadoAsignacion>
         public huboCoincidencias(): boolean
         public sinCandidatas(): boolean
+    }
+
+    class RankingPrecalculado <<desnormalizada>> {
+        private idDonacion: UUID
+        private puestos: List<PuestoRanking>
+        private fechaCalculo: LocalDateTime
+        private nuevo: boolean {transient}
+
+        {static} public de(idDonacion, resultado, fechaCalculo): RankingPrecalculado
+        public resultado(): ResultadoMatchmaking
+        public huboCoincidencias(): boolean
+        public sinCandidatas(): boolean
+    }
+
+    class PuestoRanking <<embeddable>> {
+        private algoritmo: String
+        private posicion: int
+        private resultado: ResultadoAsignacion
     }
 
     class RecepcionDiariaEntidad <<desnormalizada>> {
@@ -467,7 +691,9 @@ package asignacion {
         ..
         RankingPrecalculado: lo escribe el proceso
         nocturno de matchmaking; la bandeja lo lee
-        tal cual (antes vivía en memoria).
+        tal cual. Un puesto por algoritmo y posición:
+        un algoritmo nuevo no cambia el esquema. Las
+        coincidencias se derivan de los rankings.
         ..
         RecepcionDiariaEntidad: donaciones asignadas
         por entidad y día. Se actualiza en la misma
@@ -478,8 +704,15 @@ package asignacion {
 
 ' ─────────────── HERENCIA ───────────────
 
+EntidadPersistible ..|> Persistable
+RankingPrecalculado ..|> Persistable
+PersonaDonante --|> EntidadPersistible
+Donacion --|> EntidadPersistible
+EntidadBeneficiaria --|> EntidadPersistible
 PersonaHumana --|> PersonaDonante
 PersonaJuridica --|> PersonaDonante
+EstadoDonante --|> Estado
+EstadoDonacionBase --|> Estado
 ActivoState --|> EstadoDonante
 InactivoState --|> EstadoDonante
 BloqueadoState --|> EstadoDonante
@@ -498,22 +731,24 @@ EntregaFallidaState --|> EstadoDonacionBase
 VencidaState --|> EstadoDonacionBase
 NecesidadExtraordinaria --|> Necesidad
 NecesidadRecurrente --|> Necesidad
-PersonaDonante ..|> Persistable
-Donacion ..|> Persistable
 
 ' ─────────────── DONANTES Y CONTACTOS ───────────────
 ' Composición (*--): colecciones con cascade ALL + orphanRemoval y objetos @Embeddable.
 
+PersonaDonante *-- "0..1" Documento
 PersonaDonante *-- "0..1" Direccion
 PersonaDonante --> "1" EstadoDonante
 PersonaDonante *-- "0..*\ncontactos" MedioDeContacto
-PersonaDonante --> "0..1\nmedioContactoPredeterminado" MedioDeContacto
 PersonaDonante ..> EstadosDonante
+Documento ..> TipoDocumento
 PersonaHumana --> "0..1" Genero
 PersonaJuridica --> "0..1" TipoPersonaJuridica
+PersonaDonante ..> TipoPersona
 PersonaJuridica *-- "0..*" Representante
 Representante *-- "0..*" MedioDeContacto
-EstadosDonante ..> EstadoDonante : <<crea>>
+MedioDeContacto ..> Canal
+EstadosDonante ..> Catalogo
+Catalogo ..> Estado : <<crea>>
 
 ' ─────────────── DONACIONES ───────────────
 
@@ -521,13 +756,21 @@ Donacion *-- "0..*" Bien
 Donacion *-- "0..*\n{ordered}" CambioEstado
 Donacion --> "1" EstadoDonacionBase
 Donacion *-- "0..1" Subcategoria
+Donacion --> "0..1" ProveedorLogistica
+Donacion ..> Asignacion
 Donacion ..> EstadosDonacion
 Donacion ..> EntidadBeneficiaria : asignarA()
+Donacion ..> DonacionCambioDeEstado : <<registra>>
+Donacion ..> DonacionAsignada : <<registra>>
+Donacion ..> DonacionEntregada : <<registra>>
+Donacion ..> DonacionDadaDeBaja : <<registra>>
 CargaDonacion --> "0..*" Bien
 CargaDonacion ..> Donacion : <<crea>>
 CambioEstado ..> EstadosDonacion
-EstadosDonacion ..> EstadoDonacionBase : <<crea>>
+EstadosDonacion ..> Catalogo
 Bien *-- "0..1" Subcategoria
+Bien ..> ClaveDeSegmentacion : <<crea>>
+Bien ..> TipoBien
 
 ' ─────────────── ENTIDADES BENEFICIARIAS ───────────────
 
@@ -536,16 +779,21 @@ EntidadBeneficiaria *-- "0..*" MedioDeContacto
 EntidadBeneficiaria *-- "0..*" Representante
 EntidadBeneficiaria *-- "0..*" Campania
 Campania *-- "0..*" Necesidad
+Necesidad *-- "0..1" Subcategoria
+Necesidad ..> TipoNecesidad
 NecesidadRecurrente --> "0..1" Periodicidad
 Direccion *-- "0..1" Localidad
 Localidad *-- "0..1" Provincia
 
 ' ─────────────── ASIGNACIÓN ───────────────
 
-' Composición: @ElementCollection de objetos @Embeddable (una tabla por lista).
+' Composición: @ElementCollection de objetos @Embeddable (una sola tabla ranking_puesto).
 ' Las referencias por id (idDonacion, idEntidad) no son asociaciones de objetos.
 
-RankingPrecalculado *-- "0..*\n{ordered}" ResultadoAsignacion : coincidencias\nrankingSemantico\nrankingSubAtendidos
+RankingPrecalculado *-- "0..*\n{ordered}" PuestoRanking
+PuestoRanking *-- "1" ResultadoAsignacion
+RankingPrecalculado ..> ResultadoMatchmaking : <<crea>>
+ResultadoMatchmaking --> "0..*" ResultadoAsignacion
 RecepcionDiariaEntidad *-- "1" ClaveRecepcion
 
 @enduml

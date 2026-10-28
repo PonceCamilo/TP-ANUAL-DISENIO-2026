@@ -32,30 +32,38 @@ skinparam queue {
 ' Puertos y URLs: docker-compose.yml y application.properties.
 
 actor "Cliente HTTP\n(Postman)" as cliente
+actor "Operación\n(healthcheck)" as operacion
 
 interface "REST\n/donantes\n/donaciones\n/entidades" as apiDominio
 interface "REST\n/logistica/eventos" as apiEventos
+interface "Actuator\n/actuator/health\n/info · /metrics" as apiActuator
 
 component "servicio-donaciones :8081" as donaciones {
 
-    component "Controllers REST" as controllers
-    component "GlobalExceptionHandler" as errores
+    component "Controllers REST\n(id de correlación\nX-Correlation-Id)" as controllers
+    component "GlobalExceptionHandler\n400 · 404 · 405 · 409\n413 · 415 · 422 · 503" as errores
 
-    component "Services\n(casos de uso)" as services
-    component "Procesos nocturnos\n«@Scheduled», zona Argentina\n00:00 inactividad\n03:00 reconciliación de recepciones\n03:30 matchmaking\n04:00 despacho" as crons
-    component "Algoritmos de asignación\n(compatibilidad semántica,\nprioridad a sub-atendidas)" as algoritmos
+    component "Services\ncomandos y consultas,\nmanejadores de logística" as services
+    component "Procesos programados\n«@Scheduled», zona Argentina\n00:00 inactividad · 03:00 reconciliación\n03:30 matchmaking · 04:00 despacho\n(de a lotes de 100)" as crons
+    component "Bloqueo de tareas\n(ShedLock: una instancia\npor tarea)" as shedlock
+    component "Algoritmos de asignación\n(enchufables: compatibilidad\nsemántica, sub-atendidas)" as algoritmos
     component "Importación CSV\n(lotes de 500 por transacción)" as csv
 
-    component "Repositories\n(interfaces.repositories +\nadapters)" as repos
-    component "ORM\nSpring Data JPA + Hibernate 6\n(ddl-auto=update,\nbatch de 50 sentencias)" as orm
+    component "Eventos de dominio\ny oyentes\n(bandeja de candidatos,\nnecesidades, avisos)" as eventos
+    component "Bandeja de salida (outbox)\n+ relay cada 5 s\n(reintentos con espera)" as outbox
 
-    component "Clientes de integración\n(NotificacionClient, IncentivosClient,\nBrokerLogisticaClient)" as clientes
-    component "NotificacionTransport\n(REST | AMQP)" as transporte
+    component "Puertos de repositorio\n(interfaces.repositories)\n+ adaptadores" as repos
+    component "ORM\nSpring Data JPA + Hibernate 6\n(ddl-auto=validate, carga diferida,\nlectura por lotes de 100,\nescritura por lotes de 50)" as orm
+    component "Migraciones\n(Flyway V1–V4)" as flyway
+
+    component "Clientes HTTP\n(@HttpExchange + RestClient,\ntimeouts 2 s / 5 s)" as clientes
+    component "NotificacionTransport\n(REST | AMQP con confirmación)" as transporte
 }
 
 database "PostgreSQL 16\ndonaciones_db" as db {
     folder "Tablas del dominio\n(normalizadas)" as tablasDominio
-    folder "Tablas de lectura\n(desnormalizadas, Entrega 5)\nranking_precalculado, ranking_*\nentidad_recepcion_diaria" as tablasLectura
+    folder "Tablas de lectura\n(desnormalizadas, Entrega 5)\nranking_precalculado, ranking_puesto\nentidad_recepcion_diaria" as tablasLectura
+    folder "Infraestructura\nmensaje_saliente, shedlock\nflyway_schema_history" as tablasInfra
 }
 
 queue "RabbitMQ\nexchange donatrack.notificaciones\ncola notificaciones.queue" as rabbit
@@ -68,39 +76,57 @@ component "servicio-broker-logistica :8087" as broker <<externo>>
 
 cliente --> apiDominio
 apiDominio -- controllers
-broker --> apiEventos : callbacks de entrega\n(inicio-ruta, entrega-exitosa,\nentrega-fallida)
+broker --> apiEventos : callbacks de entrega\n(inicio-ruta, entrega-exitosa,\nentrega-fallida; idempotentes)
 apiEventos -- controllers
+operacion --> apiActuator
+apiActuator -- donaciones
 
 ' ─────────────── CAPAS INTERNAS ───────────────
 
 controllers --> services
 controllers --> csv : POST /donantes/import
-controllers ..> errores : excepciones → 400 / 404 / 409
+controllers ..> errores : excepciones → código HTTP
 crons --> services
+crons ..> shedlock : antes de correr
 services --> algoritmos
 services --> repos
+services --> eventos : al guardar el agregado
+eventos --> repos
+eventos --> outbox : avisos, en la misma transacción
 csv --> repos
 algoritmos --> repos
 repos --> orm
+outbox --> orm
 orm --> db : JDBC
+flyway --> db : al arrancar
+shedlock --> db : tabla shedlock
 
 ' ─────────────── SALIDAS ───────────────
 
-services --> clientes
-clientes --> transporte
+outbox --> transporte : notificaciones
+outbox --> clientes : incentivos
+services --> clientes : despacho al broker
+clientes --> incentivos : REST POST /api/incentivos/donantes/...
+clientes --> broker : REST POST /api/broker/envios
 transporte --> rabbit : AMQP (en Docker)
 transporte ..> notificaciones : REST POST /notificaciones\n(modo rest, fuera de Docker)
 rabbit --> notificaciones : consume
-clientes --> incentivos : REST POST /api/incentivos/donantes/...
-clientes --> broker : REST POST /api/broker/envios
 
 note bottom of db
     Donaciones sigue en un modelo relacional:
     sus datos son entidades con identidad, relaciones
     obligatorias y reglas de integridad (email único,
-    borrados bloqueados con 409). La Entrega 5 agrega
-    índices y tablas de lectura derivadas; el documental
-    (MongoDB) se usa en logística, no acá.
+    bloqueo optimista, borrados bloqueados con 409).
+    La Entrega 5 agrega índices y tablas de lectura
+    derivadas; el documental (MongoDB) se usa en
+    logística, no acá.
+end note
+
+note bottom of outbox
+    Un aviso se guarda junto con el cambio que lo
+    origina: si la transacción no confirma, no sale;
+    si el otro servicio no responde, se reintenta
+    sin perder el aviso.
 end note
 
 @enduml
