@@ -159,9 +159,9 @@ public class DonacionService {
     EntidadBeneficiaria entidad = entidadesValidator.validarYObtenerEntidad(dto.getIdEntidadBeneficiaria());
 
     donacion.asignarA(entidad);
-    // Guarda la asignación y el contador de recepciones de la entidad en una
-    // sola transacción; la notificación sale recién después de confirmarla.
-    repositorio.guardarAsignacion(donacion);
+    // Al guardar, el repositorio también suma la recepción a la entidad, en la
+    // misma transacción.
+    repositorio.guardar(donacion);
 
     // Ya tiene destino: sale de la bandeja de pendientes del administrador.
     candidatosRepositorio.eliminar(idDonacion);
@@ -170,8 +170,7 @@ public class DonacionService {
   }
 
   public void eliminar(UUID id) {
-    validador.validarYObtenerDonacion(id);
-    repositorio.eliminar(id);
+    repositorio.eliminar(validador.validarYObtenerDonacion(id));
     // Sin su donación, el ranking precalculado quedaría huérfano en la bandeja.
     candidatosRepositorio.eliminar(id);
   }

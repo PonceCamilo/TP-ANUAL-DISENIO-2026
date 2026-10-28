@@ -233,7 +233,7 @@ class DonacionesRepositoryTest {
             em.clear(); // como en un pedido real de hoy: la donación llega desprendida
             actual.setIdEntidadBeneficiaria(idEntidad);
             actual.setFechaAsignacion(fecha);
-            repositorio.guardarAsignacion(actual);
+            repositorio.guardar(actual);
             jpa.flush();
             em.clear();
         }
@@ -302,11 +302,50 @@ class DonacionesRepositoryTest {
             Donacion donacion = guardadaEnDeposito();
             asignar(donacion, comedor, hoy);
 
-            repositorio.eliminar(donacion.getId());
+            repositorio.eliminar(repositorio.buscarPorId(donacion.getId()).orElseThrow());
             jpa.flush();
             em.clear();
 
             assertThat(recibidas(comedor)).isZero();
+        }
+
+        @Test
+        @DisplayName("Con la donación gestionada (sin desprender) asignar y reasignar también mueven el contador")
+        void conLaDonacionGestionada() {
+            // Es el caso de los services, que trabajan dentro de su transacción. El
+            // contador no depende de leer la asignación previa de la base: con la
+            // entidad gestionada, esa lectura vería el cambio ya volcado.
+            UUID id = guardadaEnDeposito().getId();
+
+            Donacion gestionada = repositorio.buscarPorId(id).orElseThrow();
+            gestionada.setIdEntidadBeneficiaria(comedor);
+            gestionada.setFechaAsignacion(hoy);
+            repositorio.guardar(gestionada);
+            jpa.flush();
+            assertThat(recibidas(comedor)).isEqualTo(1);
+
+            gestionada.setIdEntidadBeneficiaria(otraEntidad);
+            repositorio.guardar(gestionada);
+            repositorio.guardar(gestionada); // guardar dos veces no cuenta dos veces
+            jpa.flush();
+            em.clear();
+
+            assertThat(recibidas(comedor)).isZero();
+            assertThat(recibidas(otraEntidad)).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Guardar sin cambiar la asignación no toca el contador")
+        void sinCambioDeAsignacion() {
+            UUID id = guardadaEnDeposito().getId();
+            Donacion donacion = repositorio.buscarPorId(id).orElseThrow();
+            em.clear();
+
+            donacion.setDescripcion("otra descripción");
+            repositorio.guardar(donacion);
+            jpa.flush();
+
+            assertThat(recepciones.contarRecepcionesPorEntidadDesde(hoy.minusYears(1))).isEmpty();
         }
 
         @Test

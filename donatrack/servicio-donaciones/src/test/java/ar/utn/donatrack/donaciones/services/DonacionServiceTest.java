@@ -159,7 +159,7 @@ class DonacionServiceTest {
                 .isInstanceOf(DonacionConBienesVencidosException.class);
         assertThatThrownBy(() -> servicio.obtenerCandidatos(vencida.getId()))
                 .isInstanceOf(DonacionConBienesVencidosException.class);
-        verify(repositorio, never()).guardarAsignacion(any());
+        verify(repositorio, never()).guardar(any());
         assertThat(vencida.estaEnEstado("EN_DEPOSITO")).isTrue();
     }
 
@@ -494,10 +494,10 @@ class DonacionServiceTest {
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
-            // guardarAsignacion y no guardar: así el contador de recepciones de
-            // la entidad se actualiza en la misma transacción (Entrega 5).
-            verify(repositorio).guardarAsignacion(donacion);
-            verify(repositorio, never()).guardar(any());
+            // Un solo guardado: el repositorio mueve el contador de recepciones
+            // porque la asignación de la donación cambió.
+            verify(repositorio).guardar(donacion);
+            assertThat(donacion.cambioLaAsignacion()).isTrue();
         }
 
         @Test
@@ -727,7 +727,7 @@ class DonacionServiceTest {
 
             servicio.eliminar(donacion.getId());
 
-            verify(repositorio).eliminar(donacion.getId());
+            verify(repositorio).eliminar(donacion);
         }
 
         @Test

@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.repositories;
 import jakarta.persistence.criteria.Subquery;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.ListJoin;
+import ar.utn.donatrack.donaciones.models.donacion.Asignacion;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
@@ -24,7 +25,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -52,27 +52,20 @@ public class DonacionesRepository implements RepositorioDonaciones {
     jpa.saveAll(cargaDonaciones);
   }
 
-  public void guardar(Donacion donacion) {
-    jpa.save(donacion);
-  }
-
   /**
-   * La desnormalización es un detalle de persistencia: el dominio solo asigna,
-   * y este adapter mueve el contador de la entidad anterior (si la había) a la
-   * nueva, todo en una transacción.
+   * Un solo guardado para todo: si la asignación cambió, mueve el contador
+   * desnormalizado de recepciones (resta una a la asignación anterior, suma una
+   * a la nueva) en la misma transacción. La asignación anterior la recuerda la
+   * donación, así que no hace falta leerla de la base; sin cambio de asignación,
+   * no hay trabajo extra.
    */
-  public void guardarAsignacion(Donacion donacion) {
-    Optional<DonacionJpaRepository.AsignacionActual> previa = jpa.buscarAsignacion(donacion.getId());
-    jpa.save(donacion);
-
-    UUID entidadPrevia = previa.map(DonacionJpaRepository.AsignacionActual::getIdEntidadBeneficiaria).orElse(null);
-    LocalDate fechaPrevia = previa.map(DonacionJpaRepository.AsignacionActual::getFechaAsignacion).orElse(null);
-    if (Objects.equals(entidadPrevia, donacion.getIdEntidadBeneficiaria())
-        && Objects.equals(fechaPrevia, donacion.getFechaAsignacion())) {
-      return;
+  public void guardar(Donacion donacion) {
+    if (donacion.cambioLaAsignacion()) {
+      ajustarRecepciones(donacion.asignacionGuardada(), -1);
+      ajustarRecepciones(donacion.asignacion(), 1);
     }
-    ajustarRecepciones(entidadPrevia, fechaPrevia, -1);
-    ajustarRecepciones(donacion.getIdEntidadBeneficiaria(), donacion.getFechaAsignacion(), 1);
+    jpa.save(donacion);
+    donacion.marcarAsignacionGuardada();
   }
 
   public List<Donacion> obtenerPorEstado(String estado) {
@@ -98,11 +91,9 @@ public class DonacionesRepository implements RepositorioDonaciones {
     return jpa.existsByIdEntidadBeneficiaria(idEntidad);
   }
 
-  public void eliminar(UUID idDonacion) {
-    Optional<DonacionJpaRepository.AsignacionActual> previa = jpa.buscarAsignacion(idDonacion);
-    jpa.deleteById(idDonacion);
-    previa.ifPresent(asignacion ->
-        ajustarRecepciones(asignacion.getIdEntidadBeneficiaria(), asignacion.getFechaAsignacion(), -1));
+  public void eliminar(Donacion donacion) {
+    ajustarRecepciones(donacion.asignacionGuardada(), -1);
+    jpa.delete(donacion);
   }
 
   /**
@@ -110,12 +101,12 @@ public class DonacionesRepository implements RepositorioDonaciones {
    * sumar, la crea. Si hubiera que restar de una fila inexistente (un desfase),
    * no hace nada: lo corrige la reconciliación nocturna.
    */
-  private void ajustarRecepciones(UUID idEntidad, LocalDate fecha, long delta) {
-    if (idEntidad == null || fecha == null) {
+  private void ajustarRecepciones(Asignacion asignacion, long delta) {
+    if (!asignacion.existe()) {
       return;
     }
-    if (recepciones.sumar(idEntidad, fecha, delta) == 0 && delta > 0) {
-      recepciones.save(new RecepcionDiariaEntidad(idEntidad, fecha, delta));
+    if (recepciones.sumar(asignacion.idEntidad(), asignacion.fecha(), delta) == 0 && delta > 0) {
+      recepciones.save(new RecepcionDiariaEntidad(asignacion.idEntidad(), asignacion.fecha(), delta));
     }
   }
 

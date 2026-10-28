@@ -11,18 +11,13 @@ import java.util.UUID;
 public interface RepositorioDonaciones {
   void cargarDonaciones(List<Donacion> donaciones);
 
-  /** Guarda una donación nueva o los cambios de una existente. */
+  /**
+   * Guarda una donación nueva o los cambios de una existente. Si cambió su
+   * asignación, actualiza en la misma transacción el contador de recepciones de
+   * las entidades: quien llama no tiene que elegir otro método al asignar.
+   */
   void guardar(Donacion donacion);
 
-  /**
-   * Guarda una donación a la que se le acaba de asignar (o reasignar) una
-   * entidad beneficiaria, y en la misma transacción actualiza el contador
-   * desnormalizado de donaciones recibidas por entidad (Entrega 5).
-   *
-   * Que vaya junto es lo que garantiza que el contador no quede desfasado si
-   * algo falla a mitad de camino: o se guardan las dos cosas o ninguna.
-   */
-  void guardarAsignacion(Donacion donacion);
 
   List<Donacion> obtenerPorEstado(String estado);
 
@@ -46,5 +41,6 @@ public interface RepositorioDonaciones {
   boolean existenAsignadasA(UUID idEntidad);
 
   /** Borra la donación y, si estaba asignada, descuenta la recepción de su entidad. */
-  void eliminar(UUID idDonacion);
+  /** Borra la donación y descuenta su recepción si estaba asignada. */
+  void eliminar(Donacion donacion);
 }

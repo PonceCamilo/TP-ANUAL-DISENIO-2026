@@ -1,8 +1,9 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import jakarta.persistence.PostUpdate;
+import jakarta.persistence.PostPersist;
 import ar.utn.donatrack.donaciones.models.EntidadPersistible;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
-import java.util.Optional;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienIncompatibleConDonacionException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienNoEncontradoException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConVariosBienesException;
@@ -29,6 +30,7 @@ import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import org.hibernate.annotations.BatchSize;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -36,6 +38,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -135,10 +138,41 @@ public class Donacion extends EntidadPersistible {
     @Column(name = "id_seguimiento_logistica")
     protected String idSeguimientoLogistica;
 
-    /** Reconstruye el objeto de estado después de cargar la fila. */
+    /**
+     * La asignación que ya está en la base: la que se leyó o la del último
+     * guardado. Con ella el repositorio sabe qué mover en el contador de
+     * recepciones cuando la asignación cambia, o cuando la donación se borra, sin
+     * volver a consultar la base.
+     */
+    @Transient
+    @Getter(AccessLevel.NONE)
+    private Asignacion asignacionGuardada = Asignacion.NINGUNA;
+
+    /** Después de leer la fila: reconstruye el objeto de estado y recuerda la asignación. */
     @PostLoad
-    private void rehidratarEstado() {
+    private void alCargar() {
         this.estado = EstadosDonacion.desde(this.estadoNombre);
+        marcarAsignacionGuardada();
+    }
+
+    public Asignacion asignacion() {
+        return new Asignacion(idEntidadBeneficiaria, fechaAsignacion);
+    }
+
+    public Asignacion asignacionGuardada() {
+        return asignacionGuardada;
+    }
+
+    /** Si la entidad o la fecha de la asignación cambiaron desde la última vez que se guardó. */
+    public boolean cambioLaAsignacion() {
+        return !asignacion().equals(asignacionGuardada);
+    }
+
+    /** Lo llama el repositorio al guardar, y JPA al insertar o actualizar la fila. */
+    @PostPersist
+    @PostUpdate
+    public void marcarAsignacionGuardada() {
+        this.asignacionGuardada = asignacion();
     }
 
     public void cambiarEstado(String estadoDestino, String nombreTransicion, String justificacion) {
