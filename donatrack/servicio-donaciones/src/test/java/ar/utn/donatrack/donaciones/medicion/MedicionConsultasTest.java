@@ -95,24 +95,25 @@ class MedicionConsultasTest {
     private static final int FILAS_CSV = 300;
 
     // ── Topes de sentencias (regresión) ───────────────────────────────────────
-    // Línea base medida sobre el código de la Entrega 4 y valor medido después de
-    // las optimizaciones de la Entrega 5. El tope deja margen sobre lo medido;
-    // si una consulta vuelve a crecer con el volumen de datos, el test falla.
-    /** Línea base 2.603, medido 13. */
-    private static final int TOPE_RANKING_A_DEMANDA = 30;
-    /** Línea base 75.091, medido 192 (guarda 30 rankings). */
-    private static final int TOPE_MATCHMAKING_NOCTURNO = 400;
-    /** Línea base 3.000, medido 9. */
-    private static final int TOPE_BANDEJA = 20;
+    // Línea base medida sobre el código de la Entrega 4, valor medido al cerrar
+    // la Entrega 5 y valor medido después de la revisión posterior. El tope deja
+    // margen sobre lo medido; si una consulta vuelve a crecer con el volumen de
+    // datos, el test falla.
+    /** Línea base 2.603, Entrega 5: 13, revisión: 9. */
+    private static final int TOPE_RANKING_A_DEMANDA = 20;
+    /** Línea base 75.091, Entrega 5: 192, revisión: 39 (guarda 30 rankings en una tabla). */
+    private static final int TOPE_MATCHMAKING_NOCTURNO = 80;
+    /** Línea base 3.000, Entrega 5: 9, revisión: 7. */
+    private static final int TOPE_BANDEJA = 15;
     /** Línea base 121 (donaciones) y 401 (donantes), medido 3-4. */
     private static final int TOPE_LISTADO = 10;
-    /** Línea base 401, medido 3. */
+    /** Línea base 401, Entrega 5: 3, revisión: 4 (lotes que se marcan como avisados). */
     private static final int TOPE_INACTIVIDAD = 10;
-    /** Línea base 20, medido 7. */
+    /** Línea base 20, Entrega 5: 7, revisión: 8 (los contactos se leen al armar los avisos). */
     private static final int TOPE_REGISTRO = 15;
-    /** Línea base 13, medido 23: subió por mantener el contador de recepciones. */
-    private static final int TOPE_ASIGNACION = 35;
-    /** Línea base 1.200 (altas) y 900 (actualizaciones), medido 6-7. */
+    /** Línea base 13, Entrega 5: 23 (contador de recepciones), revisión: 14 (sin releer la asignación). */
+    private static final int TOPE_ASIGNACION = 25;
+    /** Línea base 1.200 (altas) y 900 (actualizaciones), medido 4-7. */
     private static final int TOPE_IMPORTACION = 30;
 
     @Autowired private MockMvc mvc;
