@@ -6,6 +6,10 @@ import jakarta.persistence.Embeddable;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+
 /**
  * Unidad mínima de asignación dentro del sistema.
  * Cada Donacion resultante de la segmentación queda asociada a una única Subcategoria.
@@ -39,9 +43,24 @@ public class Subcategoria {
     protected Subcategoria() {
     }
 
+    /** El tipo se guarda sin espacios al principio ni al final, como se escribió. */
     public Subcategoria(String tipo) {
-        this.tipo = tipo;
+        this.tipo = tipo == null ? null : tipo.strip();
         this.tipoNormalizado = NormalizadorTexto.normalizar(tipo);
+    }
+
+    /**
+     * Los tipos de las subcategorías sin repetir, comparadas en su forma
+     * normalizada y en el orden en que aparecen: "Arroz", " arroz " y "ARROZ"
+     * son una sola. Se informa el tipo como se escribió la primera vez.
+     */
+    public static List<String> tiposDistintos(Collection<Subcategoria> subcategorias) {
+        return subcategorias.stream()
+                .filter(Objects::nonNull)
+                .filter(subcategoria -> !subcategoria.estaVacia())
+                .distinct()
+                .map(Subcategoria::getTipo)
+                .toList();
     }
 
     public boolean estaVacia() {

@@ -180,6 +180,19 @@ class SegmentadorDonacionesServiceTest {
             assertThat(eventoCaptor.getValue().cantidadBienes()).isEqualTo(3);
             assertThat(eventoCaptor.getValue().categorias()).containsExactlyInAnyOrder("arroz", "ropa");
         }
+
+        @Test
+        @DisplayName("La misma subcategoría escrita distinto cuenta una sola vez, como se escribió primero")
+        void categoriasComparadasNormalizadas() {
+            // Incentivos cuenta categorías distintas para sus misiones: "Arroz",
+            // " arroz " y "ARROZ" no pueden contar como tres.
+            donanteActivo();
+
+            servicio.registrar(pedido("Arroz", " arroz ", "ARROZ", "Ropa"));
+
+            verify(eventos).publishEvent(eventoCaptor.capture());
+            assertThat(eventoCaptor.getValue().categorias()).containsExactly("Arroz", "Ropa");
+        }
     }
 
     @Nested

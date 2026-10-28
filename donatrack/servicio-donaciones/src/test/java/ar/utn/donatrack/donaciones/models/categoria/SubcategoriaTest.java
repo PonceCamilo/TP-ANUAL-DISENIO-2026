@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.models.categoria;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,6 +49,20 @@ class SubcategoriaTest {
         // La normalización es solo para comparar: lo que se muestra sigue siendo
         // lo que la persona cargó.
         assertThat(new Subcategoria("Arroz Largo Fino").getTipo()).isEqualTo("Arroz Largo Fino");
+    }
+
+    @Test
+    @DisplayName("Guarda el texto sin espacios al principio ni al final")
+    void recortaLosExtremos() {
+        assertThat(new Subcategoria("  Arroz largo  ").getTipo()).isEqualTo("Arroz largo");
+    }
+
+    @Test
+    @DisplayName("tiposDistintos() no repite una subcategoría escrita distinto y conserva la primera forma")
+    void tiposDistintos() {
+        assertThat(Subcategoria.tiposDistintos(Arrays.asList(new Subcategoria("Arroz"), new Subcategoria(" arroz "),
+                null, new Subcategoria(" "), new Subcategoria("ARROZ"), new Subcategoria("Fideos"))))
+                .containsExactly("Arroz", "Fideos");
     }
 
     @Test

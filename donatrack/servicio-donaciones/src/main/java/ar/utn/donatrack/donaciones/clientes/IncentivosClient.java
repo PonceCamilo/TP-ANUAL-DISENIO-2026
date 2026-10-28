@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -55,13 +54,7 @@ public class IncentivosClient {
     }
 
     private List<String> categoriasDonadas(Donacion donacion) {
-        return donacion.getBienes().stream()
-                .map(Bien::getSubcategoria)
-                .filter(Objects::nonNull)
-                .map(Subcategoria::getTipo)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
+        return Subcategoria.tiposDistintos(donacion.getBienes().stream().map(Bien::getSubcategoria).toList());
     }
 
     private String entidadBeneficiaria(Donacion donacion) {

@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 
 @Transactional
 @Service
@@ -60,13 +59,8 @@ public class SegmentadorDonacionesService {
         return mapper.toDTOList(donaciones);
     }
 
+    /** Las subcategorías de la carga sin repetir: Incentivos cuenta categorías distintas. */
     private static List<String> categorias(List<Bien> bienes) {
-        return bienes.stream()
-                .map(Bien::getSubcategoria)
-                .filter(Objects::nonNull)
-                .map(Subcategoria::getTipo)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
+        return Subcategoria.tiposDistintos(bienes.stream().map(Bien::getSubcategoria).toList());
     }
 }
