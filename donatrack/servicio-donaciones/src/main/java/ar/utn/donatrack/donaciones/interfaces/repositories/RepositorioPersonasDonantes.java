@@ -37,6 +37,9 @@ public interface RepositorioPersonasDonantes {
 
     Optional<PersonaDonante> buscarPorId(UUID id);
 
+    /** Varias personas en una sola consulta. Las que no existen simplemente no aparecen. */
+    List<PersonaDonante> obtenerPorIds(Collection<UUID> ids);
+
     /** El email puede venir como lo escribió la persona: se busca por su forma canónica. */
     Optional<PersonaDonante> buscarPorEmail(String email);
 

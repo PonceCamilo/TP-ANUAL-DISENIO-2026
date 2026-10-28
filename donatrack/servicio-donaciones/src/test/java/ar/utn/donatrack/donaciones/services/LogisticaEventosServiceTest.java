@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.services;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
@@ -145,9 +148,9 @@ class LogisticaEventosServiceTest {
         @DisplayName("Pasa la donación a EN_TRASLADO y registra la ruta en el historial")
         void pasaAEnTraslado() {
             prepararParaInicioDeRuta();
-            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
+            when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
+            when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
+            when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
             servicio.procesarInicioRuta(evento(donacion.getId()));
 
@@ -160,9 +163,9 @@ class LogisticaEventosServiceTest {
         void notificaConElLinkAlMapa() {
             // El enunciado pide que ambas partes puedan seguir la entrega en vivo.
             prepararParaInicioDeRuta();
-            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
+            when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
+            when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
+            when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
             servicio.procesarInicioRuta(evento(donacion.getId()));
 
@@ -182,10 +185,9 @@ class LogisticaEventosServiceTest {
             segunda.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
             segunda.cambiarEstado("LISTA_PARA_ENTREGAR", "planificar", null);
 
-            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(donacionesRepositorio.buscarPorId(segunda.getId())).thenReturn(Optional.of(segunda));
-            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
+            when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion, segunda));
+            when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
+            when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
             servicio.procesarInicioRuta(evento(donacion.getId(), segunda.getId()));
 
@@ -198,7 +200,7 @@ class LogisticaEventosServiceTest {
         @DisplayName("Lanza 404 si alguna donación del evento no existe")
         void donacionInexistente() {
             UUID idInexistente = UUID.randomUUID();
-            when(donacionesRepositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
+            when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of());
 
             assertThatThrownBy(() -> servicio.procesarInicioRuta(evento(idInexistente)))
                     .isInstanceOf(DonacionNoEncontradaException.class);
@@ -208,7 +210,7 @@ class LogisticaEventosServiceTest {
         @DisplayName("Una donación que no llegó a LISTA_PARA_ENTREGAR no puede pasar a EN_TRASLADO")
         void estadoIncompatible() {
             // Protege la trazabilidad: logística no puede saltear la planificación.
-            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
 
             assertThatThrownBy(() -> servicio.procesarInicioRuta(evento(donacion.getId())))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
@@ -224,9 +226,9 @@ class LogisticaEventosServiceTest {
                     .razonSocial("Comedor Los Pibes")
                     .contactos(List.of(Telefono.builder().valor("1155667788").build()))
                     .build();
-            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(sinEmail));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
+            when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
+            when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(sinEmail));
+            when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
             servicio.procesarInicioRuta(evento(donacion.getId()));
 
@@ -239,13 +241,50 @@ class LogisticaEventosServiceTest {
         void donacionSinEntidad() {
             prepararParaInicioDeRuta();
             donacion.setIdEntidadBeneficiaria(null);
-            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
+            when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
+            when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
             servicio.procesarInicioRuta(evento(donacion.getId()));
 
             verify(notificacionClient, times(1)).enviarNotificacion(eq(EMAIL_DONANTE), anyString(), anyString());
             verifyNoInteractions(entidadesRepositorio);
+        }
+
+        @Test
+        @DisplayName("Lee las donaciones, sus donantes y sus entidades en una consulta cada una, no una por donación")
+        void consultasPorLote() {
+            Donacion segunda = new Donacion();
+            segunda.setIdDonante(idDonante);
+            segunda.setIdEntidadBeneficiaria(entidad.getId());
+            prepararParaInicioDeRuta();
+            segunda.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
+            segunda.cambiarEstado("LISTA_PARA_ENTREGAR", "planificar", null);
+            when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion, segunda));
+            when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
+            when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
+
+            servicio.procesarInicioRuta(evento(donacion.getId(), segunda.getId(), donacion.getId()));
+
+            verify(donacionesRepositorio, times(1)).obtenerPorIds(anyCollection());
+            verify(entidadesRepositorio, times(1)).obtenerPorIds(anyCollection());
+            verify(donanteRepositorio, times(1)).obtenerPorIds(anyCollection());
+            verify(donacionesRepositorio, never()).buscarPorId(any());
+        }
+
+        @Test
+        @DisplayName("Un inicio de ruta repetido no cambia nada ni vuelve a notificar (callback idempotente)")
+        void inicioRepetido() {
+            // El proveedor reintenta los callbacks: antes el segundo respondía 422
+            // por transición ilegal y el broker lo seguía reintentando.
+            prepararParaEntrega();
+            int cambios = donacion.getHistorialEstados().size();
+            when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
+
+            assertThatCode(() -> servicio.procesarInicioRuta(evento(donacion.getId()))).doesNotThrowAnyException();
+
+            assertThat(donacion.getHistorialEstados()).hasSize(cambios);
+            verify(donacionesRepositorio, never()).guardar(any());
+            verifyNoInteractions(notificacionClient);
         }
     }
 
@@ -320,6 +359,21 @@ class LogisticaEventosServiceTest {
         }
 
         @Test
+        @DisplayName("Una entrega exitosa repetida no cambia nada ni vuelve a notificar")
+        void entregaRepetida() {
+            prepararParaEntrega();
+            donacion.registrarEntrega(LocalDateTime.of(2026, 3, 15, 14, 30), "primera vez");
+            int cambios = donacion.getHistorialEstados().size();
+            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+
+            servicio.procesarEntregaExitosa(evento());
+
+            assertThat(donacion.getHistorialEstados()).hasSize(cambios);
+            verify(donacionesRepositorio, never()).guardar(any());
+            verifyNoInteractions(notificacionClient);
+        }
+
+        @Test
         @DisplayName("Lanza 404 si la donación del evento no existe")
         void donacionInexistente() {
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.empty());
@@ -345,6 +399,21 @@ class LogisticaEventosServiceTest {
         private EntregaFallidaCallbackDTO evento(boolean replanificable) {
             return new EntregaFallidaCallbackDTO(
                     donacion.getId(), "Tocamos timbre pero nadie respondió", replanificable);
+        }
+
+        @Test
+        @DisplayName("Una entrega fallida repetida no cambia nada ni vuelve a notificar")
+        void fallidaRepetida() {
+            prepararParaEntrega();
+            donacion.registrarEntregaFallida("nadie en el domicilio");
+            int cambios = donacion.getHistorialEstados().size();
+            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+
+            servicio.procesarEntregaFallida(new EntregaFallidaCallbackDTO(donacion.getId(), "nadie en el domicilio", true));
+
+            assertThat(donacion.getHistorialEstados()).hasSize(cambios);
+            verify(donacionesRepositorio, never()).guardar(any());
+            verifyNoInteractions(notificacionClient);
         }
 
         @Test

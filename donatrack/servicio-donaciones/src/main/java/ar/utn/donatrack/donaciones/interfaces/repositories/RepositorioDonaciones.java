@@ -4,6 +4,7 @@ import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,6 +30,9 @@ public interface RepositorioDonaciones {
   Pagina<Donacion> buscar(FiltroDonaciones filtro, SolicitudPagina pagina);
 
   Optional<Donacion> buscarPorId(UUID id);
+
+  /** Varias donaciones en una sola consulta. Las que no existen simplemente no aparecen. */
+  List<Donacion> obtenerPorIds(Collection<UUID> ids);
 
   /**
    * Integridad referencial (Entrega 5): donacion.id_donante e

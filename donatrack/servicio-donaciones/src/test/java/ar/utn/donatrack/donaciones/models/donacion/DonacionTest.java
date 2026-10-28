@@ -423,4 +423,60 @@ class DonacionTest {
             assertThat(donacion.fueEntregada()).isTrue();
         }
     }
+
+    @Nested
+    @DisplayName("Avisos de logística: idempotentes")
+    class AvisosDeLogistica {
+
+        private void hastaListaParaEntregar() {
+            donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
+            donacion.despacharA(ProveedorLogistica.DONATRACK, "SEG-1");
+        }
+
+        @Test
+        @DisplayName("Inicio de ruta: la primera vez pasa a EN_TRASLADO, la repetida no hace nada")
+        void inicioDeRuta() {
+            hastaListaParaEntregar();
+
+            assertThat(donacion.iniciarTraslado("ruta 1")).isTrue();
+            assertThat(donacion.iniciarTraslado("ruta 1")).isFalse();
+            assertThat(donacion.estaEnEstado("EN_TRASLADO")).isTrue();
+            assertThat(donacion.getHistorialEstados()).filteredOn(c -> c.getEstado().es("EN_TRASLADO")).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Un inicio de ruta que llega después de la entrega se ignora")
+        void inicioAtrasado() {
+            hastaListaParaEntregar();
+            donacion.iniciarTraslado("ruta 1");
+            donacion.registrarEntrega(java.time.LocalDateTime.of(2026, 3, 15, 14, 30), "entregada");
+
+            assertThat(donacion.iniciarTraslado("ruta 1")).isFalse();
+            assertThat(donacion.fueEntregada()).isTrue();
+        }
+
+        @Test
+        @DisplayName("Después de una entrega fallida, un nuevo inicio de ruta es un reintento válido")
+        void reintentoDespuesDeFallar() {
+            hastaListaParaEntregar();
+            donacion.iniciarTraslado("ruta 1");
+            assertThat(donacion.registrarEntregaFallida("nadie en el domicilio")).isTrue();
+            assertThat(donacion.registrarEntregaFallida("nadie en el domicilio")).isFalse();
+
+            assertThat(donacion.iniciarTraslado("ruta 2")).isTrue();
+        }
+
+        @Test
+        @DisplayName("Entrega exitosa repetida: no se registra dos veces ni deja dos eventos")
+        void entregaRepetida() {
+            hastaListaParaEntregar();
+            donacion.iniciarTraslado("ruta 1");
+
+            assertThat(donacion.registrarEntrega(java.time.LocalDateTime.of(2026, 3, 15, 14, 30), "ok")).isTrue();
+            assertThat(donacion.registrarEntrega(java.time.LocalDateTime.of(2026, 3, 15, 14, 30), "ok")).isFalse();
+            assertThat(donacion.eventosPendientes())
+                    .filteredOn(ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada.class::isInstance)
+                    .hasSize(1);
+        }
+    }
 }

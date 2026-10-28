@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionDadaDeBaja;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionCambioDeEstado;
@@ -47,7 +49,9 @@ import java.util.UUID;
 
 import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ASIGNACION_REALIZADA;
 import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGADA;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGA_FALLIDA;
 import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_TRASLADO;
 import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.LISTA_PARA_ENTREGAR;
 
 /**
@@ -132,13 +136,14 @@ public class Donacion extends EntidadPersistible {
     protected LocalDate fechaAsignacion;
 
     /**
-     * Qué proveedor de logística tomó la donación ("DONATRACK" o "EXTERNA") y con
-     * qué identificador la sigue él (el id de la entrega en DONATRACK, un trackingId
-     * como EXT-7838BF20 en EXTERNA). Los asigna el broker al despachar el envío.
+     * Qué proveedor de logística tomó la donación y con qué identificador la sigue
+     * él (el id de la entrega en DONATRACK, un trackingId como EXT-7838BF20 en
+     * EXTERNA). Los asigna el broker al despachar el envío.
      */
     @Setter
+    @Enumerated(EnumType.STRING)
     @Column(name = "proveedor_logistica")
-    protected String proveedorLogistica;
+    protected ProveedorLogistica proveedorLogistica;
 
     @Setter
     @Column(name = "id_seguimiento_logistica")
@@ -184,12 +189,41 @@ public class Donacion extends EntidadPersistible {
         transicionar(estadoDestino, nombreTransicion, justificacion, FechaHoraArgentina.ahora());
     }
 
+    /*
+     * Avisos de logística. Son idempotentes: si el aviso llega repetido (la
+     * donación ya está en el estado que informa, o ya lo superó), no cambian nada
+     * y devuelven false, así el callback responde bien sin repetir el historial
+     * ni las notificaciones. Antes un aviso repetido respondía 422 y el proveedor
+     * lo seguía reintentando.
+     */
+
+    /** El proveedor inició el recorrido. */
+    public boolean iniciarTraslado(String justificacion) {
+        if (estaEnEstado(EN_TRASLADO) || estaEnEstado(ENTREGADA)) {
+            return false;
+        }
+        cambiarEstado(EN_TRASLADO, "Inicio de ruta", justificacion);
+        return true;
+    }
+
     /**
      * La entrega que informa logística, con la fecha y hora en que ocurrió (no la
      * del aviso): es la que se informa a incentivos.
      */
-    public void registrarEntrega(LocalDateTime fechaEntrega, String justificacion) {
+    public boolean registrarEntrega(LocalDateTime fechaEntrega, String justificacion) {
+        if (estaEnEstado(ENTREGADA)) {
+            return false;
+        }
         transicionar(ENTREGADA, "Entrega confirmada", justificacion, fechaEntrega);
+        return true;
+    }
+
+    public boolean registrarEntregaFallida(String justificacion) {
+        if (estaEnEstado(ENTREGA_FALLIDA)) {
+            return false;
+        }
+        cambiarEstado(ENTREGA_FALLIDA, "Entrega fallida", justificacion);
+        return true;
     }
 
     /**
@@ -317,7 +351,7 @@ public class Donacion extends EntidadPersistible {
      * siguiera en ASIGNACION_REALIZADA cuando llega el evento de inicio de ruta,
      * procesarInicioRuta fallaría con una transición ilegal.
      */
-    public void despacharA(String proveedor, String idSeguimiento) {
+    public void despacharA(ProveedorLogistica proveedor, String idSeguimiento) {
         this.proveedorLogistica = proveedor;
         this.idSeguimientoLogistica = idSeguimiento;
         cambiarEstado(LISTA_PARA_ENTREGAR, "envio a logistica",

@@ -52,6 +52,10 @@ public class PersonaDonanteRepository implements RepositorioPersonasDonantes {
         return jpa.findById(id);
     }
 
+    public List<PersonaDonante> obtenerPorIds(Collection<UUID> ids) {
+        return ids.isEmpty() ? List.of() : jpa.findAllById(ids);
+    }
+
     public Pagina<PersonaDonante> buscar(String estado, SolicitudPagina pagina) {
         PageRequest pedido = PageRequest.of(pagina.numero(), pagina.tamanio(), ORDEN_LISTADO);
         Page<PersonaDonante> resultado = (estado == null || estado.isBlank())

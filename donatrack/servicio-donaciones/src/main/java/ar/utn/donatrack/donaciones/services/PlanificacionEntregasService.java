@@ -1,5 +1,14 @@
 package ar.utn.donatrack.donaciones.services;
 
+import java.util.stream.Collectors;
+import java.util.function.Function;
+import java.util.Set;
+import java.util.Objects;
+import java.util.LinkedHashSet;
+import java.util.Collection;
+import java.util.ArrayList;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
+import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
@@ -9,7 +18,6 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesB
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.Direccion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.validations.donaciones.DonacionesValidator;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +25,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionOperations;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -47,12 +54,9 @@ import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion
 @RequiredArgsConstructor
 public class PlanificacionEntregasService {
 
-    /** Único estado desde el que una donación puede despacharse a logística. */
-
     private final RepositorioDonaciones donacionesRepositorio;
     private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
     private final BrokerLogisticaClient brokerClient;
-    private final DonacionesValidator validador;
 
     /**
      * El despacho usa dos transacciones cortas y deja afuera la llamada al
@@ -71,12 +75,14 @@ public class PlanificacionEntregasService {
      * nada. Es deliberado: un lote a medias dejaría parte de las donaciones en
      * logística y parte sin despachar, sin forma simple de reconciliarlas.
      *
-     * @param proveedor "DONATRACK"/"EXTERNA" para forzar uno, o null para que el
-     *                  broker elija por prioridad con fallback.
+     * Las donaciones y sus entidades se leen en dos consultas, no dos o tres por
+     * donación.
+     *
+     * @param proveedor uno para forzarlo, o null para que el broker elija por
+     *                  prioridad con fallback.
      */
-    public EnvioLogisticaResponseDTO despachar(List<UUID> idsDonaciones, String proveedor) {
-        List<BrokerLogisticaClient.DonacionEnvio> pedido = transaccion.execute(estado ->
-                validarYObtener(idsDonaciones).values().stream().map(this::aDonacionEnvio).toList());
+    public EnvioLogisticaResponseDTO despachar(List<UUID> idsDonaciones, ProveedorLogistica proveedor) {
+        List<BrokerLogisticaClient.DonacionEnvio> pedido = transaccion.execute(estado -> armarPedido(idsDonaciones));
 
         BrokerLogisticaClient.ResultadoEnvio resultado = llamarAlBroker(proveedor, pedido);
 
@@ -101,8 +107,9 @@ public class PlanificacionEntregasService {
         List<UUID> despachables = transaccion.execute(estado -> {
             List<Donacion> asignadas = donacionesRepositorio.obtenerPorEstado(ASIGNACION_REALIZADA);
             log.info("[LOGISTICA] Barrido nocturno. Donaciones con asignación realizada: {}", asignadas.size());
+            Map<UUID, EntidadBeneficiaria> entidades = entidadesDe(asignadas);
             return asignadas.stream()
-                    .filter(this::tieneDireccionResoluble)
+                    .filter(donacion -> tieneDireccionResoluble(entidades.get(donacion.getIdEntidadBeneficiaria())))
                     .map(Donacion::getId)
                     .toList();
         });
@@ -125,68 +132,76 @@ public class PlanificacionEntregasService {
 
     /** Marca como despachadas las donaciones que el broker aceptó, todas en una transacción. */
     private void registrarDespacho(List<UUID> pedidas, BrokerLogisticaClient.ResultadoEnvio resultado) {
+        Map<UUID, Donacion> donaciones = donacionesRepositorio.obtenerPorIds(Set.copyOf(pedidas)).stream()
+                .collect(Collectors.toMap(Donacion::getId, Function.identity()));
         for (BrokerLogisticaClient.EnvioAsignado envio : resultado.envios()) {
-            Donacion donacion = pedidas.contains(envio.idDonacion())
-                    ? donacionesRepositorio.buscarPorId(envio.idDonacion()).orElse(null)
-                    : null;
+            Donacion donacion = donaciones.get(envio.idDonacion());
             if (donacion == null) {
                 log.warn("[LOGISTICA] El broker devolvió un envío para la donación {}, que no estaba en el pedido.",
                         envio.idDonacion());
                 continue;
             }
-            donacion.despacharA(envio.proveedor(), envio.idSeguimiento());
+            donacion.despacharA(ProveedorLogistica.desde(envio.proveedor()), envio.idSeguimiento());
             donacionesRepositorio.guardar(donacion);
         }
     }
 
     /**
      * Recupera las donaciones y verifica que todas estén en condiciones de
-     * despacharse. Devuelve un mapa por id para poder casar la respuesta del
-     * broker sin volver a recorrer la lista.
+     * despacharse, y las traduce al pedido del broker en el orden pedido.
      */
-    private Map<UUID, Donacion> validarYObtener(List<UUID> idsDonaciones) {
+    private List<BrokerLogisticaClient.DonacionEnvio> armarPedido(List<UUID> idsDonaciones) {
         if (idsDonaciones == null || idsDonaciones.isEmpty()) {
             throw new DonacionNoDespachableException("Hay que indicar al menos una donación para despachar.");
         }
+        Set<UUID> pedidas = new LinkedHashSet<>(idsDonaciones);
+        Map<UUID, Donacion> donaciones = donacionesRepositorio.obtenerPorIds(pedidas).stream()
+                .collect(Collectors.toMap(Donacion::getId, Function.identity()));
+        Map<UUID, EntidadBeneficiaria> entidades = entidadesDe(donaciones.values());
 
-        Map<UUID, Donacion> resultado = new HashMap<>();
-        for (UUID id : idsDonaciones) {
-            // Lanza DonacionNoEncontradaException (404) si no existe.
-            Donacion donacion = validador.validarYObtenerDonacion(id);
-
+        List<BrokerLogisticaClient.DonacionEnvio> pedido = new ArrayList<>();
+        for (UUID id : pedidas) {
+            Donacion donacion = donaciones.get(id);
+            if (donacion == null) {
+                throw new DonacionNoEncontradaException(id);
+            }
             if (!donacion.estaEnEstado(ASIGNACION_REALIZADA)) {
                 throw new DonacionNoDespachableException(
                         "La donación " + id + " está en " + donacion.getEstado().nombre()
                                 + " y solo se puede despachar desde " + ASIGNACION_REALIZADA + ".");
             }
-            if (!tieneDireccionResoluble(donacion)) {
+            EntidadBeneficiaria entidad = entidades.get(donacion.getIdEntidadBeneficiaria());
+            if (!tieneDireccionResoluble(entidad)) {
                 throw new DonacionNoDespachableException(
                         "La donación " + id + " no tiene una entidad beneficiaria con dirección cargada.");
             }
-            resultado.put(id, donacion);
+            pedido.add(aDonacionEnvio(donacion, entidad));
         }
-        return resultado;
+        return pedido;
     }
 
-    private boolean tieneDireccionResoluble(Donacion donacion) {
-        EntidadBeneficiaria entidad = entidadDe(donacion);
+    /** Las entidades de esas donaciones, en una sola consulta. */
+    private Map<UUID, EntidadBeneficiaria> entidadesDe(Collection<Donacion> donaciones) {
+        Set<UUID> ids = donaciones.stream()
+                .map(Donacion::getIdEntidadBeneficiaria)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        return entidadesRepositorio.obtenerPorIds(ids).stream()
+                .collect(Collectors.toMap(EntidadBeneficiaria::getId, Function.identity()));
+    }
+
+    private static boolean tieneDireccionResoluble(EntidadBeneficiaria entidad) {
         return entidad != null
                 && entidad.getDireccion() != null
                 && entidad.getDireccion().getLocalidad() != null
                 && entidad.getDireccion().getLocalidad().getProvincia() != null;
     }
 
-    private EntidadBeneficiaria entidadDe(Donacion donacion) {
-        UUID idEntidad = donacion.getIdEntidadBeneficiaria();
-        return idEntidad == null ? null : entidadesRepositorio.buscarPorId(idEntidad).orElse(null);
-    }
-
     /**
      * Traduce la donación al contrato del broker. La dirección de donaciones anida
      * Localidad y Provincia; la del broker es plana, así que hay que aplanarla.
      */
-    private BrokerLogisticaClient.DonacionEnvio aDonacionEnvio(Donacion donacion) {
-        EntidadBeneficiaria entidad = entidadDe(donacion);
+    private BrokerLogisticaClient.DonacionEnvio aDonacionEnvio(Donacion donacion, EntidadBeneficiaria entidad) {
         Direccion direccion = entidad.getDireccion();
 
         return new BrokerLogisticaClient.DonacionEnvio(
@@ -209,9 +224,10 @@ public class PlanificacionEntregasService {
      * reintenta más tarde.
      */
     private BrokerLogisticaClient.ResultadoEnvio llamarAlBroker(
-            String proveedor, List<BrokerLogisticaClient.DonacionEnvio> pedido) {
+            ProveedorLogistica proveedor, List<BrokerLogisticaClient.DonacionEnvio> pedido) {
         try {
-            BrokerLogisticaClient.ResultadoEnvio resultado = brokerClient.solicitarEnvio(proveedor, pedido);
+            BrokerLogisticaClient.ResultadoEnvio resultado = brokerClient.solicitarEnvio(
+                    proveedor == null ? null : proveedor.name(), pedido);
             if (resultado == null || resultado.envios() == null) {
                 throw new LogisticaNoDisponibleException("El broker respondió sin envíos asignados.");
             }

@@ -1,8 +1,8 @@
 package ar.utn.donatrack.donaciones.dtos.request;
 
+import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,8 +26,7 @@ public class EnvioLogisticaRequestDTO {
 
     /**
      * Opcional. null deja que el broker elija por prioridad y haga fallback;
-     * "DONATRACK" o "EXTERNA" fuerzan ese proveedor sin fallback.
+     * DONATRACK o EXTERNA fuerzan ese proveedor sin fallback. Otro valor es 400.
      */
-    @Pattern(regexp = "DONATRACK|EXTERNA", message = "El proveedor debe ser DONATRACK o EXTERNA")
-    private String proveedor;
+    private ProveedorLogistica proveedor;
 }

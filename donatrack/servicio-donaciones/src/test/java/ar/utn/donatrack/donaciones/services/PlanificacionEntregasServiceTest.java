@@ -1,5 +1,10 @@
 package ar.utn.donatrack.donaciones.services;
 
+import java.util.Objects;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Collection;
+import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
@@ -13,7 +18,6 @@ import ar.utn.donatrack.donaciones.models.entidad.Direccion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.Localidad;
 import ar.utn.donatrack.donaciones.models.entidad.Provincia;
-import ar.utn.donatrack.donaciones.validations.donaciones.DonacionesValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -36,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -58,6 +63,7 @@ import static org.mockito.Mockito.when;
  * pedido al contrato del broker, qué se guarda de la respuesta, y que un fallo
  * del broker NO deje las donaciones en un estado inconsistente.
  */
+@SuppressWarnings("unchecked")
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PlanificacionEntregasService - despacho al broker de logística")
 class PlanificacionEntregasServiceTest {
@@ -77,14 +83,23 @@ class PlanificacionEntregasServiceTest {
     private PlanificacionEntregasService servicio;
     private EntidadBeneficiaria entidad;
 
+    /** Lo que "hay en la base": los repositorios simulados devuelven de acá las que se piden por lote. */
+    private final Map<UUID, Donacion> donacionesGuardadas = new HashMap<>();
+    private final Map<UUID, EntidadBeneficiaria> entidadesGuardadas = new HashMap<>();
+
     @BeforeEach
     void prepararEscenario() {
         servicio = new PlanificacionEntregasService(
                 donacionesRepositorio,
                 entidadesRepositorio,
                 brokerClient,
-                new DonacionesValidator(donacionesRepositorio),
                 TransactionOperations.withoutTransaction());
+        lenient().when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenAnswer(pedido ->
+                ((Collection<UUID>) pedido.getArgument(0)).stream().map(donacionesGuardadas::get)
+                        .filter(Objects::nonNull).toList());
+        lenient().when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenAnswer(pedido ->
+                ((Collection<UUID>) pedido.getArgument(0)).stream().map(entidadesGuardadas::get)
+                        .filter(Objects::nonNull).toList());
 
         entidad = EntidadBeneficiaria.builder()
                 .id(UUID.randomUUID())
@@ -100,6 +115,7 @@ class PlanificacionEntregasServiceTest {
                         .build())
                 .campanias(new ArrayList<>())
                 .build();
+        entidadesGuardadas.put(entidad.getId(), entidad);
     }
 
     /** Donación en ASIGNACION_REALIZADA, registrada en el repositorio mock. */
@@ -109,8 +125,7 @@ class PlanificacionEntregasServiceTest {
         donacion.setIdDonante(UUID.randomUUID());
         donacion.asignarA(entidad);
 
-        lenient().when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-        lenient().when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+        donacionesGuardadas.put(donacion.getId(), donacion);
         return donacion;
     }
 
@@ -135,7 +150,6 @@ class PlanificacionEntregasServiceTest {
             // y parte sin despachar sería imposible de reconciliar.
             Donacion valida = donacionAsignada();
             UUID inexistente = UUID.randomUUID();
-            when(donacionesRepositorio.buscarPorId(inexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.despachar(List.of(valida.getId(), inexistente), null))
                     .isInstanceOf(DonacionNoEncontradaException.class);
@@ -148,7 +162,7 @@ class PlanificacionEntregasServiceTest {
         void estadoIncorrecto() {
             Donacion valida = donacionAsignada();
             Donacion enDeposito = new Donacion();
-            when(donacionesRepositorio.buscarPorId(enDeposito.getId())).thenReturn(Optional.of(enDeposito));
+            donacionesGuardadas.put(enDeposito.getId(), enDeposito);
 
             assertThatThrownBy(() -> servicio.despachar(List.of(valida.getId(), enDeposito.getId()), null))
                     .isInstanceOf(DonacionNoDespachableException.class)
@@ -168,7 +182,7 @@ class PlanificacionEntregasServiceTest {
                     .id(entidad.getId())
                     .razonSocial("Comedor sin dirección")
                     .build();
-            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(sinDireccion));
+            entidadesGuardadas.put(entidad.getId(), sinDireccion);
 
             assertThatThrownBy(() -> servicio.despachar(List.of(donacion.getId()), null))
                     .isInstanceOf(DonacionNoDespachableException.class)
@@ -238,7 +252,7 @@ class PlanificacionEntregasServiceTest {
             when(brokerClient.solicitarEnvio(eq("EXTERNA"), anyList()))
                     .thenReturn(respuestaBroker("EXTERNA", List.of(), donacion));
 
-            servicio.despachar(List.of(donacion.getId()), "EXTERNA");
+            servicio.despachar(List.of(donacion.getId()), ProveedorLogistica.EXTERNA);
 
             verify(brokerClient).solicitarEnvio(eq("EXTERNA"), anyList());
         }
@@ -260,7 +274,7 @@ class PlanificacionEntregasServiceTest {
             servicio.despachar(List.of(donacion.getId()), null);
 
             assertThat(donacion.estaEnEstado("LISTA_PARA_ENTREGAR")).isTrue();
-            assertThat(donacion.getProveedorLogistica()).isEqualTo("DONATRACK");
+            assertThat(donacion.getProveedorLogistica()).isEqualTo(ProveedorLogistica.DONATRACK);
             assertThat(donacion.getIdSeguimientoLogistica()).isNotBlank();
         }
 

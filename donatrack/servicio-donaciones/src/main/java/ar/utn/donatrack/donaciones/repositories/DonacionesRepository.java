@@ -24,6 +24,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -81,6 +82,10 @@ public class DonacionesRepository implements RepositorioDonaciones {
 
   public Optional<Donacion> buscarPorId(UUID id) {
     return jpa.findById(id);
+  }
+
+  public List<Donacion> obtenerPorIds(Collection<UUID> ids) {
+    return ids.isEmpty() ? List.of() : jpa.findAllById(ids);
   }
 
   public boolean existenDelDonante(UUID idDonante) {

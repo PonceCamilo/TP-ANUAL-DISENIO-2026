@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
 import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
 import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
 import ar.utn.donatrack.donaciones.services.DonacionService;
@@ -708,7 +709,7 @@ class DonacionesControllerTest {
         @Test
         @DisplayName("Permite forzar un proveedor puntual")
         void proveedorForzado() throws Exception {
-            when(planificacionEntregasService.despachar(any(), eq("EXTERNA")))
+            when(planificacionEntregasService.despachar(any(), eq(ProveedorLogistica.EXTERNA)))
                     .thenReturn(respuestaDespacho("EXTERNA", List.of()));
 
             mockMvc.perform(post("/donaciones/envios")
@@ -716,7 +717,7 @@ class DonacionesControllerTest {
                             .content(cuerpo("EXTERNA")))
                     .andExpect(status().isCreated());
 
-            verify(planificacionEntregasService).despachar(any(), eq("EXTERNA"));
+            verify(planificacionEntregasService).despachar(any(), eq(ProveedorLogistica.EXTERNA));
         }
 
         @Test

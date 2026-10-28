@@ -1,5 +1,14 @@
 package ar.utn.donatrack.donaciones.services;
 
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.function.Function;
+import java.util.Set;
+import java.util.Objects;
+import java.util.Map;
+import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.ArrayList;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
@@ -16,11 +25,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
 
 import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGADA;
 import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGA_FALLIDA;
-import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_TRASLADO;
 
 /**
  * Recibe los callbacks de eventos logísticos y dispara las notificaciones
@@ -29,6 +36,11 @@ import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion
  * Regla arquitectónica (Entrega 3): el Servicio de Logística NO llama
  * directamente a notificaciones ni a incentivos; deja disponible la
  * información y es el Servicio de Donaciones quien orquesta las notificaciones.
+ *
+ * Cada callback es una transacción: si una donación de la ruta falla, no queda
+ * ninguna a medias (y los avisos, que van a la bandeja de salida, tampoco). Los
+ * callbacks son idempotentes: un aviso repetido responde bien sin cambiar nada
+ * ni volver a notificar.
  */
 @Slf4j
 @Transactional
@@ -47,17 +59,29 @@ public class LogisticaEventosService {
      * El chofer inició el recorrido. Se notifica a todas las entidades
      * beneficiarias y donantes cuyas donaciones forman parte de la ruta,
      * incluyendo el link al mapa interactivo de seguimiento en tiempo real.
+     *
+     * Las donaciones, sus donantes y sus entidades se leen en tres consultas en
+     * total, no tres por donación.
      */
     public void procesarInicioRuta(InicioRutaCallbackDTO dto) {
         log.info("[LOGISTICA] Inicio de ruta {}. Donaciones involucradas: {}", dto.idRuta(), dto.idsDonaciones().size());
 
-        for (UUID idDonacion : dto.idsDonaciones()) {
-            Donacion donacion = obtenerDonacionOFallar(idDonacion);
+        List<Donacion> donaciones = obtenerTodasOFallar(dto.idsDonaciones());
+        Set<UUID> idsDonantes = ids(donaciones, Donacion::getIdDonante);
+        Set<UUID> idsEntidades = ids(donaciones, Donacion::getIdEntidadBeneficiaria);
+        Map<UUID, PersonaDonante> donantes = idsDonantes.isEmpty() ? Map.of()
+                : porId(donanteRepositorio.obtenerPorIds(idsDonantes), PersonaDonante::getId);
+        Map<UUID, EntidadBeneficiaria> entidades = idsEntidades.isEmpty() ? Map.of()
+                : porId(entidadesRepositorio.obtenerPorIds(idsEntidades), EntidadBeneficiaria::getId);
 
-            donacion.cambiarEstado(EN_TRASLADO, "Inicio de ruta", "Chofer inició el recorrido. Ruta: " + dto.idRuta());
+        for (Donacion donacion : donaciones) {
+            if (!donacion.iniciarTraslado("Chofer inició el recorrido. Ruta: " + dto.idRuta())) {
+                log.info("[LOGISTICA] Inicio de ruta repetido para la donación {}: sin cambios.", donacion.getId());
+                continue;
+            }
             donacionesRepositorio.guardar(donacion);
-
-            notificador.inicioDeRuta(donanteDe(donacion), entidadDe(donacion), dto.urlMapaInteractivo());
+            notificador.inicioDeRuta(de(donantes, donacion.getIdDonante()),
+                    de(entidades, donacion.getIdEntidadBeneficiaria()), dto.urlMapaInteractivo());
         }
     }
 
@@ -75,8 +99,11 @@ public class LogisticaEventosService {
 
         // La entrega queda con la fecha que informa logística. Imputar lo entregado
         // a las necesidades y avisar a incentivos lo hacen los oyentes del evento.
-        donacion.registrarEntrega(dto.fechaHoraEntrega(),
-                "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega());
+        if (!donacion.registrarEntrega(dto.fechaHoraEntrega(),
+                "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega())) {
+            log.info("[LOGISTICA] Entrega exitosa repetida para la donación {}: sin cambios.", donacion.getId());
+            return;
+        }
         donacionesRepositorio.guardar(donacion);
 
         notificador.entregaExitosa(donanteDe(donacion), entidadDe(donacion), armarComprobante(dto));
@@ -102,7 +129,10 @@ public class LogisticaEventosService {
         String justificacion = dto.motivoFallo()
                 + (dto.replanificable() ? " | Puede ser replanificada." : " | No puede ser replanificada.");
 
-        donacion.cambiarEstado(ENTREGA_FALLIDA, "Entrega fallida", justificacion);
+        if (!donacion.registrarEntregaFallida(justificacion)) {
+            log.info("[LOGISTICA] Entrega fallida repetida para la donación {}: sin cambios.", donacion.getId());
+            return;
+        }
         donacionesRepositorio.guardar(donacion);
 
         notificador.entregaFallida(donacion.getId(), donanteDe(donacion), entidadDe(donacion),
@@ -113,6 +143,34 @@ public class LogisticaEventosService {
 
     private Donacion obtenerDonacionOFallar(UUID id) {
         return donacionesRepositorio.buscarPorId(id).orElseThrow(() -> new DonacionNoEncontradaException(id));
+    }
+
+    /** Las donaciones de la ruta, en el orden del aviso y sin repetir; 404 si falta alguna. */
+    private List<Donacion> obtenerTodasOFallar(List<UUID> ids) {
+        Set<UUID> pedidas = new LinkedHashSet<>(ids);
+        Map<UUID, Donacion> encontradas = porId(donacionesRepositorio.obtenerPorIds(pedidas), Donacion::getId);
+        List<Donacion> donaciones = new ArrayList<>();
+        for (UUID id : pedidas) {
+            Donacion donacion = encontradas.get(id);
+            if (donacion == null) {
+                throw new DonacionNoEncontradaException(id);
+            }
+            donaciones.add(donacion);
+        }
+        return donaciones;
+    }
+
+    private static Set<UUID> ids(List<Donacion> donaciones, Function<Donacion, UUID> id) {
+        return donaciones.stream().map(id).filter(Objects::nonNull).collect(Collectors.toSet());
+    }
+
+    /** El elemento de ese id, o null si no hay id (una donación sin entidad asignada). */
+    private static <T> T de(Map<UUID, T> elementos, UUID id) {
+        return id == null ? null : elementos.get(id);
+    }
+
+    private static <T> Map<UUID, T> porId(List<T> elementos, Function<T, UUID> id) {
+        return elementos.stream().collect(Collectors.toMap(id, Function.identity(), (a, b) -> a));
     }
 
     private PersonaDonante donanteDe(Donacion donacion) {

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.dtos.response;
 
+import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -19,7 +20,7 @@ public class DonacionResponseDTO {
   private String estado;
 
   /** Proveedor de logística que tomó la entrega y su id de seguimiento; null si todavía no se despachó. */
-  private String proveedorLogistica;
+  private ProveedorLogistica proveedorLogistica;
   private String idSeguimientoLogistica;
 
   private List<BienResponseDTO> bienes;
