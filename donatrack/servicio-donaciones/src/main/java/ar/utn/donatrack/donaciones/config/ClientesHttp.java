@@ -16,6 +16,9 @@ import org.springframework.web.service.invoker.HttpServiceProxyFactory;
  *  - el ObjectMapper de la aplicación, así las fechas viajan en ISO-8601 y no
  *    como arreglos.
  *
+ * Cada llamada lleva el id de correlación del pedido en curso (IdDeCorrelacion),
+ * para seguirla en los logs del otro servicio.
+ *
  * Los reintentos no van acá: los avisos los reintenta la bandeja de salida y el
  * broker de logística ya hace fallback entre proveedores.
  */
@@ -25,7 +28,7 @@ public final class ClientesHttp {
     }
 
     public static <T> T crear(RestClient.Builder builder, String urlBase, Class<T> api) {
-        RestClient cliente = builder.baseUrl(urlBase).build();
+        RestClient cliente = builder.baseUrl(urlBase).requestInterceptor(IdDeCorrelacion.propagador()).build();
         return HttpServiceProxyFactory.builderFor(RestClientAdapter.create(cliente)).build().createClient(api);
     }
 }

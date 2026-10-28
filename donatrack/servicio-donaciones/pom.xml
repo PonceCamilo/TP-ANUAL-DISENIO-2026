@@ -108,6 +108,15 @@
             <artifactId>spring-core</artifactId>
         </dependency>
 
+        <!--
+            Entrega 5: /actuator/health para el healthcheck del contenedor y
+            métricas en /actuator/metrics.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Swagger / OpenAPI UI -->
         <dependency>
             <groupId>org.springdoc</groupId>
