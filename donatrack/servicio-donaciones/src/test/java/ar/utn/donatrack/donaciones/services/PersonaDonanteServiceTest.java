@@ -410,6 +410,30 @@ class PersonaDonanteServiceTest {
         }
 
         @Test
+        @DisplayName("Corrige el género de una persona humana y el tipo de una organización, como en el alta")
+        void actualizaGeneroYTipoDeOrganizacion() {
+            UUID idHumana = UUID.randomUUID();
+            UUID idJuridica = UUID.randomUUID();
+            PersonaHumana humana = humanaGuardada(idHumana);
+            PersonaJuridica juridica = juridicaGuardada(idJuridica);
+            when(repositorio.buscarPorId(idHumana)).thenReturn(Optional.of(humana));
+            when(repositorio.buscarPorId(idJuridica)).thenReturn(Optional.of(juridica));
+
+            PersonaDonanteUpdateRequestDTO paraHumana = new PersonaDonanteUpdateRequestDTO();
+            paraHumana.setGenero(Genero.NO_BINARIO);
+            paraHumana.setTipoOrganizacion(TipoPersonaJuridica.EMPRESA);
+            PersonaDonanteUpdateRequestDTO paraJuridica = new PersonaDonanteUpdateRequestDTO();
+            paraJuridica.setTipoOrganizacion(TipoPersonaJuridica.EMPRESA);
+
+            servicio.actualizar(idHumana, paraHumana);
+            servicio.actualizar(idJuridica, paraJuridica);
+
+            assertThat(humana.getGenero()).isEqualTo(Genero.NO_BINARIO);
+            assertThat(juridica.getTipo()).isEqualTo(TipoPersonaJuridica.EMPRESA);
+            assertThat(juridica.getRazonSocial()).isEqualTo("Fundación Ejemplo");
+        }
+
+        @Test
         @DisplayName("Los campos no enviados NO se pisan (actualización parcial)")
         void camposNulosNoSePisan() {
             // Comportamiento clave del PUT: mandar solo el apellido no debe borrar

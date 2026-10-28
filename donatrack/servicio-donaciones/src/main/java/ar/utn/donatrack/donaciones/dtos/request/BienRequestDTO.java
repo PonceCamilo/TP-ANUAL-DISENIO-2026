@@ -5,6 +5,7 @@ import ar.utn.donatrack.donaciones.models.donacion.bien.TipoBien;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,8 +32,9 @@ public class BienRequestDTO {
   private String subcategoria;
   private String descripcion;
   private String foto;
+  @NotNull(message = "La cantidad es obligatoria")
   @Positive
-  private int cantidad;
+  private Integer cantidad;
   @NotBlank
   private String unidad;
   private Boolean esNuevo;

@@ -19,12 +19,12 @@ import java.util.UUID;
 @Builder
 public class CandidatosPendientesResponseDTO {
 
-    private UUID idDonacion;
-    private LocalDateTime fechaCalculo;
+    private final UUID idDonacion;
+    private final LocalDateTime fechaCalculo;
 
     /** True si alguna entidad aparece recomendada por todos los algoritmos a la vez. */
-    private boolean huboCoincidencias;
+    private final boolean huboCoincidencias;
 
-    private List<EntidadBeneficiariaResponseDTO> coincidencias;
-    private List<RankingAlgoritmoResponseDTO> rankings;
+    private final List<EntidadBeneficiariaResponseDTO> coincidencias;
+    private final List<RankingAlgoritmoResponseDTO> rankings;
 }

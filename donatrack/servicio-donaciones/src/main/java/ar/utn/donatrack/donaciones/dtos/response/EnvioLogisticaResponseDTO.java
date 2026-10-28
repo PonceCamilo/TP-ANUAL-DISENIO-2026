@@ -19,12 +19,12 @@ import java.util.UUID;
 public class EnvioLogisticaResponseDTO {
 
     /** Proveedor que finalmente tomó el lote: "DONATRACK" o "EXTERNA". */
-    private String proveedor;
+    private final String proveedor;
 
     /** Proveedores que se probaron antes y no estaban disponibles. */
-    private List<String> proveedoresDescartados;
+    private final List<String> proveedoresDescartados;
 
-    private List<EnvioDonacionDTO> envios;
+    private final List<EnvioDonacionDTO> envios;
 
     public static EnvioLogisticaResponseDTO desde(BrokerLogisticaClient.ResultadoEnvio resultado) {
         return EnvioLogisticaResponseDTO.builder()
@@ -44,10 +44,10 @@ public class EnvioLogisticaResponseDTO {
     @Getter
     @Builder
     public static class EnvioDonacionDTO {
-        private UUID idDonacion;
-        private String proveedor;
+        private final UUID idDonacion;
+        private final String proveedor;
         /** Id con el que el proveedor sigue la donación (id de la entrega en DONATRACK, trackingId en EXTERNA). */
-        private String idSeguimiento;
-        private LocalDateTime fechaAsignacion;
+        private final String idSeguimiento;
+        private final LocalDateTime fechaAsignacion;
     }
 }

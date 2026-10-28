@@ -101,8 +101,8 @@ class EntidadBeneficiariaControllerTest {
                 .id(idNecesidad)
                 .nombre("Colchones")
                 .descripcion("Colchones de una plaza")
-                .cantidadObjetivo(50.0)
-                .cantidadRecibida(0.0)
+                .cantidadObjetivo(50)
+                .cantidadRecibida(0)
                 .satisfecha(false)
                 .build();
     }
@@ -111,8 +111,8 @@ class EntidadBeneficiariaControllerTest {
         return NecesidadRecurrenteResponseDTO.builder()
                 .id(idNecesidad)
                 .nombre("Fideos")
-                .cantidadObjetivo(100.0)
-                .cantidadRecibida(0.0)
+                .cantidadObjetivo(100)
+                .cantidadRecibida(0)
                 .satisfecha(false)
                 .periodo(Periodicidad.SEMANAL)
                 .fechaInicioPeriodo(LocalDate.now())
@@ -321,7 +321,7 @@ class EntidadBeneficiariaControllerTest {
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.tipo").value("EXTRAORDINARIA"))
                     .andExpect(jsonPath("$.nombre").value("Colchones"))
-                    .andExpect(jsonPath("$.cantidadRecibida").value(0.0));
+                    .andExpect(jsonPath("$.cantidadRecibida").value(0));
         }
 
         @Test

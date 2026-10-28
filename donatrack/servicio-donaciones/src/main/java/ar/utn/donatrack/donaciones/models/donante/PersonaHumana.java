@@ -59,9 +59,10 @@ public class PersonaHumana extends PersonaDonante {
     }
 
     /** Los datos que se pueden editar; los que vienen en null no se modifican. */
-    public void actualizarDatosPersonales(String nombre, String apellido, LocalDate fechaNacimiento) {
+    public void actualizarDatosPersonales(String nombre, String apellido, LocalDate fechaNacimiento, Genero genero) {
         if (nombre != null) this.nombre = nombre;
         if (apellido != null) this.apellido = apellido;
         if (fechaNacimiento != null) this.fechaNacimiento = fechaNacimiento;
+        if (genero != null) this.genero = genero;
     }
 }

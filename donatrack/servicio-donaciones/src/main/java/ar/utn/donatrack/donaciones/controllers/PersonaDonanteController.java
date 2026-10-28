@@ -103,7 +103,9 @@ public class PersonaDonanteController {
 
   @Operation(
       summary = "Actualizar los datos de una persona donante",
-      description = "Los campos que no vienen no se modifican. El email no se cambia: es la identidad de la persona.",
+      description = "Los campos que no vienen no se modifican, y solo se aplican los del tipo de la persona: "
+          + "nombre, apellido, fecha de nacimiento y género para una persona humana; razón social, rubro y "
+          + "tipo de organización para una jurídica. El email no se cambia: es la identidad de la persona.",
       responses = {
           @ApiResponse(responseCode = "200", description = "Persona donante actualizada"),
           @ApiResponse(responseCode = "400", description = "Datos inválidos"),

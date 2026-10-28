@@ -88,8 +88,8 @@ public class EntidadBeneficiariaMapper {
                     .nombre(extra.getNombre())
                     .descripcion(extra.getDescripcion())
                     .subcategoria(textoDe(extra.getSubcategoria()))
-                    .cantidadObjetivo((double) extra.getCantidadObjetivo())
-                    .cantidadRecibida((double) extra.cantidadRecibidaAl(hoy))
+                    .cantidadObjetivo(extra.getCantidadObjetivo())
+                    .cantidadRecibida(extra.cantidadRecibidaAl(hoy))
                     .satisfecha(extra.estaSatisfechaAl(hoy))
                     .build();
 
@@ -99,8 +99,8 @@ public class EntidadBeneficiariaMapper {
                     .nombre(recu.getNombre())
                     .descripcion(recu.getDescripcion())
                     .subcategoria(textoDe(recu.getSubcategoria()))
-                    .cantidadObjetivo((double) recu.getCantidadObjetivo())
-                    .cantidadRecibida((double) recu.cantidadRecibidaAl(hoy))
+                    .cantidadObjetivo(recu.getCantidadObjetivo())
+                    .cantidadRecibida(recu.cantidadRecibidaAl(hoy))
                     .satisfecha(recu.estaSatisfechaAl(hoy))
                     .periodo(recu.getPeriodo())
                     .fechaInicioPeriodo(recu.getFechaInicioPeriodo())

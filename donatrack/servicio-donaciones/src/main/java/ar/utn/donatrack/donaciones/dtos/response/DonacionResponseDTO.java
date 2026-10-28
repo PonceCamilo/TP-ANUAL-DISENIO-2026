@@ -11,18 +11,18 @@ import java.util.UUID;
 @Getter
 @Builder
 public class DonacionResponseDTO {
-  private UUID id;
-  private UUID idDonante;
-  private UUID idEntidadBeneficiaria;
-  private String descripcion;
-  private LocalDateTime fechaDonacion;
-  private String subcategoria;
-  private String estado;
+  private final UUID id;
+  private final UUID idDonante;
+  private final UUID idEntidadBeneficiaria;
+  private final String descripcion;
+  private final LocalDateTime fechaDonacion;
+  private final String subcategoria;
+  private final String estado;
 
   /** Proveedor de logística que tomó la entrega y su id de seguimiento; null si todavía no se despachó. */
-  private ProveedorLogistica proveedorLogistica;
-  private String idSeguimientoLogistica;
+  private final ProveedorLogistica proveedorLogistica;
+  private final String idSeguimientoLogistica;
 
-  private List<BienResponseDTO> bienes;
-  private List<CambioEstadoResponseDTO> historialEstados;
+  private final List<BienResponseDTO> bienes;
+  private final List<CambioEstadoResponseDTO> historialEstados;
 }

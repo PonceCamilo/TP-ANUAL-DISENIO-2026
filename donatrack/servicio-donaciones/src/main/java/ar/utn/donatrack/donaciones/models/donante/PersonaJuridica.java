@@ -46,11 +46,6 @@ public class PersonaJuridica extends PersonaDonante {
     @JoinColumn(name = "persona_juridica_id")
     private List<Representante> representantes = new ArrayList<>();
 
-    /**
-     * El email identifica al representante: volver a agregar a alguien con el
-     * mismo email actualiza sus datos en lugar de duplicarlo. La comparación
-     * ignora mayúsculas porque los emails no distinguen case en la práctica.
-     */
     @Override
     public TipoPersona tipoPersona() {
         return TipoPersona.JURIDICA;
@@ -62,9 +57,10 @@ public class PersonaJuridica extends PersonaDonante {
     }
 
     /**
-     * Un representante con el mismo email reemplaza al anterior. Se compara por la
-     * forma canónica del email (NormalizadorEmail), como en el resto del servicio:
-     * antes era equalsIgnoreCase y un espacio de más duplicaba al representante.
+     * El email identifica al representante: uno con el mismo email reemplaza al
+     * anterior en lugar de duplicarse. Se compara por la forma canónica del email
+     * (NormalizadorEmail), como en el resto del servicio: antes era
+     * equalsIgnoreCase y un espacio de más duplicaba al representante.
      */
     public void agregarRepresentante(Representante representante) {
         String email = NormalizadorEmail.normalizar(representante.getEmail());
@@ -78,8 +74,9 @@ public class PersonaJuridica extends PersonaDonante {
     }
 
     /** Los datos que se pueden editar; los que vienen en null no se modifican. */
-    public void actualizarDatosDeOrganizacion(String razonSocial, String rubro) {
+    public void actualizarDatosDeOrganizacion(String razonSocial, String rubro, TipoPersonaJuridica tipo) {
         if (razonSocial != null) this.razonSocial = razonSocial;
         if (rubro != null) this.rubro = rubro;
+        if (tipo != null) this.tipo = tipo;
     }
 }

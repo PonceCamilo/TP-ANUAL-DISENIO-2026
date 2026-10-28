@@ -547,6 +547,20 @@ class DonacionesControllerTest {
                             .content(cuerpo("arroz", 0)))
                     .andExpect(status().isBadRequest());
         }
+
+        @Test
+        @DisplayName("Devuelve 400 si falta la cantidad, informada como faltante y no como cero")
+        void cantidadFaltante() throws Exception {
+            String sinCantidad = """
+                    {"subcategoria":"arroz","descripcion":"Bien corregido","unidad":"kg"}
+                    """;
+
+            mockMvc.perform(patch("/donaciones/{id}/bien", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(sinCantidad))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("cantidad: La cantidad es obligatoria"));
+        }
     }
 
     @Nested

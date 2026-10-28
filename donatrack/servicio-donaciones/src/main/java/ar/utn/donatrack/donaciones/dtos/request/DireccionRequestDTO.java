@@ -20,8 +20,9 @@ public class DireccionRequestDTO {
   @NotBlank
   private String calle;
 
+  @NotNull(message = "El número de calle es obligatorio")
   @Positive
-  private int numero;
+  private Integer numero;
 
   @NotBlank
   private String codigoPostal;

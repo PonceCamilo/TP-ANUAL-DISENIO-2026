@@ -10,17 +10,17 @@ import java.util.UUID;
 @Getter
 @Builder
 public class BienResponseDTO {
-  private UUID id;
-  private TipoBien tipo;
-  private String subcategoria;
-  private String descripcion;
-  private String foto;
-  private int cantidad;
-  private String unidad;
+  private final UUID id;
+  private final TipoBien tipo;
+  private final String subcategoria;
+  private final String descripcion;
+  private final String foto;
+  private final int cantidad;
+  private final String unidad;
 
   // Solo presente si el bien es BienConEstado
-  private Boolean esNuevo;
+  private final Boolean esNuevo;
 
   // Solo presente si el bien es BienPerecible
-  private LocalDate fechaVencimiento;
+  private final LocalDate fechaVencimiento;
 }
