@@ -21,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -68,6 +69,9 @@ class InactividadDonantesServiceTest {
 
     @Spy
     private DonacionesProperties propiedades = PropiedadesDePrueba.porDefecto();
+
+    @Spy
+    private TransactionOperations transaccion = TransactionOperations.withoutTransaction();
 
     @InjectMocks
     private InactividadDonantesService servicio;
@@ -261,6 +265,22 @@ class InactividadDonantesServiceTest {
             servicio.notificarDonantesInactivos();
 
             verify(donanteRepository).registrarAvisoDeInactividad(eq(List.of(inactivo.getId())), any());
+        }
+
+        @Test
+        @DisplayName("Cada lote se confirma en su propia transacción, con sus avisos y su marca de avisado")
+        void unaTransaccionPorLote() {
+            PersonaDonante primero = donante(30, Email.builder().valor("uno@example.com").build());
+            PersonaDonante segundo = donante(30, Email.builder().valor("dos@example.com").build());
+            when(donanteRepository.obtenerParaAvisoDeInactividad(any(), anyInt()))
+                    .thenReturn(List.of(primero), List.of(segundo), List.of());
+
+            servicio.notificarDonantesInactivos();
+
+            // Dos lotes con personas y la lectura final que ya no trae a nadie.
+            verify(transaccion, times(3)).execute(any());
+            verify(donanteRepository).registrarAvisoDeInactividad(eq(List.of(primero.getId())), any());
+            verify(donanteRepository).registrarAvisoDeInactividad(eq(List.of(segundo.getId())), any());
         }
 
         @Test

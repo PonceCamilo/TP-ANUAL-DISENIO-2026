@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.util.UUID;
 import java.util.Set;
@@ -36,34 +36,50 @@ public class InactividadDonantesService {
     private final RepositorioPersonasDonantes donanteRepository;
     private final Notificador notificador;
     private final DonacionesProperties propiedades;
+    private final TransactionOperations transaccion;
 
+    /**
+     * Se procesa por lotes: cada lote se marca como avisado y deja de cumplir la
+     * consulta, así que siempre se pide el primero. Antes se cargaban todos los
+     * inactivos de una vez y se los volvía a avisar todas las noches.
+     *
+     * Cada lote es una transacción corta, como en el matchmaking y el despacho: los
+     * avisos del lote y su marca de avisado se confirman juntos. Antes la tarea
+     * entera era una sola transacción: a los 20 días de importar el CSV, las
+     * 20.000 personas quedaban inactivas a la vez, sus filas quedaban bloqueadas
+     * hasta el final (una persona que donaba en ese momento esperaba) y un error en
+     * el último lote deshacía todos los avisos.
+     */
     @Scheduled(cron = "${donaciones.inactividad.cron:0 0 0 * * *}", zone = FechaHoraArgentina.ZONA_ID)
     @SchedulerLock(name = "aviso-inactividad", lockAtMostFor = "PT1H",
             lockAtLeastFor = "${donaciones.procesos.bloqueo-minimo:PT5M}")
-    @Transactional
     public void notificarDonantesInactivos() {
-        int dias = propiedades.inactividad().dias();
-        LocalDateTime fechaLimite = FechaHoraArgentina.ahora().minusDays(dias);
-
-        // Se procesa por lotes: cada lote se marca como avisado y deja de cumplir
-        // la consulta, así que siempre se pide el primero. Antes se cargaban todos
-        // los inactivos de una vez y se los volvía a avisar todas las noches.
+        LocalDateTime fechaLimite = FechaHoraArgentina.ahora().minusDays(propiedades.inactividad().dias());
         Set<UUID> procesados = new HashSet<>();
-        List<PersonaDonante> lote;
-        while (!(lote = donanteRepository.obtenerParaAvisoDeInactividad(
-                fechaLimite, propiedades.inactividad().tamanioLote())).isEmpty()) {
-            List<PersonaDonante> nuevos = lote.stream().filter(persona -> procesados.add(persona.getId())).toList();
-            if (nuevos.isEmpty()) {
-                // Salvaguarda: si el aviso no quedó registrado, no repetir el mismo lote para siempre.
-                log.error("[INACTIVIDAD] El último lote no registró el aviso; se corta la tarea para no repetirlo.");
-                break;
-            }
-            nuevos.forEach(this::notificarDonante);
-            donanteRepository.registrarAvisoDeInactividad(
-                    nuevos.stream().map(PersonaDonante::getId).toList(), FechaHoraArgentina.ahora());
-        }
+        Integer avisados;
+        do {
+            avisados = transaccion.execute(estado -> avisarLote(fechaLimite, procesados));
+        } while (avisados != null && avisados > 0);
 
         log.info("[INACTIVIDAD] {} donantes inactivos avisados", procesados.size());
+    }
+
+    /** Avisa al lote siguiente y lo marca como avisado. Devuelve a cuántos avisó: 0 si no queda nadie. */
+    private int avisarLote(LocalDateTime fechaLimite, Set<UUID> procesados) {
+        List<PersonaDonante> lote = donanteRepository.obtenerParaAvisoDeInactividad(
+                fechaLimite, propiedades.inactividad().tamanioLote());
+        List<PersonaDonante> nuevos = lote.stream().filter(persona -> procesados.add(persona.getId())).toList();
+        if (nuevos.isEmpty()) {
+            if (!lote.isEmpty()) {
+                // Salvaguarda: si el aviso no quedó registrado, no repetir el mismo lote para siempre.
+                log.error("[INACTIVIDAD] El último lote no registró el aviso; se corta la tarea para no repetirlo.");
+            }
+            return 0;
+        }
+        nuevos.forEach(this::notificarDonante);
+        donanteRepository.registrarAvisoDeInactividad(
+                nuevos.stream().map(PersonaDonante::getId).toList(), FechaHoraArgentina.ahora());
+        return nuevos.size();
     }
 
     private void notificarDonante(PersonaDonante donante) {
