@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.salida;
 
+import java.time.Duration;
+import java.time.Clock;
+import java.util.UUID;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.interfaces.integracion.NotificacionTransport;
 import ar.utn.donatrack.donaciones.integracion.incentivos.EnviadorIncentivos;
 import ar.utn.donatrack.donaciones.integracion.notificaciones.SolicitudNotificacionMensaje;
@@ -18,7 +22,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
 
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -56,6 +59,21 @@ class BandejaDeSalidaIntegracionTest {
     void vaciar() {
         mensajes.deleteAll();
         doNothing().when(enviadorIncentivos).enviar(anyString(), anyString());
+    }
+
+    /**
+     * El relay corre con el reloj un segundo adelantado: si el reloj del sistema
+     * retrocede unos milisegundos entre que se guarda el aviso y corre el relay
+     * (una sincronización de hora), el aviso quedaría "en el futuro" hasta la
+     * vuelta siguiente y el test fallaría de a ratos.
+     */
+    private int enviarPendientes() {
+        FechaHoraArgentina.usarReloj(Clock.offset(Clock.systemUTC(), Duration.ofSeconds(1)));
+        try {
+            return relay.enviarPendientes();
+        } finally {
+            FechaHoraArgentina.restablecerReloj();
+        }
     }
 
     private JsonNode enviar(RequestBuilder pedido) throws Exception {
@@ -103,7 +121,7 @@ class BandejaDeSalidaIntegracionTest {
                 .satisfies(m -> assertThat(m.getPayload()).contains("\"fecha\":\"20"));
         verify(transporte, never()).enviar(any());
 
-        assertThat(relay.enviarPendientes()).isEqualTo(3);
+        assertThat(enviarPendientes()).isEqualTo(3);
 
         verify(transporte).enviar(argThat((SolicitudNotificacionMensaje s) ->
                 s.destinatario().equals("comedor@mail.com") && s.medio().equals("EMAIL")));
@@ -120,7 +138,7 @@ class BandejaDeSalidaIntegracionTest {
         doThrow(new IllegalStateException("notificaciones caído")).when(transporte).enviar(any());
         donacionAsignada();
 
-        relay.enviarPendientes();
+        enviarPendientes();
 
         assertThat(mensajes.findByDestino(Destinos.NOTIFICACION)).allSatisfy(m -> {
             assertThat(m.getEstado()).isEqualTo(EstadoMensaje.PENDIENTE);
@@ -129,7 +147,7 @@ class BandejaDeSalidaIntegracionTest {
             assertThat(m.getProximoIntento()).isAfter(m.getCreado());
         });
         // Hasta su próximo intento, no se vuelven a tomar.
-        assertThat(relay.enviarPendientes()).isZero();
+        assertThat(enviarPendientes()).isZero();
     }
 
     @Test

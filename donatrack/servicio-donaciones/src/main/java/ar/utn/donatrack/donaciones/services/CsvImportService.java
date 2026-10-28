@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
@@ -236,8 +237,7 @@ public class CsvImportService {
      * reemplaza el que tenía la persona.
      */
     private void actualizar(PersonaDonante existente, DonanteImportDto dto) {
-        existente.setTipoDocumento(dto.tipoDoc());
-        existente.setNumeroDocumento(dto.documento());
+        existente.setDocumento(Documento.de(dto.tipoDoc(), dto.documento()));
         existente.actualizarNombreImportado(dto.nombreORazonSocial());
 
         if (dto.telefono() != null && !dto.telefono().isBlank() && !tieneTelefono(existente, dto.telefono())) {

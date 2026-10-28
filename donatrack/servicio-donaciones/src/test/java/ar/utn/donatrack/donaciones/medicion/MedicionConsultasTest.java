@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.medicion;
 
+import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
@@ -150,8 +151,7 @@ class MedicionConsultasTest {
                     .id(UUID.randomUUID())
                     .nombre("Donante")
                     .apellido("N" + i)
-                    .tipoDocumento("DNI")
-                    .numeroDocumento(String.valueOf(30_000_000 + i))
+                    .documento(Documento.de("DNI", String.valueOf(30_000_000 + i)))
                     .email("donante" + i + "@mail.com")
                     .build();
             persona.definirContactoPredeterminado(Email.builder().valor("donante" + i + "@mail.com").build());

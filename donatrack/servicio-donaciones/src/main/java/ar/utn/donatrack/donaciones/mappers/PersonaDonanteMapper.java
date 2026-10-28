@@ -7,6 +7,7 @@ import ar.utn.donatrack.donaciones.dtos.request.PersonaJuridicaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaHumanaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaJuridicaResponseDTO;
+import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
@@ -44,8 +45,7 @@ public class PersonaDonanteMapper {
           .apellido(h.getApellido())
           .genero(h.getGenero())
           .fechaNacimiento(h.getFechaNacimiento())
-          .tipoDocumento(h.getTipoDocumento())
-          .numeroDocumento(h.getNumeroDocumento())
+          .documento(Documento.de(h.getTipoDocumento(), h.getNumeroDocumento()))
           .email(h.getEmail())
           .direccion(direcciones.toDireccion(h.getDireccion()))
           .build();
@@ -54,8 +54,7 @@ public class PersonaDonanteMapper {
       return PersonaJuridica.builder()
           .razonSocial(j.getRazonSocial())
           .email(j.getEmail())
-          .tipoDocumento(j.getTipoDocumento())
-          .numeroDocumento(j.getNumeroDocumento())
+          .documento(Documento.deOrganizacion(j.getTipoDocumento(), j.getNumeroDocumento()))
           .rubro(j.getRubro())
           .tipo(j.getTipoOrganizacion())
           .direccion(direcciones.toDireccion(j.getDireccion()))

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
@@ -46,8 +47,7 @@ class PersonaDonanteRepositoryTest {
                 .id(UUID.randomUUID())
                 .nombre("Ana")
                 .apellido("Pérez")
-                .tipoDocumento("DNI")
-                .numeroDocumento("30111222")
+                .documento(Documento.de("DNI", "30111222"))
                 .email(email)
                 .build();
     }

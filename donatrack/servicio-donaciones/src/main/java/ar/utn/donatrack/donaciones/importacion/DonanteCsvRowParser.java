@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.importacion;
 
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DocumentoInvalidoException;
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
+import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.exceptions.csvExceptions.CsvFormatoException;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import org.springframework.stereotype.Component;
@@ -35,16 +38,33 @@ public class DonanteCsvRowParser {
         if (email.isBlank()) {
             throw CsvFormatoException.emailVacio(numeroLinea);
         }
+        if (!NormalizadorEmail.esValido(email)) {
+            throw CsvFormatoException.emailInvalido(numeroLinea, email);
+        }
         if (doc.isBlank()) {
             throw CsvFormatoException.documentoVacio(numeroLinea);
         }
         if (nombre.isBlank()) {
             throw CsvFormatoException.nombreVacio(numeroLinea);
         }
+        Documento documento = documentoDe(tipoPersona, tipoDoc, doc, numeroLinea);
 
         return new DonanteImportDto(
-            numeroLinea, tipoPersona, tipoDoc, doc, nombre, email,
+            numeroLinea, tipoPersona, documento.getTipo(), documento.getNumero(), nombre, email,
                 (tel != null && tel.isBlank()) ? null : tel
         );
+    }
+
+    /**
+     * El documento validado por tipo (DNI de 7 u 8 dígitos, CUIT con dígito
+     * verificador…), y CUIT para las personas jurídicas. Antes se aceptaba
+     * cualquier texto no vacío.
+     */
+    private static Documento documentoDe(String tipoPersona, String tipoDoc, String doc, int numeroLinea) {
+        try {
+            return "JURIDICA".equals(tipoPersona) ? Documento.deOrganizacion(tipoDoc, doc) : Documento.de(tipoDoc, doc);
+        } catch (DocumentoInvalidoException e) {
+            throw CsvFormatoException.documentoInvalido(numeroLinea, e.getMessage());
+        }
     }
 }

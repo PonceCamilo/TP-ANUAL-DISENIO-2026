@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DocumentoInvalidoException;
+import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.mappers.MappersDePrueba;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
@@ -136,7 +138,7 @@ class PersonaDonanteServiceTest {
                 .rubro("Alimentos")
                 .tipoOrganizacion(TipoPersonaJuridica.ONG)
                 .tipoDocumento("CUIT")
-                .numeroDocumento("30-11122233-4")
+                .numeroDocumento("30-11122233-5")
                 .email(email)
                 .direccion(direccion())
                 .medioContactoPredeterminado(EmailRequestDTO.builder().valor(email).build())
@@ -153,8 +155,7 @@ class PersonaDonanteServiceTest {
                 .nombre("Juan")
                 .apellido("Pérez")
                 .fechaNacimiento(LocalDate.of(1990, 5, 20))
-                .tipoDocumento("DNI")
-                .numeroDocumento("30111222")
+                .documento(Documento.de("DNI", "30111222"))
                 .email("juan@example.com")
                 .build();
     }
@@ -221,6 +222,21 @@ class PersonaDonanteServiceTest {
             int edadEsperada = java.time.Period.between(
                     LocalDate.of(1990, 5, 20), LocalDate.now()).getYears();
             assertThat(respuesta.getEdad()).isEqualTo(edadEsperada);
+        }
+
+        @Test
+        @DisplayName("Rechaza un documento que no corresponde a su tipo, y una organización sin CUIT (400)")
+        void rechazaDocumentoInvalido() {
+            PersonaHumanaRequestDTO conDniCorto = dtoHumana("juan@example.com");
+            conDniCorto.setNumeroDocumento("123");
+            PersonaJuridicaRequestDTO conDni = dtoJuridica("contacto@fundacion.org");
+            conDni.setTipoDocumento("DNI");
+            conDni.setNumeroDocumento("30111222");
+
+            assertThatThrownBy(() -> servicio.registrar(conDniCorto)).isInstanceOf(DocumentoInvalidoException.class);
+            assertThatThrownBy(() -> servicio.registrar(conDni)).isInstanceOf(DocumentoInvalidoException.class)
+                    .hasMessageContaining("CUIT");
+            verify(repositorio, never()).guardar(any());
         }
 
         @Test

@@ -75,11 +75,9 @@ import java.time.LocalDateTime;
 @Setter
 public abstract class PersonaDonante extends EntidadPersistible {
 
-    @Column(name = "tipo_documento")
-    protected String tipoDocumento;
-
-    @Column(name = "numero_documento")
-    protected String numeroDocumento;
+    /** Tipo y número, validados juntos (ver Documento). */
+    @Embedded
+    protected Documento documento;
 
     @Embedded
     protected Direccion direccion;
@@ -124,6 +122,14 @@ public abstract class PersonaDonante extends EntidadPersistible {
     @PreUpdate
     private void normalizarEmail() {
         this.email = NormalizadorEmail.normalizar(this.email);
+    }
+
+    public String getTipoDocumento() {
+        return documento == null ? null : documento.getTipo();
+    }
+
+    public String getNumeroDocumento() {
+        return documento == null ? null : documento.getNumero();
     }
 
     /** El objeto de estado, con sus transiciones válidas, armado a partir del nombre guardado. */

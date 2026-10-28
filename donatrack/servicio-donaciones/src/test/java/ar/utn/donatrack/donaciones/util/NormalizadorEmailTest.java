@@ -1,39 +1,33 @@
 package ar.utn.donatrack.donaciones.util;
 
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("NormalizadorEmail - forma canónica del email")
+@DisplayName("NormalizadorEmail.esValido - forma de un email")
 class NormalizadorEmailTest {
 
-    @Test
-    @DisplayName("Pasa a minúsculas y quita los espacios de los extremos")
-    void minusculasYSinEspacios() {
-        assertThat(NormalizadorEmail.normalizar("  Ana.Perez@Mail.COM ")).isEqualTo("ana.perez@mail.com");
+    @ParameterizedTest(name = "{0} es válido")
+    @ValueSource(strings = {"ana@mail.com", "ana.perez+donaciones@mail.com.ar", " ana@mail.com ",
+            "benjamíncastro8929@yahoo.com", "a@b.co"})
+    void validos(String email) {
+        assertThat(NormalizadorEmail.esValido(email)).isTrue();
     }
 
-    @Test
-    @DisplayName("Una tilde escrita con carácter combinado queda igual que la precompuesta")
-    void unificaLaFormaDeLasTildes() {
-        // "i" + acento combinado (U+0301) frente a "í" (U+00ED): se ven iguales,
-        // pero sin normalizar la base los consideraría emails distintos.
-        String combinado = "benjamín@mail.com";
-        String precompuesto = "benjamín@mail.com";
-
-        assertThat(NormalizadorEmail.normalizar(combinado)).isEqualTo(precompuesto);
+    @ParameterizedTest(name = "{0} no es válido")
+    @ValueSource(strings = {"", "sin-arroba", "@mail.com", "ana@", "ana@@mail.com", "ana@mail", "ana@mail.c",
+            "ana perez@mail.com", ".ana@mail.com", "ana.@mail.com", "ana..perez@mail.com", "ana@-mail.com",
+            "ana@mail-.com", "ana@mail..com"})
+    void invalidos(String email) {
+        assertThat(NormalizadorEmail.esValido(email)).isFalse();
     }
 
-    @Test
-    @DisplayName("Las mayúsculas acentuadas también pasan a minúsculas")
-    void mayusculasAcentuadas() {
-        assertThat(NormalizadorEmail.normalizar("SOFÍA@MAIL.COM")).isEqualTo("sofía@mail.com");
-    }
-
-    @Test
-    @DisplayName("Un email nulo sigue siendo nulo")
-    void nulo() {
-        assertThat(NormalizadorEmail.normalizar(null)).isNull();
+    @ParameterizedTest
+    @NullSource
+    void nulo(String email) {
+        assertThat(NormalizadorEmail.esValido(email)).isFalse();
     }
 }

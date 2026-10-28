@@ -26,4 +26,43 @@ public final class NormalizadorEmail {
         }
         return Normalizer.normalize(email.trim(), Normalizer.Form.NFC).toLowerCase(Locale.ROOT);
     }
+
+    /**
+     * Forma de un email: una sola arroba, parte local y dominio no vacíos, sin
+     * espacios ni puntos al borde o repetidos, y un dominio con al menos un punto
+     * y etiquetas que no empiezan ni terminan con guion. Acepta letras con acento
+     * en la parte local, que aparecen en los datos reales
+     * (benjamíncastro8929@yahoo.com).
+     *
+     * La importación por CSV la usa para rechazar la fila: antes solo se
+     * controlaba que el email no estuviera vacío.
+     */
+    public static boolean esValido(String email) {
+        if (email == null) {
+            return false;
+        }
+        String candidato = email.strip();
+        int arroba = candidato.indexOf('@');
+        if (arroba <= 0 || arroba != candidato.lastIndexOf('@') || arroba == candidato.length() - 1) {
+            return false;
+        }
+        if (candidato.chars().anyMatch(Character::isWhitespace)) {
+            return false;
+        }
+        String local = candidato.substring(0, arroba);
+        String dominio = candidato.substring(arroba + 1);
+        if (local.startsWith(".") || local.endsWith(".") || local.contains("..")) {
+            return false;
+        }
+        String[] etiquetas = dominio.split("\\.", -1);
+        if (etiquetas.length < 2 || etiquetas[etiquetas.length - 1].length() < 2) {
+            return false;
+        }
+        for (String etiqueta : etiquetas) {
+            if (etiqueta.isEmpty() || etiqueta.startsWith("-") || etiqueta.endsWith("-")) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
@@ -91,8 +92,7 @@ class CsvImportServiceTest {
                 .id(UUID.randomUUID())
                 .nombre("Nombre viejo")
                 .apellido("Apellido viejo")
-                .tipoDocumento("DNI")
-                .numeroDocumento("00000000")
+                .documento(Documento.de("DNI", "00000000"))
                 .email(email)
                 .build();
     }
@@ -106,7 +106,7 @@ class CsvImportServiceTest {
         void creaLosDonantesDelArchivo() throws IOException {
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,1155667788\n"
-                    + "JURIDICA,CUIT,30-11122233-4,Fundación Ejemplo,contacto@fundacion.org,\n";
+                    + "JURIDICA,CUIT,30-11122233-5,Fundación Ejemplo,contacto@fundacion.org,\n";
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -121,7 +121,7 @@ class CsvImportServiceTest {
         void persisteElTipoCorrecto() throws IOException {
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
-                    + "JURIDICA,CUIT,30-11122233-4,Fundación Ejemplo,contacto@fundacion.org,\n";
+                    + "JURIDICA,CUIT,30-11122233-5,Fundación Ejemplo,contacto@fundacion.org,\n";
 
             servicio.importar(csv(contenido));
 
@@ -203,7 +203,7 @@ class CsvImportServiceTest {
         @Test
         @DisplayName("Al actualizar una persona jurídica se refresca la razón social")
         void actualizaRazonSocial() throws IOException {
-            String contenido = ENCABEZADO + "JURIDICA,CUIT,30-11122233-4,Fundación Nueva,contacto@fundacion.org,\n";
+            String contenido = ENCABEZADO + "JURIDICA,CUIT,30-11122233-5,Fundación Nueva,contacto@fundacion.org,\n";
             PersonaJuridica existente = PersonaJuridica.builder()
                     .id(UUID.randomUUID())
                     .razonSocial("Fundación Vieja")
@@ -241,7 +241,7 @@ class CsvImportServiceTest {
         void filaJuridicaSobreHumana() throws IOException {
             PersonaHumana humana = donanteExistente("juan@example.com");
             when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("juan@example.com", humana));
-            String contenido = ENCABEZADO + "JURIDICA,CUIT,30-11122233-4,Fundación Nueva SA,juan@example.com,\n";
+            String contenido = ENCABEZADO + "JURIDICA,CUIT,30-11122233-5,Fundación Nueva SA,juan@example.com,\n";
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -261,8 +261,7 @@ class CsvImportServiceTest {
             PersonaJuridica juridica = PersonaJuridica.builder()
                     .id(UUID.randomUUID())
                     .razonSocial("Fundación Vieja")
-                    .tipoDocumento("CUIT")
-                    .numeroDocumento("30-11122233-4")
+                    .documento(Documento.de("CUIT", "30-11122233-5"))
                     .email("contacto@fundacion.org")
                     .build();
             when(donanteRepository.obtenerPorEmails(anyCollection())).thenReturn(Map.of("contacto@fundacion.org", juridica));
@@ -272,7 +271,7 @@ class CsvImportServiceTest {
 
             assertThat(reporte.tieneErrores()).isTrue();
             assertThat(juridica.getRazonSocial()).isEqualTo("Fundación Vieja");
-            assertThat(juridica.getNumeroDocumento()).isEqualTo("30-11122233-4");
+            assertThat(juridica.getNumeroDocumento()).isEqualTo("30111222335");
         }
     }
 
@@ -288,7 +287,7 @@ class CsvImportServiceTest {
             // filas correctas ya quedaron cargadas.
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
-                    + "EMPRESA,CUIT,30-11122233-4,Fundación Ejemplo,contacto@fundacion.org,\n"
+                    + "EMPRESA,CUIT,30-11122233-5,Fundación Ejemplo,contacto@fundacion.org,\n"
                     + "HUMANA,DNI,30333444,Ana Gómez,ana@example.com,\n";
 
             ImportReport reporte = servicio.importar(csv(contenido));
@@ -362,7 +361,7 @@ class CsvImportServiceTest {
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
                     + "HUMANA,DNI,30333444,Ana Gómez,ana@example.com,\n"
-                    + "JURIDICA,CUIT,30-11122233-4,Fundación Ejemplo,contacto@fundacion.org,\n";
+                    + "JURIDICA,CUIT,30-11122233-5,Fundación Ejemplo,contacto@fundacion.org,\n";
 
             servicio.importar(csv(contenido));
 
@@ -440,9 +439,9 @@ class CsvImportServiceTest {
         @DisplayName("Una fila con error en el medio del lote no corre la numeración de las demás")
         void errorEnElMedioNoDesfasa() throws IOException {
             String contenido = ENCABEZADO
-                    + "HUMANA,DNI,111,Ana Uno,a@x.com,\n"
+                    + "HUMANA,DNI,11111111,Ana Uno,a@x.com,\n"
                     + "HUMANA,DNI,,Beto Dos,b@x.com,\n"
-                    + "HUMANA,DNI,333,Cara Tres,c@x.com,\n";
+                    + "HUMANA,DNI,33333333,Cara Tres,c@x.com,\n";
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -455,10 +454,10 @@ class CsvImportServiceTest {
         @DisplayName("Las líneas en blanco o con solo separadores se saltean sin informarse como error")
         void lineasEnBlancoSeSaltean() throws IOException {
             String contenido = ENCABEZADO
-                    + "HUMANA,DNI,111,Ana Uno,a@x.com,\n"
+                    + "HUMANA,DNI,11111111,Ana Uno,a@x.com,\n"
                     + "\n"
                     + ",,,,,\n"
-                    + "HUMANA,DNI,333,Cara Tres,c@x.com,\n";
+                    + "HUMANA,DNI,33333333,Cara Tres,c@x.com,\n";
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -471,8 +470,8 @@ class CsvImportServiceTest {
         @DisplayName("Un campo entre comillas con salto de línea no corre la numeración de las filas siguientes")
         void campoMultilinea() throws IOException {
             String contenido = ENCABEZADO
-                    + "HUMANA,DNI,111,\"Ana\nUno\",a@x.com,\n"
-                    + "HUMANA,DNI,333,Cara Tres,c@x.com,\n";
+                    + "HUMANA,DNI,11111111,\"Ana\nUno\",a@x.com,\n"
+                    + "HUMANA,DNI,33333333,Cara Tres,c@x.com,\n";
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -490,8 +489,8 @@ class CsvImportServiceTest {
         void informeParcial() throws IOException {
             // Una comilla sin cerrar al final hace que OpenCSV no pueda terminar de leer el archivo.
             String contenido = ENCABEZADO
-                    + "HUMANA,DNI,111,Ana Uno,a@x.com,\n"
-                    + "HUMANA,DNI,333,\"Sin cerrar,c@x.com,\n";
+                    + "HUMANA,DNI,11111111,Ana Uno,a@x.com,\n"
+                    + "HUMANA,DNI,33333333,\"Sin cerrar,c@x.com,\n";
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
@@ -513,7 +512,7 @@ class CsvImportServiceTest {
             String contenido = ENCABEZADO
                     + "HUMANA,DNI,30111222,Juan Pérez,juan@example.com,\n"
                     + "HUMANA,DNI,30333444,Ana Gómez,ana@example.com,\n"
-                    + "EMPRESA,CUIT,30-11122233-4,Fundación,info@fundacion.org,\n";
+                    + "EMPRESA,CUIT,30-11122233-5,Fundación,info@fundacion.org,\n";
             when(donanteRepository.obtenerPorEmails(anyCollection()))
                     .thenReturn(Map.of("juan@example.com", donanteExistente("juan@example.com")));
 

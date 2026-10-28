@@ -28,6 +28,15 @@ public class CsvFormatoException extends SolicitudInvalidaException {
         return new CsvFormatoException(numeroLinea, "el email es obligatorio");
     }
 
+    public static CsvFormatoException emailInvalido(int numeroLinea, String email) {
+        return new CsvFormatoException(numeroLinea, "el email '" + email + "' no tiene un formato válido");
+    }
+
+    /** El detalle viene del Documento: tipo desconocido, número que no corresponde o CUIT faltante. */
+    public static CsvFormatoException documentoInvalido(int numeroLinea, String detalle) {
+        return new CsvFormatoException(numeroLinea, detalle);
+    }
+
     public static CsvFormatoException documentoVacio(int numeroLinea) {
         return new CsvFormatoException(numeroLinea, "el documento no puede estar vacío");
     }

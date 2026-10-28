@@ -28,8 +28,7 @@ class PersonaJuridicaTest {
                 .id(UUID.randomUUID())
                 .razonSocial("Fundación Ejemplo")
                 .rubro("Alimentos")
-                .tipoDocumento("CUIT")
-                .numeroDocumento("30-11122233-4")
+                .documento(Documento.de("CUIT", "30-11122233-5"))
                 .email("contacto@fundacionejemplo.org")
                 .build();
     }

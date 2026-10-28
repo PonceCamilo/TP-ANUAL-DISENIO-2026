@@ -37,8 +37,7 @@ class PersonaDonanteTest {
                 .id(UUID.randomUUID())
                 .nombre("Juan")
                 .apellido("Pérez")
-                .tipoDocumento("DNI")
-                .numeroDocumento("30111222")
+                .documento(Documento.de("DNI", "30111222"))
                 .email("juan.perez@example.com")
                 .build();
     }

@@ -58,7 +58,7 @@ class DonanteCsvRowParserTest {
         @Test
         @DisplayName("Parsea una fila de persona jurídica")
         void parseaPersonaJuridica() {
-            String[] fila = {"JURIDICA", "CUIT", "30-11122233-4", "Fundación Ejemplo", "contacto@fundacion.org", ""};
+            String[] fila = {"JURIDICA", "CUIT", "30-11122233-5", "Fundación Ejemplo", "contacto@fundacion.org", ""};
 
             DonanteImportDto dto = parser.parsear(fila, LINEA);
 
@@ -160,6 +160,51 @@ class DonanteCsvRowParserTest {
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
                     .isInstanceOf(CsvFormatoException.class);
+        }
+
+        @Test
+        @DisplayName("Un email con formato inválido se rechaza (antes solo se pedía que no estuviera vacío)")
+        void emailInvalido() {
+            String[] fila = {"HUMANA", "DNI", "30111222", "Juan Pérez", "juan@mail", ""};
+
+            assertThatThrownBy(() -> parser.parsear(fila, 7))
+                    .isInstanceOf(CsvFormatoException.class)
+                    .hasMessageContaining("Línea 7")
+                    .hasMessageContaining("juan@mail");
+        }
+
+        @Test
+        @DisplayName("Un documento que no corresponde a su tipo se rechaza (DNI de 3 dígitos, CUIT mal verificado)")
+        void documentoInvalido() {
+            assertThatThrownBy(() -> parser.parsear(
+                    new String[]{"HUMANA", "DNI", "123", "Juan Pérez", "juan@mail.com", ""}, 4))
+                    .isInstanceOf(CsvFormatoException.class)
+                    .hasMessageContaining("Línea 4")
+                    .hasMessageContaining("DNI");
+            assertThatThrownBy(() -> parser.parsear(
+                    new String[]{"JURIDICA", "CUIT", "30-11122233-4", "Fundación", "info@fundacion.org", ""}, 5))
+                    .isInstanceOf(CsvFormatoException.class)
+                    .hasMessageContaining("CUIT");
+        }
+
+        @Test
+        @DisplayName("Una persona jurídica tiene que venir con CUIT")
+        void juridicaSinCuit() {
+            String[] fila = {"JURIDICA", "DNI", "30111222", "Fundación", "info@fundacion.org", ""};
+
+            assertThatThrownBy(() -> parser.parsear(fila, 9))
+                    .isInstanceOf(CsvFormatoException.class)
+                    .hasMessageContaining("CUIT");
+        }
+
+        @Test
+        @DisplayName("El documento queda normalizado en la fila parseada")
+        void documentoNormalizado() {
+            DonanteImportDto dto = parser.parsear(
+                    new String[]{"HUMANA", "dni", "30.111.222", "Juan Pérez", "juan@mail.com", ""}, 2);
+
+            assertThat(dto.tipoDoc()).isEqualTo("DNI");
+            assertThat(dto.documento()).isEqualTo("30111222");
         }
 
         @Test
