@@ -47,7 +47,8 @@ skinparam package {
 ' No se dibujan los controllers, los DTOs (salvo PaginaResponseDTO), las excepciones ni OpenApiConfig.
 ' --> asociación (atributo), ..> dependencia, ..|> realización, --|> herencia, +-- clase anidada.
 ' «@Transactional»: la clase o el método corre en una transacción (readOnly: solo lectura).
-' «@SchedulerLock»: la tarea toma un bloqueo en la base antes de correr (una instancia a la vez).
+' «@SchedulerLock»: la tarea toma un bloqueo en la base antes de correr (una instancia a la vez); las
+' nocturnas lo retienen al menos donaciones.procesos.bloqueo-minimo (5 min) después de terminar.
 
 package interfaces.services {
 
@@ -159,8 +160,10 @@ package services {
         private donanteRepository: RepositorioPersonasDonantes
         private notificador: Notificador
         private propiedades: DonacionesProperties
+        private transaccion: TransactionOperations
 
-        public notificarDonantesInactivos(): void «@Scheduled 0 0 0 * * *, @SchedulerLock, @Transactional»
+        public notificarDonantesInactivos(): void «@Scheduled 0 0 0 * * *, @SchedulerLock»
+        private avisarLote(fechaLimite: LocalDateTime, procesados: Set<UUID>): int
     }
 
     class CsvImportService {
@@ -190,6 +193,7 @@ package services {
 
         public generarRanking(donacion: Donacion): ResultadoMatchmaking
         public generarRanking(donacion: Donacion, entidades: List<EntidadBeneficiaria>): ResultadoMatchmaking
+        public nombresDeAlgoritmos(): List<String>
     }
 
     note as NotaMatchmaking
@@ -197,6 +201,9 @@ package services {
         AlgoritmoAsignacion (en su @Order) y devuelve el
         ranking de cada uno por su nombre. Sumar un algoritmo
         no toca esta clase, ni el esquema, ni el JSON.
+        La bandeja completa cada ranking guardado con
+        nombresDeAlgoritmos(): el algoritmo que no encontró
+        entidades aparece con la lista vacía.
     end note
 
     class AsignacionBatchService {
@@ -232,7 +239,11 @@ package services {
         lotes de 100 ordenados por id (obtenerLoteEnEstado),
         cada uno en una transacción corta. El despacho manda
         cada lote al broker por separado y deja la llamada
-        fuera de la transacción.
+        fuera de la transacción. El matchmaking reemplaza la
+        bandeja al final y en esa misma transacción descarta
+        las donaciones que dejaron el depósito mientras
+        corría. El aviso de inactividad también confirma
+        cada lote de 100 personas por separado.
         Todos los cron usan la zona America/Argentina/Buenos_Aires
         (FechaHoraArgentina.ZONA_ID), no la del servidor.
     end note
@@ -385,6 +396,8 @@ package notificaciones {
         no tiene, su email; para la entidad, su email o
         su primer contacto. Las entregas fallidas
         también avisan a la persona administradora.
+        Si la entidad no se encuentra, el aviso de
+        asignación a la persona no la nombra.
     end note
 }
 
@@ -436,11 +449,14 @@ package salida {
         private transaccion: TransactionOperations
         private configuracion: DonacionesProperties.Salida
 
-        public enviarPendientes(): int
+        public enviarPendientes(tiempoMaximo: Duration): int
+        private enviarDestino(destino: String, ahora: LocalDateTime, corte: Instant, tiempoMaximo: Duration): int
         public borrarEnviadosAntiguos(): int
     }
 
     class RelayProgramado {
+        {static} ~BLOQUEO_MAXIMO: String = "PT1M"
+        {static} ~CORTE: Duration = 30 s
         private relay: RelayDeMensajes
 
         public enviarPendientes(): void «@Scheduled cada 5 s, @SchedulerLock»
@@ -449,12 +465,19 @@ package salida {
 
     note as NotaSalida
         Bandeja de salida (outbox): el aviso se guarda en
-        mensaje_saliente en la transacción del cambio. El
-        relay toma los pendientes de a 50, los envía por el
-        enviador de su destino y, si falla, reintenta con
-        una espera que se duplica (30 s hasta 1 h), hasta
-        10 intentos; después queda FALLIDO. Los enviados se
-        borran a los 7 días.
+        mensaje_saliente en la transacción del cambio. En
+        cada corrida, el relay envía cada destino en su
+        propio hilo, en orden de llegada y de a lotes de 50,
+        por el enviador de ese destino. Si un envío falla, el
+        resto de ese destino espera a la corrida siguiente y
+        el que falló se reintenta con una espera que se
+        duplica (30 s hasta 1 h), hasta 10 intentos; después
+        queda FALLIDO. Los enviados se borran a los 7 días.
+        ..
+        La corrida deja de tomar mensajes a los 30 s (CORTE),
+        la mitad de su bloqueo: con los timeouts, el envío
+        en curso termina antes de que el bloqueo venza y
+        dos instancias nunca envían a la vez.
     end note
 }
 
@@ -555,6 +578,7 @@ package integracion.notificaciones {
     }
 
     class NotificacionTransportAmqp {
+        {static} public TIEMPO_CONFIRMACION_MS: long = 5000
         private rabbitTemplate: RabbitTemplate
 
         public enviar(solicitud: SolicitudNotificacionMensaje): void
@@ -573,7 +597,8 @@ package integracion.notificaciones {
         rest (predeterminado) → POST /notificaciones (8084)
         amqp → exchange donatrack.notificaciones, routing key
         notificacion.enviar; espera la confirmación del broker
-        (hasta 5 s) y si no llega, el relay reintenta.
+        (hasta 5 s) y si no llega, el relay reintenta. La
+        conexión a RabbitMQ espera como mucho 2 s.
     end note
 }
 
@@ -837,6 +862,7 @@ package interfaces.repositories {
 
     interface RepositorioCandidatosAsignacion {
         public reemplazarTodos(rankings: Collection<RankingPrecalculado>): void
+        public descartarFueraDelDeposito(): void
         public obtenerTodos(): List<RankingPrecalculado>
         public eliminar(idDonacion: UUID): void
     }
@@ -876,6 +902,7 @@ package repositories {
         private jpa: RankingPrecalculadoJpaRepository
 
         public reemplazarTodos(rankings: Collection<RankingPrecalculado>): void
+        public descartarFueraDelDeposito(): void
     }
 
     class RecepcionesEntidadRepository {
@@ -908,6 +935,8 @@ package repositories {
         interface RankingPrecalculadoJpaRepository {
             public vaciarPuestos(): void «@Modifying nativa»
             public vaciarRankings(): void «@Modifying nativa»
+            public borrarPuestosFueraDelDeposito(): int «@Modifying nativa»
+            public borrarRankingsFueraDelDeposito(): int «@Modifying nativa»
         }
 
         interface RecepcionDiariaJpaRepository {
@@ -924,7 +953,8 @@ package repositories {
         }
 
         interface MensajeSalienteJpaRepository {
-            public buscarListos(estado: EstadoMensaje, ahora: LocalDateTime, pagina: Pageable): List<MensajeSaliente> «@Query»
+            public buscarDestinosConListos(estado: EstadoMensaje, ahora: LocalDateTime): List<String> «@Query»
+            public buscarListos(estado: EstadoMensaje, destino: String, ahora: LocalDateTime, pagina: Pageable): List<MensajeSaliente> «@Query»
             public countByEstado(estado: EstadoMensaje): long
             public borrarEnviadosAntesDe(estado: EstadoMensaje, limite: LocalDateTime): int «@Modifying»
         }
@@ -938,7 +968,9 @@ package repositories {
           (la donación recuerda la que tenía al leerse) y una
           baja lógica lo descuenta.
         - CandidatosAsignacionRepository.reemplazarTodos vacía
-          la bandeja (2 DELETE) y guarda la nueva de una vez.
+          la bandeja (2 DELETE) y guarda la nueva de una vez;
+          descartarFueraDelDeposito borra (2 DELETE) los rankings
+          de las donaciones que ya no están en depósito.
         - RecepcionesEntidadRepository.reconciliar vacía el contador
           y lo recalcula con un INSERT ... SELECT ... GROUP BY.
         - Los listados (buscar) paginan y ordenan en la base;
@@ -992,6 +1024,18 @@ package config {
     class BloqueoDeTareasConfig {
         public lockProvider(dataSource: DataSource): LockProvider
     }
+
+    note as NotaBloqueo
+        ShedLock con la hora de la base: cada tarea
+        toma su fila de shedlock antes de correr.
+        Las nocturnas la retienen al menos 5 min
+        (lockAtLeastFor): una instancia que llega tarde
+        no repite la corrida que otra ya terminó.
+        Las tareas corren en 4 hilos
+        (spring.task.scheduling.pool.size).
+    end note
+
+    NotaBloqueo .. BloqueoDeTareasConfig
 
     class ClientesHttp {
         {static} public crear(builder: RestClient.Builder, urlBase: String, api: Class<T>): T

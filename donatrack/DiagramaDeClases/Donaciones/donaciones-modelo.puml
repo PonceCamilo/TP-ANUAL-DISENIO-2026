@@ -112,7 +112,7 @@ package donante {
         protected documento: Documento
         protected direccion: Direccion
         protected estadoNombre: String
-        protected ultimaInteraccion: LocalDateTime
+        protected ultimaInteraccion: LocalDateTime «sin versión»
         protected ultimoAvisoInactividad: LocalDateTime
         protected email: String {unique}
         protected contactos: List<MedioDeContacto>
@@ -141,6 +141,12 @@ package donante {
         ..
         Sin setters: cada dato que se puede cambiar
         tiene su método; las listas son de solo lectura.
+        ..
+        ultimaInteraccion queda fuera del bloqueo
+        optimista (@OptimisticLock(excluded)): dos
+        donaciones simultáneas de la misma persona se
+        guardan las dos; cualquier otro cambio sube
+        la versión.
     end note
 
     NotaEmailDonante .. PersonaDonante
@@ -196,8 +202,10 @@ package donante {
 
     note as NotaDocumento
         Tipo y número se validan juntos:
-        DNI de 7 u 8 dígitos, CUIT/CUIL con
-        dígito verificador, ... El número se
+        DNI de 7 u 8 dígitos, CUIT/CUIL de
+        11 dígitos (por su forma: el CSV y el
+        enunciado traen CUIT que no cumplen el
+        dígito verificador), ... El número se
         guarda sin puntos ni guiones.
         Una organización tiene que tener CUIT.
         Inválido → DocumentoInvalidoException (400)
@@ -512,6 +520,7 @@ package categoria {
         private tipo: String
         private tipoNormalizado: String
 
+        {static} public tiposDistintos(subcategorias: Collection<Subcategoria>): List<String>
         public estaVacia(): boolean
         public coincideCon(otra: Subcategoria): boolean
         public estaMencionadaEn(texto: String): boolean
@@ -521,6 +530,9 @@ package categoria {
         Compara por tipoNormalizado (NormalizadorTexto:
         minúsculas, sin acentos, espacios colapsados),
         que es también la columna indexada para buscar.
+        El tipo se guarda sin espacios en los extremos;
+        tiposDistintos da una vez cada subcategoría
+        (las categorías que se informan a Incentivos).
     end note
 
     NotaSubcategoria .. Subcategoria
@@ -652,6 +664,7 @@ package asignacion {
         rankings: Map<String, List<ResultadoAsignacion>>
         --
         public ranking(algoritmo: String): List<ResultadoAsignacion>
+        public completadoCon(algoritmos: List<String>): ResultadoMatchmaking
         public coincidencias(): List<ResultadoAsignacion>
         public huboCoincidencias(): boolean
         public sinCandidatas(): boolean
@@ -664,8 +677,7 @@ package asignacion {
         private nuevo: boolean {transient}
 
         {static} public de(idDonacion, resultado, fechaCalculo): RankingPrecalculado
-        public resultado(): ResultadoMatchmaking
-        public huboCoincidencias(): boolean
+        public resultado(algoritmos: List<String>): ResultadoMatchmaking
         public sinCandidatas(): boolean
     }
 
@@ -694,6 +706,10 @@ package asignacion {
         tal cual. Un puesto por algoritmo y posición:
         un algoritmo nuevo no cambia el esquema. Las
         coincidencias se derivan de los rankings.
+        Un algoritmo sin entidades no deja puestos:
+        resultado(algoritmos) lo agrega con la lista
+        vacía, así la bandeja muestra todos y no hay
+        coincidencias si a uno no le quedó ninguna.
         ..
         RecepcionDiariaEntidad: donaciones asignadas
         por entidad y día. Se actualiza en la misma

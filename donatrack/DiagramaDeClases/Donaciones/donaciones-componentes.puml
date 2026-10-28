@@ -45,12 +45,12 @@ component "servicio-donaciones :8081" as donaciones {
 
     component "Services\ncomandos y consultas,\nmanejadores de logística" as services
     component "Procesos programados\n«@Scheduled», zona Argentina\n00:00 inactividad · 03:00 reconciliación\n03:30 matchmaking · 04:00 despacho\n(de a lotes de 100)" as crons
-    component "Bloqueo de tareas\n(ShedLock: una instancia\npor tarea)" as shedlock
+    component "Bloqueo de tareas\n(ShedLock: una instancia\npor tarea; las nocturnas lo\nretienen 5 min como mínimo)" as shedlock
     component "Algoritmos de asignación\n(enchufables: compatibilidad\nsemántica, sub-atendidas)" as algoritmos
     component "Importación CSV\n(lotes de 500 por transacción)" as csv
 
     component "Eventos de dominio\ny oyentes\n(bandeja de candidatos,\nnecesidades, avisos)" as eventos
-    component "Bandeja de salida (outbox)\n+ relay cada 5 s\n(reintentos con espera)" as outbox
+    component "Bandeja de salida (outbox)\n+ relay cada 5 s\n(un hilo por destino,\ncorte a los 30 s,\nreintentos con espera)" as outbox
 
     component "Puertos de repositorio\n(interfaces.repositories)\n+ adaptadores" as repos
     component "ORM\nSpring Data JPA + Hibernate 6\n(ddl-auto=validate, carga diferida,\nlectura por lotes de 100,\nescritura por lotes de 50)" as orm
@@ -126,7 +126,9 @@ note bottom of outbox
     Un aviso se guarda junto con el cambio que lo
     origina: si la transacción no confirma, no sale;
     si el otro servicio no responde, se reintenta
-    sin perder el aviso.
+    sin perder el aviso. Cada destino avanza por su
+    cuenta: Incentivos lento o caído no demora los
+    avisos a Notificaciones.
 end note
 
 @enduml
