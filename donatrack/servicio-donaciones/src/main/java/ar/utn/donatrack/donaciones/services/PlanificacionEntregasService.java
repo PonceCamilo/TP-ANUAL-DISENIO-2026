@@ -7,6 +7,7 @@ import java.util.Objects;
 import java.util.LinkedHashSet;
 import java.util.Collection;
 import java.util.ArrayList;
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
@@ -21,6 +22,7 @@ import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionOperations;
@@ -57,6 +59,7 @@ public class PlanificacionEntregasService {
     private final RepositorioDonaciones donacionesRepositorio;
     private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
     private final BrokerLogisticaClient brokerClient;
+    private final DonacionesProperties propiedades;
 
     /**
      * El despacho usa dos transacciones cortas y deja afuera la llamada al
@@ -101,31 +104,64 @@ public class PlanificacionEntregasService {
      * endpoint, acá no se valida para fallar: las donaciones que no están en
      * condiciones simplemente se saltean, porque es un proceso desatendido y no
      * puede cortarse por un caso puntual.
+     *
+     * Recorre las donaciones de a lotes (donaciones.procesos.tamanio-lote) y
+     * manda cada lote al broker por separado: antes las leía todas juntas y las
+     * mandaba en un solo pedido, así que un error del broker dejaba sin despachar
+     * todo el día. Ahora el lote que falla espera a la noche siguiente y los
+     * demás salen igual.
      */
     @Scheduled(cron = "${donaciones.procesos.cron-despacho:0 0 4 * * *}", zone = FechaHoraArgentina.ZONA_ID)
+    @SchedulerLock(name = "despacho-nocturno", lockAtMostFor = "PT1H")
     public void despacharPendientesDelDia() {
-        List<UUID> despachables = transaccion.execute(estado -> {
-            List<Donacion> asignadas = donacionesRepositorio.obtenerPorEstado(ASIGNACION_REALIZADA);
-            log.info("[LOGISTICA] Barrido nocturno. Donaciones con asignación realizada: {}", asignadas.size());
-            Map<UUID, EntidadBeneficiaria> entidades = entidadesDe(asignadas);
-            return asignadas.stream()
-                    .filter(donacion -> tieneDireccionResoluble(entidades.get(donacion.getIdEntidadBeneficiaria())))
-                    .map(Donacion::getId)
-                    .toList();
-        });
+        int tamanio = propiedades.procesos().tamanioLote();
+        int leidas = 0;
+        int despachadas = 0;
+        UUID ultima = null;
+        LoteDeDespacho lote;
+        do {
+            UUID desde = ultima;
+            lote = Objects.requireNonNull(transaccion.execute(estado -> despachablesDelLote(desde, tamanio)));
+            leidas += lote.leidas();
+            despachadas += despacharLote(lote.despachables());
+            ultima = lote.ultima();
+        } while (lote.leidas() == tamanio);
 
-        if (despachables.isEmpty()) {
-            log.info("[LOGISTICA] No hay donaciones en condiciones de despacharse.");
-            return;
+        log.info("[LOGISTICA] Barrido nocturno terminado. Con asignación realizada: {} | Despachadas: {}",
+                leidas, despachadas);
+    }
+
+    /** Las del lote cuya entidad tiene una dirección a la que se pueda mandar el envío. */
+    private LoteDeDespacho despachablesDelLote(UUID desde, int tamanio) {
+        List<Donacion> asignadas = donacionesRepositorio.obtenerLoteEnEstado(ASIGNACION_REALIZADA, desde, tamanio);
+        if (asignadas.isEmpty()) {
+            return new LoteDeDespacho(List.of(), 0, desde);
         }
+        Map<UUID, EntidadBeneficiaria> entidades = entidadesDe(asignadas);
+        List<UUID> despachables = asignadas.stream()
+                .filter(donacion -> tieneDireccionResoluble(entidades.get(donacion.getIdEntidadBeneficiaria())))
+                .map(Donacion::getId)
+                .toList();
+        return new LoteDeDespacho(despachables, asignadas.size(), asignadas.getLast().getId());
+    }
 
+    /** Despacha un lote; si el broker falla, sus donaciones siguen en ASIGNACION_REALIZADA y entran mañana. */
+    private int despacharLote(List<UUID> despachables) {
+        if (despachables.isEmpty()) {
+            return 0;
+        }
         try {
             // proveedor null: que el broker elija y haga fallback.
-            despachar(despachables, null);
+            return despachar(despachables, null).getEnvios().size();
         } catch (Exception e) {
-            // Las donaciones siguen en ASIGNACION_REALIZADA y entran mañana otra vez.
-            log.error("[LOGISTICA] El barrido nocturno no pudo despachar: {}", e.getMessage());
+            log.error("[LOGISTICA] El barrido nocturno no pudo despachar un lote de {} donaciones: {}",
+                    despachables.size(), e.getMessage());
+            return 0;
         }
+    }
+
+    /** Lo que deja un lote: las donaciones a despachar, cuántas leyó y la última, que es donde sigue el próximo. */
+    private record LoteDeDespacho(List<UUID> despachables, int leidas, UUID ultima) {
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

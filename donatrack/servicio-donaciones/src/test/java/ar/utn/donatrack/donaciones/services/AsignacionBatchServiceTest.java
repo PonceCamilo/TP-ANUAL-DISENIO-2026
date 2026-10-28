@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.services;
 
+import org.springframework.transaction.support.TransactionOperations;
+import org.junit.jupiter.api.BeforeEach;
+import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
@@ -15,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -45,7 +47,7 @@ import static org.mockito.Mockito.when;
  *
  * Decisión de diseño que estos tests fijan: el proceso NO asigna por su cuenta.
  * Calcula los rankings y reemplaza la bandeja; la asignación efectiva sigue
- * siendo una acción explícita de una persona administradora (DonacionService.asignar).
+ * siendo una acción explícita de una persona administradora (DonacionComandosService.asignar).
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AsignacionBatchService - matchmaking nocturno de las donaciones en depósito")
@@ -63,11 +65,22 @@ class AsignacionBatchServiceTest {
     @Mock
     private RepositorioEntidadesBeneficiarias entidadesRepositorio;
 
-    @InjectMocks
     private AsignacionBatchService servicio;
 
     @Captor
     private ArgumentCaptor<Collection<RankingPrecalculado>> bandejaCaptor;
+
+    @BeforeEach
+    void crearServicio() {
+        servicio = servicioConLotesDe(100);
+    }
+
+    /** El proceso real, sin transacciones (los repositorios son simulados) y con el tamaño de lote indicado. */
+    private AsignacionBatchService servicioConLotesDe(int tamanio) {
+        return new AsignacionBatchService(donacionesRepositorio, asignacionService, candidatosRepositorio,
+                entidadesRepositorio, PropiedadesDePrueba.conLoteDeProcesos(tamanio),
+                TransactionOperations.withoutTransaction());
+    }
 
     /** Donación EN_DEPOSITO de la subcategoría indicada. */
     private Donacion donacionEnDeposito(String subcategoria) {
@@ -103,19 +116,19 @@ class AsignacionBatchServiceTest {
         @DisplayName("Solo procesa las donaciones que están EN_DEPOSITO")
         void soloLasDeDeposito() {
             // Una donación ya asignada o entregada no vuelve al matchmaking:
-            // se consulta al repositorio filtrando por estado, no todas.
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of());
+            // se consulta al repositorio filtrando por estado, de a lotes.
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100)).thenReturn(List.of());
 
             servicio.ejecutarMatchmakingNocturno();
 
-            verify(donacionesRepositorio).obtenerPorEstado("EN_DEPOSITO");
+            verify(donacionesRepositorio).obtenerLoteEnEstado("EN_DEPOSITO", null, 100);
             verifyNoMoreInteractions(donacionesRepositorio);
         }
 
         @Test
         @DisplayName("Calcula un ranking por cada donación en depósito y los guarda todos juntos")
         void unRankingPorDonacion() {
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100))
                     .thenReturn(List.of(donacionEnDeposito("arroz"), donacionEnDeposito("ropa")));
             when(asignacionService.generarRanking(any(), any()))
                     .thenReturn(matchmaking(List.of(resultado(1.0)), List.of()));
@@ -133,7 +146,7 @@ class AsignacionBatchServiceTest {
             vencida.agregarBien(BienPerecible.builder().subcategoria(new Subcategoria("leche"))
                     .descripcion("Leche").cantidad(1).unidad("litros")
                     .fechaVencimiento(java.time.LocalDate.of(2020, 1, 1)).build());
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100))
                     .thenReturn(List.of(vencida, donacionEnDeposito("arroz")));
             when(asignacionService.generarRanking(any(), any()))
                     .thenReturn(matchmaking(List.of(resultado(1.0)), List.of()));
@@ -145,10 +158,10 @@ class AsignacionBatchServiceTest {
         }
 
         @Test
-        @DisplayName("Carga las entidades una sola vez por corrida, no una vez por donación")
-        void cargaLasEntidadesUnaSolaVez() {
+        @DisplayName("Carga las entidades una vez por lote, no una vez por donación")
+        void cargaLasEntidadesUnaVezPorLote() {
             // Entrega 5: antes cada donación volvía a leer todas las entidades.
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100))
                     .thenReturn(List.of(donacionEnDeposito("arroz"), donacionEnDeposito("ropa")));
             when(asignacionService.generarRanking(any(), any()))
                     .thenReturn(matchmaking(List.of(), List.of()));
@@ -159,9 +172,28 @@ class AsignacionBatchServiceTest {
         }
 
         @Test
+        @DisplayName("Recorre las donaciones de a lotes: cada lote sigue desde la última del anterior")
+        void recorreDeALotes() {
+            servicio = servicioConLotesDe(2);
+            Donacion primera = donacionEnDeposito("arroz");
+            Donacion segunda = donacionEnDeposito("ropa");
+            Donacion tercera = donacionEnDeposito("leche");
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 2)).thenReturn(List.of(primera, segunda));
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", segunda.getId(), 2)).thenReturn(List.of(tercera));
+            when(asignacionService.generarRanking(any(), any())).thenReturn(matchmaking(List.of(), List.of()));
+
+            servicio.ejecutarMatchmakingNocturno();
+
+            // Un lote incompleto es el último: no se pide otro. La bandeja se guarda una vez, con todo.
+            assertThat(bandejaGuardada()).extracting(RankingPrecalculado::getIdDonacion)
+                    .containsExactly(primera.getId(), segunda.getId(), tercera.getId());
+            verify(entidadesRepositorio, times(2)).buscarTodas();
+        }
+
+        @Test
         @DisplayName("Sin donaciones en depósito deja la bandeja vacía y no falla")
         void sinDonaciones() {
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of());
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100)).thenReturn(List.of());
 
             assertThatCode(() -> servicio.ejecutarMatchmakingNocturno()).doesNotThrowAnyException();
 
@@ -179,7 +211,7 @@ class AsignacionBatchServiceTest {
             Donacion donacion = donacionEnDeposito("arroz");
             ResultadoAsignacion ambos = resultado(3.0);
 
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(donacion));
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100)).thenReturn(List.of(donacion));
             when(asignacionService.generarRanking(eq(donacion), any()))
                     .thenReturn(matchmaking(List.of(ambos, resultado(1.0)), List.of(ambos)));
 
@@ -198,7 +230,7 @@ class AsignacionBatchServiceTest {
         @DisplayName("huboCoincidencias() es true cuando todos los algoritmos recomiendan la misma entidad")
         void detectaCoincidencias() {
             ResultadoAsignacion ambos = resultado(3.0);
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100))
                     .thenReturn(List.of(donacionEnDeposito("arroz")));
             when(asignacionService.generarRanking(any(), any()))
                     .thenReturn(matchmaking(List.of(ambos), List.of(resultado(1.0), ambos)));
@@ -213,7 +245,7 @@ class AsignacionBatchServiceTest {
         void detectaDonacionSinCandidatas() {
             // Pasa cuando ninguna entidad declaró una necesidad compatible: la
             // donación se queda en depósito y el administrador lo ve en la bandeja.
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100))
                     .thenReturn(List.of(donacionEnDeposito("bicicletas")));
             when(asignacionService.generarRanking(any(), any()))
                     .thenReturn(matchmaking(List.of(), List.of()));
@@ -233,7 +265,7 @@ class AsignacionBatchServiceTest {
         void reemplazaUnaSolaVez() {
             // Los rankings de la corrida anterior se descartan, pero de una vez y al
             // final: si el proceso se cortara a mitad, la bandeja de ayer sigue entera.
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100))
                     .thenReturn(List.of(donacionEnDeposito("arroz"), donacionEnDeposito("ropa")));
             when(asignacionService.generarRanking(any(), any()))
                     .thenReturn(matchmaking(List.of(resultado(1.0)), List.of()));
@@ -257,7 +289,7 @@ class AsignacionBatchServiceTest {
             Donacion rota = donacionEnDeposito("arroz");
             Donacion sana = donacionEnDeposito("ropa");
 
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(rota, sana));
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100)).thenReturn(List.of(rota, sana));
             when(asignacionService.generarRanking(eq(rota), any())).thenThrow(new RuntimeException("datos inconsistentes"));
             when(asignacionService.generarRanking(eq(sana), any()))
                     .thenReturn(matchmaking(List.of(resultado(1.0)), List.of()));
@@ -280,7 +312,7 @@ class AsignacionBatchServiceTest {
             // el destino final. El batch solo deja la recomendación lista.
             Donacion donacion = donacionEnDeposito("arroz");
             ResultadoAsignacion ambos = resultado(3.0);
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(donacion));
+            when(donacionesRepositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 100)).thenReturn(List.of(donacion));
             when(asignacionService.generarRanking(eq(donacion), any()))
                     .thenReturn(matchmaking(List.of(ambos), List.of(ambos)));
 

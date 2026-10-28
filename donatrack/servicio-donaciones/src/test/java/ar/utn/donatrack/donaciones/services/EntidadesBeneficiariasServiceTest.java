@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.mappers.MappersDePrueba;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDonacionesException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
@@ -147,11 +151,16 @@ class EntidadesBeneficiariasServiceTest {
         }
 
         @Test
-        @DisplayName("obtenerTodas() devuelve todas las entidades registradas")
-        void obtenerTodas() {
-            when(repositorio.buscarTodas()).thenReturn(List.of(entidad));
+        @DisplayName("obtenerEntidades() devuelve la página pedida con el total")
+        void obtenerEntidades() {
+            SolicitudPagina pagina = new SolicitudPagina(0, 20);
+            when(repositorio.buscar(pagina)).thenReturn(new Pagina<>(List.of(entidad), 0, 20, 1));
 
-            assertThat(servicio.obtenerTodas()).hasSize(1);
+            PaginaResponseDTO<EntidadBeneficiariaResponseDTO> respuesta = servicio.obtenerEntidades(pagina);
+
+            assertThat(respuesta.getContenido()).extracting(EntidadBeneficiariaResponseDTO::getId)
+                    .containsExactly(entidad.getId());
+            assertThat(respuesta.getTotalElementos()).isEqualTo(1);
         }
 
         @Test

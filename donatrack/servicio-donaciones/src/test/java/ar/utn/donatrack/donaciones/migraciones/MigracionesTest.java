@@ -36,7 +36,7 @@ class MigracionesTest {
         MigrationInfo[] aplicadas = flyway.info().applied();
 
         assertThat(Arrays.stream(aplicadas).map(m -> m.getVersion().getVersion()))
-                .containsExactly("1", "2", "3");
+                .containsExactly("1", "2", "3", "4");
         assertThat(flyway.info().pending()).isEmpty();
     }
 }

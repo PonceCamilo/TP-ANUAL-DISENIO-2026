@@ -1,12 +1,13 @@
 package ar.utn.donatrack.donaciones.services;
 
-import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioRecepcionesEntidad;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Recalcula cada noche el contador desnormalizado de donaciones recibidas por
@@ -29,6 +30,7 @@ public class ReconciliacionRecepcionesService {
     private final RepositorioRecepcionesEntidad recepciones;
 
     @Scheduled(cron = "${donaciones.procesos.cron-reconciliacion:0 0 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
+    @SchedulerLock(name = "reconciliacion-recepciones", lockAtMostFor = "PT30M")
     @Transactional
     public void reconciliar() {
         int filas = recepciones.reconciliar();

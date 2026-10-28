@@ -21,6 +21,8 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
+import java.util.stream.Stream;
+import java.util.ArrayList;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -352,7 +354,7 @@ class DonacionesRepositoryTest {
             em.clear();
 
             assertThat(repositorio.buscarPorId(donacion.getId())).isEmpty();
-            assertThat(repositorio.obtenerPorEstado("ASIGNACION_REALIZADA")).extracting(Donacion::getId)
+            assertThat(repositorio.obtenerLoteEnEstado("ASIGNACION_REALIZADA", null, 100)).extracting(Donacion::getId)
                     .doesNotContain(donacion.getId());
             assertThat(repositorio.existenAsignadasA(comedor)).isFalse();
             // La fila y su historial siguen en la base.
@@ -432,6 +434,35 @@ class DonacionesRepositoryTest {
 
             assertThat(filas).isEqualTo(1);
             assertThat(recibidas(comedor)).isEqualTo(2);
+        }
+    }
+
+    @Nested
+    @DisplayName("Lotes de los procesos nocturnos")
+    class Lotes {
+
+        @Test
+        @DisplayName("Recorre por id las de un estado: cada lote sigue desde la última del anterior, sin repetir")
+        void recorrePorId() {
+            List<Donacion> enDeposito = List.of(
+                    donacion(ana, "Arroz", LocalDateTime.of(2026, 10, 1, 10, 0)),
+                    donacion(ana, "Ropa", LocalDateTime.of(2026, 10, 1, 11, 0)),
+                    donacion(beto, "Leche", LocalDateTime.of(2026, 10, 1, 12, 0)));
+            Donacion asignada = donacion(beto, "Arroz", LocalDateTime.of(2026, 10, 1, 13, 0));
+            asignada.asignarA(entidad(comedor));
+            List<Donacion> todas = new ArrayList<>(enDeposito);
+            todas.add(asignada);
+            persistirYLimpiar(todas);
+
+            List<Donacion> primero = repositorio.obtenerLoteEnEstado("EN_DEPOSITO", null, 2);
+            List<Donacion> segundo = repositorio.obtenerLoteEnEstado("EN_DEPOSITO", primero.getLast().getId(), 2);
+            List<Donacion> tercero = repositorio.obtenerLoteEnEstado("EN_DEPOSITO", segundo.getLast().getId(), 2);
+
+            assertThat(primero).hasSize(2);
+            assertThat(segundo).hasSize(1);
+            assertThat(tercero).isEmpty();
+            assertThat(Stream.concat(primero.stream(), segundo.stream()).map(Donacion::getId))
+                    .containsExactlyInAnyOrderElementsOf(enDeposito.stream().map(Donacion::getId).toList());
         }
     }
 }

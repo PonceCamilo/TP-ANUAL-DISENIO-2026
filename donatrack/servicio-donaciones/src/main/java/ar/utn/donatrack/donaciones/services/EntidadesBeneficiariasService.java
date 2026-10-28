@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.mappers.RepresentanteMapper;
 import ar.utn.donatrack.donaciones.mappers.DireccionMapper;
 import ar.utn.donatrack.donaciones.mappers.ContactoMapper;
@@ -45,8 +47,8 @@ public class EntidadesBeneficiariasService {
     }
 
     @Transactional(readOnly = true)
-    public List<EntidadBeneficiariaResponseDTO> obtenerTodas() {
-        return repositorio.buscarTodas().stream().map(mapper::toDTO).toList();
+    public PaginaResponseDTO<EntidadBeneficiariaResponseDTO> obtenerEntidades(SolicitudPagina pagina) {
+        return PaginaResponseDTO.desde(repositorio.buscar(pagina).map(mapper::toDTO));
     }
 
     @Transactional(readOnly = true)

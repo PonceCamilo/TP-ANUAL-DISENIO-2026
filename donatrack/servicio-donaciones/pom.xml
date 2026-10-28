@@ -20,6 +20,10 @@
     <name>servicio-donaciones</name>
     <description>Servicio encargado de la gestión de donaciones.</description>
 
+    <properties>
+        <shedlock.version>5.16.0</shedlock.version>
+    </properties>
+
     <dependencies>
 
         <!-- API REST -->
@@ -64,6 +68,22 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!--
+            Entrega 5: con dos instancias del servicio, cada tarea programada corre
+            en una sola. El bloqueo es una fila de la tabla shedlock.
+        -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+            <version>${shedlock.version}</version>
         </dependency>
 
         <dependency>

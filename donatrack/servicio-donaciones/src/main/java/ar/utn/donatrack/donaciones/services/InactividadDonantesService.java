@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.services;
 
-import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
@@ -8,8 +7,10 @@ import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 import java.util.Set;
@@ -37,6 +38,7 @@ public class InactividadDonantesService {
     private final DonacionesProperties propiedades;
 
     @Scheduled(cron = "${donaciones.inactividad.cron:0 0 0 * * *}", zone = FechaHoraArgentina.ZONA_ID)
+    @SchedulerLock(name = "aviso-inactividad", lockAtMostFor = "PT1H")
     @Transactional
     public void notificarDonantesInactivos() {
         int dias = propiedades.inactividad().dias();

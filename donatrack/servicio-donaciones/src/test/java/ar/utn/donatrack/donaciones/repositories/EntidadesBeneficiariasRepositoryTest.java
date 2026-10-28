@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
@@ -128,5 +130,24 @@ class EntidadesBeneficiariasRepositoryTest {
                     .createNativeQuery("SELECT COUNT(*) FROM " + tabla).getSingleResult();
             assertThat(filas.longValue()).as(tabla).isZero();
         }
+    }
+
+    @Test
+    @DisplayName("El listado es paginado y ordenado por razón social")
+    void listadoPaginado() {
+        for (String razonSocial : List.of("Escuela 12", "Comedor Los Pibes", "Hogar San José")) {
+            repositorio.guardar(EntidadBeneficiaria.builder().razonSocial(razonSocial).build());
+        }
+        jpa.flush();
+        em.clear();
+
+        Pagina<EntidadBeneficiaria> primera = repositorio.buscar(new SolicitudPagina(0, 2));
+        Pagina<EntidadBeneficiaria> segunda = repositorio.buscar(new SolicitudPagina(1, 2));
+
+        assertThat(primera.contenido()).extracting(EntidadBeneficiaria::getRazonSocial)
+                .containsExactly("Comedor Los Pibes", "Escuela 12");
+        assertThat(segunda.contenido()).extracting(EntidadBeneficiaria::getRazonSocial).containsExactly("Hogar San José");
+        assertThat(primera.totalElementos()).isEqualTo(3);
+        assertThat(primera.totalPaginas()).isEqualTo(2);
     }
 }

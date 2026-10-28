@@ -1,23 +1,27 @@
 package ar.utn.donatrack.donaciones.services;
 
-import java.util.Optional;
-import java.util.ArrayList;
-import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
+import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 
 import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
 
@@ -39,6 +43,14 @@ import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion
  * confirme el destino final"). La asignación efectiva sigue pasando por
  * DonacionComandosService.asignar(), que es el único punto donde una donación cambia a
  * ASIGNACION_REALIZADA.
+ *
+ * POR LOTES (Entrega 5): antes leía todas las donaciones en depósito juntas, en
+ * una sola transacción que duraba todo el proceso. Ahora las recorre de a
+ * lotes (donaciones.procesos.tamanio-lote), cada uno en una transacción corta:
+ * en memoria quedan solo las donaciones del lote y los rankings calculados, que
+ * son chicos. Las entidades se cargan una vez por lote: el algoritmo de
+ * sub-atendidos puntúa a todas, así que no se pueden prefiltrar por
+ * subcategoría sin cambiar su resultado.
  */
 @Slf4j
 @Service
@@ -49,6 +61,8 @@ public class AsignacionBatchService {
     private final AsignacionDonacionesService asignacionService;
     private final RepositorioCandidatosAsignacion candidatosRepositorio;
     private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
+    private final DonacionesProperties propiedades;
+    private final TransactionOperations transaccion;
 
     /**
      * Corre todos los días a las 03:30 de Argentina, que es la franja de menor
@@ -56,42 +70,65 @@ public class AsignacionBatchService {
      * dependía de la zona del servidor (UTC en un contenedor).
      */
     @Scheduled(cron = "${donaciones.procesos.cron-matchmaking:0 30 3 * * *}", zone = FechaHoraArgentina.ZONA_ID)
-    @Transactional
+    @SchedulerLock(name = "matchmaking-nocturno", lockAtMostFor = "PT1H")
     public void ejecutarMatchmakingNocturno() {
-        List<Donacion> enDeposito = donacionesRepositorio.obtenerPorEstado(EN_DEPOSITO);
-
-        // Una donación con bienes vencidos no se le recomienda a nadie: queda
-        // fuera de la bandeja hasta que la persona administradora la pase a
-        // VENCIDA (GET /donaciones?vencidas=true las lista).
         LocalDate hoy = FechaHoraArgentina.hoy();
-        List<Donacion> conVencidos = enDeposito.stream().filter(d -> d.tieneBienesVencidosAl(hoy)).toList();
-        if (!conVencidos.isEmpty()) {
-            log.warn("[ASIGNACION] {} donaciones en depósito tienen bienes vencidos y quedan fuera del matchmaking: {}",
-                    conVencidos.size(), conVencidos.stream().map(Donacion::getId).toList());
-            enDeposito = enDeposito.stream().filter(d -> !d.tieneBienesVencidosAl(hoy)).toList();
-        }
-
-        log.info("[ASIGNACION] Inicio del matchmaking nocturno. Donaciones en depósito: {}", enDeposito.size());
-
-        // Las entidades son las mismas para todas las donaciones de la corrida:
-        // se cargan una vez y no una vez por donación (Entrega 5).
-        List<EntidadBeneficiaria> entidades = entidadesRepositorio.buscarTodas();
+        int tamanio = propiedades.procesos().tamanioLote();
+        log.info("[ASIGNACION] Inicio del matchmaking nocturno.");
 
         List<RankingPrecalculado> rankings = new ArrayList<>();
-        for (Donacion donacion : enDeposito) {
-            calcularRanking(donacion, entidades).ifPresent(rankings::add);
-        }
+        int procesadas = 0;
+        int conVencidos = 0;
+        UUID ultima = null;
+        Lote lote;
+        do {
+            UUID desde = ultima;
+            lote = Objects.requireNonNull(transaccion.execute(estado -> puntuarLote(desde, tamanio, hoy)));
+            rankings.addAll(lote.rankings());
+            procesadas += lote.leidas() - lote.conVencidos();
+            conVencidos += lote.conVencidos();
+            ultima = lote.ultima();
+        } while (lote.leidas() == tamanio);
 
         // Los rankings de la corrida anterior se descartan (las necesidades de las
         // entidades pudieron cambiar durante el día y una recomendación vieja es
-        // peor que ninguna), pero recién al final y de una vez: antes se vaciaba
-        // la bandeja al principio y, si el proceso se cortaba, quedaba a medias.
-        candidatosRepositorio.reemplazarTodos(rankings);
+        // peor que ninguna), pero recién al final y de una vez: si el proceso se
+        // corta a mitad de camino, la bandeja anterior queda entera.
+        transaccion.executeWithoutResult(estado -> candidatosRepositorio.reemplazarTodos(rankings));
 
         long conCoincidencias = rankings.stream().filter(RankingPrecalculado::huboCoincidencias).count();
         long sinCandidatas = rankings.stream().filter(RankingPrecalculado::sinCandidatas).count();
-        log.info("[ASIGNACION] Matchmaking finalizado. Procesadas: {} | Con coincidencia entre todos los algoritmos: {} | Sin ninguna candidata: {}",
-                enDeposito.size(), conCoincidencias, sinCandidatas);
+        log.info("[ASIGNACION] Matchmaking finalizado. Procesadas: {} | Con bienes vencidos (fuera): {} | "
+                        + "Con coincidencia entre todos los algoritmos: {} | Sin ninguna candidata: {}",
+                procesadas, conVencidos, conCoincidencias, sinCandidatas);
+    }
+
+    /**
+     * Lee el lote siguiente a la donación indicada y calcula sus rankings. Una
+     * donación con bienes vencidos no se le recomienda a nadie: queda fuera de la
+     * bandeja hasta que la persona administradora la pase a VENCIDA
+     * (GET /donaciones?vencidas=true las lista).
+     */
+    private Lote puntuarLote(UUID desde, int tamanio, LocalDate hoy) {
+        List<Donacion> donaciones = donacionesRepositorio.obtenerLoteEnEstado(EN_DEPOSITO, desde, tamanio);
+        if (donaciones.isEmpty()) {
+            return new Lote(List.of(), 0, 0, desde);
+        }
+        List<Donacion> vencidas = donaciones.stream().filter(d -> d.tieneBienesVencidosAl(hoy)).toList();
+        if (!vencidas.isEmpty()) {
+            log.warn("[ASIGNACION] {} donaciones en depósito tienen bienes vencidos y quedan fuera del matchmaking: {}",
+                    vencidas.size(), vencidas.stream().map(Donacion::getId).toList());
+        }
+
+        // Las entidades son las mismas para todas las donaciones del lote: se
+        // cargan una vez y no una vez por donación (Entrega 5).
+        List<EntidadBeneficiaria> entidades = entidadesRepositorio.buscarTodas();
+        List<RankingPrecalculado> rankings = donaciones.stream()
+                .filter(donacion -> !vencidas.contains(donacion))
+                .map(donacion -> calcularRanking(donacion, entidades))
+                .flatMap(Optional::stream)
+                .toList();
+        return new Lote(rankings, donaciones.size(), vencidas.size(), donaciones.getLast().getId());
     }
 
     /**
@@ -109,5 +146,9 @@ public class AsignacionBatchService {
                     donacion.getId(), e.getMessage());
             return Optional.empty();
         }
+    }
+
+    /** Lo que deja un lote: sus rankings, cuántas donaciones leyó y la última, que es donde sigue el próximo. */
+    private record Lote(List<RankingPrecalculado> rankings, int leidas, int conVencidos, UUID ultima) {
     }
 }

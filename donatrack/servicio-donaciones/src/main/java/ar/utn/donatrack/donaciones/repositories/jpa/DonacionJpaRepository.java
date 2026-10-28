@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.repositories.jpa;
 
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
@@ -20,7 +21,9 @@ import java.util.UUID;
  */
 public interface DonacionJpaRepository extends JpaRepository<Donacion, UUID>, JpaSpecificationExecutor<Donacion> {
 
-    List<Donacion> findByEstadoNombre(String estadoNombre);
+    List<Donacion> findByEstadoNombre(String estadoNombre, Pageable lote);
+
+    List<Donacion> findByEstadoNombreAndIdGreaterThan(String estadoNombre, UUID id, Pageable lote);
 
     boolean existsByIdDonante(UUID idDonante);
 

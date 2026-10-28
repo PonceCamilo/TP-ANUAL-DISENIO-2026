@@ -41,11 +41,18 @@ public record DonacionesProperties(
             @DefaultValue("100") @Positive int tamanioLote) {
     }
 
-    /** Horarios de los procesos nocturnos, en hora de Argentina. */
+    /**
+     * Procesos nocturnos: horarios (en hora de Argentina), cuántas donaciones lee
+     * cada lote del matchmaking y del despacho, y si las tareas programadas se
+     * bloquean para que con varias instancias corran en una sola
+     * (BloqueoDeTareasConfig).
+     */
     public record Procesos(
             @DefaultValue("0 0 3 * * *") @NotBlank String cronReconciliacion,
             @DefaultValue("0 30 3 * * *") @NotBlank String cronMatchmaking,
-            @DefaultValue("0 0 4 * * *") @NotBlank String cronDespacho) {
+            @DefaultValue("0 0 4 * * *") @NotBlank String cronDespacho,
+            @DefaultValue("100") @Positive int tamanioLote,
+            @DefaultValue("true") boolean bloqueoDistribuido) {
     }
 
     /**

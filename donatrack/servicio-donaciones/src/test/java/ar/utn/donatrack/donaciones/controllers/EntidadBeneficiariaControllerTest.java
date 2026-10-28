@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.services.EntidadesBeneficiariasService;
 import ar.utn.donatrack.donaciones.dtos.response.CampaniaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
@@ -190,13 +193,28 @@ class EntidadBeneficiariaControllerTest {
         }
 
         @Test
-        @DisplayName("GET devuelve 200 con el listado de entidades")
+        @DisplayName("GET devuelve 200 con la primera página de entidades por defecto")
         void listadoOk() throws Exception {
-            when(entidadesService.obtenerTodas()).thenReturn(List.of(respuestaEntidad()));
+            when(entidadesService.obtenerEntidades(new SolicitudPagina(0, 20)))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(respuestaEntidad()), 0, 20, 1)));
 
             mockMvc.perform(get("/entidades"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)));
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$.totalElementos").value(1));
+        }
+
+        @Test
+        @DisplayName("GET pasa la página pedida y rechaza un tamaño fuera de rango (400)")
+        void listadoPaginado() throws Exception {
+            when(entidadesService.obtenerEntidades(new SolicitudPagina(2, 5)))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 2, 5, 3)));
+
+            mockMvc.perform(get("/entidades").param("page", "2").param("size", "5"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.pagina").value(2));
+            mockMvc.perform(get("/entidades").param("size", "500"))
+                    .andExpect(status().isBadRequest());
         }
 
         @Test

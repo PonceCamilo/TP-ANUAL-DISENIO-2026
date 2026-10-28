@@ -37,7 +37,7 @@ import java.util.UUID;
  * services ni sus tests, que mockean la interfaz, se enteraran.
  *
  * Esta clase es un adapter delgado: traduce el vocabulario del dominio
- * ("obtener por estado") al de Spring Data ("findByEstadoNombre").
+ * ("obtener un lote en estado") al de Spring Data ("findByEstadoNombre").
  */
 @Repository
 @RequiredArgsConstructor
@@ -70,8 +70,11 @@ public class DonacionesRepository implements RepositorioDonaciones {
     donacion.marcarAsignacionGuardada();
   }
 
-  public List<Donacion> obtenerPorEstado(String estado) {
-    return jpa.findByEstadoNombre(estado);
+  public List<Donacion> obtenerLoteEnEstado(String estado, UUID despuesDe, int cantidad) {
+    PageRequest lote = PageRequest.of(0, cantidad, Sort.by("id"));
+    return despuesDe == null
+        ? jpa.findByEstadoNombre(estado, lote)
+        : jpa.findByEstadoNombreAndIdGreaterThan(estado, despuesDe, lote);
   }
 
   public Pagina<Donacion> buscar(FiltroDonaciones filtro, SolicitudPagina pagina) {

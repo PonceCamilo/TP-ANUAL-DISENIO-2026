@@ -11,9 +11,14 @@ public final class PropiedadesDePrueba {
     }
 
     public static DonacionesProperties porDefecto() {
+        return conLoteDeProcesos(100);
+    }
+
+    /** Los mismos valores, con otro tamaño de lote para el matchmaking y el despacho nocturnos. */
+    public static DonacionesProperties conLoteDeProcesos(int tamanio) {
         return new DonacionesProperties(
                 new DonacionesProperties.Inactividad(20, "0 0 0 * * *", 100),
-                new DonacionesProperties.Procesos("0 0 3 * * *", "0 30 3 * * *", "0 0 4 * * *"),
+                new DonacionesProperties.Procesos("0 0 3 * * *", "0 30 3 * * *", "0 0 4 * * *", tamanio, true),
                 new DonacionesProperties.Importacion(500, 100),
                 new DonacionesProperties.Notificaciones("admin@donatrack.org"),
                 new DonacionesProperties.Matchmaking(10),

@@ -20,7 +20,13 @@ public interface RepositorioDonaciones {
   void guardar(Donacion donacion);
 
 
-  List<Donacion> obtenerPorEstado(String estado);
+  /**
+   * Un lote de donaciones en ese estado, ordenadas por id, que empieza después de
+   * la indicada (null: desde la primera). Los procesos nocturnos las recorren así
+   * y no por número de página: si una donación cambia de estado en el medio, el
+   * recorrido no saltea ni repite otras.
+   */
+  List<Donacion> obtenerLoteEnEstado(String estado, UUID despuesDe, int cantidad);
 
   /**
    * Listado paginado con los filtros aplicados en la base (Entrega 5). Ordena
@@ -44,5 +50,4 @@ public interface RepositorioDonaciones {
 
   boolean existenAsignadasA(UUID idEntidad);
 
-  /** Borra la donación y, si estaba asignada, descuenta la recepción de su entidad. */
 }

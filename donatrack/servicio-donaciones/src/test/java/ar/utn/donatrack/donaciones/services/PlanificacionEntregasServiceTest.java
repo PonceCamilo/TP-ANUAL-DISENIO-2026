@@ -4,6 +4,7 @@ import java.util.Objects;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Collection;
+import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
@@ -33,7 +34,6 @@ import org.springframework.web.client.ResourceAccessException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,6 +46,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -87,13 +88,19 @@ class PlanificacionEntregasServiceTest {
     private final Map<UUID, Donacion> donacionesGuardadas = new HashMap<>();
     private final Map<UUID, EntidadBeneficiaria> entidadesGuardadas = new HashMap<>();
 
-    @BeforeEach
-    void prepararEscenario() {
-        servicio = new PlanificacionEntregasService(
+    /** El servicio real, sin transacciones (los repositorios son simulados) y con el tamaño de lote indicado. */
+    private PlanificacionEntregasService servicioConLotesDe(int tamanio) {
+        return new PlanificacionEntregasService(
                 donacionesRepositorio,
                 entidadesRepositorio,
                 brokerClient,
+                PropiedadesDePrueba.conLoteDeProcesos(tamanio),
                 TransactionOperations.withoutTransaction());
+    }
+
+    @BeforeEach
+    void prepararEscenario() {
+        servicio = servicioConLotesDe(100);
         lenient().when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenAnswer(pedido ->
                 ((Collection<UUID>) pedido.getArgument(0)).stream().map(donacionesGuardadas::get)
                         .filter(Objects::nonNull).toList());
@@ -397,7 +404,7 @@ class PlanificacionEntregasServiceTest {
         @DisplayName("Despacha todo lo que quedó en ASIGNACION_REALIZADA")
         void despachaLosPendientes() {
             Donacion donacion = donacionAsignada();
-            when(donacionesRepositorio.obtenerPorEstado("ASIGNACION_REALIZADA")).thenReturn(List.of(donacion));
+            when(donacionesRepositorio.obtenerLoteEnEstado("ASIGNACION_REALIZADA", null, 100)).thenReturn(List.of(donacion));
             when(brokerClient.solicitarEnvio(isNull(), anyList()))
                     .thenReturn(respuestaBroker("DONATRACK", List.of(), donacion));
 
@@ -415,7 +422,7 @@ class PlanificacionEntregasServiceTest {
             Donacion huerfana = new Donacion();
             huerfana.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
 
-            when(donacionesRepositorio.obtenerPorEstado("ASIGNACION_REALIZADA"))
+            when(donacionesRepositorio.obtenerLoteEnEstado("ASIGNACION_REALIZADA", null, 100))
                     .thenReturn(List.of(huerfana, despachable));
             when(brokerClient.solicitarEnvio(isNull(), anyList()))
                     .thenReturn(respuestaBroker("DONATRACK", List.of(), despachable));
@@ -430,11 +437,33 @@ class PlanificacionEntregasServiceTest {
         @Test
         @DisplayName("Sin donaciones pendientes no llama al broker")
         void sinPendientes() {
-            when(donacionesRepositorio.obtenerPorEstado("ASIGNACION_REALIZADA")).thenReturn(List.of());
+            when(donacionesRepositorio.obtenerLoteEnEstado("ASIGNACION_REALIZADA", null, 100)).thenReturn(List.of());
 
             servicio.despacharPendientesDelDia();
 
             verify(brokerClient, never()).solicitarEnvio(any(), anyList());
+        }
+
+        @Test
+        @DisplayName("Manda cada lote al broker por separado: un lote que falla no frena a los demás")
+        void lotesIndependientes() {
+            servicio = servicioConLotesDe(1);
+            Donacion primera = donacionAsignada();
+            Donacion segunda = donacionAsignada();
+            when(donacionesRepositorio.obtenerLoteEnEstado("ASIGNACION_REALIZADA", null, 1)).thenReturn(List.of(primera));
+            when(donacionesRepositorio.obtenerLoteEnEstado("ASIGNACION_REALIZADA", primera.getId(), 1))
+                    .thenReturn(List.of(segunda));
+            when(donacionesRepositorio.obtenerLoteEnEstado("ASIGNACION_REALIZADA", segunda.getId(), 1))
+                    .thenReturn(List.of());
+            when(brokerClient.solicitarEnvio(isNull(), anyList()))
+                    .thenThrow(new ResourceAccessException("Connection refused"))
+                    .thenReturn(respuestaBroker("DONATRACK", List.of(), segunda));
+
+            servicio.despacharPendientesDelDia();
+
+            verify(brokerClient, times(2)).solicitarEnvio(isNull(), anyList());
+            assertThat(primera.estaEnEstado("ASIGNACION_REALIZADA")).isTrue();
+            assertThat(segunda.estaEnEstado("LISTA_PARA_ENTREGAR")).isTrue();
         }
 
         @Test
@@ -443,7 +472,7 @@ class PlanificacionEntregasServiceTest {
             // Es un @Scheduled: una excepción que escape solo ensucia los logs y
             // no la ve nadie. Las donaciones entran de nuevo mañana.
             Donacion donacion = donacionAsignada();
-            when(donacionesRepositorio.obtenerPorEstado("ASIGNACION_REALIZADA")).thenReturn(List.of(donacion));
+            when(donacionesRepositorio.obtenerLoteEnEstado("ASIGNACION_REALIZADA", null, 100)).thenReturn(List.of(donacion));
             when(brokerClient.solicitarEnvio(isNull(), anyList()))
                     .thenThrow(new ResourceAccessException("Connection refused"));
 
