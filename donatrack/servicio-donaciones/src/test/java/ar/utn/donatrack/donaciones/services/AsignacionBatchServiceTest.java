@@ -1,13 +1,14 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
-import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
+import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,21 +17,23 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.inOrder;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 /**
@@ -41,8 +44,8 @@ import static org.mockito.Mockito.when;
  * carga" para no degradar el desempeño. Este servicio es esa ejecución.
  *
  * Decisión de diseño que estos tests fijan: el proceso NO asigna por su cuenta.
- * Calcula y guarda los rankings; la asignación efectiva sigue siendo una acción
- * explícita de una persona administradora (DonacionService.asignar).
+ * Calcula los rankings y reemplaza la bandeja; la asignación efectiva sigue
+ * siendo una acción explícita de una persona administradora (DonacionService.asignar).
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AsignacionBatchService - matchmaking nocturno de las donaciones en depósito")
@@ -64,7 +67,7 @@ class AsignacionBatchServiceTest {
     private AsignacionBatchService servicio;
 
     @Captor
-    private ArgumentCaptor<RankingPrecalculado> rankingCaptor;
+    private ArgumentCaptor<Collection<RankingPrecalculado>> bandejaCaptor;
 
     /** Donación EN_DEPOSITO de la subcategoría indicada. */
     private Donacion donacionEnDeposito(String subcategoria) {
@@ -74,16 +77,22 @@ class AsignacionBatchServiceTest {
         return donacion;
     }
 
-    /** Resultado de matchmaking con las tres listas indicadas. */
-    private AsignacionDonacionesService.ResultadoMatchmaking matchmaking(
-            List<ResultadoAsignacion> coincidencias,
-            List<ResultadoAsignacion> semantico,
-            List<ResultadoAsignacion> subAtendidos) {
-        return new AsignacionDonacionesService.ResultadoMatchmaking(coincidencias, semantico, subAtendidos);
+    /** Resultado de matchmaking con el ranking de cada uno de los dos algoritmos. */
+    private ResultadoMatchmaking matchmaking(List<ResultadoAsignacion> semantico, List<ResultadoAsignacion> subAtendidos) {
+        Map<String, List<ResultadoAsignacion>> rankings = new LinkedHashMap<>();
+        rankings.put(AlgoritmoCompatibilidadSemantica.NOMBRE, semantico);
+        rankings.put(AlgoritmoPrioridadSubAtendidos.NOMBRE, subAtendidos);
+        return new ResultadoMatchmaking(rankings);
     }
 
     private ResultadoAsignacion resultado(double puntaje) {
         return new ResultadoAsignacion(UUID.randomUUID(), puntaje);
+    }
+
+    /** La bandeja que el proceso dejó guardada (una sola llamada a reemplazarTodos). */
+    private List<RankingPrecalculado> bandejaGuardada() {
+        verify(candidatosRepositorio).reemplazarTodos(bandejaCaptor.capture());
+        return new ArrayList<>(bandejaCaptor.getValue());
     }
 
     @Nested
@@ -104,17 +113,17 @@ class AsignacionBatchServiceTest {
         }
 
         @Test
-        @DisplayName("Calcula y guarda un ranking por cada donación en depósito")
+        @DisplayName("Calcula un ranking por cada donación en depósito y los guarda todos juntos")
         void unRankingPorDonacion() {
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
                     .thenReturn(List.of(donacionEnDeposito("arroz"), donacionEnDeposito("ropa")));
             when(asignacionService.generarRanking(any(), any()))
-                    .thenReturn(matchmaking(List.of(), List.of(resultado(1.0)), List.of()));
+                    .thenReturn(matchmaking(List.of(resultado(1.0)), List.of()));
 
             servicio.ejecutarMatchmakingNocturno();
 
             verify(asignacionService, times(2)).generarRanking(any(), any());
-            verify(candidatosRepositorio, times(2)).guardar(any());
+            assertThat(bandejaGuardada()).hasSize(2);
         }
 
         @Test
@@ -127,7 +136,7 @@ class AsignacionBatchServiceTest {
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
                     .thenReturn(List.of(vencida, donacionEnDeposito("arroz")));
             when(asignacionService.generarRanking(any(), any()))
-                    .thenReturn(matchmaking(List.of(), List.of(resultado(1.0)), List.of()));
+                    .thenReturn(matchmaking(List.of(resultado(1.0)), List.of()));
 
             servicio.ejecutarMatchmakingNocturno();
 
@@ -142,7 +151,7 @@ class AsignacionBatchServiceTest {
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
                     .thenReturn(List.of(donacionEnDeposito("arroz"), donacionEnDeposito("ropa")));
             when(asignacionService.generarRanking(any(), any()))
-                    .thenReturn(matchmaking(List.of(), List.of(), List.of()));
+                    .thenReturn(matchmaking(List.of(), List.of()));
 
             servicio.ejecutarMatchmakingNocturno();
 
@@ -150,13 +159,13 @@ class AsignacionBatchServiceTest {
         }
 
         @Test
-        @DisplayName("Sin donaciones en depósito no hace nada y no falla")
+        @DisplayName("Sin donaciones en depósito deja la bandeja vacía y no falla")
         void sinDonaciones() {
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of());
 
             assertThatCode(() -> servicio.ejecutarMatchmakingNocturno()).doesNotThrowAnyException();
 
-            verify(candidatosRepositorio, never()).guardar(any());
+            assertThat(bandejaGuardada()).isEmpty();
         }
     }
 
@@ -165,41 +174,38 @@ class AsignacionBatchServiceTest {
     class ContenidoDelRanking {
 
         @Test
-        @DisplayName("Guarda las tres listas del matchmaking junto al id de la donación y la fecha")
-        void guardaLasTresListas() {
+        @DisplayName("Guarda el ranking de cada algoritmo junto al id de la donación y la fecha")
+        void guardaLosRankings() {
             Donacion donacion = donacionEnDeposito("arroz");
-            ResultadoAsignacion coincidencia = resultado(3.0);
+            ResultadoAsignacion ambos = resultado(3.0);
 
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(donacion));
-            when(asignacionService.generarRanking(eq(donacion), any())).thenReturn(matchmaking(
-                    List.of(coincidencia),
-                    List.of(coincidencia, resultado(1.0)),
-                    List.of(coincidencia)));
+            when(asignacionService.generarRanking(eq(donacion), any()))
+                    .thenReturn(matchmaking(List.of(ambos, resultado(1.0)), List.of(ambos)));
 
             servicio.ejecutarMatchmakingNocturno();
 
-            verify(candidatosRepositorio).guardar(rankingCaptor.capture());
-            RankingPrecalculado guardado = rankingCaptor.getValue();
-
+            RankingPrecalculado guardado = bandejaGuardada().getFirst();
             assertThat(guardado.getIdDonacion()).isEqualTo(donacion.getId());
-            assertThat(guardado.getCoincidencias()).hasSize(1);
-            assertThat(guardado.getRankingSemantico()).hasSize(2);
-            assertThat(guardado.getRankingSubAtendidos()).hasSize(1);
+            assertThat(guardado.resultado().ranking(AlgoritmoCompatibilidadSemantica.NOMBRE)).hasSize(2);
+            assertThat(guardado.resultado().ranking(AlgoritmoPrioridadSubAtendidos.NOMBRE)).hasSize(1);
+            assertThat(guardado.resultado().coincidencias()).extracting(ResultadoAsignacion::getIdEntidad)
+                    .containsExactly(ambos.getIdEntidad());
             assertThat(guardado.getFechaCalculo()).isNotNull();
         }
 
         @Test
-        @DisplayName("huboCoincidencias() es true cuando ambos algoritmos recomiendan la misma entidad")
+        @DisplayName("huboCoincidencias() es true cuando todos los algoritmos recomiendan la misma entidad")
         void detectaCoincidencias() {
+            ResultadoAsignacion ambos = resultado(3.0);
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
                     .thenReturn(List.of(donacionEnDeposito("arroz")));
             when(asignacionService.generarRanking(any(), any()))
-                    .thenReturn(matchmaking(List.of(resultado(3.0)), List.of(resultado(3.0)), List.of(resultado(1.0))));
+                    .thenReturn(matchmaking(List.of(ambos), List.of(resultado(1.0), ambos)));
 
             servicio.ejecutarMatchmakingNocturno();
 
-            verify(candidatosRepositorio).guardar(rankingCaptor.capture());
-            assertThat(rankingCaptor.getValue().huboCoincidencias()).isTrue();
+            assertThat(bandejaGuardada().getFirst().huboCoincidencias()).isTrue();
         }
 
         @Test
@@ -210,12 +216,11 @@ class AsignacionBatchServiceTest {
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
                     .thenReturn(List.of(donacionEnDeposito("bicicletas")));
             when(asignacionService.generarRanking(any(), any()))
-                    .thenReturn(matchmaking(List.of(), List.of(), List.of()));
+                    .thenReturn(matchmaking(List.of(), List.of()));
 
             servicio.ejecutarMatchmakingNocturno();
 
-            verify(candidatosRepositorio).guardar(rankingCaptor.capture());
-            assertThat(rankingCaptor.getValue().sinCandidatas()).isTrue();
+            assertThat(bandejaGuardada().getFirst().sinCandidatas()).isTrue();
         }
     }
 
@@ -224,30 +229,19 @@ class AsignacionBatchServiceTest {
     class Vigencia {
 
         @Test
-        @DisplayName("Descarta los rankings de la corrida anterior ANTES de guardar los nuevos")
-        void limpiaAntesDeGuardar() {
-            // Si no se limpiara, quedarían recomendaciones de donaciones que ya
-            // fueron asignadas o que se calcularon con necesidades viejas.
-            Donacion donacion = donacionEnDeposito("arroz");
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(donacion));
-            when(asignacionService.generarRanking(eq(donacion), any()))
-                    .thenReturn(matchmaking(List.of(), List.of(resultado(1.0)), List.of()));
+        @DisplayName("Reemplaza la bandeja entera una sola vez, al final de la corrida")
+        void reemplazaUnaSolaVez() {
+            // Los rankings de la corrida anterior se descartan, pero de una vez y al
+            // final: si el proceso se cortara a mitad, la bandeja de ayer sigue entera.
+            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))
+                    .thenReturn(List.of(donacionEnDeposito("arroz"), donacionEnDeposito("ropa")));
+            when(asignacionService.generarRanking(any(), any()))
+                    .thenReturn(matchmaking(List.of(resultado(1.0)), List.of()));
 
             servicio.ejecutarMatchmakingNocturno();
 
-            InOrder orden = inOrder(candidatosRepositorio);
-            orden.verify(candidatosRepositorio).limpiar();
-            orden.verify(candidatosRepositorio).guardar(any());
-        }
-
-        @Test
-        @DisplayName("Limpia la corrida anterior aunque esta vez no haya donaciones en depósito")
-        void limpiaAunSinDonaciones() {
-            when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of());
-
-            servicio.ejecutarMatchmakingNocturno();
-
-            verify(candidatosRepositorio).limpiar();
+            verify(candidatosRepositorio, times(1)).reemplazarTodos(any());
+            verifyNoMoreInteractions(candidatosRepositorio);
         }
     }
 
@@ -266,13 +260,12 @@ class AsignacionBatchServiceTest {
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(rota, sana));
             when(asignacionService.generarRanking(eq(rota), any())).thenThrow(new RuntimeException("datos inconsistentes"));
             when(asignacionService.generarRanking(eq(sana), any()))
-                    .thenReturn(matchmaking(List.of(), List.of(resultado(1.0)), List.of()));
+                    .thenReturn(matchmaking(List.of(resultado(1.0)), List.of()));
 
             assertThatCode(() -> servicio.ejecutarMatchmakingNocturno()).doesNotThrowAnyException();
 
-            // Solo se guarda la que se pudo calcular.
-            verify(candidatosRepositorio, times(1)).guardar(rankingCaptor.capture());
-            assertThat(rankingCaptor.getValue().getIdDonacion()).isEqualTo(sana.getId());
+            // Solo queda en la bandeja la que se pudo calcular.
+            assertThat(bandejaGuardada()).extracting(RankingPrecalculado::getIdDonacion).containsExactly(sana.getId());
         }
     }
 
@@ -281,14 +274,15 @@ class AsignacionBatchServiceTest {
     class NoAsignaAutomaticamente {
 
         @Test
-        @DisplayName("Aunque haya coincidencia entre ambos algoritmos, la donación sigue EN_DEPOSITO")
+        @DisplayName("Aunque haya coincidencia entre los algoritmos, la donación sigue EN_DEPOSITO")
         void noCambiaElEstadoDeLaDonacion() {
             // El enunciado pide que sea "una persona administradora" quien confirme
             // el destino final. El batch solo deja la recomendación lista.
             Donacion donacion = donacionEnDeposito("arroz");
+            ResultadoAsignacion ambos = resultado(3.0);
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO")).thenReturn(List.of(donacion));
             when(asignacionService.generarRanking(eq(donacion), any()))
-                    .thenReturn(matchmaking(List.of(resultado(3.0)), List.of(resultado(3.0)), List.of(resultado(1.0))));
+                    .thenReturn(matchmaking(List.of(ambos), List.of(ambos)));
 
             servicio.ejecutarMatchmakingNocturno();
 

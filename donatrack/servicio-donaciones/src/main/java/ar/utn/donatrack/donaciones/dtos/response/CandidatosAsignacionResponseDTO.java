@@ -8,14 +8,16 @@ import java.util.UUID;
 
 /**
  * Resultado de ejecutar los algoritmos de asignación sobre una donación.
- * Expone el ranking de cada algoritmo y las coincidencias entre ambos,
- * para que una persona administradora confirme el destino final.
+ * Expone el ranking de cada algoritmo (por nombre) y las coincidencias entre
+ * todos, para que una persona administradora confirme el destino final.
+ *
+ * Antes tenía un campo por algoritmo (porCompatibilidad, porSubatendidos): con
+ * la lista de rankings, sumar un algoritmo no cambia el JSON.
  */
 @Getter
 @Builder
 public class CandidatosAsignacionResponseDTO {
   private UUID idDonacion;
-  private List<EntidadBeneficiariaResponseDTO> porCompatibilidad;
-  private List<EntidadBeneficiariaResponseDTO> porSubatendidos;
+  private List<RankingAlgoritmoResponseDTO> rankings;
   private List<EntidadBeneficiariaResponseDTO> coincidencias;
 }

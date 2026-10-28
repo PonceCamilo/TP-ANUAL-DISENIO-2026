@@ -15,8 +15,8 @@ import java.util.UUID;
  * frente a una donación segun un algoritmo de asignación.
  * El puntaje determina el orden dentro del ranking (mayor = mejor candidata).
  *
- * MAPEO (Entrega 5): es un objeto de valor (@Embeddable) que vive dentro de las
- * listas de RankingPrecalculado; no tiene identidad propia.
+ * MAPEO (Entrega 5): es un objeto de valor (@Embeddable) que vive dentro de cada
+ * PuestoRanking de RankingPrecalculado; no tiene identidad propia.
  */
 @Embeddable
 @Getter

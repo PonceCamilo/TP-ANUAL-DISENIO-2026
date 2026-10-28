@@ -15,22 +15,24 @@ import java.util.function.ToDoubleFunction;
  *
  * Centraliza el esqueleto común de TODO algoritmo —puntuar cada entidad,
  * descartar las que no apliquen, ordenar de mayor a menor puntaje y recortar
- * al top N— de modo que un algoritmo nuevo solo deba implementar cómo se
- * calcula el puntaje. Así se cumple el requisito del enunciado de poder
- * incorporar algoritmos nuevos sin tocar el orquestador ni duplicar lógica.
+ * al tamaño pedido— de modo que un algoritmo nuevo solo deba implementar cómo se
+ * calcula el puntaje y cómo se llama. Así se cumple el requisito del enunciado
+ * de poder incorporar algoritmos nuevos sin tocar el orquestador ni duplicar
+ * lógica.
+ *
+ * El tamaño del ranking (10 por defecto) ya no es una constante: lo pasa el
+ * orquestador desde la configuración (donaciones.matchmaking.tamanio-ranking).
  */
 public abstract class AlgoritmoAsignacionBase implements AlgoritmoAsignacion {
 
-    protected static final int TOP_N = 10;
-
     @Override
-    public final List<ResultadoAsignacion> evaluar(Donacion donacion, List<EntidadBeneficiaria> entidades) {
+    public final List<ResultadoAsignacion> evaluar(Donacion donacion, List<EntidadBeneficiaria> entidades, int tamanio) {
         ToDoubleFunction<EntidadBeneficiaria> puntaje = prepararPuntaje(donacion, entidades);
         return entidades.stream()
                 .map(entidad -> new ResultadoAsignacion(entidad.getId(), puntaje.applyAsDouble(entidad)))
                 .filter(resultado -> incluir(resultado.getPuntaje()))
                 .sorted(Comparator.comparingDouble(ResultadoAsignacion::getPuntaje).reversed())
-                .limit(TOP_N)
+                .limit(tamanio)
                 .toList();
     }
 

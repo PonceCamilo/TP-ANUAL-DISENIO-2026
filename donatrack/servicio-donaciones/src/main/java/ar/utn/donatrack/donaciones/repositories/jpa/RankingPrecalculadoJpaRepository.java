@@ -10,23 +10,15 @@ import java.util.UUID;
 /**
  * Acceso JPA a la bandeja de rankings precalculados.
  *
- * Vaciar la bandeja se hace con cuatro DELETE directos (primero las tablas de
- * las listas, después la principal): borrarla entidad por entidad costaría una
- * lectura y varios borrados por cada donación.
+ * Vaciar la bandeja se hace con dos DELETE directos (primero los puestos,
+ * después la principal): borrarla entidad por entidad costaría una lectura y
+ * varios borrados por cada donación.
  */
 public interface RankingPrecalculadoJpaRepository extends JpaRepository<RankingPrecalculado, UUID> {
 
     @Modifying
-    @Query(value = "DELETE FROM ranking_coincidencia", nativeQuery = true)
-    void vaciarCoincidencias();
-
-    @Modifying
-    @Query(value = "DELETE FROM ranking_semantico", nativeQuery = true)
-    void vaciarRankingSemantico();
-
-    @Modifying
-    @Query(value = "DELETE FROM ranking_subatendidos", nativeQuery = true)
-    void vaciarRankingSubAtendidos();
+    @Query(value = "DELETE FROM ranking_puesto", nativeQuery = true)
+    void vaciarPuestos();
 
     @Modifying(clearAutomatically = true)
     @Query(value = "DELETE FROM ranking_precalculado", nativeQuery = true)

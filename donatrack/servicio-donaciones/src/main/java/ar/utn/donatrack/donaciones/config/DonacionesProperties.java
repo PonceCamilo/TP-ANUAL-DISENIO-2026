@@ -27,7 +27,8 @@ public record DonacionesProperties(
         @Valid @DefaultValue Inactividad inactividad,
         @Valid @DefaultValue Procesos procesos,
         @Valid @DefaultValue Importacion importacion,
-        @Valid @DefaultValue Notificaciones notificaciones) {
+        @Valid @DefaultValue Notificaciones notificaciones,
+        @Valid @DefaultValue Matchmaking matchmaking) {
 
     /** Los mismos valores que se usan cuando no se configura nada. */
     public static DonacionesProperties porDefecto() {
@@ -35,7 +36,8 @@ public record DonacionesProperties(
                 new Inactividad(20, "0 0 0 * * *", 100),
                 new Procesos("0 0 3 * * *", "0 30 3 * * *", "0 0 4 * * *"),
                 new Importacion(500, 100),
-                new Notificaciones("admin@donatrack.org"));
+                new Notificaciones("admin@donatrack.org"),
+                new Matchmaking(10));
     }
 
     /**
@@ -71,5 +73,10 @@ public record DonacionesProperties(
      */
     public record Notificaciones(
             @DefaultValue("admin@donatrack.org") @NotBlank @Email String emailAdmin) {
+    }
+
+    /** Cuántas entidades candidatas devuelve cada algoritmo de asignación. */
+    public record Matchmaking(
+            @DefaultValue("10") @Positive int tamanioRanking) {
     }
 }

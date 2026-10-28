@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
 import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
 import ar.utn.donatrack.donaciones.services.DonacionService;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
@@ -550,21 +551,23 @@ class DonacionesControllerTest {
     class CandidatosYBaja {
 
         @Test
-        @DisplayName("GET candidatos devuelve 200 con las tres listas del matchmaking")
+        @DisplayName("GET candidatos devuelve 200 con un ranking por algoritmo y las coincidencias")
         void candidatosOk() throws Exception {
             when(donacionService.obtenerCandidatos(idDonacion)).thenReturn(
                     ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO.builder()
                             .idDonacion(idDonacion)
-                            .porCompatibilidad(List.of())
-                            .porSubatendidos(List.of())
+                            .rankings(List.of(
+                                    new RankingAlgoritmoResponseDTO("COMPATIBILIDAD_SEMANTICA", List.of()),
+                                    new RankingAlgoritmoResponseDTO("PRIORIDAD_SUBATENDIDOS", List.of())))
                             .coincidencias(List.of())
                             .build());
 
             mockMvc.perform(get("/donaciones/{id}/candidatos", idDonacion))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.idDonacion").value(idDonacion.toString()))
-                    .andExpect(jsonPath("$.porCompatibilidad").isArray())
-                    .andExpect(jsonPath("$.porSubatendidos").isArray())
+                    .andExpect(jsonPath("$.rankings[0].algoritmo").value("COMPATIBILIDAD_SEMANTICA"))
+                    .andExpect(jsonPath("$.rankings[1].algoritmo").value("PRIORIDAD_SUBATENDIDOS"))
+                    .andExpect(jsonPath("$.rankings[0].entidades").isArray())
                     .andExpect(jsonPath("$.coincidencias").isArray());
         }
 
@@ -610,8 +613,7 @@ class DonacionesControllerTest {
                             .fechaCalculo(LocalDateTime.of(2026, 3, 15, 3, 30))
                             .huboCoincidencias(true)
                             .coincidencias(List.of())
-                            .porCompatibilidad(List.of())
-                            .porSubatendidos(List.of())
+                            .rankings(List.of(new RankingAlgoritmoResponseDTO("COMPATIBILIDAD_SEMANTICA", List.of())))
                             .build()));
 
             mockMvc.perform(get("/donaciones/candidatos"))
@@ -619,7 +621,8 @@ class DonacionesControllerTest {
                     .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
                     .andExpect(jsonPath("$[0].idDonacion").value(idDonacion.toString()))
                     .andExpect(jsonPath("$[0].huboCoincidencias").value(true))
-                    .andExpect(jsonPath("$[0].fechaCalculo").exists());
+                    .andExpect(jsonPath("$[0].fechaCalculo").exists())
+                    .andExpect(jsonPath("$[0].rankings[0].algoritmo").value("COMPATIBILIDAD_SEMANTICA"));
         }
 
         @Test

@@ -2,6 +2,7 @@ package ar.utn.donatrack.donaciones.interfaces.repositories;
 
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,15 +17,16 @@ import java.util.UUID;
  */
 public interface RepositorioCandidatosAsignacion {
 
-    /** Guarda (o pisa) el ranking calculado para una donación. */
-    void guardar(RankingPrecalculado ranking);
+    /**
+     * Reemplaza la bandeja entera por los rankings de una corrida, en la
+     * transacción de quien llama (el proceso nocturno): quien consulta ve la
+     * bandeja anterior o la nueva completa, nunca una a medio armar.
+     */
+    void reemplazarTodos(Collection<RankingPrecalculado> rankings);
 
     /** Devuelve todos los rankings pendientes de confirmación. */
     List<RankingPrecalculado> obtenerTodos();
 
     /** Descarta el ranking de una donación (p. ej. cuando ya fue asignada). */
     void eliminar(UUID idDonacion);
-
-    /** Vacía el almacenamiento antes de una nueva corrida del proceso nocturno. */
-    void limpiar();
 }

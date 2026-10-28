@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
+import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
@@ -22,7 +24,6 @@ import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
-import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.validations.donaciones.DonacionesValidator;
@@ -37,7 +38,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
 
@@ -126,15 +126,13 @@ public class DonacionService {
   public CandidatosAsignacionResponseDTO obtenerCandidatos(UUID idDonacion) {
     Donacion donacion = validador.validarYObtenerDonacion(idDonacion);
     rechazarSiTieneBienesVencidos(donacion);
-    AsignacionDonacionesService.ResultadoMatchmaking ranking = asignacionService.generarRanking(donacion);
-    Map<UUID, EntidadBeneficiariaResponseDTO> entidades = cargarEntidades(List.of(
-        ranking.getRankingSemantico(), ranking.getRankingSubAtendidos(), ranking.getCoincidencias()));
+    ResultadoMatchmaking resultado = asignacionService.generarRanking(donacion);
+    Map<UUID, EntidadBeneficiariaResponseDTO> entidades = cargarEntidades(List.copyOf(resultado.rankings().values()));
 
     return CandidatosAsignacionResponseDTO.builder()
         .idDonacion(idDonacion)
-        .porCompatibilidad(mapearRanking(ranking.getRankingSemantico(), entidades))
-        .porSubatendidos(mapearRanking(ranking.getRankingSubAtendidos(), entidades))
-        .coincidencias(mapearRanking(ranking.getCoincidencias(), entidades))
+        .rankings(mapearRankings(resultado, entidades))
+        .coincidencias(mapearRanking(resultado.coincidencias(), entidades))
         .build();
   }
 
@@ -150,19 +148,23 @@ public class DonacionService {
   @Transactional(readOnly = true)
   public List<CandidatosPendientesResponseDTO> obtenerCandidatosPendientes() {
     List<RankingPrecalculado> rankings = candidatosRepositorio.obtenerTodos();
-    Map<UUID, EntidadBeneficiariaResponseDTO> entidades = cargarEntidades(rankings.stream()
-        .flatMap(r -> Stream.of(r.getCoincidencias(), r.getRankingSemantico(), r.getRankingSubAtendidos()))
+    Map<UUID, ResultadoMatchmaking> resultados = rankings.stream()
+        .collect(Collectors.toMap(RankingPrecalculado::getIdDonacion, RankingPrecalculado::resultado));
+    Map<UUID, EntidadBeneficiariaResponseDTO> entidades = cargarEntidades(resultados.values().stream()
+        .flatMap(resultado -> resultado.rankings().values().stream())
         .toList());
 
     return rankings.stream()
-        .map(ranking -> CandidatosPendientesResponseDTO.builder()
-            .idDonacion(ranking.getIdDonacion())
-            .fechaCalculo(ranking.getFechaCalculo())
-            .huboCoincidencias(ranking.huboCoincidencias())
-            .coincidencias(mapearRanking(ranking.getCoincidencias(), entidades))
-            .porCompatibilidad(mapearRanking(ranking.getRankingSemantico(), entidades))
-            .porSubatendidos(mapearRanking(ranking.getRankingSubAtendidos(), entidades))
-            .build())
+        .map(ranking -> {
+          ResultadoMatchmaking resultado = resultados.get(ranking.getIdDonacion());
+          return CandidatosPendientesResponseDTO.builder()
+              .idDonacion(ranking.getIdDonacion())
+              .fechaCalculo(ranking.getFechaCalculo())
+              .huboCoincidencias(resultado.huboCoincidencias())
+              .coincidencias(mapearRanking(resultado.coincidencias(), entidades))
+              .rankings(mapearRankings(resultado, entidades))
+              .build();
+        })
         .toList();
   }
 
@@ -208,6 +210,14 @@ public class DonacionService {
     }
     return entidadesRepositorio.obtenerPorIds(ids).stream()
         .collect(Collectors.toMap(EntidadBeneficiaria::getId, entidadMapper::toDTO));
+  }
+
+  /** Un elemento por algoritmo, en el orden en que se ejecutaron. */
+  private List<RankingAlgoritmoResponseDTO> mapearRankings(ResultadoMatchmaking resultado,
+                                                           Map<UUID, EntidadBeneficiariaResponseDTO> entidades) {
+    return resultado.rankings().entrySet().stream()
+        .map(ranking -> new RankingAlgoritmoResponseDTO(ranking.getKey(), mapearRanking(ranking.getValue(), entidades)))
+        .toList();
   }
 
   /**

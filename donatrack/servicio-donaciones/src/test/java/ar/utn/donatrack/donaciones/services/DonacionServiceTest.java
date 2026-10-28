@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.services;
 
+import java.util.Map;
+import java.util.LinkedHashMap;
+import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
+import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
@@ -202,6 +206,15 @@ class DonacionServiceTest {
         dto.setEstado(estado);
         dto.setJustificacion(justificacion);
         return dto;
+    }
+
+    /** Resultado del matchmaking con el ranking de cada uno de los dos algoritmos. */
+    private static ResultadoMatchmaking matchmaking(List<ResultadoAsignacion> semantico,
+                                                    List<ResultadoAsignacion> subAtendidos) {
+        Map<String, List<ResultadoAsignacion>> rankings = new LinkedHashMap<>();
+        rankings.put(AlgoritmoCompatibilidadSemantica.NOMBRE, semantico);
+        rankings.put(AlgoritmoPrioridadSubAtendidos.NOMBRE, subAtendidos);
+        return new ResultadoMatchmaking(rankings);
     }
 
     /** Avanza la donación hasta EN_TRASLADO, que es el paso previo a ENTREGADA. */
@@ -561,29 +574,29 @@ class DonacionServiceTest {
     class Candidatas {
 
         @Test
-        @DisplayName("Devuelve las tres listas del matchmaking mapeadas a entidades")
-        void devuelveLasTresListas() {
+        @DisplayName("Devuelve el ranking de cada algoritmo y las coincidencias, mapeados a entidades")
+        void devuelveLosRankings() {
             EntidadBeneficiaria entidadA = entidadConEmail("a@example.org");
             EntidadBeneficiaria entidadB = entidadConEmail("b@example.org");
 
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(asignacionService.generarRanking(donacion)).thenReturn(
-                    new AsignacionDonacionesService.ResultadoMatchmaking(
-                            List.of(new ResultadoAsignacion(entidadA.getId(), 3.0)),
-                            List.of(new ResultadoAsignacion(entidadA.getId(), 3.0)),
-                            List.of(new ResultadoAsignacion(entidadA.getId(), 1.0),
-                                    new ResultadoAsignacion(entidadB.getId(), 0.5))));
+            when(asignacionService.generarRanking(donacion)).thenReturn(matchmaking(
+                    List.of(new ResultadoAsignacion(entidadA.getId(), 3.0)),
+                    List.of(new ResultadoAsignacion(entidadA.getId(), 1.0),
+                            new ResultadoAsignacion(entidadB.getId(), 0.5))));
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidadA, entidadB));
 
             CandidatosAsignacionResponseDTO respuesta = servicio.obtenerCandidatos(donacion.getId());
 
             assertThat(respuesta.getIdDonacion()).isEqualTo(donacion.getId());
-            assertThat(respuesta.getPorCompatibilidad()).hasSize(1);
-            assertThat(respuesta.getPorSubatendidos()).hasSize(2);
+            assertThat(respuesta.getRankings()).extracting(RankingAlgoritmoResponseDTO::algoritmo)
+                    .containsExactly(AlgoritmoCompatibilidadSemantica.NOMBRE, AlgoritmoPrioridadSubAtendidos.NOMBRE);
+            assertThat(respuesta.getRankings().get(0).entidades()).hasSize(1);
+            assertThat(respuesta.getRankings().get(1).entidades()).hasSize(2);
             assertThat(respuesta.getCoincidencias()).hasSize(1);
             // Respeta el orden del ranking: primero A (1.0) y después B (0.5).
-            assertThat(respuesta.getPorSubatendidos().get(0).getId()).isEqualTo(entidadA.getId());
-            assertThat(respuesta.getPorSubatendidos().get(1).getId()).isEqualTo(entidadB.getId());
+            assertThat(respuesta.getRankings().get(1).entidades().get(0).getId()).isEqualTo(entidadA.getId());
+            assertThat(respuesta.getRankings().get(1).entidades().get(1).getId()).isEqualTo(entidadB.getId());
             // Todas las entidades de las tres listas se cargan en una sola consulta.
             verify(entidadesRepositorio, times(1)).obtenerPorIds(anyCollection());
             verify(entidadesRepositorio, never()).buscarPorId(any());
@@ -597,13 +610,12 @@ class DonacionServiceTest {
             UUID idEntidadBorrada = UUID.randomUUID();
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(asignacionService.generarRanking(donacion)).thenReturn(
-                    new AsignacionDonacionesService.ResultadoMatchmaking(
-                            List.of(), List.of(new ResultadoAsignacion(idEntidadBorrada, 3.0)), List.of()));
+                    matchmaking(List.of(new ResultadoAsignacion(idEntidadBorrada, 3.0)), List.of()));
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of());
 
             CandidatosAsignacionResponseDTO respuesta = servicio.obtenerCandidatos(donacion.getId());
 
-            assertThat(respuesta.getPorCompatibilidad()).isEmpty();
+            assertThat(respuesta.getRankings().getFirst().entidades()).isEmpty();
         }
 
         @Test
@@ -627,14 +639,10 @@ class DonacionServiceTest {
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
             LocalDateTime calculadoA = LocalDateTime.of(2026, 3, 15, 3, 30);
 
-            when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of(
-                    RankingPrecalculado.builder()
-                            .idDonacion(donacion.getId())
-                            .coincidencias(List.of(new ResultadoAsignacion(entidad.getId(), 3.0)))
-                            .rankingSemantico(List.of(new ResultadoAsignacion(entidad.getId(), 3.0)))
-                            .rankingSubAtendidos(List.of(new ResultadoAsignacion(entidad.getId(), 1.0)))
-                            .fechaCalculo(calculadoA)
-                            .build()));
+            when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of(RankingPrecalculado.de(donacion.getId(),
+                    matchmaking(List.of(new ResultadoAsignacion(entidad.getId(), 3.0)),
+                            List.of(new ResultadoAsignacion(entidad.getId(), 1.0))),
+                    calculadoA)));
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
 
             List<CandidatosPendientesResponseDTO> pendientes = servicio.obtenerCandidatosPendientes();
@@ -644,6 +652,7 @@ class DonacionServiceTest {
             assertThat(pendientes.getFirst().getFechaCalculo()).isEqualTo(calculadoA);
             assertThat(pendientes.getFirst().isHuboCoincidencias()).isTrue();
             assertThat(pendientes.getFirst().getCoincidencias()).hasSize(1);
+            assertThat(pendientes.getFirst().getRankings()).hasSize(2);
         }
 
         @Test
@@ -651,14 +660,10 @@ class DonacionServiceTest {
         void sinCoincidencias() {
             // Es la señal para el administrador de que tiene que mirar las dos
             // listas y decidir, en lugar de aceptar una recomendación de consenso.
-            when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of(
-                    RankingPrecalculado.builder()
-                            .idDonacion(donacion.getId())
-                            .coincidencias(List.of())
-                            .rankingSemantico(List.of())
-                            .rankingSubAtendidos(List.of())
-                            .fechaCalculo(LocalDateTime.now())
-                            .build()));
+            when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of(RankingPrecalculado.de(donacion.getId(),
+                    matchmaking(List.of(new ResultadoAsignacion(UUID.randomUUID(), 3.0)),
+                            List.of(new ResultadoAsignacion(UUID.randomUUID(), 1.0))),
+                    LocalDateTime.now())));
 
             assertThat(servicio.obtenerCandidatosPendientes().getFirst().isHuboCoincidencias()).isFalse();
         }

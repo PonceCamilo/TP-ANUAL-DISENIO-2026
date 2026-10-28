@@ -1,12 +1,12 @@
 package ar.utn.donatrack.donaciones.repositories;
 
-import ar.utn.donatrack.donaciones.services.DonacionService;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
 import ar.utn.donatrack.donaciones.repositories.jpa.RankingPrecalculadoJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,9 +24,11 @@ public class CandidatosAsignacionRepository implements RepositorioCandidatosAsig
 
     private final RankingPrecalculadoJpaRepository jpa;
 
-    /** El id es el de la donación: guardar un ranking para la misma donación pisa el anterior. */
-    public void guardar(RankingPrecalculado ranking) {
-        jpa.save(ranking);
+    /** Dos DELETE directos y los inserts de la corrida nueva. */
+    public void reemplazarTodos(Collection<RankingPrecalculado> rankings) {
+        jpa.vaciarPuestos();
+        jpa.vaciarRankings();
+        jpa.saveAll(rankings);
     }
 
     public List<RankingPrecalculado> obtenerTodos() {
@@ -35,12 +37,5 @@ public class CandidatosAsignacionRepository implements RepositorioCandidatosAsig
 
     public void eliminar(UUID idDonacion) {
         jpa.deleteById(idDonacion);
-    }
-
-    public void limpiar() {
-        jpa.vaciarCoincidencias();
-        jpa.vaciarRankingSemantico();
-        jpa.vaciarRankingSubAtendidos();
-        jpa.vaciarRankings();
     }
 }

@@ -22,10 +22,9 @@ public class CandidatosPendientesResponseDTO {
     private UUID idDonacion;
     private LocalDateTime fechaCalculo;
 
-    /** True si la entidad aparece recomendada por los dos algoritmos a la vez. */
+    /** True si alguna entidad aparece recomendada por todos los algoritmos a la vez. */
     private boolean huboCoincidencias;
 
     private List<EntidadBeneficiariaResponseDTO> coincidencias;
-    private List<EntidadBeneficiariaResponseDTO> porCompatibilidad;
-    private List<EntidadBeneficiariaResponseDTO> porSubatendidos;
+    private List<RankingAlgoritmoResponseDTO> rankings;
 }

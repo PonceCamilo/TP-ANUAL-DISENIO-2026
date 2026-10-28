@@ -1,34 +1,49 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.interfaces.services.AlgoritmoAsignacion;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
+import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
- * Orquesta el matchmaking de una donación: ejecuta ambos algoritmos de
- * asignación y calcula la intersección de sus rankings.
+ * Orquesta el matchmaking de una donación: ejecuta todos los algoritmos de
+ * asignación registrados (los beans de AlgoritmoAsignacion, en su @Order) y
+ * devuelve el ranking de cada uno por su nombre. Las coincidencias entre todos,
+ * que son las candidatas de mayor confianza, las calcula ResultadoMatchmaking.
  *
- * Siempre devuelve las tres listas (compatibilidad semántica, prioridad a
- * sub-atendidos y coincidencias entre ambos) para que la capa superior
- * decida cómo presentarlas. Las coincidencias son las candidatas de mayor
- * confianza: aparecen recomendadas por los dos criterios a la vez.
+ * No conoce los algoritmos concretos: antes recibía los dos por su clase y tenía
+ * las tres listas escritas a mano. Sumar un algoritmo no toca esta clase.
  */
 @Service
-@RequiredArgsConstructor
 public class AsignacionDonacionesService {
 
-    private final AlgoritmoCompatibilidadSemantica algoritmoSemantico;
-    private final AlgoritmoPrioridadSubAtendidos algoritmoSubAtendidos;
+    private final List<AlgoritmoAsignacion> algoritmos;
     private final RepositorioEntidadesBeneficiarias entidadesRepository;
+    private final int tamanioRanking;
+
+    public AsignacionDonacionesService(List<AlgoritmoAsignacion> algoritmos,
+                                       RepositorioEntidadesBeneficiarias entidadesRepository,
+                                       DonacionesProperties propiedades) {
+        Set<String> nombres = new HashSet<>();
+        for (AlgoritmoAsignacion algoritmo : algoritmos) {
+            if (!nombres.add(algoritmo.nombre())) {
+                throw new IllegalStateException("Hay dos algoritmos de asignación llamados " + algoritmo.nombre());
+            }
+        }
+        this.algoritmos = List.copyOf(algoritmos);
+        this.entidadesRepository = entidadesRepository;
+        this.tamanioRanking = propiedades.matchmaking().tamanioRanking();
+    }
 
     /** Ranking a demanda de una sola donación: carga las entidades y evalúa. */
     public ResultadoMatchmaking generarRanking(Donacion donacion) {
@@ -41,36 +56,10 @@ public class AsignacionDonacionesService {
      * donaciones en depósito, en lugar de una vez por donación.
      */
     public ResultadoMatchmaking generarRanking(Donacion donacion, List<EntidadBeneficiaria> entidades) {
-        List<ResultadoAsignacion> rankingSemantico = algoritmoSemantico.evaluar(donacion, entidades);
-        List<ResultadoAsignacion> rankingSubAtendidos = algoritmoSubAtendidos.evaluar(donacion, entidades);
-        List<ResultadoAsignacion> coincidencias = intersectar(rankingSemantico, rankingSubAtendidos);
-
-        return new ResultadoMatchmaking(coincidencias, rankingSemantico, rankingSubAtendidos);
-    }
-
-    private List<ResultadoAsignacion> intersectar(List<ResultadoAsignacion> a, List<ResultadoAsignacion> b) {
-        Set<UUID> idsB = b.stream().map(ResultadoAsignacion::getIdEntidad).collect(Collectors.toSet());
-        return a.stream()
-                .filter(resultado -> idsB.contains(resultado.getIdEntidad()))
-                .toList();
-    }
-
-    @Getter
-    public static class ResultadoMatchmaking {
-        private final List<ResultadoAsignacion> coincidencias;
-        private final List<ResultadoAsignacion> rankingSemantico;
-        private final List<ResultadoAsignacion> rankingSubAtendidos;
-
-        public ResultadoMatchmaking(List<ResultadoAsignacion> coincidencias,
-                                    List<ResultadoAsignacion> rankingSemantico,
-                                    List<ResultadoAsignacion> rankingSubAtendidos) {
-            this.coincidencias = coincidencias;
-            this.rankingSemantico = rankingSemantico;
-            this.rankingSubAtendidos = rankingSubAtendidos;
+        Map<String, List<ResultadoAsignacion>> rankings = new LinkedHashMap<>();
+        for (AlgoritmoAsignacion algoritmo : algoritmos) {
+            rankings.put(algoritmo.nombre(), algoritmo.evaluar(donacion, entidades, tamanioRanking));
         }
-
-        public boolean huboCoincidencias() {
-            return !coincidencias.isEmpty();
-        }
+        return new ResultadoMatchmaking(rankings);
     }
 }

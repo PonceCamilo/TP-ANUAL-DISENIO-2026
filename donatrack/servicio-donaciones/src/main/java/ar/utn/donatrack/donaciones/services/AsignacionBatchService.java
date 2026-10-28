@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.services;
 
+import java.util.Optional;
+import java.util.ArrayList;
+import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
@@ -42,8 +45,6 @@ import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion
 @RequiredArgsConstructor
 public class AsignacionBatchService {
 
-    /** Estado de las donaciones que todavía esperan destino. */
-
     private final RepositorioDonaciones donacionesRepositorio;
     private final AsignacionDonacionesService asignacionService;
     private final RepositorioCandidatosAsignacion candidatosRepositorio;
@@ -72,34 +73,24 @@ public class AsignacionBatchService {
 
         log.info("[ASIGNACION] Inicio del matchmaking nocturno. Donaciones en depósito: {}", enDeposito.size());
 
-        // Se descartan los rankings de la corrida anterior: las necesidades de las
-        // entidades pudieron cambiar durante el día y una recomendación vieja es
-        // peor que ninguna.
-        candidatosRepositorio.limpiar();
-
         // Las entidades son las mismas para todas las donaciones de la corrida:
         // se cargan una vez y no una vez por donación (Entrega 5).
         List<EntidadBeneficiaria> entidades = entidadesRepositorio.buscarTodas();
 
-        int conCoincidencias = 0;
-        int sinCandidatas = 0;
-
+        List<RankingPrecalculado> rankings = new ArrayList<>();
         for (Donacion donacion : enDeposito) {
-            RankingPrecalculado ranking = calcularRanking(donacion, entidades);
-            if (ranking == null) {
-                continue;
-            }
-            candidatosRepositorio.guardar(ranking);
-
-            if (ranking.huboCoincidencias()) {
-                conCoincidencias++;
-            }
-            if (ranking.sinCandidatas()) {
-                sinCandidatas++;
-            }
+            calcularRanking(donacion, entidades).ifPresent(rankings::add);
         }
 
-        log.info("[ASIGNACION] Matchmaking finalizado. Procesadas: {} | Con coincidencia entre ambos algoritmos: {} | Sin ninguna candidata: {}",
+        // Los rankings de la corrida anterior se descartan (las necesidades de las
+        // entidades pudieron cambiar durante el día y una recomendación vieja es
+        // peor que ninguna), pero recién al final y de una vez: antes se vaciaba
+        // la bandeja al principio y, si el proceso se cortaba, quedaba a medias.
+        candidatosRepositorio.reemplazarTodos(rankings);
+
+        long conCoincidencias = rankings.stream().filter(RankingPrecalculado::huboCoincidencias).count();
+        long sinCandidatas = rankings.stream().filter(RankingPrecalculado::sinCandidatas).count();
+        log.info("[ASIGNACION] Matchmaking finalizado. Procesadas: {} | Con coincidencia entre todos los algoritmos: {} | Sin ninguna candidata: {}",
                 enDeposito.size(), conCoincidencias, sinCandidatas);
     }
 
@@ -109,23 +100,14 @@ public class AsignacionBatchService {
      * el proceso sigue con las demás. Es un batch nocturno sin nadie mirando, así
      * que no puede caerse entero por un caso puntual.
      */
-    private RankingPrecalculado calcularRanking(Donacion donacion, List<EntidadBeneficiaria> entidades) {
+    private Optional<RankingPrecalculado> calcularRanking(Donacion donacion, List<EntidadBeneficiaria> entidades) {
         try {
-            AsignacionDonacionesService.ResultadoMatchmaking resultado =
-                    asignacionService.generarRanking(donacion, entidades);
-
-            return RankingPrecalculado.builder()
-                    .idDonacion(donacion.getId())
-                    .coincidencias(resultado.getCoincidencias())
-                    .rankingSemantico(resultado.getRankingSemantico())
-                    .rankingSubAtendidos(resultado.getRankingSubAtendidos())
-                    .fechaCalculo(FechaHoraArgentina.ahora())
-                    .build();
-
+            ResultadoMatchmaking resultado = asignacionService.generarRanking(donacion, entidades);
+            return Optional.of(RankingPrecalculado.de(donacion.getId(), resultado, FechaHoraArgentina.ahora()));
         } catch (Exception e) {
             log.error("[ASIGNACION] No se pudo calcular el ranking de la donación {}: {}",
                     donacion.getId(), e.getMessage());
-            return null;
+            return Optional.empty();
         }
     }
 }

@@ -50,6 +50,9 @@ import static org.mockito.Mockito.when;
 @DisplayName("Algoritmos de asignación - Template Method y criterios concretos")
 class AlgoritmosAsignacionTest {
 
+    /** El tamaño de ranking por defecto (donaciones.matchmaking.tamanio-ranking). */
+    private static final int TAMANIO = 10;
+
     @Mock
     private RepositorioRecepcionesEntidad recepciones;
 
@@ -100,7 +103,7 @@ class AlgoritmosAsignacionTest {
         void puntajeEsLaCantidadDeCoincidencias() {
             EntidadBeneficiaria dosCoincidencias = entidadCon("Comedor A", "Arroz para el guiso", "Más arroz", "Colchones");
 
-            List<ResultadoAsignacion> ranking = algoritmoSemantico.evaluar(donacionDe("arroz"), List.of(dosCoincidencias));
+            List<ResultadoAsignacion> ranking = algoritmoSemantico.evaluar(donacionDe("arroz"), List.of(dosCoincidencias), TAMANIO);
 
             assertThat(ranking).hasSize(1);
             assertThat(ranking.getFirst().getPuntaje()).isEqualTo(2.0);
@@ -115,7 +118,7 @@ class AlgoritmosAsignacionTest {
             EntidadBeneficiaria sinCoincidencia = entidadCon("Comedor B", "Colchones", "Frazadas");
 
             List<ResultadoAsignacion> ranking = algoritmoSemantico
-                    .evaluar(donacionDe("arroz"), List.of(conCoincidencia, sinCoincidencia));
+                    .evaluar(donacionDe("arroz"), List.of(conCoincidencia, sinCoincidencia), TAMANIO);
 
             assertThat(ranking)
                     .hasSize(1)
@@ -132,7 +135,7 @@ class AlgoritmosAsignacionTest {
 
             List<ResultadoAsignacion> ranking = algoritmoSemantico.evaluar(
                     donacionDe("arroz"),
-                    List.of(unaCoincidencia, tresCoincidencias, dosCoincidencias));
+                    List.of(unaCoincidencia, tresCoincidencias, dosCoincidencias), TAMANIO);
 
             assertThat(ranking)
                     .extracting(ResultadoAsignacion::getIdEntidad)
@@ -146,13 +149,13 @@ class AlgoritmosAsignacionTest {
             // hook incluir() las descarta a todas.
             EntidadBeneficiaria entidad = entidadCon("Comedor A", "Arroz");
 
-            assertThat(algoritmoSemantico.evaluar(donacionDe(null), List.of(entidad))).isEmpty();
+            assertThat(algoritmoSemantico.evaluar(donacionDe(null), List.of(entidad), TAMANIO)).isEmpty();
         }
 
         @Test
         @DisplayName("Sin entidades cargadas el ranking es vacío, no null")
         void sinEntidadesRankingVacio() {
-            assertThat(algoritmoSemantico.evaluar(donacionDe("arroz"), List.of())).isEmpty();
+            assertThat(algoritmoSemantico.evaluar(donacionDe("arroz"), List.of(), TAMANIO)).isEmpty();
         }
     }
 
@@ -172,7 +175,7 @@ class AlgoritmosAsignacionTest {
             EntidadBeneficiaria entidad = entidadCon("Comedor A");
             when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of());
 
-            List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad));
+            List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad), TAMANIO);
 
             assertThat(ranking.getFirst().getPuntaje()).isEqualTo(1.0);
         }
@@ -183,7 +186,7 @@ class AlgoritmosAsignacionTest {
             EntidadBeneficiaria entidad = entidadCon("Comedor A");
             when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of(entidad.getId(), 3L));
 
-            List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad));
+            List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad), TAMANIO);
 
             // 1 / (1 + 3) = 0.25
             assertThat(ranking.getFirst().getPuntaje()).isCloseTo(0.25, within(0.0001));
@@ -199,7 +202,7 @@ class AlgoritmosAsignacionTest {
                     .thenReturn(Map.of(muyAtendida.getId(), 2L));
 
             List<ResultadoAsignacion> ranking = algoritmoSubAtendidos
-                    .evaluar(donacionDe("arroz"), List.of(muyAtendida, pocoAtendida));
+                    .evaluar(donacionDe("arroz"), List.of(muyAtendida, pocoAtendida), TAMANIO);
 
             assertThat(ranking)
                     .extracting(ResultadoAsignacion::getIdEntidad)
@@ -213,7 +216,7 @@ class AlgoritmosAsignacionTest {
             when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of());
 
             algoritmoSubAtendidos.evaluar(donacionDe("arroz"),
-                    List.of(entidadCon("A"), entidadCon("B"), entidadCon("C")));
+                    List.of(entidadCon("A"), entidadCon("B"), entidadCon("C")), TAMANIO);
 
             verify(recepciones, times(1)).contarRecepcionesPorEntidadDesde(FechaHoraArgentina.hoy().minusMonths(3));
         }
@@ -226,7 +229,7 @@ class AlgoritmosAsignacionTest {
             EntidadBeneficiaria sinNecesidades = entidadCon("Comedor A");
             when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of());
 
-            assertThat(algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(sinNecesidades))).hasSize(1);
+            assertThat(algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(sinNecesidades), TAMANIO)).hasSize(1);
         }
     }
 
@@ -237,13 +240,13 @@ class AlgoritmosAsignacionTest {
         @Test
         @DisplayName("El ranking se recorta al top 10 aunque haya más entidades candidatas")
         void recorteAlTop10() {
-            // TOP_N = 10 en AlgoritmoAsignacionBase. Con 15 entidades candidatas
-            // el ranking debe devolver solo las 10 mejores.
+            // El tamaño lo pide el orquestador (10 por configuración). Con 15
+            // entidades candidatas el ranking debe devolver solo las 10 mejores.
             List<EntidadBeneficiaria> quinceEntidades = IntStream.rangeClosed(1, 15)
                     .mapToObj(i -> entidadCon("Comedor " + i, "Arroz"))
                     .toList();
 
-            List<ResultadoAsignacion> ranking = algoritmoSemantico.evaluar(donacionDe("arroz"), quinceEntidades);
+            List<ResultadoAsignacion> ranking = algoritmoSemantico.evaluar(donacionDe("arroz"), quinceEntidades, TAMANIO);
 
             assertThat(ranking).hasSize(10);
         }
@@ -259,10 +262,27 @@ class AlgoritmosAsignacionTest {
             EntidadBeneficiaria laMejor = entidadCon("La mejor", "Arroz", "Arroz integral", "Arroz largo fino");
             entidades.add(laMejor);
 
-            List<ResultadoAsignacion> ranking = algoritmoSemantico.evaluar(donacionDe("arroz"), entidades);
+            List<ResultadoAsignacion> ranking = algoritmoSemantico.evaluar(donacionDe("arroz"), entidades, TAMANIO);
 
             assertThat(ranking).hasSize(10);
             assertThat(ranking.getFirst().getIdEntidad()).isEqualTo(laMejor.getId());
+        }
+
+        @Test
+        @DisplayName("Respeta el tamaño pedido, que ya no es una constante del código")
+        void respetaElTamanioPedido() {
+            List<EntidadBeneficiaria> entidades = IntStream.rangeClosed(1, 8)
+                    .mapToObj(i -> entidadCon("Comedor " + i, "Arroz"))
+                    .toList();
+
+            assertThat(algoritmoSemantico.evaluar(donacionDe("arroz"), entidades, 3)).hasSize(3);
+        }
+
+        @Test
+        @DisplayName("Cada algoritmo tiene un nombre propio, que identifica su ranking")
+        void nombres() {
+            assertThat(algoritmoSemantico.nombre()).isEqualTo("COMPATIBILIDAD_SEMANTICA");
+            assertThat(algoritmoSubAtendidos.nombre()).isEqualTo("PRIORIDAD_SUBATENDIDOS");
         }
     }
 }

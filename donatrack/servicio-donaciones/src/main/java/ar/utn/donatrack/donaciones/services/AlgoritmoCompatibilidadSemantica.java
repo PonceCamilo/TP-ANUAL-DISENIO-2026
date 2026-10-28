@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.services;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
@@ -16,7 +17,15 @@ import org.springframework.stereotype.Component;
  * entidades sin ninguna coincidencia (puntaje 0) quedan fuera del ranking.
  */
 @Component
+@Order(1)
 public class AlgoritmoCompatibilidadSemantica extends AlgoritmoAsignacionBase {
+
+    public static final String NOMBRE = "COMPATIBILIDAD_SEMANTICA";
+
+    @Override
+    public String nombre() {
+        return NOMBRE;
+    }
 
     @Override
     protected double calcularPuntaje(Donacion donacion, EntidadBeneficiaria entidad) {
