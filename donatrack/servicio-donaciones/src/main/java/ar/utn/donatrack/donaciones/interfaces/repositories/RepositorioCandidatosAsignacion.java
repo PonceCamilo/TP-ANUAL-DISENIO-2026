@@ -19,9 +19,6 @@ public interface RepositorioCandidatosAsignacion {
     /** Guarda (o pisa) el ranking calculado para una donación. */
     void guardar(RankingPrecalculado ranking);
 
-    /** Devuelve el ranking de una donación, o null si todavía no se calculó. */
-    RankingPrecalculado obtenerPorDonacion(UUID idDonacion);
-
     /** Devuelve todos los rankings pendientes de confirmación. */
     List<RankingPrecalculado> obtenerTodos();
 

@@ -86,9 +86,8 @@ public class DonacionesRepository implements RepositorioDonaciones {
     return new Pagina<>(resultado.getContent(), pagina.numero(), pagina.tamanio(), resultado.getTotalElements());
   }
 
-  /** Devuelve null y no Optional para no cambiar el contrato que ya usaban los services. */
-  public Donacion obtenerPorId(UUID id) {
-    return jpa.findById(id).orElse(null);
+  public Optional<Donacion> buscarPorId(UUID id) {
+    return jpa.findById(id);
   }
 
   public boolean existenDelDonante(UUID idDonante) {

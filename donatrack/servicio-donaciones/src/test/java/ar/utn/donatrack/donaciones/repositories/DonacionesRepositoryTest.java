@@ -229,7 +229,7 @@ class DonacionesRepositoryTest {
          * bloqueo optimista (su versión quedó vieja después del primer guardado).
          */
         private void asignar(Donacion donacion, UUID idEntidad, LocalDate fecha) {
-            Donacion actual = repositorio.obtenerPorId(donacion.getId());
+            Donacion actual = repositorio.buscarPorId(donacion.getId()).orElseThrow();
             em.clear(); // como en un pedido real de hoy: la donación llega desprendida
             actual.setIdEntidadBeneficiaria(idEntidad);
             actual.setFechaAsignacion(fecha);
@@ -268,9 +268,9 @@ class DonacionesRepositoryTest {
         @DisplayName("Guardar una copia vieja de la donación falla en lugar de pisar el cambio de otro (bloqueo optimista)")
         void copiaViejaFalla() {
             Donacion donacion = guardadaEnDeposito();
-            Donacion copiaA = repositorio.obtenerPorId(donacion.getId());
+            Donacion copiaA = repositorio.buscarPorId(donacion.getId()).orElseThrow();
             em.clear();
-            Donacion copiaB = repositorio.obtenerPorId(donacion.getId());
+            Donacion copiaB = repositorio.buscarPorId(donacion.getId()).orElseThrow();
             em.clear();
 
             copiaA.setDescripcion("cambio de A");

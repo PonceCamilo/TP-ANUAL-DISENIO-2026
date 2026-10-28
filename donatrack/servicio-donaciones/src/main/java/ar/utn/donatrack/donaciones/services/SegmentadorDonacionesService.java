@@ -1,9 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
-import org.springframework.transaction.annotation.Transactional;
-import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
-import java.util.Optional;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
@@ -19,9 +17,11 @@ import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 @Transactional
@@ -52,7 +52,7 @@ public class SegmentadorDonacionesService {
   }
 
   public List<Donacion> segmentar(CargaDonacion carga) {
-    return registrarCarga(carga, donanteRepository.obtenerPersona(carga.getIdDonante()));
+    return registrarCarga(carga, donanteRepository.buscarPorId(carga.getIdDonante()).orElse(null));
   }
 
   private List<Donacion> registrarCarga(CargaDonacion carga, PersonaDonante donante) {

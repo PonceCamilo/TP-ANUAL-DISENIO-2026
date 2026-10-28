@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.services;
 
-import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
@@ -21,6 +20,7 @@ import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -78,9 +78,12 @@ public class PersonaDonanteService {
   }
 
   public void modificarRepresentante(UUID id, RepresentanteRequestDTO dto) {
-    validador.validarExistenciaPersona(id);
-    validador.validarEsPersonaJuridica(id);
-    repositorio.modificarRepresentante(id, mapper.toRepresentante(dto));
+    // Una sola lectura: el validator devuelve la persona jurídica (404 si no
+    // existe, 400 si es humana) y el representante se agrega en el modelo.
+    PersonaJuridica juridica = validador.validarYObtenerJuridica(id);
+    juridica.agregarRepresentante(mapper.toRepresentante(dto));
+    juridica.registrarInteraccion();
+    repositorio.guardar(juridica);
   }
 
   public PersonaDonanteResponseDTO actualizar(UUID id, PersonaDonanteUpdateRequestDTO dto) {
@@ -108,11 +111,11 @@ public class PersonaDonanteService {
   }
 
   public void eliminar(UUID id) {
-    validador.validarExistenciaPersona(id);
+    PersonaDonante persona = validador.validarYObtenerPersona(id);
     // Sin FK entre donacion y persona_donante: la integridad la cuida el servicio.
     if (donaciones.existenDelDonante(id)) {
       throw new PersonaConDonacionesException(id);
     }
-    repositorio.eliminar(id);
+    repositorio.eliminar(persona);
   }
 }

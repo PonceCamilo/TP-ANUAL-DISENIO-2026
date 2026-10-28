@@ -73,7 +73,7 @@ class EntidadesBeneficiariasRepositoryTest {
         jpa.flush();
         em.clear();
 
-        Campania leida = repositorio.obtenerPorId(entidad.getId()).getCampanias().getFirst();
+        Campania leida = repositorio.buscarPorId(entidad.getId()).orElseThrow().getCampanias().getFirst();
 
         assertThat(leida.getIdEntidad()).isEqualTo(entidad.getId());
         Number columnasViejas = (Number) em.getEntityManager().createNativeQuery(
@@ -91,7 +91,7 @@ class EntidadesBeneficiariasRepositoryTest {
         jpa.flush();
         em.clear();
 
-        Campania leida = repositorio.obtenerPorId(entidad.getId()).getCampanias().getFirst();
+        Campania leida = repositorio.buscarPorId(entidad.getId()).orElseThrow().getCampanias().getFirst();
 
         assertThat(leida.getNecesidades()).hasSize(2);
         assertThat(leida.getNecesidades()).anySatisfy(necesidad -> {
@@ -111,7 +111,7 @@ class EntidadesBeneficiariasRepositoryTest {
         jpa.flush();
         em.clear();
 
-        repositorio.eliminar(entidad.getId());
+        repositorio.eliminar(entidad);
         jpa.flush();
 
         for (String tabla : List.of("campania", "necesidad", "necesidad_recurrente", "necesidad_extraordinaria")) {

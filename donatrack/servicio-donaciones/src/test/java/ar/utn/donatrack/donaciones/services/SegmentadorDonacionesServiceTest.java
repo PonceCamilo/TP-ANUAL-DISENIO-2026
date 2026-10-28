@@ -1,12 +1,10 @@
 package ar.utn.donatrack.donaciones.services;
 
-import static org.mockito.Mockito.mock;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import org.mockito.Spy;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
@@ -32,9 +30,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,6 +43,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -120,7 +121,7 @@ class SegmentadorDonacionesServiceTest {
         void devuelveLasDonacionesSegmentadas() {
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta",
                     List.of(bien("arroz", "Arroz"), bien("ropa", "Camperas")));
-            when(donanteRepository.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             List<Donacion> resultado = servicio.segmentar(carga);
 
@@ -137,7 +138,7 @@ class SegmentadorDonacionesServiceTest {
             // se devuelven al controller, no una copia distinta.
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta",
                     List.of(bien("arroz", "Arroz"), bien("ropa", "Camperas")));
-            when(donanteRepository.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             List<Donacion> resultado = servicio.segmentar(carga);
 
@@ -149,7 +150,7 @@ class SegmentadorDonacionesServiceTest {
         @DisplayName("Una carga sin bienes no persiste nada ni falla")
         void cargaVaciaNoRompe() {
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta vacía", List.of());
-            when(donanteRepository.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             List<Donacion> resultado = servicio.segmentar(carga);
 
@@ -169,7 +170,7 @@ class SegmentadorDonacionesServiceTest {
             // si el donante completó alguna misión.
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta",
                     List.of(bien("arroz", "Arroz"), bien("ropa", "Camperas")));
-            when(donanteRepository.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.segmentar(carga);
 
@@ -183,7 +184,7 @@ class SegmentadorDonacionesServiceTest {
         void categoriasSinDuplicados() {
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta",
                     List.of(bien("arroz", "Arroz A"), bien("arroz", "Arroz B"), bien("ropa", "Camperas")));
-            when(donanteRepository.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.segmentar(carga);
 
@@ -199,7 +200,7 @@ class SegmentadorDonacionesServiceTest {
             // Regla de resiliencia: el aviso a incentivos es secundario; nunca debe
             // hacer fallar el registro de una donación que ya se persistió.
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta", List.of(bien("arroz", "Arroz")));
-            when(donanteRepository.obtenerPersona(idDonante)).thenReturn(null);
+            when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.empty());
 
             List<Donacion> resultado = servicio.segmentar(carga);
 
@@ -212,7 +213,7 @@ class SegmentadorDonacionesServiceTest {
         @DisplayName("Si el donante no tiene email, la donación se registra igual y NO se notifica")
         void donanteSinEmailNoNotifica() {
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta", List.of(bien("arroz", "Arroz")));
-            when(donanteRepository.obtenerPersona(idDonante)).thenReturn(donanteConEmail(null));
+            when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(null)));
 
             List<Donacion> resultado = servicio.segmentar(carga);
 
@@ -257,7 +258,7 @@ class SegmentadorDonacionesServiceTest {
             // Donar es interactuar con la plataforma: reinicia el plazo de inactividad.
             verify(donanteRepository).guardar(argThat(persona -> persona.getUltimaInteraccion() != null));
             // El donante ya está cargado: no se vuelve a buscar para avisar a incentivos.
-            verify(donanteRepository, never()).obtenerPersona(any());
+            verify(donanteRepository, never()).buscarPorId(any());
         }
 
         @Test

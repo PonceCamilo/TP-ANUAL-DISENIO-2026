@@ -29,10 +29,6 @@ public class CandidatosAsignacionRepository implements RepositorioCandidatosAsig
         jpa.save(ranking);
     }
 
-    public RankingPrecalculado obtenerPorDonacion(UUID idDonacion) {
-        return jpa.findById(idDonacion).orElse(null);
-    }
-
     public List<RankingPrecalculado> obtenerTodos() {
         return jpa.findAll();
     }

@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.services;
 
-import org.springframework.transaction.support.TransactionOperations;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
@@ -24,11 +23,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -108,8 +109,8 @@ class PlanificacionEntregasServiceTest {
         donacion.setIdDonante(UUID.randomUUID());
         donacion.asignarA(entidad);
 
-        lenient().when(donacionesRepositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-        lenient().when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+        lenient().when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+        lenient().when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
         return donacion;
     }
 
@@ -134,7 +135,7 @@ class PlanificacionEntregasServiceTest {
             // y parte sin despachar sería imposible de reconciliar.
             Donacion valida = donacionAsignada();
             UUID inexistente = UUID.randomUUID();
-            when(donacionesRepositorio.obtenerPorId(inexistente)).thenReturn(null);
+            when(donacionesRepositorio.buscarPorId(inexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.despachar(List.of(valida.getId(), inexistente), null))
                     .isInstanceOf(DonacionNoEncontradaException.class);
@@ -147,7 +148,7 @@ class PlanificacionEntregasServiceTest {
         void estadoIncorrecto() {
             Donacion valida = donacionAsignada();
             Donacion enDeposito = new Donacion();
-            when(donacionesRepositorio.obtenerPorId(enDeposito.getId())).thenReturn(enDeposito);
+            when(donacionesRepositorio.buscarPorId(enDeposito.getId())).thenReturn(Optional.of(enDeposito));
 
             assertThatThrownBy(() -> servicio.despachar(List.of(valida.getId(), enDeposito.getId()), null))
                     .isInstanceOf(DonacionNoDespachableException.class)
@@ -167,7 +168,7 @@ class PlanificacionEntregasServiceTest {
                     .id(entidad.getId())
                     .razonSocial("Comedor sin dirección")
                     .build();
-            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(sinDireccion);
+            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(sinDireccion));
 
             assertThatThrownBy(() -> servicio.despachar(List.of(donacion.getId()), null))
                     .isInstanceOf(DonacionNoDespachableException.class)

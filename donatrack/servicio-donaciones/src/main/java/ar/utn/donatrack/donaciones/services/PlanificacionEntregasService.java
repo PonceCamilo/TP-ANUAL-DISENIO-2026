@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.services;
 
-import org.springframework.transaction.support.TransactionOperations;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
@@ -16,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionOperations;
 
 import java.util.HashMap;
 import java.util.List;
@@ -126,7 +126,7 @@ public class PlanificacionEntregasService {
     private void registrarDespacho(List<UUID> pedidas, BrokerLogisticaClient.ResultadoEnvio resultado) {
         for (BrokerLogisticaClient.EnvioAsignado envio : resultado.envios()) {
             Donacion donacion = pedidas.contains(envio.idDonacion())
-                    ? donacionesRepositorio.obtenerPorId(envio.idDonacion())
+                    ? donacionesRepositorio.buscarPorId(envio.idDonacion()).orElse(null)
                     : null;
             if (donacion == null) {
                 log.warn("[LOGISTICA] El broker devolvió un envío para la donación {}, que no estaba en el pedido.",
@@ -177,7 +177,7 @@ public class PlanificacionEntregasService {
 
     private EntidadBeneficiaria entidadDe(Donacion donacion) {
         UUID idEntidad = donacion.getIdEntidadBeneficiaria();
-        return idEntidad == null ? null : entidadesRepositorio.obtenerPorId(idEntidad);
+        return idEntidad == null ? null : entidadesRepositorio.buscarPorId(idEntidad).orElse(null);
     }
 
     /**

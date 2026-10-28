@@ -213,7 +213,7 @@ public class CsvImportService {
     private ImportFilaCSV procesarFila(DonanteImportDto dto) {
         int linea = dto.linea();
         try {
-            PersonaDonante existente = donanteRepository.obtenerPorEmail(dto.email());
+            PersonaDonante existente = donanteRepository.buscarPorEmail(dto.email()).orElse(null);
             String conflicto = existente == null ? null : conflictoDeTipo(existente, dto);
             if (conflicto != null) {
                 return ImportFilaCSV.error(linea, dto.email(), conflicto);

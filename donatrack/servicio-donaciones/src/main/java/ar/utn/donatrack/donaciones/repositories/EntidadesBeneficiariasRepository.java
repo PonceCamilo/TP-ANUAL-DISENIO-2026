@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -32,19 +33,15 @@ public class EntidadesBeneficiariasRepository implements RepositorioEntidadesBen
         return jpa.findAll();
     }
 
-    public EntidadBeneficiaria obtenerPorId(UUID id) {
-        return jpa.findById(id).orElse(null);
+    public Optional<EntidadBeneficiaria> buscarPorId(UUID id) {
+        return jpa.findById(id);
     }
 
     public List<EntidadBeneficiaria> obtenerPorIds(Collection<UUID> ids) {
         return jpa.findAllById(ids);
     }
 
-    public boolean existePorId(UUID id) {
-        return jpa.existsById(id);
-    }
-
-    public void eliminar(UUID id) {
-        jpa.deleteById(id);
+    public void eliminar(EntidadBeneficiaria entidad) {
+        jpa.delete(entidad);
     }
 }

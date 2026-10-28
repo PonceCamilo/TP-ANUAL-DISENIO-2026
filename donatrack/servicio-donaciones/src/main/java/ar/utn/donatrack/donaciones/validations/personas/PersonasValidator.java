@@ -41,25 +41,21 @@ public class PersonasValidator {
     }
   }
 
-  public void validarExistenciaPersona(UUID id) {
-    if (!repositorio.existePorId(id)) {
-      throw new PersonaDonanteNoEncontradaException(id);
-    }
-  }
-
-  /** Recupera la persona donante o lanza la excepción de dominio si no existe. */
+  /** Recupera la persona donante o lanza la excepción de dominio si no existe (404). */
   public PersonaDonante validarYObtenerPersona(UUID id) {
-    PersonaDonante persona = repositorio.obtenerPersona(id);
-    if (persona == null) {
-      throw new PersonaDonanteNoEncontradaException(id);
-    }
-    return persona;
+    return repositorio.buscarPorId(id).orElseThrow(() -> new PersonaDonanteNoEncontradaException(id));
   }
 
-  public void validarEsPersonaJuridica(UUID id) {
-    if (!(repositorio.obtenerPersona(id) instanceof PersonaJuridica)) {
+  /**
+   * Recupera una persona jurídica: 404 si no existe y 400 si es humana. Una sola
+   * consulta: antes se verificaba la existencia y el tipo por separado, y después
+   * el repositorio la volvía a leer.
+   */
+  public PersonaJuridica validarYObtenerJuridica(UUID id) {
+    if (!(validarYObtenerPersona(id) instanceof PersonaJuridica juridica)) {
       throw new TipoPersonaIlegalException(id);
     }
+    return juridica;
   }
 
   public void validarMedioContacto(MedioDeContacto medio) {

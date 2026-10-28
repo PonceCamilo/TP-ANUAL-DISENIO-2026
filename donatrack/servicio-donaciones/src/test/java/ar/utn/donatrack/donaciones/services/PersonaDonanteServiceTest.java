@@ -2,6 +2,7 @@ package ar.utn.donatrack.donaciones.services;
 
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
@@ -50,6 +51,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -249,7 +251,7 @@ class PersonaDonanteServiceTest {
         @DisplayName("obtenerDonante() devuelve el donante por id")
         void obtenerPorId() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(humanaGuardada(id));
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
 
             assertThat(servicio.obtenerDonante(id).getId()).isEqualTo(id);
         }
@@ -258,7 +260,7 @@ class PersonaDonanteServiceTest {
         @DisplayName("obtenerDonante() lanza 404 si el donante no existe")
         void obtenerPorIdInexistente() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(null);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.obtenerDonante(id))
                     .isInstanceOf(PersonaDonanteNoEncontradaException.class);
@@ -288,7 +290,7 @@ class PersonaDonanteServiceTest {
         void darDeBaja() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.cambiarEstado(id, dtoEstado("INACTIVO", null));
 
@@ -300,7 +302,7 @@ class PersonaDonanteServiceTest {
         void bloquearConJustificacion() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.cambiarEstado(id, dtoEstado("BLOQUEADO", "Reportes de uso indebido"));
 
@@ -312,7 +314,7 @@ class PersonaDonanteServiceTest {
         void bloquearSinJustificacion() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(id, dtoEstado("BLOQUEADO", null)))
                     .isInstanceOf(FaltaJustificacionException.class);
@@ -325,7 +327,7 @@ class PersonaDonanteServiceTest {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
             donante.cambiarEstado("INACTIVO", null);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(id, dtoEstado("BLOQUEADO", "motivo")))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
@@ -335,7 +337,7 @@ class PersonaDonanteServiceTest {
         @DisplayName("Cambiar al mismo estado se rechaza (409)")
         void mismoEstado() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(humanaGuardada(id));
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(id, dtoEstado("ACTIVO", null)))
                     .isInstanceOf(PersonaConMismoEstadoException.class);
@@ -346,7 +348,7 @@ class PersonaDonanteServiceTest {
         void registraInteraccion() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.cambiarEstado(id, dtoEstado("INACTIVO", null));
 
@@ -363,7 +365,7 @@ class PersonaDonanteServiceTest {
         void actualizaPersonaHumana() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setNombre("Juan Carlos");
@@ -380,7 +382,7 @@ class PersonaDonanteServiceTest {
         void actualizaPersonaJuridica() {
             UUID id = UUID.randomUUID();
             PersonaJuridica donante = juridicaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setRazonSocial("Fundación Renovada");
@@ -399,7 +401,7 @@ class PersonaDonanteServiceTest {
             // el nombre ni la dirección ya cargados.
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setApellido("Pérez García");
@@ -416,7 +418,7 @@ class PersonaDonanteServiceTest {
         void camposDeOtroSubtipoSeIgnoran() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setRazonSocial("Esto no aplica a una persona humana");
@@ -432,7 +434,7 @@ class PersonaDonanteServiceTest {
         void reemplazaContactos() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setContactos(List.of(
@@ -449,7 +451,7 @@ class PersonaDonanteServiceTest {
         void registraInteraccionYPersiste() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.actualizar(id, new PersonaDonanteUpdateRequestDTO());
 
@@ -461,7 +463,7 @@ class PersonaDonanteServiceTest {
         @DisplayName("Lanza 404 si el donante a actualizar no existe")
         void actualizarInexistente() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(null);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.actualizar(id, new PersonaDonanteUpdateRequestDTO()))
                     .isInstanceOf(PersonaDonanteNoEncontradaException.class);
@@ -479,7 +481,7 @@ class PersonaDonanteServiceTest {
             // validador queda detached, así que sin guardar no pasa nada.
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.modificarContacto(id, EmailRequestDTO.builder().valor("nuevo@example.com").build());
 
@@ -497,7 +499,7 @@ class PersonaDonanteServiceTest {
             PersonaHumana donante = humanaGuardada(id);
             donante.getContactos().add(
                     ar.utn.donatrack.donaciones.models.contacto.Email.builder().valor("viejo@example.com").build());
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.modificarContacto(id, EmailRequestDTO.builder().valor("nuevo@example.com").build());
 
@@ -509,7 +511,7 @@ class PersonaDonanteServiceTest {
         @DisplayName("Rechaza un contacto con valor en blanco sin guardar nada")
         void rechazaContactoEnBlanco() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(humanaGuardada(id));
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
 
             assertThatThrownBy(() -> servicio.modificarContacto(
                     id, EmailRequestDTO.builder().valor("   ").build()))
@@ -518,16 +520,31 @@ class PersonaDonanteServiceTest {
         }
 
         @Test
-        @DisplayName("Modificar un representante funciona sobre una persona jurídica")
+        @DisplayName("Agrega el representante a la persona jurídica que leyó y la guarda una sola vez")
         void modificaRepresentanteEnJuridica() {
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(true);
-            when(repositorio.obtenerPersona(id)).thenReturn(juridicaGuardada(id));
+            PersonaJuridica juridica = juridicaGuardada(id);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(juridica));
 
             servicio.modificarRepresentante(id, RepresentanteRequestDTO.builder()
                     .nombre("Ana").apellido("Gómez").email("ana@fundacion.org").build());
 
-            verify(repositorio).modificarRepresentante(eq(id), any());
+            assertThat(juridica.getRepresentantes()).extracting(Representante::getEmail).contains("ana@fundacion.org");
+            assertThat(juridica.getUltimaInteraccion()).isNotNull();
+            verify(repositorio).buscarPorId(id);
+            verify(repositorio).guardar(juridica);
+        }
+
+        @Test
+        @DisplayName("Modificar un representante de una persona inexistente es 404")
+        void representanteDePersonaInexistente() {
+            UUID id = UUID.randomUUID();
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> servicio.modificarRepresentante(id, RepresentanteRequestDTO.builder()
+                    .nombre("Ana").apellido("Gómez").email("ana@fundacion.org").build()))
+                    .isInstanceOf(PersonaDonanteNoEncontradaException.class);
+            verify(repositorio, never()).guardar(any());
         }
 
         @Test
@@ -536,13 +553,12 @@ class PersonaDonanteServiceTest {
             // Solo las organizaciones tienen representantes; pedirlo sobre una
             // persona humana es un error del cliente, no un caso válido.
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(true);
-            when(repositorio.obtenerPersona(id)).thenReturn(humanaGuardada(id));
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
 
             assertThatThrownBy(() -> servicio.modificarRepresentante(id, RepresentanteRequestDTO.builder()
                     .nombre("Ana").apellido("Gómez").email("ana@fundacion.org").build()))
                     .isInstanceOf(TipoPersonaIlegalException.class);
-            verify(repositorio, never()).modificarRepresentante(any(), any());
+            verify(repositorio, never()).guardar(any());
         }
     }
 
@@ -551,25 +567,26 @@ class PersonaDonanteServiceTest {
     class Baja {
 
         @Test
-        @DisplayName("Elimina al donante después de validar que existe")
+        @DisplayName("Elimina al donante que leyó")
         void elimina() {
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(true);
+            PersonaHumana persona = humanaGuardada(id);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(persona));
 
             servicio.eliminar(id);
 
-            verify(repositorio).eliminar(id);
+            verify(repositorio).eliminar(persona);
         }
 
         @Test
         @DisplayName("Lanza 404 y no borra nada si el donante no existe")
         void eliminarInexistente() {
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(false);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.eliminar(id))
                     .isInstanceOf(PersonaDonanteNoEncontradaException.class);
-            verify(repositorio, never()).eliminar(id);
+            verify(repositorio, never()).eliminar(any());
         }
 
         @Test
@@ -578,11 +595,11 @@ class PersonaDonanteServiceTest {
             // Entrega 5: donacion.id_donante no es FK; si se borrara la persona,
             // sus donaciones quedarían apuntando a nadie.
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(true);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
             when(donaciones.existenDelDonante(id)).thenReturn(true);
 
             assertThatThrownBy(() -> servicio.eliminar(id)).isInstanceOf(PersonaConDonacionesException.class);
-            verify(repositorio, never()).eliminar(id);
+            verify(repositorio, never()).eliminar(any());
         }
     }
 }

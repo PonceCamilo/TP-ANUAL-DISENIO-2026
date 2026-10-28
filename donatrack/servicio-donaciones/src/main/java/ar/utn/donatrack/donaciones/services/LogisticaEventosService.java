@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.services;
 
-import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
@@ -16,6 +15,7 @@ import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -113,19 +113,15 @@ public class LogisticaEventosService {
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private Donacion obtenerDonacionOFallar(UUID id) {
-        Donacion donacion = donacionesRepositorio.obtenerPorId(id);
-        if (donacion == null) {
-            throw new DonacionNoEncontradaException(id);
-        }
-        return donacion;
+        return donacionesRepositorio.buscarPorId(id).orElseThrow(() -> new DonacionNoEncontradaException(id));
     }
 
     private PersonaDonante donanteDe(Donacion donacion) {
-        return donanteRepositorio.obtenerPersona(donacion.getIdDonante());
+        return donanteRepositorio.buscarPorId(donacion.getIdDonante()).orElse(null);
     }
 
     private EntidadBeneficiaria entidadDe(Donacion donacion) {
         UUID idEntidad = donacion.getIdEntidadBeneficiaria();
-        return idEntidad == null ? null : entidadesRepositorio.obtenerPorId(idEntidad);
+        return idEntidad == null ? null : entidadesRepositorio.buscarPorId(idEntidad).orElse(null);
     }
 }

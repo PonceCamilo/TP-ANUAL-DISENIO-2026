@@ -59,7 +59,7 @@ class PersonaDonanteRepositoryTest {
         jpa.flush();
         em.clear();
 
-        PersonaDonante encontrada = repositorio.obtenerPorEmail("ANA.PEREZ@mail.com");
+        PersonaDonante encontrada = repositorio.buscarPorEmail("ANA.PEREZ@mail.com").orElseThrow();
 
         assertThat(encontrada).isNotNull();
         assertThat(encontrada.getEmail()).isEqualTo("ana.perez@mail.com");
@@ -90,7 +90,7 @@ class PersonaDonanteRepositoryTest {
         jpa.flush();
         em.clear();
 
-        assertThat(repositorio.obtenerPersona(persona.getId()).getEstado().nombre()).isEqualTo("ACTIVO");
+        assertThat(repositorio.buscarPorId(persona.getId()).orElseThrow().getEstado().nombre()).isEqualTo("ACTIVO");
     }
 
     @Test
@@ -158,7 +158,7 @@ class PersonaDonanteRepositoryTest {
         jpa.flush();
         em.clear();
 
-        assertThat(repositorio.obtenerPersona(persona.getId()).getMedioContactoPredeterminado().getValor())
+        assertThat(repositorio.buscarPorId(persona.getId()).orElseThrow().getMedioContactoPredeterminado().getValor())
                 .isEqualTo("ana@mail.com");
     }
 
@@ -171,13 +171,13 @@ class PersonaDonanteRepositoryTest {
         jpa.flush();
         em.clear();
 
-        PersonaDonante leida = repositorio.obtenerPersona(persona.getId());
+        PersonaDonante leida = repositorio.buscarPorId(persona.getId()).orElseThrow();
         leida.reemplazarContacto(Telefono.builder().valor("2222").build());
         repositorio.guardar(leida);
         jpa.flush();
         em.clear();
 
-        PersonaDonante releida = repositorio.obtenerPersona(persona.getId());
+        PersonaDonante releida = repositorio.buscarPorId(persona.getId()).orElseThrow();
         assertThat(releida.getContactos()).hasSize(1);
         assertThat(releida.getMedioContactoPredeterminado().getValor()).isEqualTo("2222");
     }

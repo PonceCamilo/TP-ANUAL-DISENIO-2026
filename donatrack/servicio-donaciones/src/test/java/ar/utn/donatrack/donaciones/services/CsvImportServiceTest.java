@@ -372,7 +372,7 @@ class CsvImportServiceTest {
 
             verify(donanteRepository, times(1)).obtenerPorEmails(anyCollection());
             verify(donanteRepository, times(1)).guardarTodos(anyCollection());
-            verify(donanteRepository, never()).obtenerPorEmail(anyString());
+            verify(donanteRepository, never()).buscarPorEmail(anyString());
         }
 
         @Test

@@ -2,8 +2,6 @@ package ar.utn.donatrack.donaciones.repositories;
 
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
-import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
-import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.repositories.jpa.PersonaDonanteJpaRepository;
 import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import ar.utn.donatrack.donaciones.util.Pagina;
@@ -18,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -49,8 +48,8 @@ public class PersonaDonanteRepository implements RepositorioPersonasDonantes {
         jpa.saveAll(donantes);
     }
 
-    public PersonaDonante obtenerPersona(UUID id) {
-        return jpa.findById(id).orElse(null);
+    public Optional<PersonaDonante> buscarPorId(UUID id) {
+        return jpa.findById(id);
     }
 
     public Pagina<PersonaDonante> buscar(String estado, SolicitudPagina pagina) {
@@ -69,24 +68,12 @@ public class PersonaDonanteRepository implements RepositorioPersonasDonantes {
         jpa.registrarAvisoDeInactividad(ids, cuando);
     }
 
-    public void modificarRepresentante(UUID idPersonaJuridica, Representante representante) {
-        PersonaDonante persona = obtenerPersona(idPersonaJuridica);
-        if (persona instanceof PersonaJuridica juridica) {
-            juridica.agregarRepresentante(representante);
-            jpa.save(juridica);
-        }
-    }
-
-    public boolean existePorId(UUID id) {
-        return jpa.existsById(id);
-    }
-
     public boolean existePorEmail(String email) {
         return email != null && jpa.existsByEmail(NormalizadorEmail.normalizar(email));
     }
 
-    public PersonaDonante obtenerPorEmail(String email) {
-        return email == null ? null : jpa.findByEmail(NormalizadorEmail.normalizar(email)).orElse(null);
+    public Optional<PersonaDonante> buscarPorEmail(String email) {
+        return email == null ? Optional.empty() : jpa.findByEmail(NormalizadorEmail.normalizar(email));
     }
 
     public Map<String, PersonaDonante> obtenerPorEmails(Collection<String> emails) {
@@ -98,7 +85,7 @@ public class PersonaDonanteRepository implements RepositorioPersonasDonantes {
                 .collect(Collectors.toMap(PersonaDonante::getEmail, Function.identity()));
     }
 
-    public void eliminar(UUID id) {
-        jpa.deleteById(id);
+    public void eliminar(PersonaDonante persona) {
+        jpa.delete(persona);
     }
 }

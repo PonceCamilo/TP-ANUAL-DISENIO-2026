@@ -16,10 +16,6 @@ public class DonacionesValidator {
 
     /** Recupera la donación o lanza la excepción de dominio si no existe. */
     public Donacion validarYObtenerDonacion(UUID id) {
-        Donacion donacion = repositorio.obtenerPorId(id);
-        if (donacion == null) {
-            throw new DonacionNoEncontradaException(id);
-        }
-        return donacion;
+        return repositorio.buscarPorId(id).orElseThrow(() -> new DonacionNoEncontradaException(id));
     }
 }

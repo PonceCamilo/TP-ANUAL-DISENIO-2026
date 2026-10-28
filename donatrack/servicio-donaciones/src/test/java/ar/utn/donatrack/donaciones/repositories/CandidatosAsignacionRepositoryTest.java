@@ -61,7 +61,7 @@ class CandidatosAsignacionRepositoryTest {
         repositorio.guardar(ranking(idDonacion));
         sincronizar();
 
-        RankingPrecalculado leido = repositorio.obtenerPorDonacion(idDonacion);
+        RankingPrecalculado leido = jpa.findById(idDonacion).orElseThrow();
 
         assertThat(leido.getFechaCalculo()).isEqualTo(LocalDateTime.of(2026, 10, 26, 3, 30));
         assertThat(leido.getCoincidencias()).extracting(ResultadoAsignacion::getIdEntidad).containsExactly(entidadA);
@@ -90,7 +90,7 @@ class CandidatosAsignacionRepositoryTest {
         sincronizar();
 
         assertThat(repositorio.obtenerTodos()).extracting(RankingPrecalculado::getIdDonacion).containsExactly(segunda);
-        assertThat(repositorio.obtenerPorDonacion(primera)).isNull();
+        assertThat(jpa.findById(primera)).isEmpty();
     }
 
     @Test
@@ -109,7 +109,7 @@ class CandidatosAsignacionRepositoryTest {
                 .build());
         sincronizar();
 
-        RankingPrecalculado leido = repositorio.obtenerPorDonacion(idDonacion);
+        RankingPrecalculado leido = jpa.findById(idDonacion).orElseThrow();
         assertThat(leido.getRankingSubAtendidos()).extracting(ResultadoAsignacion::getIdEntidad).containsExactly(entidadB);
         assertThat(leido.huboCoincidencias()).isFalse();
     }

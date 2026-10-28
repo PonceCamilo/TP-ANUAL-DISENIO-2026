@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.services;
 
-import org.springframework.transaction.annotation.Transactional;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
@@ -30,6 +29,7 @@ import ar.utn.donatrack.donaciones.validations.donaciones.DonacionesValidator;
 import ar.utn.donatrack.donaciones.validations.entidades.EntidadesBeneficiariasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -166,7 +166,7 @@ public class DonacionService {
     // Ya tiene destino: sale de la bandeja de pendientes del administrador.
     candidatosRepositorio.eliminar(idDonacion);
 
-    notificador.donacionAsignada(donanteRepositorio.obtenerPersona(donacion.getIdDonante()), entidad);
+    notificador.donacionAsignada(donanteRepositorio.buscarPorId(donacion.getIdDonante()).orElse(null), entidad);
   }
 
   public void eliminar(UUID id) {
@@ -220,7 +220,7 @@ public class DonacionService {
    * fecha de entrega es la del cambio.
    */
   private void notificarDonacionExitosa(Donacion donacion) {
-    notificador.destinoDe(donanteRepositorio.obtenerPersona(donacion.getIdDonante())).ifPresent(destino ->
+    notificador.destinoDe(donanteRepositorio.buscarPorId(donacion.getIdDonante()).orElse(null)).ifPresent(destino ->
         incentivosClient.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name(),
             FechaHoraArgentina.ahora()));
   }

@@ -90,14 +90,14 @@ class FlujoDeDonacionIntegracionTest {
     void asignarPersisteYCuenta() throws Exception {
         UUID idDonacion = registrarDonacion(crearDonante());
         UUID idEntidad = crearEntidad();
-        long versionInicial = donaciones.obtenerPorId(idDonacion).getVersion();
+        long versionInicial = donaciones.buscarPorId(idDonacion).orElseThrow().getVersion();
 
         mvc.perform(patch("/donaciones/{id}/asignar", idDonacion)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"idEntidadBeneficiaria\":\"" + idEntidad + "\"}"))
                 .andExpect(status().isNoContent());
 
-        Donacion asignada = donaciones.obtenerPorId(idDonacion);
+        Donacion asignada = donaciones.buscarPorId(idDonacion).orElseThrow();
         assertThat(asignada.estaEnEstado("ASIGNACION_REALIZADA")).isTrue();
         assertThat(asignada.getIdEntidadBeneficiaria()).isEqualTo(idEntidad);
         assertThat(asignada.getHistorialEstados()).hasSize(1);
@@ -115,7 +115,7 @@ class FlujoDeDonacionIntegracionTest {
                         .content("{\"estado\":\"ENTREGADA\"}"))
                 .andExpect(status().isUnprocessableEntity());
 
-        Donacion igual = donaciones.obtenerPorId(idDonacion);
+        Donacion igual = donaciones.buscarPorId(idDonacion).orElseThrow();
         assertThat(igual.estaEnEstado("EN_DEPOSITO")).isTrue();
         assertThat(igual.getHistorialEstados()).isEmpty();
     }

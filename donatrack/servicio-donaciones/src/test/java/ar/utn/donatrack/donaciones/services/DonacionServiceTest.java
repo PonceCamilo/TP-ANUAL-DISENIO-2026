@@ -53,6 +53,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.Mockito.times;
@@ -150,7 +151,7 @@ class DonacionServiceTest {
     @DisplayName("Una donación con bienes vencidos no se asigna ni se le buscan candidatas")
     void donacionVencidaNoSeAsigna() {
         Donacion vencida = donacionVencida();
-        when(repositorio.obtenerPorId(vencida.getId())).thenReturn(vencida);
+        when(repositorio.buscarPorId(vencida.getId())).thenReturn(Optional.of(vencida));
         AsignacionRequestDTO pedido = new AsignacionRequestDTO();
         pedido.setIdEntidadBeneficiaria(UUID.randomUUID());
 
@@ -238,7 +239,7 @@ class DonacionServiceTest {
         @DisplayName("obtenerPorId() devuelve la donación con su estado e historial")
         void obtenerPorId() {
             UUID id = donacion.getId();
-            when(repositorio.obtenerPorId(id)).thenReturn(donacion);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donacion));
 
             DonacionResponseDTO dto = servicio.obtenerPorId(id);
 
@@ -251,7 +252,7 @@ class DonacionServiceTest {
         @DisplayName("obtenerPorId() lanza 404 si la donación no existe")
         void obtenerPorIdInexistente() {
             UUID idInexistente = UUID.randomUUID();
-            when(repositorio.obtenerPorId(idInexistente)).thenReturn(null);
+            when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.obtenerPorId(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);
@@ -265,7 +266,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("Un cambio válido actualiza el estado y queda registrado en el historial")
         void cambioValido() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
@@ -276,7 +277,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("No se puede pasar a ASIGNACION_REALIZADA a mano: eso se hace asignando (422)")
         void asignacionManualRechazada() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ASIGNACION_REALIZADA", null)))
                     .isInstanceOf(TransicionReservadaException.class);
@@ -292,7 +293,7 @@ class DonacionServiceTest {
             // devuelve el repositorio queda detached al cerrar la transacción de
             // lectura. Es el bug que los tests con mock NO detectaban y que
             // apareció recién al probar contra PostgreSQL real.
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
@@ -302,7 +303,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("Un cambio ilegal NO persiste nada")
         void cambioIlegalNoPersiste() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
@@ -313,7 +314,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("Un cambio ilegal se propaga como excepción de dominio (422)")
         void cambioIlegal() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
@@ -325,8 +326,8 @@ class DonacionServiceTest {
             // Incentivos usa este evento para actualizar "donaciones exitosas" y
             // "organizaciones ayudadas", que alimentan las insignias del donante.
             avanzarHastaEnTraslado(donacion);
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
 
@@ -336,7 +337,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("Un cambio a un estado que NO es ENTREGADA no dispara la notificación a incentivos")
         void otrosEstadosNoNotificanAIncentivos() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
@@ -349,8 +350,8 @@ class DonacionServiceTest {
             // La donación ya llegó a destino: el estado debe quedar guardado aunque
             // no se pueda avisar a incentivos.
             avanzarHastaEnTraslado(donacion);
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail(null));
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(null)));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
 
@@ -362,8 +363,8 @@ class DonacionServiceTest {
         @DisplayName("Si el donante fue eliminado, la entrega se registra igual sin romper")
         void entregadaSinDonanteNoRompe() {
             avanzarHastaEnTraslado(donacion);
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(null);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.empty());
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
 
@@ -375,7 +376,7 @@ class DonacionServiceTest {
         void salirDelDepositoLimpiaElRanking() {
             // Una donación vencida no se puede asignar: su ranking no debe seguir
             // en la bandeja hasta el matchmaking de la noche siguiente.
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
@@ -386,7 +387,7 @@ class DonacionServiceTest {
         @DisplayName("Un cambio entre estados fuera del depósito no toca la bandeja")
         void cambioFueraDelDepositoNoTocaLaBandeja() {
             donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("LISTA_PARA_ENTREGAR", null));
 
@@ -396,7 +397,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("Un cambio ilegal no saca la donación de la bandeja")
         void cambioIlegalNoTocaLaBandeja() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
@@ -419,9 +420,9 @@ class DonacionServiceTest {
         @DisplayName("Asignar guarda la entidad en la donación y la pasa a ASIGNACION_REALIZADA")
         void asignaCorrectamente() {
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
-            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
@@ -434,9 +435,9 @@ class DonacionServiceTest {
         void notificaAAmbasPartes() {
             // Requisito del enunciado: las dos partes deben enterarse de la asignación.
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
-            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
@@ -449,9 +450,9 @@ class DonacionServiceTest {
         @DisplayName("Si la entidad no tiene email, igual se notifica al donante")
         void entidadSinEmailNoFrenaAlDonante() {
             EntidadBeneficiaria entidad = entidadConEmail(null);
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
-            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
@@ -463,9 +464,9 @@ class DonacionServiceTest {
         @DisplayName("Si el donante no tiene email, igual se notifica a la entidad")
         void donanteSinEmailNoFrenaALaEntidad() {
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
-            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail(null));
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(null)));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
@@ -476,7 +477,7 @@ class DonacionServiceTest {
         @DisplayName("Lanza 404 si la donación no existe, sin tocar la entidad")
         void donacionInexistente() {
             UUID idInexistente = UUID.randomUUID();
-            when(repositorio.obtenerPorId(idInexistente)).thenReturn(null);
+            when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.asignar(idInexistente, dtoAsignacion(UUID.randomUUID())))
                     .isInstanceOf(DonacionNoEncontradaException.class);
@@ -487,9 +488,9 @@ class DonacionServiceTest {
         @DisplayName("PERSISTE la asignación")
         void persisteLaAsignacion() {
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
-            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
@@ -505,9 +506,9 @@ class DonacionServiceTest {
             // Una vez confirmado el destino, el ranking que calculó el proceso
             // nocturno ya no sirve: la donación no vuelve a estar en depósito.
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(entidadesRepositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
-            when(donanteRepositorio.obtenerPersona(idDonante)).thenReturn(donanteConEmail("juan@example.com"));
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
@@ -520,8 +521,8 @@ class DonacionServiceTest {
             // La validación corre ANTES de tocar la donación: si la entidad no
             // existe, la donación no puede quedar a medio asignar.
             UUID idEntidadInexistente = UUID.randomUUID();
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
-            when(entidadesRepositorio.obtenerPorId(idEntidadInexistente)).thenReturn(null);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(entidadesRepositorio.buscarPorId(idEntidadInexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.asignar(donacion.getId(), dtoAsignacion(idEntidadInexistente)))
                     .isInstanceOf(EntidadBeneficiariaNoEncontradaException.class);
@@ -540,7 +541,7 @@ class DonacionServiceTest {
             EntidadBeneficiaria entidadA = entidadConEmail("a@example.org");
             EntidadBeneficiaria entidadB = entidadConEmail("b@example.org");
 
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(asignacionService.generarRanking(donacion)).thenReturn(
                     new AsignacionDonacionesService.ResultadoMatchmaking(
                             List.of(new ResultadoAsignacion(entidadA.getId(), 3.0)),
@@ -560,7 +561,7 @@ class DonacionServiceTest {
             assertThat(respuesta.getPorSubatendidos().get(1).getId()).isEqualTo(entidadB.getId());
             // Todas las entidades de las tres listas se cargan en una sola consulta.
             verify(entidadesRepositorio, times(1)).obtenerPorIds(anyCollection());
-            verify(entidadesRepositorio, never()).obtenerPorId(any());
+            verify(entidadesRepositorio, never()).buscarPorId(any());
         }
 
         @Test
@@ -569,7 +570,7 @@ class DonacionServiceTest {
             // Caso borde real: la entidad se eliminó entre que se calculó el
             // ranking y se armó la respuesta.
             UUID idEntidadBorrada = UUID.randomUUID();
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(asignacionService.generarRanking(donacion)).thenReturn(
                     new AsignacionDonacionesService.ResultadoMatchmaking(
                             List.of(), List.of(new ResultadoAsignacion(idEntidadBorrada, 3.0)), List.of()));
@@ -584,7 +585,7 @@ class DonacionServiceTest {
         @DisplayName("Lanza 404 si la donación no existe")
         void donacionInexistente() {
             UUID idInexistente = UUID.randomUUID();
-            when(repositorio.obtenerPorId(idInexistente)).thenReturn(null);
+            when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.obtenerCandidatos(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);
@@ -663,7 +664,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("Reemplaza el bien de la donación por el enviado")
         void modificaElBien() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.modificarUnicoBien(donacion.getId(), dtoBien("arroz", null));
 
@@ -677,7 +678,7 @@ class DonacionServiceTest {
         void bienConVencimientoEsPerecedero() {
             // El tipo concreto del bien lo decide el mapper según los campos
             // presentes en el request; la corrección puede cambiarlo.
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.modificarUnicoBien(donacion.getId(), dtoBien("arroz", LocalDate.of(2027, 1, 1)));
 
@@ -689,7 +690,7 @@ class DonacionServiceTest {
         @DisplayName("Lanza DonacionSinBienes si la donación no tiene ningún bien que modificar")
         void sinBienesLanza() {
             Donacion sinBienes = new Donacion();
-            when(repositorio.obtenerPorId(sinBienes.getId())).thenReturn(sinBienes);
+            when(repositorio.buscarPorId(sinBienes.getId())).thenReturn(Optional.of(sinBienes));
 
             assertThatThrownBy(() -> servicio.modificarUnicoBien(sinBienes.getId(), dtoBien("arroz", null)))
                     .isInstanceOf(DonacionSinBienesException.class);
@@ -698,7 +699,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("modificarBien() reemplaza el bien indicado por id y devuelve la donación")
         void modificaUnBienPorId() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             UUID idBien = donacion.getBienes().getFirst().getId();
 
             DonacionResponseDTO respuesta = servicio.modificarBien(donacion.getId(), idBien, dtoBien("arroz", null));
@@ -713,7 +714,7 @@ class DonacionServiceTest {
         void variosBienesPideIndicarCual() {
             donacion.getBienes().add(BienGenerico.builder()
                     .subcategoria(new Subcategoria("arroz")).descripcion("Otro").cantidad(1).unidad("kg").build());
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             assertThatThrownBy(() -> servicio.modificarUnicoBien(donacion.getId(), dtoBien("arroz", null)))
                     .isInstanceOf(DonacionConVariosBienesException.class);
@@ -722,7 +723,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("eliminar() valida que la donación exista antes de borrarla")
         void eliminaLaDonacion() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.eliminar(donacion.getId());
 
@@ -732,7 +733,7 @@ class DonacionServiceTest {
         @Test
         @DisplayName("eliminar() también saca la donación de la bandeja de pendientes")
         void eliminarLimpiaElRanking() {
-            when(repositorio.obtenerPorId(donacion.getId())).thenReturn(donacion);
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.eliminar(donacion.getId());
 
@@ -743,7 +744,7 @@ class DonacionServiceTest {
         @DisplayName("eliminar() lanza 404 y no borra nada si la donación no existe")
         void eliminarInexistente() {
             UUID idInexistente = UUID.randomUUID();
-            when(repositorio.obtenerPorId(idInexistente)).thenReturn(null);
+            when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.eliminar(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);

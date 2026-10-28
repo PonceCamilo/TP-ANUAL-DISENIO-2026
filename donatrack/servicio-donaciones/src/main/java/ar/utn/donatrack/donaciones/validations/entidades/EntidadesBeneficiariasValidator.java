@@ -20,19 +20,9 @@ public class EntidadesBeneficiariasValidator {
 
     private final RepositorioEntidadesBeneficiarias repositorio;
 
-    public void validarExistenciaEntidad(UUID id) {
-        if (!repositorio.existePorId(id)) {
-            throw new EntidadBeneficiariaNoEncontradaException(id);
-        }
-    }
-
-    /** Recupera la entidad o lanza la excepción de dominio si no existe. */
+    /** Recupera la entidad o lanza la excepción de dominio si no existe (404). */
     public EntidadBeneficiaria validarYObtenerEntidad(UUID id) {
-        EntidadBeneficiaria entidad = repositorio.obtenerPorId(id);
-        if (entidad == null) {
-            throw new EntidadBeneficiariaNoEncontradaException(id);
-        }
-        return entidad;
+        return repositorio.buscarPorId(id).orElseThrow(() -> new EntidadBeneficiariaNoEncontradaException(id));
     }
 
     public Campania validarYObtenerCampania(EntidadBeneficiaria entidad, UUID campaniaId) {

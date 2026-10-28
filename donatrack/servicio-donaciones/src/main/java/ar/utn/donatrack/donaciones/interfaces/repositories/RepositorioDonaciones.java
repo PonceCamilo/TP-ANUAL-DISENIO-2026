@@ -5,20 +5,13 @@ import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface RepositorioDonaciones {
   void cargarDonaciones(List<Donacion> donaciones);
 
-  /**
-   * Persiste los cambios de una donación ya existente.
-   *
-   * Es obligatorio llamarlo después de mutar una donación recuperada del
-   * repositorio. Con el almacenamiento en memoria anterior alcanzaba con mutar
-   * el objeto —era el mismo que estaba en el Map—, pero con JPA la entidad que
-   * devuelve obtenerPorId() queda detached y los cambios se pierden si nadie
-   * los guarda.
-   */
+  /** Guarda una donación nueva o los cambios de una existente. */
   void guardar(Donacion donacion);
 
   /**
@@ -40,7 +33,7 @@ public interface RepositorioDonaciones {
    */
   Pagina<Donacion> buscar(FiltroDonaciones filtro, SolicitudPagina pagina);
 
-  Donacion obtenerPorId(UUID id);
+  Optional<Donacion> buscarPorId(UUID id);
 
   /**
    * Integridad referencial (Entrega 5): donacion.id_donante e
