@@ -13,7 +13,7 @@ import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
-import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
+import ar.utn.donatrack.donaciones.util.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.services.PlanificacionEntregasService;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import io.swagger.v3.oas.annotations.Operation;

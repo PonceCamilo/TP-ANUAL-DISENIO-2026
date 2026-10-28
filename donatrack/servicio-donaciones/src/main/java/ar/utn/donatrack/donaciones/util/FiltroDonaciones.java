@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.interfaces.repositories;
+package ar.utn.donatrack.donaciones.util;
 
 import java.util.UUID;
 

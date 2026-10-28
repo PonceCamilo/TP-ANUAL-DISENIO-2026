@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("Migraciones: los datos de la Entrega 5 pasan a la forma nueva")
 class MigracionDeDatosTest {
 
-    private final String url = "jdbc:h2:mem:migracion_datos_" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1;MODE=PostgreSQL";
+    private String url;
 
     private final UUID persona = UUID.randomUUID();
     private final UUID emailPredeterminado = UUID.randomUUID();
@@ -39,12 +39,25 @@ class MigracionDeDatosTest {
     private final UUID comedor = UUID.randomUUID();
     private final UUID escuela = UUID.randomUUID();
 
+    /** Una base vacía para cada test: en H2, una base en memoria nueva. */
+    protected String baseVacia() throws SQLException {
+        return "jdbc:h2:mem:migracion_datos_" + UUID.randomUUID() + ";DB_CLOSE_DELAY=-1;MODE=PostgreSQL";
+    }
+
+    protected String usuario() {
+        return "sa";
+    }
+
+    protected String clave() {
+        return "";
+    }
+
     private Flyway hasta(String version) {
-        return Flyway.configure().dataSource(url, "sa", "").target(version).load();
+        return Flyway.configure().dataSource(url, usuario(), clave()).target(version).load();
     }
 
     private Connection conexion() throws SQLException {
-        return DriverManager.getConnection(url, "sa", "");
+        return DriverManager.getConnection(url, usuario(), clave());
     }
 
     private void ejecutar(Connection c, String sql, Object... parametros) throws SQLException {
@@ -78,6 +91,7 @@ class MigracionDeDatosTest {
 
     @BeforeEach
     void baseDeLaEntrega5ConDatos() throws SQLException {
+        url = baseVacia();
         hasta("1").migrate();
         try (Connection c = conexion()) {
             // Persona con su medio predeterminado como referencia aparte (fuera de la lista).
