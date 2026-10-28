@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.integracion;
 
+import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.repositories.jpa.MensajeSalienteJpaRepository;
@@ -15,7 +16,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.RequestBuilder;
+import org.springframework.transaction.support.TransactionOperations;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +39,7 @@ class LogisticaIntegracionTest {
     @Autowired private ObjectMapper json;
     @Autowired private RepositorioDonaciones donaciones;
     @Autowired private MensajeSalienteJpaRepository mensajes;
+    @Autowired private TransactionOperations transaccion;
 
     private UUID idDonante;
     private UUID idEntidad;
@@ -97,6 +101,16 @@ class LogisticaIntegracionTest {
         return donaciones.buscarPorId(id).orElseThrow();
     }
 
+    /**
+     * El historial se carga recién cuando se usa (LAZY) y fuera de una transacción
+     * ya no hay sesión para cargarlo: se lee y se copia dentro de una, como hace
+     * cualquier service.
+     */
+    private List<CambioEstado> historialDe(UUID idDonacion) {
+        return transaccion.execute(estado ->
+                List.copyOf(donaciones.buscarPorId(idDonacion).orElseThrow().getHistorialEstados()));
+    }
+
     @Test
     @DisplayName("Si una donación de la ruta no puede salir, no sale ninguna (ni sus avisos)")
     void rutaTodoONada() throws Exception {
@@ -124,9 +138,8 @@ class LogisticaIntegracionTest {
         mvc.perform(post("/logistica/eventos/inicio-ruta").contentType(MediaType.APPLICATION_JSON).content(aviso))
                 .andExpect(status().isOk());
 
-        Donacion donacion = leer(id);
-        assertThat(donacion.estaEnEstado("EN_TRASLADO")).isTrue();
-        assertThat(donacion.getHistorialEstados()).filteredOn(c -> c.getEstado().es("EN_TRASLADO")).hasSize(1);
+        assertThat(leer(id).estaEnEstado("EN_TRASLADO")).isTrue();
+        assertThat(historialDe(id)).filteredOn(c -> c.getEstado().es("EN_TRASLADO")).hasSize(1);
         assertThat(mensajes.findByDestino(Destinos.NOTIFICACION)).hasSize((int) avisos);
     }
 
@@ -142,7 +155,7 @@ class LogisticaIntegracionTest {
         mvc.perform(post("/logistica/eventos/entrega-exitosa").contentType(MediaType.APPLICATION_JSON).content(aviso))
                 .andExpect(status().isOk());
 
-        assertThat(leer(id).getHistorialEstados()).filteredOn(c -> c.getEstado().es("ENTREGADA")).hasSize(1);
+        assertThat(historialDe(id)).filteredOn(c -> c.getEstado().es("ENTREGADA")).hasSize(1);
         assertThat(mensajes.findByDestino(Destinos.INCENTIVOS_DONACION_EXITOSA)).hasSize(1);
     }
 }

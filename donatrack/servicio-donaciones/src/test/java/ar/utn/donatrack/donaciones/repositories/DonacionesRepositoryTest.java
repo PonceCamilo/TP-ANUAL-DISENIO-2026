@@ -254,13 +254,13 @@ class DonacionesRepositoryTest {
         }
 
         /**
-         * Cada asignación parte de la donación leída de la base, como en un pedido
-         * real: guardar dos veces el mismo objeto desprendido ahora falla por el
-         * bloqueo optimista (su versión quedó vieja después del primer guardado).
+         * Cada asignación parte de la donación leída de la base y la modifica en la
+         * misma sesión, como el service dentro de su transacción. Guardar dos veces
+         * el mismo objeto desprendido falla por el bloqueo optimista (su versión
+         * quedó vieja después del primer guardado).
          */
         private void asignar(Donacion donacion, UUID idEntidad, LocalDate fecha) {
             Donacion actual = repositorio.buscarPorId(donacion.getId()).orElseThrow();
-            em.clear(); // como en un pedido real de hoy: la donación llega desprendida
             asignarEn(actual, idEntidad, fecha);
             repositorio.guardar(actual);
             jpa.flush();

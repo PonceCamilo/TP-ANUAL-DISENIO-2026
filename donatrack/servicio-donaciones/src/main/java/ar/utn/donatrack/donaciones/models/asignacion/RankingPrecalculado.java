@@ -4,7 +4,6 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderBy;
@@ -39,8 +38,10 @@ import java.util.UUID;
  * una vez por noche y la bandeja de la persona administradora lo lee tal cual.
  *
  * MAPEO: una sola colección de puestos (ver PuestoRanking). Leer toda la bandeja
- * cuesta dos consultas (SUBSELECT) y vaciarla, dos DELETE; un algoritmo nuevo no
- * cambia el esquema.
+ * cuesta dos consultas: los puestos se cargan al usarse, y SUBSELECT los trae
+ * todos de una vez repitiendo la consulta de los rankings, sin el tope de lote
+ * del batch fetch. Vaciarla cuesta dos DELETE y un algoritmo nuevo no cambia el
+ * esquema.
  *
  * Cada corrida reemplaza la bandeja entera, así que un ranking siempre se
  * inserta como nuevo (Persistable): sin eso, guardar con el id de la donación
@@ -56,7 +57,7 @@ public class RankingPrecalculado implements Persistable<UUID> {
     @Column(name = "id_donacion")
     private UUID idDonacion;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection
     @CollectionTable(name = "ranking_puesto", joinColumns = @JoinColumn(name = "id_donacion"))
     @OrderBy("algoritmo ASC, posicion ASC")
     @Fetch(FetchMode.SUBSELECT)

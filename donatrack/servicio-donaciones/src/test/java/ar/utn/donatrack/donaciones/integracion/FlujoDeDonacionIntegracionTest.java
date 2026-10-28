@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.integracion;
 
+import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
@@ -20,7 +21,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.support.TransactionOperations;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -52,6 +55,7 @@ class FlujoDeDonacionIntegracionTest {
     @Autowired private RepositorioRecepcionesEntidad recepciones;
     @Autowired private RepositorioCandidatosAsignacion candidatos;
     @Autowired private AsignacionBatchService matchmaking;
+    @Autowired private TransactionOperations transaccion;
 
     @MockitoBean private NotificacionClient notificacionClient;
     @MockitoBean private IncentivosClient incentivosClient;
@@ -85,6 +89,16 @@ class FlujoDeDonacionIntegracionTest {
                 .get("id").asText());
     }
 
+    /**
+     * El historial se carga recién cuando se usa (LAZY) y fuera de una transacción
+     * ya no hay sesión para cargarlo: se lee y se copia dentro de una, como hace
+     * cualquier service.
+     */
+    private List<CambioEstado> historialDe(UUID idDonacion) {
+        return transaccion.execute(estado ->
+                List.copyOf(donaciones.buscarPorId(idDonacion).orElseThrow().getHistorialEstados()));
+    }
+
     private UUID registrarDonacion(UUID idDonante) throws Exception {
         String cuerpo = """
                 {"idDonante":"%s","descripcion":"Colecta",
@@ -109,7 +123,7 @@ class FlujoDeDonacionIntegracionTest {
         Donacion asignada = donaciones.buscarPorId(idDonacion).orElseThrow();
         assertThat(asignada.estaEnEstado("ASIGNACION_REALIZADA")).isTrue();
         assertThat(asignada.getIdEntidadBeneficiaria()).isEqualTo(idEntidad);
-        assertThat(asignada.getHistorialEstados()).hasSize(1);
+        assertThat(historialDe(idDonacion)).hasSize(1);
         assertThat(asignada.getVersion()).isGreaterThan(versionInicial);
         assertThat(recepciones.contarRecepcionesDesde(idEntidad, FechaHoraArgentina.hoy().minusDays(1))).isEqualTo(1);
     }
@@ -155,6 +169,6 @@ class FlujoDeDonacionIntegracionTest {
 
         Donacion igual = donaciones.buscarPorId(idDonacion).orElseThrow();
         assertThat(igual.estaEnEstado("EN_DEPOSITO")).isTrue();
-        assertThat(igual.getHistorialEstados()).isEmpty();
+        assertThat(historialDe(idDonacion)).isEmpty();
     }
 }
