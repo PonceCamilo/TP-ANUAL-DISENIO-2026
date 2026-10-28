@@ -1,4 +1,4 @@
-package ar.utn.donatrack.donaciones.services;
+package ar.utn.donatrack.donaciones.services.logistica;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -25,12 +25,12 @@ import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.validations.donaciones.DonacionesValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -69,8 +69,8 @@ import static org.mockito.Mockito.when;
  *   - Entrega fallida  -> ENTREGA_FALLIDA  + aviso a entidad, donante y admin
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("LogisticaEventosService - eventos de logística y notificaciones")
-class LogisticaEventosServiceTest {
+@DisplayName("Manejadores de los avisos de logística y sus notificaciones")
+class ManejadoresLogisticaTest {
 
     private static final String EMAIL_ENTIDAD = "comedor@lospibes.org";
     private static final String EMAIL_DONANTE = "juan@example.com";
@@ -94,8 +94,9 @@ class LogisticaEventosServiceTest {
     @Spy
     private DonacionesProperties propiedades = DonacionesProperties.porDefecto();
 
-    @InjectMocks
-    private LogisticaEventosService servicio;
+    private ManejadorInicioDeRuta inicioDeRuta;
+    private ManejadorEntregaExitosa entregaExitosa;
+    private ManejadorEntregaFallida entregaFallida;
 
     private Donacion donacion;
     private EntidadBeneficiaria entidad;
@@ -103,6 +104,12 @@ class LogisticaEventosServiceTest {
 
     @BeforeEach
     void prepararEscenario() {
+        ParticipantesDeDonaciones participantes = new ParticipantesDeDonaciones(donanteRepositorio, entidadesRepositorio);
+        DonacionesValidator validador = new DonacionesValidator(donacionesRepositorio);
+        inicioDeRuta = new ManejadorInicioDeRuta(donacionesRepositorio, participantes, notificador);
+        entregaExitosa = new ManejadorEntregaExitosa(donacionesRepositorio, validador, participantes, notificador);
+        entregaFallida = new ManejadorEntregaFallida(donacionesRepositorio, validador, participantes, notificador);
+
         entidad = EntidadBeneficiaria.builder()
                 .id(UUID.randomUUID())
                 .razonSocial("Comedor Los Pibes")
@@ -152,7 +159,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
             when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarInicioRuta(evento(donacion.getId()));
+            inicioDeRuta.procesar(evento(donacion.getId()));
 
             assertThat(donacion.estaEnEstado("EN_TRASLADO")).isTrue();
             assertThat(donacion.getHistorialEstados().getLast().getJustificacion()).contains("Ruta:");
@@ -167,7 +174,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
             when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarInicioRuta(evento(donacion.getId()));
+            inicioDeRuta.procesar(evento(donacion.getId()));
 
             verify(notificacionClient).enviarNotificacion(eq(EMAIL_ENTIDAD), contains(URL_MAPA), eq("EMAIL"));
             verify(notificacionClient).enviarNotificacion(eq(EMAIL_DONANTE), contains(URL_MAPA), eq("EMAIL"));
@@ -189,7 +196,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
             when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarInicioRuta(evento(donacion.getId(), segunda.getId()));
+            inicioDeRuta.procesar(evento(donacion.getId(), segunda.getId()));
 
             assertThat(donacion.estaEnEstado("EN_TRASLADO")).isTrue();
             assertThat(segunda.estaEnEstado("EN_TRASLADO")).isTrue();
@@ -202,7 +209,7 @@ class LogisticaEventosServiceTest {
             UUID idInexistente = UUID.randomUUID();
             when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of());
 
-            assertThatThrownBy(() -> servicio.procesarInicioRuta(evento(idInexistente)))
+            assertThatThrownBy(() -> inicioDeRuta.procesar(evento(idInexistente)))
                     .isInstanceOf(DonacionNoEncontradaException.class);
         }
 
@@ -212,7 +219,7 @@ class LogisticaEventosServiceTest {
             // Protege la trazabilidad: logística no puede saltear la planificación.
             when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
 
-            assertThatThrownBy(() -> servicio.procesarInicioRuta(evento(donacion.getId())))
+            assertThatThrownBy(() -> inicioDeRuta.procesar(evento(donacion.getId())))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
             verifyNoInteractions(notificacionClient);
         }
@@ -230,7 +237,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(sinEmail));
             when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarInicioRuta(evento(donacion.getId()));
+            inicioDeRuta.procesar(evento(donacion.getId()));
 
             verify(notificacionClient).enviarNotificacion(eq("1155667788"), anyString(), eq("SMS"));
             verify(notificacionClient).enviarNotificacion(eq(EMAIL_DONANTE), anyString(), anyString());
@@ -244,7 +251,7 @@ class LogisticaEventosServiceTest {
             when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
             when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarInicioRuta(evento(donacion.getId()));
+            inicioDeRuta.procesar(evento(donacion.getId()));
 
             verify(notificacionClient, times(1)).enviarNotificacion(eq(EMAIL_DONANTE), anyString(), anyString());
             verifyNoInteractions(entidadesRepositorio);
@@ -263,7 +270,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
             when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarInicioRuta(evento(donacion.getId(), segunda.getId(), donacion.getId()));
+            inicioDeRuta.procesar(evento(donacion.getId(), segunda.getId(), donacion.getId()));
 
             verify(donacionesRepositorio, times(1)).obtenerPorIds(anyCollection());
             verify(entidadesRepositorio, times(1)).obtenerPorIds(anyCollection());
@@ -280,7 +287,7 @@ class LogisticaEventosServiceTest {
             int cambios = donacion.getHistorialEstados().size();
             when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
 
-            assertThatCode(() -> servicio.procesarInicioRuta(evento(donacion.getId()))).doesNotThrowAnyException();
+            assertThatCode(() -> inicioDeRuta.procesar(evento(donacion.getId()))).doesNotThrowAnyException();
 
             assertThat(donacion.getHistorialEstados()).hasSize(cambios);
             verify(donacionesRepositorio, never()).guardar(any());
@@ -306,7 +313,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarEntregaExitosa(evento());
+            entregaExitosa.procesar(evento());
 
             assertThat(donacion.fueEntregada()).isTrue();
             assertThat(donacion.getHistorialEstados().getLast().getJustificacion()).contains("AB123CD");
@@ -321,7 +328,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarEntregaExitosa(evento());
+            entregaExitosa.procesar(evento());
 
             verify(notificacionClient).enviarNotificacion(eq(EMAIL_ENTIDAD), contains("AB123CD"), eq("EMAIL"));
             verify(notificacionClient).enviarNotificacion(eq(EMAIL_DONANTE), contains("AB123CD"), eq("EMAIL"));
@@ -337,7 +344,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarEntregaExitosa(evento());
+            entregaExitosa.procesar(evento());
 
             assertThat(donacion.eventosPendientes()).filteredOn(DonacionEntregada.class::isInstance).singleElement()
                     .satisfies(e -> assertThat(((DonacionEntregada) e).fechaEntrega())
@@ -352,7 +359,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(null)));
 
-            servicio.procesarEntregaExitosa(evento());
+            entregaExitosa.procesar(evento());
 
             assertThat(donacion.fueEntregada()).isTrue();
             verify(notificacionClient).enviarNotificacion(eq(EMAIL_ENTIDAD), anyString(), eq("EMAIL"));
@@ -366,7 +373,7 @@ class LogisticaEventosServiceTest {
             int cambios = donacion.getHistorialEstados().size();
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.procesarEntregaExitosa(evento());
+            entregaExitosa.procesar(evento());
 
             assertThat(donacion.getHistorialEstados()).hasSize(cambios);
             verify(donacionesRepositorio, never()).guardar(any());
@@ -378,7 +385,7 @@ class LogisticaEventosServiceTest {
         void donacionInexistente() {
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> servicio.procesarEntregaExitosa(evento()))
+            assertThatThrownBy(() -> entregaExitosa.procesar(evento()))
                     .isInstanceOf(DonacionNoEncontradaException.class);
         }
 
@@ -387,7 +394,7 @@ class LogisticaEventosServiceTest {
         void estadoIncompatible() {
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            assertThatThrownBy(() -> servicio.procesarEntregaExitosa(evento()))
+            assertThatThrownBy(() -> entregaExitosa.procesar(evento()))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
     }
@@ -409,7 +416,7 @@ class LogisticaEventosServiceTest {
             int cambios = donacion.getHistorialEstados().size();
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.procesarEntregaFallida(new EntregaFallidaCallbackDTO(donacion.getId(), "nadie en el domicilio", true));
+            entregaFallida.procesar(new EntregaFallidaCallbackDTO(donacion.getId(), "nadie en el domicilio", true));
 
             assertThat(donacion.getHistorialEstados()).hasSize(cambios);
             verify(donacionesRepositorio, never()).guardar(any());
@@ -426,7 +433,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarEntregaFallida(evento(true));
+            entregaFallida.procesar(evento(true));
 
             assertThat(donacion.estaEnEstado("ENTREGA_FALLIDA")).isTrue();
             assertThat(donacion.getHistorialEstados().getLast().getJustificacion())
@@ -441,7 +448,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarEntregaFallida(evento(false));
+            entregaFallida.procesar(evento(false));
 
             assertThat(donacion.getHistorialEstados().getLast().getJustificacion())
                     .contains("No puede ser replanificada");
@@ -457,7 +464,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarEntregaFallida(evento(true));
+            entregaFallida.procesar(evento(true));
 
             verify(notificacionClient).enviarNotificacion(
                     eq(EMAIL_ENTIDAD), contains("Tocamos timbre"), eq("EMAIL"));
@@ -475,7 +482,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarEntregaFallida(evento(true));
+            entregaFallida.procesar(evento(true));
 
             verify(notificacionClient).enviarNotificacion(
                     eq(EMAIL_ADMIN), contains(donacion.getId().toString()), eq("EMAIL"));
@@ -489,7 +496,7 @@ class LogisticaEventosServiceTest {
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(null)));
 
-            servicio.procesarEntregaFallida(evento(true));
+            entregaFallida.procesar(evento(true));
 
             verify(notificacionClient, times(1)).enviarNotificacion(anyString(), anyString(), anyString());
             verify(notificacionClient).enviarNotificacion(eq(EMAIL_ADMIN), anyString(), eq("EMAIL"));
@@ -500,7 +507,7 @@ class LogisticaEventosServiceTest {
         void estadoIncompatible() {
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            assertThatThrownBy(() -> servicio.procesarEntregaFallida(evento(true)))
+            assertThatThrownBy(() -> entregaFallida.procesar(evento(true)))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
             verify(notificacionClient, never()).enviarNotificacion(anyString(), anyString(), anyString());
         }
@@ -515,7 +522,7 @@ class LogisticaEventosServiceTest {
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
 
-            servicio.procesarEntregaFallida(evento(true));
+            entregaFallida.procesar(evento(true));
             donacion.cambiarEstado("EN_DEPOSITO", "replanificar", null);
 
             assertThat(donacion.estaEnEstado("EN_DEPOSITO")).isTrue();

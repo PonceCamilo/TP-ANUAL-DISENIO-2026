@@ -17,7 +17,7 @@ import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
 import ar.utn.donatrack.donaciones.services.AsignacionBatchService;
-import ar.utn.donatrack.donaciones.services.DonacionService;
+import ar.utn.donatrack.donaciones.services.DonacionComandosService;
 import ar.utn.donatrack.donaciones.services.InactividadDonantesService;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import jakarta.persistence.EntityManagerFactory;
@@ -119,7 +119,7 @@ class MedicionConsultasTest {
     @Autowired private RepositorioPersonasDonantes donantes;
     @Autowired private RepositorioEntidadesBeneficiarias entidades;
     @Autowired private RepositorioDonaciones donaciones;
-    @Autowired private DonacionService donacionService;
+    @Autowired private DonacionComandosService donacionComandos;
     @Autowired private AsignacionBatchService asignacionBatchService;
     @Autowired private InactividadDonantesService inactividadDonantesService;
 
@@ -199,7 +199,7 @@ class MedicionConsultasTest {
             if (i < DONACIONES_ASIGNADAS) {
                 AsignacionRequestDTO asignacion = new AsignacionRequestDTO();
                 asignacion.setIdEntidadBeneficiaria(idsEntidades.get(i % ENTIDADES));
-                donacionService.asignar(nuevas.get(i).getId(), asignacion);
+                donacionComandos.asignar(nuevas.get(i).getId(), asignacion);
             } else {
                 idsEnDeposito.add(nuevas.get(i).getId());
             }

@@ -1,7 +1,8 @@
 package ar.utn.donatrack.donaciones.controllers;
 
 import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
-import ar.utn.donatrack.donaciones.services.DonacionService;
+import ar.utn.donatrack.donaciones.services.DonacionComandosService;
+import ar.utn.donatrack.donaciones.services.DonacionConsultasService;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
@@ -48,7 +49,8 @@ import java.util.UUID;
 @Tag(name = "Donaciones", description = "Registro, consulta, cambios de estado y asignación de donaciones a entidades beneficiarias")
 public class DonacionesController {
 
-  private final DonacionService donacionService;
+  private final DonacionConsultasService consultas;
+  private final DonacionComandosService comandos;
   private final SegmentadorDonacionesService segmentadorDonacionesService;
   private final PlanificacionEntregasService planificacionEntregasService;
 
@@ -82,7 +84,7 @@ public class DonacionesController {
   ) {
     FiltroDonaciones filtro = new FiltroDonaciones(estado, idDonante, subcategoria, idEntidad,
         Boolean.TRUE.equals(vencidas));
-    return ResponseEntity.ok(donacionService.obtenerDonaciones(filtro, SolicitudPagina.de(page, size)));
+    return ResponseEntity.ok(consultas.obtenerDonaciones(filtro, SolicitudPagina.de(page, size)));
   }
 
   @Operation(
@@ -98,7 +100,7 @@ public class DonacionesController {
   public ResponseEntity<DonacionResponseDTO> obtenerDonacion(
       @Parameter(description = "ID de la donación") @PathVariable UUID id
   ) {
-    return ResponseEntity.ok(donacionService.obtenerPorId(id));
+    return ResponseEntity.ok(consultas.obtenerPorId(id));
   }
 
   @Operation(
@@ -134,7 +136,7 @@ public class DonacionesController {
       @Parameter(description = "ID de la donación") @PathVariable UUID id,
       @RequestBody @Valid CambioEstadoRequestDTO dto
   ) {
-    donacionService.cambiarEstado(id, dto);
+    comandos.cambiarEstado(id, dto);
     return ResponseEntity.noContent().build();
   }
 
@@ -157,7 +159,7 @@ public class DonacionesController {
       @Parameter(description = "ID del bien") @PathVariable UUID idBien,
       @RequestBody @Valid BienRequestDTO dto
   ) {
-    return ResponseEntity.ok(donacionService.modificarBien(id, idBien, dto));
+    return ResponseEntity.ok(comandos.modificarBien(id, idBien, dto));
   }
 
   @Operation(
@@ -175,7 +177,7 @@ public class DonacionesController {
       @Parameter(description = "ID de la donación") @PathVariable UUID id,
       @RequestBody @Valid BienRequestDTO dto
   ) {
-    donacionService.modificarUnicoBien(id, dto);
+    comandos.modificarUnicoBien(id, dto);
     return ResponseEntity.noContent().build();
   }
 
@@ -189,7 +191,7 @@ public class DonacionesController {
   )
   @GetMapping("/candidatos")
   public ResponseEntity<List<CandidatosPendientesResponseDTO>> obtenerCandidatosPendientes() {
-    return ResponseEntity.ok(donacionService.obtenerCandidatosPendientes());
+    return ResponseEntity.ok(consultas.obtenerCandidatosPendientes());
   }
 
   @Operation(
@@ -205,7 +207,7 @@ public class DonacionesController {
   public ResponseEntity<CandidatosAsignacionResponseDTO> obtenerCandidatos(
       @Parameter(description = "ID de la donación") @PathVariable UUID id
   ) {
-    return ResponseEntity.ok(donacionService.obtenerCandidatos(id));
+    return ResponseEntity.ok(consultas.obtenerCandidatos(id));
   }
 
   @Operation(
@@ -221,7 +223,7 @@ public class DonacionesController {
       @Parameter(description = "ID de la donación") @PathVariable UUID id,
       @RequestBody @Valid AsignacionRequestDTO dto
   ) {
-    donacionService.asignar(id, dto);
+    comandos.asignar(id, dto);
     return ResponseEntity.noContent().build();
   }
 
@@ -258,7 +260,7 @@ public class DonacionesController {
   public ResponseEntity<Void> eliminarDonacion(
       @Parameter(description = "ID de la donación") @PathVariable UUID id
   ) {
-    donacionService.eliminar(id);
+    comandos.eliminar(id);
     return ResponseEntity.noContent().build();
   }
 }

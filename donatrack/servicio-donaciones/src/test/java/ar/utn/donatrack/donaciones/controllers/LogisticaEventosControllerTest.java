@@ -2,7 +2,9 @@ package ar.utn.donatrack.donaciones.controllers;
 
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
-import ar.utn.donatrack.donaciones.services.LogisticaEventosService;
+import ar.utn.donatrack.donaciones.services.logistica.ManejadorEntregaExitosa;
+import ar.utn.donatrack.donaciones.services.logistica.ManejadorEntregaFallida;
+import ar.utn.donatrack.donaciones.services.logistica.ManejadorInicioDeRuta;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -46,7 +48,13 @@ class LogisticaEventosControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private LogisticaEventosService logisticaEventosService;
+    private ManejadorInicioDeRuta inicioDeRuta;
+
+    @MockitoBean
+    private ManejadorEntregaExitosa entregaExitosa;
+
+    @MockitoBean
+    private ManejadorEntregaFallida entregaFallida;
 
     private final UUID idDonacion = UUID.randomUUID();
 
@@ -69,7 +77,7 @@ class LogisticaEventosControllerTest {
                             .content(cuerpoValido()))
                     .andExpect(status().isOk());
 
-            verify(logisticaEventosService).procesarInicioRuta(any());
+            verify(inicioDeRuta).procesar(any());
         }
 
         @Test
@@ -87,7 +95,7 @@ class LogisticaEventosControllerTest {
                             .content(cuerpo))
                     .andExpect(status().isBadRequest());
 
-            verify(logisticaEventosService, never()).procesarInicioRuta(any());
+            verify(inicioDeRuta, never()).procesar(any());
         }
 
         @Test
@@ -107,7 +115,7 @@ class LogisticaEventosControllerTest {
         @DisplayName("Devuelve 404 si alguna donación del evento no existe")
         void donacionInexistente() throws Exception {
             doThrow(new DonacionNoEncontradaException(idDonacion))
-                    .when(logisticaEventosService).procesarInicioRuta(any());
+                    .when(inicioDeRuta).procesar(any());
 
             mockMvc.perform(post("/logistica/eventos/inicio-ruta")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -119,7 +127,7 @@ class LogisticaEventosControllerTest {
         @DisplayName("Devuelve 422 si la donación no está en un estado que permita iniciar la ruta")
         void estadoIncompatible() throws Exception {
             doThrow(new TransicionDeEstadoIlegalException("EN_DEPOSITO", "EN_TRASLADO"))
-                    .when(logisticaEventosService).procesarInicioRuta(any());
+                    .when(inicioDeRuta).procesar(any());
 
             mockMvc.perform(post("/logistica/eventos/inicio-ruta")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -148,7 +156,7 @@ class LogisticaEventosControllerTest {
                             .content(cuerpoValido()))
                     .andExpect(status().isOk());
 
-            verify(logisticaEventosService).procesarEntregaExitosa(any());
+            verify(entregaExitosa).procesar(any());
         }
 
         @Test
@@ -185,7 +193,7 @@ class LogisticaEventosControllerTest {
         @DisplayName("Devuelve 404 si la donación no existe")
         void donacionInexistente() throws Exception {
             doThrow(new DonacionNoEncontradaException(idDonacion))
-                    .when(logisticaEventosService).procesarEntregaExitosa(any());
+                    .when(entregaExitosa).procesar(any());
 
             mockMvc.perform(post("/logistica/eventos/entrega-exitosa")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -213,7 +221,7 @@ class LogisticaEventosControllerTest {
                             .content(cuerpoValido()))
                     .andExpect(status().isOk());
 
-            verify(logisticaEventosService).procesarEntregaFallida(any());
+            verify(entregaFallida).procesar(any());
         }
 
         @Test
@@ -230,7 +238,7 @@ class LogisticaEventosControllerTest {
                             .content(cuerpo))
                     .andExpect(status().isBadRequest());
 
-            verify(logisticaEventosService, never()).procesarEntregaFallida(any());
+            verify(entregaFallida, never()).procesar(any());
         }
 
         @Test
@@ -251,7 +259,7 @@ class LogisticaEventosControllerTest {
         @DisplayName("Devuelve 422 si la donación no está EN_TRASLADO")
         void estadoIncompatible() throws Exception {
             doThrow(new TransicionDeEstadoIlegalException("EN_DEPOSITO", "ENTREGA_FALLIDA"))
-                    .when(logisticaEventosService).procesarEntregaFallida(any());
+                    .when(entregaFallida).procesar(any());
 
             mockMvc.perform(post("/logistica/eventos/entrega-fallida")
                             .contentType(MediaType.APPLICATION_JSON)

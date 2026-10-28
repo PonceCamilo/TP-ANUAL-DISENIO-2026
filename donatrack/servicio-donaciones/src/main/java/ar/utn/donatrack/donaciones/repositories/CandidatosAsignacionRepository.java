@@ -16,7 +16,7 @@ import java.util.UUID;
  * Hasta la Entrega 4 era un ConcurrentHashMap: si el servicio se reiniciaba, la
  * bandeja quedaba vacía hasta la próxima corrida nocturna, y con más de una
  * instancia cada una tenía la suya. La interfaz no cambió, así que el proceso
- * nocturno y DonacionService no se enteraron del cambio.
+ * nocturno y los services de donaciones no se enteraron del cambio.
  */
 @Repository
 @RequiredArgsConstructor

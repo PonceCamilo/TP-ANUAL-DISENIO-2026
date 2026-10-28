@@ -37,7 +37,7 @@ import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion
  * los deja guardados para que una persona administradora confirme el destino
  * final, tal como pide el enunciado ("...para que una persona administradora
  * confirme el destino final"). La asignación efectiva sigue pasando por
- * DonacionService.asignar(), que es el único punto donde una donación cambia a
+ * DonacionComandosService.asignar(), que es el único punto donde una donación cambia a
  * ASIGNACION_REALIZADA.
  */
 @Slf4j

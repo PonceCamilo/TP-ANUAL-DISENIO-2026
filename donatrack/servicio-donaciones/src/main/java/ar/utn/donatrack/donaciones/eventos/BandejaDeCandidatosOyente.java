@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 /**
  * Saca de la bandeja de la persona administradora el ranking de una donación que
  * ya no está en depósito (se asignó, venció, se dio de baja). Antes esta limpieza
- * estaba repetida en tres lugares de DonacionService.
+ * estaba repetida en tres lugares del service de donaciones.
  *
  * Corre en la transacción del cambio: si el cambio se deshace, la bandeja también.
  */

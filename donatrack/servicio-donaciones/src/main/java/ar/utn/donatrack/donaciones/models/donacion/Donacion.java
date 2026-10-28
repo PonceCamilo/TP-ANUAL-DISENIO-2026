@@ -2,6 +2,7 @@ package ar.utn.donatrack.donaciones.models.donacion;
 
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionDadaDeBaja;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionCambioDeEstado;
@@ -337,6 +338,13 @@ public class Donacion extends EntidadPersistible {
                 .map(Bien::vencimiento)
                 .flatMap(Optional::stream)
                 .anyMatch(vencimiento -> vencimiento.isBefore(fecha));
+    }
+
+    /** Una donación con bienes vencidos no se asigna ni se le buscan candidatas (422). */
+    public void exigirSinBienesVencidosAl(LocalDate fecha) {
+        if (tieneBienesVencidosAl(fecha)) {
+            throw new DonacionConBienesVencidosException(id);
+        }
     }
 
     /**

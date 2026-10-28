@@ -93,8 +93,8 @@ import static org.mockito.Mockito.when;
  * repositorios.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("DonacionService - operaciones sobre donaciones")
-class DonacionServiceTest {
+@DisplayName("DonacionComandosService y DonacionConsultasService - operaciones sobre donaciones")
+class DonacionServiciosTest {
 
     @Mock
     private RepositorioDonaciones repositorio;
@@ -108,7 +108,8 @@ class DonacionServiceTest {
     @Mock
     private RepositorioCandidatosAsignacion candidatosRepositorio;
 
-    private DonacionService servicio;
+    private DonacionComandosService comandos;
+    private DonacionConsultasService consultas;
 
     private Donacion donacion;
     private final UUID idDonante = UUID.randomUUID();
@@ -119,14 +120,18 @@ class DonacionServiceTest {
         DonacionMapper donacionMapper = new DonacionMapper();
         EntidadBeneficiariaMapper entidadMapper = new EntidadBeneficiariaMapper(personaMapper);
 
-        servicio = new DonacionService(
+        comandos = new DonacionComandosService(
+                repositorio,
+                donacionMapper,
+                new DonacionesValidator(repositorio),
+                new EntidadesBeneficiariasValidator(entidadesRepositorio));
+        consultas = new DonacionConsultasService(
                 repositorio,
                 donacionMapper,
                 asignacionService,
                 entidadesRepositorio,
                 entidadMapper,
                 new DonacionesValidator(repositorio),
-                new EntidadesBeneficiariasValidator(entidadesRepositorio),
                 candidatosRepositorio);
 
         donacion = donacionDe("arroz", idDonante);
@@ -151,9 +156,9 @@ class DonacionServiceTest {
         AsignacionRequestDTO pedido = new AsignacionRequestDTO();
         pedido.setIdEntidadBeneficiaria(UUID.randomUUID());
 
-        assertThatThrownBy(() -> servicio.asignar(vencida.getId(), pedido))
+        assertThatThrownBy(() -> comandos.asignar(vencida.getId(), pedido))
                 .isInstanceOf(DonacionConBienesVencidosException.class);
-        assertThatThrownBy(() -> servicio.obtenerCandidatos(vencida.getId()))
+        assertThatThrownBy(() -> consultas.obtenerCandidatos(vencida.getId()))
                 .isInstanceOf(DonacionConBienesVencidosException.class);
         verify(repositorio, never()).guardar(any());
         assertThat(vencida.estaEnEstado("EN_DEPOSITO")).isTrue();
@@ -233,7 +238,7 @@ class DonacionServiceTest {
             SolicitudPagina pagina = new SolicitudPagina(1, 5);
             when(repositorio.buscar(filtro, pagina)).thenReturn(new Pagina<>(List.of(donacion), 1, 5, 6));
 
-            PaginaResponseDTO<DonacionResponseDTO> resultado = servicio.obtenerDonaciones(filtro, pagina);
+            PaginaResponseDTO<DonacionResponseDTO> resultado = consultas.obtenerDonaciones(filtro, pagina);
 
             assertThat(resultado.getContenido()).hasSize(1);
             assertThat(resultado.getContenido().getFirst().getSubcategoria()).isEqualTo("arroz");
@@ -249,7 +254,7 @@ class DonacionServiceTest {
             UUID id = donacion.getId();
             when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donacion));
 
-            DonacionResponseDTO dto = servicio.obtenerPorId(id);
+            DonacionResponseDTO dto = consultas.obtenerPorId(id);
 
             assertThat(dto.getId()).isEqualTo(id);
             assertThat(dto.getEstado()).isEqualTo("EN_DEPOSITO");
@@ -262,7 +267,7 @@ class DonacionServiceTest {
             UUID idInexistente = UUID.randomUUID();
             when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> servicio.obtenerPorId(idInexistente))
+            assertThatThrownBy(() -> consultas.obtenerPorId(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);
         }
     }
@@ -276,7 +281,7 @@ class DonacionServiceTest {
         void cambioValido() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
+            comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
             assertThat(donacion.estaEnEstado("VENCIDA")).isTrue();
             assertThat(donacion.getHistorialEstados()).hasSize(1);
@@ -287,7 +292,7 @@ class DonacionServiceTest {
         void asignacionManualRechazada() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ASIGNACION_REALIZADA", null)))
+            assertThatThrownBy(() -> comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("ASIGNACION_REALIZADA", null)))
                     .isInstanceOf(TransicionReservadaException.class);
 
             verify(repositorio, never()).guardar(any());
@@ -303,7 +308,7 @@ class DonacionServiceTest {
             // apareció recién al probar contra PostgreSQL real.
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
+            comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
             verify(repositorio).guardar(donacion);
         }
@@ -313,7 +318,7 @@ class DonacionServiceTest {
         void cambioIlegalNoPersiste() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
+            assertThatThrownBy(() -> comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
 
             verify(repositorio, never()).guardar(any());
@@ -324,7 +329,7 @@ class DonacionServiceTest {
         void cambioIlegal() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
+            assertThatThrownBy(() -> comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
 
@@ -334,7 +339,7 @@ class DonacionServiceTest {
             avanzarHastaEnTraslado(donacion);
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
+            comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
 
             assertThat(eventos(donacion, DonacionEntregada.class)).singleElement().satisfies(evento -> {
                 assertThat(evento.idDonacion()).isEqualTo(donacion.getId());
@@ -350,7 +355,7 @@ class DonacionServiceTest {
         void otrosEstadosNoSonEntrega() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
+            comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
             assertThat(eventos(donacion, DonacionEntregada.class)).isEmpty();
             assertThat(eventos(donacion, DonacionCambioDeEstado.class)).singleElement()
@@ -364,7 +369,7 @@ class DonacionServiceTest {
             // en la bandeja hasta el matchmaking de la noche siguiente.
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
+            comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
             assertThat(eventos(donacion, DonacionCambioDeEstado.class)).singleElement()
                     .satisfies(evento -> assertThat(evento.salioDelDeposito()).isTrue());
@@ -376,7 +381,7 @@ class DonacionServiceTest {
             donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("LISTA_PARA_ENTREGAR", null));
+            comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("LISTA_PARA_ENTREGAR", null));
 
             assertThat(eventos(donacion, DonacionCambioDeEstado.class)).last()
                     .satisfies(evento -> assertThat(evento.salioDelDeposito()).isFalse());
@@ -387,7 +392,7 @@ class DonacionServiceTest {
         void cambioIlegalNoTocaLaBandeja() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
+            assertThatThrownBy(() -> comandos.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
 
             assertThat(donacion.eventosPendientes()).isEmpty();
@@ -413,7 +418,7 @@ class DonacionServiceTest {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
-            servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
+            comandos.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
             assertThat(donacion.getIdEntidadBeneficiaria()).isEqualTo(entidad.getId());
             assertThat(donacion.estaEnEstado("ASIGNACION_REALIZADA")).isTrue();
@@ -428,7 +433,7 @@ class DonacionServiceTest {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
-            servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
+            comandos.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
             assertThat(eventos(donacion, DonacionAsignada.class)).containsExactly(
                     new DonacionAsignada(donacion.getId(), idDonante, entidad.getId()));
@@ -440,7 +445,7 @@ class DonacionServiceTest {
             UUID idInexistente = UUID.randomUUID();
             when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> servicio.asignar(idInexistente, dtoAsignacion(UUID.randomUUID())))
+            assertThatThrownBy(() -> comandos.asignar(idInexistente, dtoAsignacion(UUID.randomUUID())))
                     .isInstanceOf(DonacionNoEncontradaException.class);
             verify(repositorio, never()).guardar(any());
         }
@@ -452,7 +457,7 @@ class DonacionServiceTest {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
-            servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
+            comandos.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
             // Un solo guardado: el repositorio mueve el contador de recepciones
             // porque la asignación de la donación cambió.
@@ -469,7 +474,7 @@ class DonacionServiceTest {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
-            servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
+            comandos.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
             assertThat(eventos(donacion, DonacionCambioDeEstado.class)).singleElement()
                     .satisfies(evento -> assertThat(evento.salioDelDeposito()).isTrue());
@@ -484,7 +489,7 @@ class DonacionServiceTest {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(idEntidadInexistente)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> servicio.asignar(donacion.getId(), dtoAsignacion(idEntidadInexistente)))
+            assertThatThrownBy(() -> comandos.asignar(donacion.getId(), dtoAsignacion(idEntidadInexistente)))
                     .isInstanceOf(EntidadBeneficiariaNoEncontradaException.class);
             assertThat(donacion.getIdEntidadBeneficiaria()).isNull();
             assertThat(donacion.estaEnEstado("EN_DEPOSITO")).isTrue();
@@ -508,7 +513,7 @@ class DonacionServiceTest {
                             new ResultadoAsignacion(entidadB.getId(), 0.5))));
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidadA, entidadB));
 
-            CandidatosAsignacionResponseDTO respuesta = servicio.obtenerCandidatos(donacion.getId());
+            CandidatosAsignacionResponseDTO respuesta = consultas.obtenerCandidatos(donacion.getId());
 
             assertThat(respuesta.getIdDonacion()).isEqualTo(donacion.getId());
             assertThat(respuesta.getRankings()).extracting(RankingAlgoritmoResponseDTO::algoritmo)
@@ -535,7 +540,7 @@ class DonacionServiceTest {
                     matchmaking(List.of(new ResultadoAsignacion(idEntidadBorrada, 3.0)), List.of()));
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of());
 
-            CandidatosAsignacionResponseDTO respuesta = servicio.obtenerCandidatos(donacion.getId());
+            CandidatosAsignacionResponseDTO respuesta = consultas.obtenerCandidatos(donacion.getId());
 
             assertThat(respuesta.getRankings().getFirst().entidades()).isEmpty();
         }
@@ -546,7 +551,7 @@ class DonacionServiceTest {
             UUID idInexistente = UUID.randomUUID();
             when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> servicio.obtenerCandidatos(idInexistente))
+            assertThatThrownBy(() -> consultas.obtenerCandidatos(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);
         }
     }
@@ -567,7 +572,7 @@ class DonacionServiceTest {
                     calculadoA)));
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
 
-            List<CandidatosPendientesResponseDTO> pendientes = servicio.obtenerCandidatosPendientes();
+            List<CandidatosPendientesResponseDTO> pendientes = consultas.obtenerCandidatosPendientes();
 
             assertThat(pendientes).hasSize(1);
             assertThat(pendientes.getFirst().getIdDonacion()).isEqualTo(donacion.getId());
@@ -587,7 +592,7 @@ class DonacionServiceTest {
                             List.of(new ResultadoAsignacion(UUID.randomUUID(), 1.0))),
                     LocalDateTime.now())));
 
-            assertThat(servicio.obtenerCandidatosPendientes().getFirst().isHuboCoincidencias()).isFalse();
+            assertThat(consultas.obtenerCandidatosPendientes().getFirst().isHuboCoincidencias()).isFalse();
         }
 
         @Test
@@ -595,7 +600,7 @@ class DonacionServiceTest {
         void sinCorridaPrevia() {
             when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of());
 
-            assertThat(servicio.obtenerCandidatosPendientes()).isEmpty();
+            assertThat(consultas.obtenerCandidatosPendientes()).isEmpty();
         }
     }
 
@@ -618,7 +623,7 @@ class DonacionServiceTest {
         void modificaElBien() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.modificarUnicoBien(donacion.getId(), dtoBien("arroz", null));
+            comandos.modificarUnicoBien(donacion.getId(), dtoBien("arroz", null));
 
             assertThat(donacion.getBienes()).hasSize(1);
             assertThat(donacion.getBienes().getFirst().getDescripcion()).isEqualTo("Bien corregido");
@@ -632,7 +637,7 @@ class DonacionServiceTest {
             // presentes en el request; la corrección puede cambiarlo.
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.modificarUnicoBien(donacion.getId(), dtoBien("arroz", LocalDate.of(2027, 1, 1)));
+            comandos.modificarUnicoBien(donacion.getId(), dtoBien("arroz", LocalDate.of(2027, 1, 1)));
 
             assertThat(donacion.getBienes().getFirst()).isInstanceOf(BienPerecible.class);
             assertThat(donacion.esPerecible()).isTrue();
@@ -644,7 +649,7 @@ class DonacionServiceTest {
             Donacion sinBienes = new Donacion();
             when(repositorio.buscarPorId(sinBienes.getId())).thenReturn(Optional.of(sinBienes));
 
-            assertThatThrownBy(() -> servicio.modificarUnicoBien(sinBienes.getId(), dtoBien("arroz", null)))
+            assertThatThrownBy(() -> comandos.modificarUnicoBien(sinBienes.getId(), dtoBien("arroz", null)))
                     .isInstanceOf(DonacionSinBienesException.class);
         }
 
@@ -654,7 +659,7 @@ class DonacionServiceTest {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             UUID idBien = donacion.getBienes().getFirst().getId();
 
-            DonacionResponseDTO respuesta = servicio.modificarBien(donacion.getId(), idBien, dtoBien("arroz", null));
+            DonacionResponseDTO respuesta = comandos.modificarBien(donacion.getId(), idBien, dtoBien("arroz", null));
 
             assertThat(respuesta.getBienes()).singleElement()
                     .satisfies(bien -> assertThat(bien.getDescripcion()).isEqualTo("Bien corregido"));
@@ -668,7 +673,7 @@ class DonacionServiceTest {
                     .subcategoria(new Subcategoria("arroz")).descripcion("Otro").cantidad(1).unidad("kg").build());
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            assertThatThrownBy(() -> servicio.modificarUnicoBien(donacion.getId(), dtoBien("arroz", null)))
+            assertThatThrownBy(() -> comandos.modificarUnicoBien(donacion.getId(), dtoBien("arroz", null)))
                     .isInstanceOf(DonacionConVariosBienesException.class);
         }
 
@@ -677,7 +682,7 @@ class DonacionServiceTest {
         void eliminaLaDonacion() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.eliminar(donacion.getId());
+            comandos.eliminar(donacion.getId());
 
             // Baja lógica: se guarda la donación marcada, no se borra.
             assertThat(donacion.estaDadaDeBaja()).isTrue();
@@ -689,7 +694,7 @@ class DonacionServiceTest {
         void eliminarDejaElEventoDeBaja() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
-            servicio.eliminar(donacion.getId());
+            comandos.eliminar(donacion.getId());
 
             assertThat(eventos(donacion, DonacionDadaDeBaja.class)).containsExactly(new DonacionDadaDeBaja(donacion.getId()));
         }
@@ -700,7 +705,7 @@ class DonacionServiceTest {
             UUID idInexistente = UUID.randomUUID();
             when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> servicio.eliminar(idInexistente))
+            assertThatThrownBy(() -> comandos.eliminar(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);
             verify(repositorio, never()).guardar(any());
         }
