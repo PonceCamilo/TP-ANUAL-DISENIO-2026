@@ -1,15 +1,12 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
-import ar.utn.donatrack.donaciones.config.DonacionesProperties;
-import ar.utn.donatrack.donaciones.notificaciones.Notificador;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionesRegistradas;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
-import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
@@ -29,6 +26,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -71,10 +69,7 @@ class SegmentadorDonacionesServiceTest {
     private RepositorioPersonasDonantes donanteRepository;
 
     @Mock
-    private IncentivosClient incentivosClient;
-
-    @Spy
-    private Notificador notificador = new Notificador(mock(NotificacionClient.class), DonacionesProperties.porDefecto());
+    private ApplicationEventPublisher eventos;
 
     @Mock
     private PersonasValidator personasValidator;
@@ -89,7 +84,7 @@ class SegmentadorDonacionesServiceTest {
     private ArgumentCaptor<List<Donacion>> donacionesCaptor;
 
     @Captor
-    private ArgumentCaptor<List<String>> categoriasCaptor;
+    private ArgumentCaptor<DonacionesRegistradas> eventoCaptor;
 
     private final UUID idDonante = UUID.randomUUID();
 
@@ -158,27 +153,31 @@ class SegmentadorDonacionesServiceTest {
     }
 
     @Nested
-    @DisplayName("Notificación a incentivos")
-    class NotificacionAIncentivos {
+    @DisplayName("Aviso a incentivos (evento DonacionesRegistradas)")
+    class AvisoAIncentivos {
 
         @Test
-        @DisplayName("Notifica a incentivos con el email del donante, la cantidad de bienes y las categorías")
-        void notificaConLosDatosCorrectos() {
-            // Incentivos usa estos datos para actualizar métricas y verificar
-            // si el donante completó alguna misión.
+        @DisplayName("Publica el evento con la persona donante, la cantidad de bienes y las categorías")
+        void publicaElEvento() {
+            // Incentivos usa estos datos para actualizar métricas y verificar si
+            // el donante completó alguna misión. El aviso lo manda AvisosOyente
+            // después de confirmar.
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta",
                     List.of(bien("arroz", "Arroz"), bien("ropa", "Camperas")));
             when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.segmentar(carga);
 
-            verify(incentivosClient).notificarDonacionRegistrada(
-                    eq(idDonante), eq("juan@example.com"), eq("EMAIL"), eq(2), categoriasCaptor.capture(), any());
-            assertThat(categoriasCaptor.getValue()).containsExactlyInAnyOrder("arroz", "ropa");
+            verify(eventos).publishEvent(eventoCaptor.capture());
+            DonacionesRegistradas evento = eventoCaptor.getValue();
+            assertThat(evento.idDonante()).isEqualTo(idDonante);
+            assertThat(evento.cantidadBienes()).isEqualTo(2);
+            assertThat(evento.categorias()).containsExactlyInAnyOrder("arroz", "ropa");
+            assertThat(evento.cuando()).isNotNull();
         }
 
         @Test
-        @DisplayName("Las categorías notificadas no se repiten aunque haya varios bienes de la misma subcategoría")
+        @DisplayName("Las categorías no se repiten aunque haya varios bienes de la misma subcategoría")
         void categoriasSinDuplicados() {
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta",
                     List.of(bien("arroz", "Arroz A"), bien("arroz", "Arroz B"), bien("ropa", "Camperas")));
@@ -187,16 +186,16 @@ class SegmentadorDonacionesServiceTest {
             servicio.segmentar(carga);
 
             // 3 bienes en total, pero solo 2 categorías distintas.
-            verify(incentivosClient).notificarDonacionRegistrada(
-                    eq(idDonante), anyString(), anyString(), eq(3), categoriasCaptor.capture(), any());
-            assertThat(categoriasCaptor.getValue()).containsExactlyInAnyOrder("arroz", "ropa");
+            verify(eventos).publishEvent(eventoCaptor.capture());
+            assertThat(eventoCaptor.getValue().cantidadBienes()).isEqualTo(3);
+            assertThat(eventoCaptor.getValue().categorias()).containsExactlyInAnyOrder("arroz", "ropa");
         }
 
         @Test
-        @DisplayName("Si el donante no existe, la donación se registra igual y NO se notifica")
+        @DisplayName("Si el donante no existe, la donación se registra igual y no hay a quién avisar")
         void donanteInexistenteNoRompe() {
-            // Regla de resiliencia: el aviso a incentivos es secundario; nunca debe
-            // hacer fallar el registro de una donación que ya se persistió.
+            // El aviso a incentivos es secundario: nunca debe hacer fallar el
+            // registro de una donación que ya se persistió.
             CargaDonacion carga = new CargaDonacion(idDonante, "Colecta", List.of(bien("arroz", "Arroz")));
             when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.empty());
 
@@ -204,20 +203,7 @@ class SegmentadorDonacionesServiceTest {
 
             assertThat(resultado).hasSize(1);
             verify(donacionesRepository).cargarDonaciones(anyList());
-            verifyNoInteractions(incentivosClient);
-        }
-
-        @Test
-        @DisplayName("Si el donante no tiene email, la donación se registra igual y NO se notifica")
-        void donanteSinEmailNoNotifica() {
-            CargaDonacion carga = new CargaDonacion(idDonante, "Colecta", List.of(bien("arroz", "Arroz")));
-            when(donanteRepository.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(null)));
-
-            List<Donacion> resultado = servicio.segmentar(carga);
-
-            assertThat(resultado).hasSize(1);
-            verify(incentivosClient, never()).notificarDonacionRegistrada(
-                    any(), anyString(), anyString(), anyInt(), anyList(), any());
+            verifyNoInteractions(eventos);
         }
     }
 
@@ -267,7 +253,7 @@ class SegmentadorDonacionesServiceTest {
             assertThatThrownBy(() -> servicio.registrar(pedido()))
                     .isInstanceOf(DonanteBloqueadoException.class);
             verify(donacionesRepository, never()).cargarDonaciones(any());
-            verifyNoInteractions(incentivosClient);
+            verifyNoInteractions(eventos);
         }
     }
 }

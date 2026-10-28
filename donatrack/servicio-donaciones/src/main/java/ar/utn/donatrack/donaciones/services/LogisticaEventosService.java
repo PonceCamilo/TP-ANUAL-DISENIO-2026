@@ -11,7 +11,6 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDo
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
-import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,7 +40,6 @@ public class LogisticaEventosService {
     private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
     private final RepositorioPersonasDonantes donanteRepositorio;
     private final Notificador notificador;
-    private final IncentivosClient incentivosClient;
 
     // ── INICIO DE RUTA ─────────────────────────────────────────────────────────
 
@@ -75,24 +73,13 @@ public class LogisticaEventosService {
 
         Donacion donacion = obtenerDonacionOFallar(dto.idDonacion());
 
-        donacion.cambiarEstado(ENTREGADA, "Entrega confirmada", "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega());
+        // La entrega queda con la fecha que informa logística. Imputar lo entregado
+        // a las necesidades y avisar a incentivos lo hacen los oyentes del evento.
+        donacion.registrarEntrega(dto.fechaHoraEntrega(),
+                "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega());
         donacionesRepositorio.guardar(donacion);
 
-        // Lo entregado cuenta para las necesidades de la entidad (cierra el ciclo
-        // de cantidades: antes cantidadRecibida no se actualizaba nunca).
-        EntidadBeneficiaria entidad = entidadDe(donacion);
-        if (entidad != null) {
-            entidad.recibirDonacion(donacion, dto.fechaHoraEntrega().toLocalDate());
-            entidadesRepositorio.guardar(entidad);
-        }
-
-        PersonaDonante donante = donanteDe(donacion);
-        notificador.entregaExitosa(donante, entidad, armarComprobante(dto));
-
-        // notificar a incentivos: DonacionesExitosas depende de entregas confirmadas por logística
-        notificador.destinoDe(donante).ifPresent(destino ->
-                incentivosClient.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name(),
-                        dto.fechaHoraEntrega()));
+        notificador.entregaExitosa(donanteDe(donacion), entidadDe(donacion), armarComprobante(dto));
     }
 
     private String armarComprobante(EntregaExitosaCallbackDTO dto) {

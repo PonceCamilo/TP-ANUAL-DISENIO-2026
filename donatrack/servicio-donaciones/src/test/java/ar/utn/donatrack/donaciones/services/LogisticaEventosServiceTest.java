@@ -1,11 +1,11 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
-import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
@@ -62,7 +62,7 @@ import static org.mockito.Mockito.when;
  *
  * Los tres eventos del circuito:
  *   - Inicio de ruta   -> EN_TRASLADO      + aviso con link al mapa en vivo
- *   - Entrega exitosa  -> ENTREGADA        + comprobante + aviso a incentivos
+ *   - Entrega exitosa  -> ENTREGADA        + comprobante (incentivos y necesidades, por evento)
  *   - Entrega fallida  -> ENTREGA_FALLIDA  + aviso a entidad, donante y admin
  */
 @ExtendWith(MockitoExtension.class)
@@ -87,9 +87,6 @@ class LogisticaEventosServiceTest {
 
     @Spy
     private Notificador notificador = new Notificador(notificacionClient, DonacionesProperties.porDefecto());
-
-    @Mock
-    private IncentivosClient incentivosClient;
 
     @Spy
     private DonacionesProperties propiedades = DonacionesProperties.porDefecto();
@@ -277,32 +274,6 @@ class LogisticaEventosServiceTest {
         }
 
         @Test
-        @DisplayName("Lo entregado cuenta para las necesidades de la entidad a la fecha de entrega")
-        void imputaALasNecesidades() {
-            // Cierra el ciclo de cantidades: antes cantidadRecibida no se movía nunca.
-            prepararParaEntrega();
-            donacion.getBienes().add(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
-                    .cantidad(30).unidad("kg").build());
-            Campania campania = new Campania();
-            campania.setIdCampania(UUID.randomUUID());
-            campania.setFechaInicio(LocalDate.of(2026, 3, 1));
-            campania.setFechaFin(LocalDate.of(2026, 3, 31));
-            NecesidadExtraordinaria arroz = new NecesidadExtraordinaria();
-            arroz.setNombre("Arroz para el comedor");
-            arroz.setCantidadObjetivo(100);
-            campania.agregarNecesidad(arroz);
-            entidad.agregarCampania(campania);
-            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
-
-            servicio.procesarEntregaExitosa(evento());
-
-            assertThat(arroz.getCantidadRecibida()).isEqualTo(30);
-            verify(entidadesRepositorio).guardar(entidad);
-        }
-
-        @Test
         @DisplayName("Envía a entidad y donante el comprobante con patente y fecha de entrega")
         void enviaElComprobante() {
             // El enunciado pide un comprobante con fecha, hora y patente del camión.
@@ -318,8 +289,10 @@ class LogisticaEventosServiceTest {
         }
 
         @Test
-        @DisplayName("Avisa a incentivos, porque las donaciones exitosas alimentan las insignias")
-        void avisaAIncentivos() {
+        @DisplayName("La entrega queda con la fecha que informa logística (es la que recibe incentivos)")
+        void entregaConLaFechaInformada() {
+            // DonacionesExitosas depende de las entregas confirmadas por logística:
+            // el aviso a incentivos y la imputación a las necesidades salen del evento.
             prepararParaEntrega();
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
@@ -327,12 +300,13 @@ class LogisticaEventosServiceTest {
 
             servicio.procesarEntregaExitosa(evento());
 
-            // Se informa la fecha de la entrega, no la del registro de la donación.
-            verify(incentivosClient).notificarDonacionExitosa(donacion, EMAIL_DONANTE, "EMAIL", LocalDateTime.of(2026, 3, 15, 14, 30));
+            assertThat(donacion.eventosPendientes()).filteredOn(DonacionEntregada.class::isInstance).singleElement()
+                    .satisfies(e -> assertThat(((DonacionEntregada) e).fechaEntrega())
+                            .isEqualTo(LocalDateTime.of(2026, 3, 15, 14, 30)));
         }
 
         @Test
-        @DisplayName("Si el donante no tiene email, la entrega se registra igual y no se avisa a incentivos")
+        @DisplayName("Si el donante no tiene email, la entrega se registra igual y se avisa a la entidad")
         void donanteSinEmail() {
             prepararParaEntrega();
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
@@ -342,7 +316,7 @@ class LogisticaEventosServiceTest {
             servicio.procesarEntregaExitosa(evento());
 
             assertThat(donacion.fueEntregada()).isTrue();
-            verifyNoInteractions(incentivosClient);
+            verify(notificacionClient).enviarNotificacion(eq(EMAIL_ENTIDAD), anyString(), eq("EMAIL"));
         }
 
         @Test

@@ -7,6 +7,9 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioRecepcionesEntidad;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatosAsignacion;
+import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
+import ar.utn.donatrack.donaciones.services.AsignacionBatchService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +23,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,6 +50,8 @@ class FlujoDeDonacionIntegracionTest {
     @Autowired private ObjectMapper json;
     @Autowired private RepositorioDonaciones donaciones;
     @Autowired private RepositorioRecepcionesEntidad recepciones;
+    @Autowired private RepositorioCandidatosAsignacion candidatos;
+    @Autowired private AsignacionBatchService matchmaking;
 
     @MockitoBean private NotificacionClient notificacionClient;
     @MockitoBean private IncentivosClient incentivosClient;
@@ -103,6 +112,35 @@ class FlujoDeDonacionIntegracionTest {
         assertThat(asignada.getHistorialEstados()).hasSize(1);
         assertThat(asignada.getVersion()).isGreaterThan(versionInicial);
         assertThat(recepciones.contarRecepcionesDesde(idEntidad, FechaHoraArgentina.hoy().minusDays(1))).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Los eventos de la donación llegan a sus oyentes: bandeja, avisos e incentivos")
+    void eventosDeDominio() throws Exception {
+        // Spring Data publica los eventos al guardar la donación; los oyentes en
+        // la transacción limpian la bandeja y los de después del commit avisan.
+        UUID idDonacion = registrarDonacion(crearDonante());
+        verify(incentivosClient).notificarDonacionRegistrada(any(), eq("ana@mail.com"), eq("EMAIL"), eq(1), any(), any());
+        UUID idEntidad = crearEntidad();
+        matchmaking.ejecutarMatchmakingNocturno();
+        assertThat(candidatos.obtenerTodos()).extracting(RankingPrecalculado::getIdDonacion).contains(idDonacion);
+
+        mvc.perform(patch("/donaciones/{id}/asignar", idDonacion)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idEntidadBeneficiaria\":\"" + idEntidad + "\"}"))
+                .andExpect(status().isNoContent());
+
+        assertThat(candidatos.obtenerTodos()).extracting(RankingPrecalculado::getIdDonacion).doesNotContain(idDonacion);
+        verify(notificacionClient).enviarNotificacion(eq("ana@mail.com"), anyString(), eq("EMAIL"));
+        verify(notificacionClient).enviarNotificacion(eq("comedor@mail.com"), anyString(), eq("EMAIL"));
+
+        for (String estado : new String[] {"LISTA_PARA_ENTREGAR", "EN_TRASLADO", "ENTREGADA"}) {
+            mvc.perform(patch("/donaciones/{id}/estado", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"estado\":\"" + estado + "\"}"))
+                    .andExpect(status().isNoContent());
+        }
+        verify(incentivosClient).notificarDonacionExitosa(any(), eq("ana@mail.com"), eq("EMAIL"), any());
     }
 
     @Test

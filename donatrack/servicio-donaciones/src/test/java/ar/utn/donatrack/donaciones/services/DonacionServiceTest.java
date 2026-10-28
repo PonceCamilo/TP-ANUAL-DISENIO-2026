@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionDadaDeBaja;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionCambioDeEstado;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionAsignada;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
@@ -81,13 +85,12 @@ import static org.mockito.Mockito.when;
  * listarlas con filtros, consultarlas, cambiarles el estado, pedir candidatas
  * para asignación, confirmar la asignación, modificar su bien y eliminarlas.
  *
- * Puntos de integración que se verifican explícitamente:
- *   - Al ASIGNAR se notifica tanto a la entidad como al donante.
- *   - Al llegar a ENTREGADA se avisa a incentivos (métricas del donante).
- *   - Las notificaciones que fallan por falta de email NO frenan la operación.
+ * Lo que depende de cada operación (avisos, incentivos, bandeja, necesidades)
+ * lo hacen los oyentes de los eventos de dominio y se prueba en el paquete
+ * eventos; acá se verifica que la donación deje el evento correcto.
  *
  * Se usan los mappers y validadores reales (objetos puros) y se mockean los
- * repositorios y los clientes HTTP hacia los otros microservicios.
+ * repositorios.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DonacionService - operaciones sobre donaciones")
@@ -100,16 +103,7 @@ class DonacionServiceTest {
     private RepositorioEntidadesBeneficiarias entidadesRepositorio;
 
     @Mock
-    private RepositorioPersonasDonantes donanteRepositorio;
-
-    @Mock
     private AsignacionDonacionesService asignacionService;
-
-    @Mock
-    private NotificacionClient notificacionClient;
-
-    @Mock
-    private IncentivosClient incentivosClient;
 
     @Mock
     private RepositorioCandidatosAsignacion candidatosRepositorio;
@@ -131,9 +125,6 @@ class DonacionServiceTest {
                 asignacionService,
                 entidadesRepositorio,
                 entidadMapper,
-                donanteRepositorio,
-                new Notificador(notificacionClient, DonacionesProperties.porDefecto()),
-                incentivosClient,
                 new DonacionesValidator(repositorio),
                 new EntidadesBeneficiariasValidator(entidadesRepositorio),
                 candidatosRepositorio);
@@ -215,6 +206,11 @@ class DonacionServiceTest {
         rankings.put(AlgoritmoCompatibilidadSemantica.NOMBRE, semantico);
         rankings.put(AlgoritmoPrioridadSubAtendidos.NOMBRE, subAtendidos);
         return new ResultadoMatchmaking(rankings);
+    }
+
+    /** Los eventos de dominio que dejó la donación (el repositorio simulado no los publica). */
+    private static <E> List<E> eventos(Donacion donacion, Class<E> tipo) {
+        return donacion.eventosPendientes().stream().filter(tipo::isInstance).map(tipo::cast).toList();
     }
 
     /** Avanza la donación hasta EN_TRASLADO, que es el paso previo a ENTREGADA. */
@@ -333,115 +329,71 @@ class DonacionServiceTest {
         }
 
         @Test
-        @DisplayName("Al pasar a ENTREGADA se notifica a incentivos con el email del donante")
-        void entregadaNotificaAIncentivos() {
-            // Incentivos usa este evento para actualizar "donaciones exitosas" y
-            // "organizaciones ayudadas", que alimentan las insignias del donante.
+        @DisplayName("Al pasar a ENTREGADA la donación deja el evento de entrega (necesidades e incentivos)")
+        void entregadaDejaElEvento() {
             avanzarHastaEnTraslado(donacion);
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
 
-            verify(incentivosClient).notificarDonacionExitosa(eq(donacion), eq("juan@example.com"), eq("EMAIL"), any());
+            assertThat(eventos(donacion, DonacionEntregada.class)).singleElement().satisfies(evento -> {
+                assertThat(evento.idDonacion()).isEqualTo(donacion.getId());
+                assertThat(evento.idDonante()).isEqualTo(idDonante);
+                assertThat(evento.cantidad()).isEqualTo(donacion.cantidadTotal());
+                assertThat(evento.fechaEntrega()).isNotNull();
+            });
+            verify(repositorio).guardar(donacion);
         }
 
         @Test
-        @DisplayName("Al pasar a ENTREGADA a mano, lo entregado cuenta para las necesidades de la entidad")
-        void entregadaImputaALasNecesidades() {
-            EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
-            Campania campania = new Campania();
-            campania.setIdCampania(UUID.randomUUID());
-            NecesidadExtraordinaria arroz = new NecesidadExtraordinaria();
-            arroz.setNombre("Arroz");
-            arroz.setCantidadObjetivo(100);
-            campania.agregarNecesidad(arroz);
-            entidad.agregarCampania(campania);
-            donacion.getBienes().add(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
-                    .cantidad(25).unidad("kg").build());
-            avanzarHastaEnTraslado(donacion);
-            donacion.setIdEntidadBeneficiaria(entidad.getId());
-            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
-
-            // Se imputa la suma de los bienes: el del escenario (5) y el agregado (25).
-            assertThat(donacion.cantidadTotal()).isEqualTo(30);
-            assertThat(arroz.getCantidadRecibida()).isEqualTo(30);
-            verify(entidadesRepositorio).guardar(entidad);
-        }
-
-        @Test
-        @DisplayName("Un cambio a un estado que NO es ENTREGADA no dispara la notificación a incentivos")
-        void otrosEstadosNoNotificanAIncentivos() {
+        @DisplayName("Un cambio a un estado que NO es ENTREGADA no deja evento de entrega")
+        void otrosEstadosNoSonEntrega() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
-            verifyNoInteractions(incentivosClient);
+            assertThat(eventos(donacion, DonacionEntregada.class)).isEmpty();
+            assertThat(eventos(donacion, DonacionCambioDeEstado.class)).singleElement()
+                    .satisfies(evento -> assertThat(evento.estadoNuevo()).isEqualTo("VENCIDA"));
         }
 
         @Test
-        @DisplayName("Si el donante no tiene email, la entrega se registra igual pero no se notifica")
-        void entregadaSinEmailNoNotifica() {
-            // La donación ya llegó a destino: el estado debe quedar guardado aunque
-            // no se pueda avisar a incentivos.
-            avanzarHastaEnTraslado(donacion);
-            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(null)));
-
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
-
-            assertThat(donacion.fueEntregada()).isTrue();
-            verifyNoInteractions(incentivosClient);
-        }
-
-        @Test
-        @DisplayName("Si el donante fue eliminado, la entrega se registra igual sin romper")
-        void entregadaSinDonanteNoRompe() {
-            avanzarHastaEnTraslado(donacion);
-            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.empty());
-
-            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
-
-            assertThat(donacion.fueEntregada()).isTrue();
-        }
-
-        @Test
-        @DisplayName("Si la donación deja EN_DEPOSITO, sale de la bandeja de pendientes")
-        void salirDelDepositoLimpiaElRanking() {
+        @DisplayName("Si la donación deja EN_DEPOSITO, el evento lo indica (su ranking sale de la bandeja)")
+        void salirDelDepositoLoIndica() {
             // Una donación vencida no se puede asignar: su ranking no debe seguir
             // en la bandeja hasta el matchmaking de la noche siguiente.
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("VENCIDA", null));
 
-            verify(candidatosRepositorio).eliminar(donacion.getId());
+            assertThat(eventos(donacion, DonacionCambioDeEstado.class)).singleElement()
+                    .satisfies(evento -> assertThat(evento.salioDelDeposito()).isTrue());
         }
 
         @Test
-        @DisplayName("Un cambio entre estados fuera del depósito no toca la bandeja")
+        @DisplayName("Un cambio entre estados fuera del depósito no indica salida del depósito")
         void cambioFueraDelDepositoNoTocaLaBandeja() {
             donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("LISTA_PARA_ENTREGAR", null));
 
-            verifyNoInteractions(candidatosRepositorio);
+            assertThat(eventos(donacion, DonacionCambioDeEstado.class)).last()
+                    .satisfies(evento -> assertThat(evento.salioDelDeposito()).isFalse());
         }
 
         @Test
-        @DisplayName("Un cambio ilegal no saca la donación de la bandeja")
+        @DisplayName("Un cambio ilegal no deja eventos ni guarda nada")
         void cambioIlegalNoTocaLaBandeja() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null)))
                     .isInstanceOf(TransicionDeEstadoIlegalException.class);
 
-            verifyNoInteractions(candidatosRepositorio);
+            assertThat(donacion.eventosPendientes()).isEmpty();
+            verify(repositorio, never()).guardar(any());
         }
+
     }
 
     @Nested
@@ -460,7 +412,6 @@ class DonacionServiceTest {
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
@@ -469,46 +420,18 @@ class DonacionServiceTest {
         }
 
         @Test
-        @DisplayName("Asignar notifica a la ENTIDAD y al DONANTE por separado")
-        void notificaAAmbasPartes() {
-            // Requisito del enunciado: las dos partes deben enterarse de la asignación.
+        @DisplayName("Asignar deja el evento de asignación con la persona donante y la entidad")
+        void dejaElEventoDeAsignacion() {
+            // Requisito del enunciado: las dos partes deben enterarse de la
+            // asignación. El aviso lo manda AvisosOyente después de confirmar.
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
-            verify(notificacionClient).enviarNotificacion(eq("comedor@lospibes.org"), anyString(), eq("EMAIL"));
-            verify(notificacionClient).enviarNotificacion(
-                    eq("juan@example.com"), contains("Comedor Los Pibes"), eq("EMAIL"));
-        }
-
-        @Test
-        @DisplayName("Si la entidad no tiene email, igual se notifica al donante")
-        void entidadSinEmailNoFrenaAlDonante() {
-            EntidadBeneficiaria entidad = entidadConEmail(null);
-            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
-
-            servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
-
-            verify(notificacionClient).enviarNotificacion(eq("juan@example.com"), anyString(), anyString());
-            assertThat(donacion.estaEnEstado("ASIGNACION_REALIZADA")).isTrue();
-        }
-
-        @Test
-        @DisplayName("Si el donante no tiene email, igual se notifica a la entidad")
-        void donanteSinEmailNoFrenaALaEntidad() {
-            EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
-            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
-            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(null)));
-
-            servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
-
-            verify(notificacionClient).enviarNotificacion(eq("comedor@lospibes.org"), anyString(), anyString());
+            assertThat(eventos(donacion, DonacionAsignada.class)).containsExactly(
+                    new DonacionAsignada(donacion.getId(), idDonante, entidad.getId()));
         }
 
         @Test
@@ -519,7 +442,7 @@ class DonacionServiceTest {
 
             assertThatThrownBy(() -> servicio.asignar(idInexistente, dtoAsignacion(UUID.randomUUID())))
                     .isInstanceOf(DonacionNoEncontradaException.class);
-            verifyNoInteractions(notificacionClient);
+            verify(repositorio, never()).guardar(any());
         }
 
         @Test
@@ -528,7 +451,6 @@ class DonacionServiceTest {
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
@@ -539,18 +461,18 @@ class DonacionServiceTest {
         }
 
         @Test
-        @DisplayName("Asignar saca la donación de la bandeja de pendientes del administrador")
-        void asignarLimpiaElRankingPrecalculado() {
+        @DisplayName("Asignar indica que la donación dejó el depósito (su ranking sale de la bandeja)")
+        void asignarSaleDelDeposito() {
             // Una vez confirmado el destino, el ranking que calculó el proceso
             // nocturno ya no sirve: la donación no vuelve a estar en depósito.
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
-            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail("juan@example.com")));
 
             servicio.asignar(donacion.getId(), dtoAsignacion(entidad.getId()));
 
-            verify(candidatosRepositorio).eliminar(donacion.getId());
+            assertThat(eventos(donacion, DonacionCambioDeEstado.class)).singleElement()
+                    .satisfies(evento -> assertThat(evento.salioDelDeposito()).isTrue());
         }
 
         @Test
@@ -761,13 +683,13 @@ class DonacionServiceTest {
         }
 
         @Test
-        @DisplayName("eliminar() también saca la donación de la bandeja de pendientes")
-        void eliminarLimpiaElRanking() {
+        @DisplayName("eliminar() deja el evento de baja (su ranking sale de la bandeja)")
+        void eliminarDejaElEventoDeBaja() {
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 
             servicio.eliminar(donacion.getId());
 
-            verify(candidatosRepositorio).eliminar(donacion.getId());
+            assertThat(eventos(donacion, DonacionDadaDeBaja.class)).containsExactly(new DonacionDadaDeBaja(donacion.getId()));
         }
 
         @Test
@@ -779,7 +701,6 @@ class DonacionServiceTest {
             assertThatThrownBy(() -> servicio.eliminar(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);
             verify(repositorio, never()).eliminar(any());
-            verifyNoInteractions(candidatosRepositorio);
         }
     }
 }

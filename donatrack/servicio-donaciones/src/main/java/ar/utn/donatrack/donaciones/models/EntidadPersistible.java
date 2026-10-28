@@ -1,5 +1,10 @@
 package ar.utn.donatrack.donaciones.models;
 
+import java.util.List;
+import java.util.ArrayList;
+import java.util.UUID;
+import org.springframework.data.domain.DomainEvents;
+import org.springframework.data.domain.AfterDomainEventPublication;
 import jakarta.persistence.Column;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
@@ -15,7 +20,6 @@ import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.ColumnDefault;
 import org.springframework.data.domain.Persistable;
 
-import java.util.UUID;
 
 /**
  * Base de las raíces de agregado: Donacion, PersonaDonante y EntidadBeneficiaria.
@@ -33,6 +37,11 @@ import java.util.UUID;
  *  - CONCURRENCIA: `version` es un bloqueo optimista. Si dos operaciones leen la
  *    misma entidad y las dos la modifican, la segunda falla en lugar de pisar en
  *    silencio a la primera (GlobalExceptionHandler responde 409).
+ *
+ *  - EVENTOS DE DOMINIO: la entidad junta los eventos de lo que le pasó y el
+ *    repositorio de Spring Data los publica al guardarla o borrarla (@DomainEvents,
+ *    como AbstractAggregateRoot). Los oyentes del paquete `eventos` hacen los
+ *    efectos que antes estaban mezclados en los services.
  */
 @MappedSuperclass
 @Getter
@@ -55,9 +64,29 @@ public abstract class EntidadPersistible implements Persistable<UUID> {
     @Getter(AccessLevel.NONE)
     protected boolean nueva = true;
 
+    @Transient
+    @Builder.Default
+    @Getter(AccessLevel.NONE)
+    private List<Object> eventos = new ArrayList<>();
+
     @Override
     public boolean isNew() {
         return nueva;
+    }
+
+    protected void registrarEvento(Object evento) {
+        eventos.add(evento);
+    }
+
+    /** Los eventos que todavía no se publicaron, en el orden en que ocurrieron. */
+    @DomainEvents
+    public List<Object> eventosPendientes() {
+        return List.copyOf(eventos);
+    }
+
+    @AfterDomainEventPublication
+    protected void limpiarEventos() {
+        eventos.clear();
     }
 
     @PostLoad

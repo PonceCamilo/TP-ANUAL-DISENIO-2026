@@ -1,5 +1,9 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionDadaDeBaja;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionCambioDeEstado;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionAsignada;
 import jakarta.persistence.PostUpdate;
 import jakarta.persistence.PostPersist;
 import ar.utn.donatrack.donaciones.models.EntidadPersistible;
@@ -177,10 +181,41 @@ public class Donacion extends EntidadPersistible {
     }
 
     public void cambiarEstado(String estadoDestino, String nombreTransicion, String justificacion) {
+        transicionar(estadoDestino, nombreTransicion, justificacion, FechaHoraArgentina.ahora());
+    }
+
+    /**
+     * La entrega que informa logística, con la fecha y hora en que ocurrió (no la
+     * del aviso): es la que se informa a incentivos.
+     */
+    public void registrarEntrega(LocalDateTime fechaEntrega, String justificacion) {
+        transicionar(ENTREGADA, "Entrega confirmada", justificacion, fechaEntrega);
+    }
+
+    /**
+     * Toda transición queda en el historial y como evento. Llegar a ENTREGADA es
+     * además su propio evento: los oyentes imputan lo entregado a las necesidades
+     * de la entidad y avisan a incentivos.
+     */
+    private void transicionar(String estadoDestino, String nombreTransicion, String justificacion,
+                              LocalDateTime cuando) {
         EstadoDonacionBase previo = getEstado();
         EstadoDonacionBase nuevo = previo.transicionarA(estadoDestino, justificacion);
         this.estadoNombre = nuevo.nombre();
         historialEstados.add(CambioEstado.de(previo, nuevo, nombreTransicion, justificacion));
+        registrarEvento(new DonacionCambioDeEstado(id, previo.nombre(), nuevo.nombre()));
+        if (nuevo.es(ENTREGADA)) {
+            registrarEvento(new DonacionEntregada(id, idDonante, idEntidadBeneficiaria, subcategoria, cantidadTotal(),
+                    cuando));
+        }
+    }
+
+    /**
+     * La donación se va a borrar: deja el evento para que los oyentes limpien lo
+     * que dependía de ella (su ranking en la bandeja).
+     */
+    public void darDeBaja() {
+        registrarEvento(new DonacionDadaDeBaja(id));
     }
 
     /**
@@ -293,6 +328,7 @@ public class Donacion extends EntidadPersistible {
         this.idEntidadBeneficiaria = entidad.getId();
         this.fechaAsignacion = FechaHoraArgentina.hoy();
         cambiarEstado(ASIGNACION_REALIZADA, "asignar", "Asignada a " + entidad.getRazonSocial());
+        registrarEvento(new DonacionAsignada(id, idDonante, entidad.getId()));
     }
 
     public boolean estaEnEstado(String nombreEstado) {

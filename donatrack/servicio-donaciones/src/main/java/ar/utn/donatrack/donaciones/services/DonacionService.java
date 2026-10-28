@@ -4,8 +4,6 @@ import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoMatchmaking;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
-import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
-import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
@@ -18,7 +16,6 @@ import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioCandidatos
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
-import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
 import ar.utn.donatrack.donaciones.models.asignacion.RankingPrecalculado;
@@ -39,8 +36,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
-
 @Transactional
 @Service
 @RequiredArgsConstructor
@@ -52,9 +47,6 @@ public class DonacionService {
   private final AsignacionDonacionesService asignacionService;
   private final RepositorioEntidadesBeneficiarias entidadesRepositorio;
   private final EntidadBeneficiariaMapper entidadMapper;
-  private final RepositorioPersonasDonantes donanteRepositorio;
-  private final Notificador notificador;
-  private final IncentivosClient incentivosClient;
   private final DonacionesValidator validador;
   private final EntidadesBeneficiariasValidator entidadesValidator;
   private final RepositorioCandidatosAsignacion candidatosRepositorio;
@@ -74,33 +66,16 @@ public class DonacionService {
     return mapper.toDTO(validador.validarYObtenerDonacion(id));
   }
 
+  /**
+   * Cambio de estado manual. Lo que depende del cambio lo hacen los oyentes de
+   * sus eventos (paquete eventos): si la donación dejó el depósito su ranking sale
+   * de la bandeja, y si llegó a ENTREGADA se imputa a las necesidades de la
+   * entidad y se avisa a incentivos.
+   */
   public void cambiarEstado(UUID id, CambioEstadoRequestDTO dto) {
     Donacion donacion = validador.validarYObtenerDonacion(id);
-    boolean estabaEnDeposito = donacion.estaEnEstado(EN_DEPOSITO);
     donacion.cambiarEstadoManualmente(dto.getEstado(), dto.getJustificacion());
     repositorio.guardar(donacion);
-
-    // Si dejó el depósito (por ejemplo, venció), su ranking ya no sirve: sale de
-    // la bandeja ahora y no recién en el matchmaking de la noche siguiente.
-    if (estabaEnDeposito && !donacion.estaEnEstado(EN_DEPOSITO)) {
-      candidatosRepositorio.eliminar(id);
-    }
-
-    if (donacion.fueEntregada()) {
-      imputarANecesidades(donacion);
-      notificarDonacionExitosa(donacion);
-    }
-  }
-
-  /** Lo entregado cuenta para las necesidades de la entidad, igual que con el aviso de logística. */
-  private void imputarANecesidades(Donacion donacion) {
-    if (donacion.getIdEntidadBeneficiaria() == null) {
-      return;
-    }
-    entidadesRepositorio.buscarPorId(donacion.getIdEntidadBeneficiaria()).ifPresent(entidad -> {
-      entidad.recibirDonacion(donacion, FechaHoraArgentina.hoy());
-      entidadesRepositorio.guardar(entidad);
-    });
   }
 
   /** Corrige un bien puntual de la donación (ver Donacion.reemplazarBien para las reglas). */
@@ -175,19 +150,16 @@ public class DonacionService {
 
     donacion.asignarA(entidad);
     // Al guardar, el repositorio también suma la recepción a la entidad, en la
-    // misma transacción.
+    // misma transacción. Los oyentes sacan la donación de la bandeja y, después
+    // de confirmar, avisan a la persona donante y a la entidad.
     repositorio.guardar(donacion);
-
-    // Ya tiene destino: sale de la bandeja de pendientes del administrador.
-    candidatosRepositorio.eliminar(idDonacion);
-
-    notificador.donacionAsignada(donanteRepositorio.buscarPorId(donacion.getIdDonante()).orElse(null), entidad);
   }
 
+  /** Su ranking sale de la bandeja por el evento de baja: no quedan rankings huérfanos. */
   public void eliminar(UUID id) {
-    repositorio.eliminar(validador.validarYObtenerDonacion(id));
-    // Sin su donación, el ranking precalculado quedaría huérfano en la bandeja.
-    candidatosRepositorio.eliminar(id);
+    Donacion donacion = validador.validarYObtenerDonacion(id);
+    donacion.darDeBaja();
+    repositorio.eliminar(donacion);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -236,14 +208,4 @@ public class DonacionService {
         .toList();
   }
 
-  /**
-   * Avisa a incentivos que la donación llegó a destino (actualiza donaciones
-   * exitosas / organizaciones ayudadas). En un cambio manual a ENTREGADA, la
-   * fecha de entrega es la del cambio.
-   */
-  private void notificarDonacionExitosa(Donacion donacion) {
-    notificador.destinoDe(donanteRepositorio.buscarPorId(donacion.getIdDonante()).orElse(null)).ifPresent(destino ->
-        incentivosClient.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name(),
-            FechaHoraArgentina.ahora()));
-  }
 }
