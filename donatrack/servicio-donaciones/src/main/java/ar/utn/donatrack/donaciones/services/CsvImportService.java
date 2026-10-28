@@ -237,7 +237,7 @@ public class CsvImportService {
      * reemplaza el que tenía la persona.
      */
     private void actualizar(PersonaDonante existente, DonanteImportDto dto) {
-        existente.setDocumento(Documento.de(dto.tipoDoc(), dto.documento()));
+        existente.cambiarDocumento(Documento.de(dto.tipoDoc(), dto.documento()));
         existente.actualizarNombreImportado(dto.nombreORazonSocial());
 
         if (dto.telefono() != null && !dto.telefono().isBlank() && !tieneTelefono(existente, dto.telefono())) {

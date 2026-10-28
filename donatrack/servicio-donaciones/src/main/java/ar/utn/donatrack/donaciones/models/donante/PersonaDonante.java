@@ -18,21 +18,18 @@ import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.BatchSize;
-import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 import java.time.LocalDateTime;
 
 /**
@@ -72,7 +69,6 @@ import java.time.LocalDateTime;
 @SuperBuilder
 @NoArgsConstructor
 @Getter
-@Setter
 public abstract class PersonaDonante extends EntidadPersistible {
 
     /** Tipo y número, validados juntos (ver Documento). */
@@ -90,7 +86,6 @@ public abstract class PersonaDonante extends EntidadPersistible {
      * al guardarse (la columna es NOT NULL).
      */
     @Builder.Default
-    @Setter(AccessLevel.NONE)
     @Column(name = "estado", nullable = false)
     protected String estadoNombre = EstadosDonante.inicial().nombre();
 
@@ -130,6 +125,24 @@ public abstract class PersonaDonante extends EntidadPersistible {
 
     public String getNumeroDocumento() {
         return documento == null ? null : documento.getNumero();
+    }
+
+    /**
+     * Sin setters de clase (Entrega 5): el email es la identidad y no se cambia,
+     * el estado cambia por su máquina de estados y la última interacción con
+     * registrarInteraccion. Lo que sí se puede modificar tiene su método.
+     */
+    public void cambiarDireccion(Direccion direccion) {
+        this.direccion = direccion;
+    }
+
+    public void cambiarDocumento(Documento documento) {
+        this.documento = documento;
+    }
+
+    /** Los contactos, de solo lectura: se modifican con reemplazarContacto y reemplazarContactos. */
+    public List<MedioDeContacto> getContactos() {
+        return Collections.unmodifiableList(contactos);
     }
 
     /** El objeto de estado, con sus transiciones válidas, armado a partir del nombre guardado. */

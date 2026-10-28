@@ -43,7 +43,7 @@ public class CargaDonacion {
         donacion.setIdDonante(idDonante);
         donacion.setDescripcion(descripcion);
         donacion.setSubcategoria(subcategoria);
-        donacion.getBienes().addAll(grupo);
+        grupo.forEach(donacion::agregarBien);
         return donacion;
     }
 }

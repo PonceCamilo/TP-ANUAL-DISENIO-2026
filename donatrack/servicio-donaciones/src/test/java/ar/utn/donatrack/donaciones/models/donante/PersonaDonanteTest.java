@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -30,6 +32,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @DisplayName("PersonaDonante - comportamiento del modelo rico")
 class PersonaDonanteTest {
+
+    /** La persona interactuó en ese momento (registrarInteraccion con el reloj en esa fecha). */
+    private static void interactuo(PersonaDonante donante, LocalDateTime cuando) {
+        FechaHoraArgentina.usarReloj(Clock.fixed(cuando.atZone(FechaHoraArgentina.ZONA).toInstant(), FechaHoraArgentina.ZONA));
+        try {
+            donante.registrarInteraccion();
+        } finally {
+            FechaHoraArgentina.restablecerReloj();
+        }
+    }
 
     /** Construye un donante humano ACTIVO listo para usar en cada test. */
     private PersonaHumana donanteActivo() {
@@ -168,7 +180,7 @@ class PersonaDonanteTest {
         @DisplayName("Un donante cuya última interacción es anterior al límite está inactivo")
         void interaccionViejaEsInactivo() {
             PersonaHumana donante = donanteActivo();
-            donante.setUltimaInteraccion(LocalDateTime.now().minusMonths(8));
+            interactuo(donante, LocalDateTime.now().minusMonths(8));
 
             assertThat(donante.estaInactivoDesde(LocalDateTime.now().minusMonths(6))).isTrue();
         }
@@ -177,7 +189,7 @@ class PersonaDonanteTest {
         @DisplayName("Un donante que interactuó después del límite NO está inactivo")
         void interaccionRecienteNoEsInactivo() {
             PersonaHumana donante = donanteActivo();
-            donante.setUltimaInteraccion(LocalDateTime.now().minusMonths(2));
+            interactuo(donante, LocalDateTime.now().minusMonths(2));
 
             assertThat(donante.estaInactivoDesde(LocalDateTime.now().minusMonths(6))).isFalse();
         }
@@ -186,7 +198,7 @@ class PersonaDonanteTest {
         @DisplayName("Registrar una interacción saca al donante de la condición de inactivo")
         void registrarInteraccionReactiva() {
             PersonaHumana donante = donanteActivo();
-            donante.setUltimaInteraccion(LocalDateTime.now().minusMonths(8));
+            interactuo(donante, LocalDateTime.now().minusMonths(8));
             LocalDateTime limite = LocalDateTime.now().minusMonths(6);
 
             assertThat(donante.estaInactivoDesde(limite)).isTrue();

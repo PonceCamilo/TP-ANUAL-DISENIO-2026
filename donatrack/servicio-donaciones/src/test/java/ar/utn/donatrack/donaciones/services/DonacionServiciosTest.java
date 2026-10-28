@@ -130,7 +130,7 @@ class DonacionServiciosTest {
         Donacion vencida = new Donacion();
         vencida.setIdDonante(idDonante);
         vencida.setSubcategoria(new Subcategoria("leche"));
-        vencida.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("leche"))
+        vencida.agregarBien(BienPerecible.builder().subcategoria(new Subcategoria("leche"))
                 .descripcion("Leche").cantidad(2).unidad("litros")
                 .fechaVencimiento(LocalDate.of(2020, 1, 1)).build());
         return vencida;
@@ -158,12 +158,12 @@ class DonacionServiciosTest {
         nueva.setIdDonante(donante);
         nueva.setDescripcion("Donación de " + subcategoria);
         nueva.setSubcategoria(new Subcategoria(subcategoria));
-        nueva.setBienes(new ArrayList<>(List.of(BienGenerico.builder()
+        nueva.agregarBien(BienGenerico.builder()
                 .subcategoria(new Subcategoria(subcategoria))
                 .descripcion("Bien original")
                 .cantidad(5)
                 .unidad("unidades")
-                .build())));
+                .build());
         return nueva;
     }
 
@@ -657,7 +657,7 @@ class DonacionServiciosTest {
         @Test
         @DisplayName("modificarUnicoBien() con varios bienes pide indicar cuál (409)")
         void variosBienesPideIndicarCual() {
-            donacion.getBienes().add(BienGenerico.builder()
+            donacion.agregarBien(BienGenerico.builder()
                     .subcategoria(new Subcategoria("arroz")).descripcion("Otro").cantidad(1).unidad("kg").build());
             when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
 

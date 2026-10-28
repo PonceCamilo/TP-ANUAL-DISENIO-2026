@@ -130,7 +130,7 @@ class AsignacionBatchServiceTest {
         @DisplayName("Las donaciones con bienes vencidos quedan fuera de la bandeja")
         void dejaAfueraLasVencidas() {
             Donacion vencida = donacionEnDeposito("leche");
-            vencida.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("leche"))
+            vencida.agregarBien(BienPerecible.builder().subcategoria(new Subcategoria("leche"))
                     .descripcion("Leche").cantidad(1).unidad("litros")
                     .fechaVencimiento(java.time.LocalDate.of(2020, 1, 1)).build());
             when(donacionesRepositorio.obtenerPorEstado("EN_DEPOSITO"))

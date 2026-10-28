@@ -57,8 +57,8 @@ public class EntidadesBeneficiariasService {
     public void actualizar(UUID id, EntidadBeneficiariaRequestDTO dtoNueva) {
         EntidadBeneficiaria entidadExistente = validador.validarYObtenerEntidad(id);
 
-        entidadExistente.setRazonSocial(dtoNueva.getRazonSocial());
-        entidadExistente.setDireccion(direcciones.toDireccion(dtoNueva.getDireccion()));
+        entidadExistente.cambiarRazonSocial(dtoNueva.getRazonSocial());
+        entidadExistente.cambiarDireccion(direcciones.toDireccion(dtoNueva.getDireccion()));
 
         if (dtoNueva.getContactos() != null) {
             entidadExistente.reemplazarContactos(contactos.toContactos(dtoNueva.getContactos()));

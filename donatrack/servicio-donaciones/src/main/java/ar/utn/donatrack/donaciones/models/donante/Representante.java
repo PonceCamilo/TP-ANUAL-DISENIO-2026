@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,6 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.BatchSize;
 import lombok.AllArgsConstructor;
@@ -63,4 +66,11 @@ public class Representante {
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JoinColumn(name = "representante_id")
     private List<MedioDeContacto> contactos = new ArrayList<>();
+
+    /** A la base llega solo la forma canónica del email, como el de las personas donantes. */
+    @PrePersist
+    @PreUpdate
+    void normalizarEmail() {
+        this.email = NormalizadorEmail.normalizar(this.email);
+    }
 }

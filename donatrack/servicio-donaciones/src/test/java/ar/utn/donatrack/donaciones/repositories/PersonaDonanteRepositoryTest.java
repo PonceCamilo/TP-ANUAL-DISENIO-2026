@@ -43,12 +43,19 @@ class PersonaDonanteRepositoryTest {
     @Autowired private TestEntityManager em;
 
     private PersonaHumana humana(String email) {
+        return humana(email, null, null);
+    }
+
+    /** Con su última interacción y su último aviso de inactividad (no hay setters: se cargan al construirla). */
+    private PersonaHumana humana(String email, LocalDateTime ultimaInteraccion, LocalDateTime ultimoAviso) {
         return PersonaHumana.builder()
                 .id(UUID.randomUUID())
                 .nombre("Ana")
                 .apellido("Pérez")
                 .documento(Documento.de("DNI", "30111222"))
                 .email(email)
+                .ultimaInteraccion(ultimaInteraccion)
+                .ultimoAvisoInactividad(ultimoAviso)
                 .build();
     }
 
@@ -118,18 +125,12 @@ class PersonaDonanteRepositoryTest {
     @DisplayName("La consulta de inactividad trae a quienes no interactúan desde el límite o nunca interactuaron, salvo bloqueadas o ya avisadas")
     void consultaDeInactivos() {
         LocalDateTime ahora = LocalDateTime.of(2026, 10, 26, 0, 0);
-        PersonaHumana reciente = humana("reciente@mail.com");
-        reciente.setUltimaInteraccion(ahora.minusDays(5));
-        PersonaHumana vieja = humana("vieja@mail.com");
-        vieja.setUltimaInteraccion(ahora.minusDays(30));
-        PersonaHumana nunca = humana("nunca@mail.com");
-        nunca.setUltimaInteraccion(null);
-        PersonaHumana bloqueada = humana("bloqueada@mail.com");
-        bloqueada.setUltimaInteraccion(ahora.minusDays(30));
+        PersonaHumana reciente = humana("reciente@mail.com", ahora.minusDays(5), null);
+        PersonaHumana vieja = humana("vieja@mail.com", ahora.minusDays(30), null);
+        PersonaHumana nunca = humana("nunca@mail.com", null, null);
+        PersonaHumana bloqueada = humana("bloqueada@mail.com", ahora.minusDays(30), null);
         bloqueada.cambiarEstado("BLOQUEADO", "fraude");
-        PersonaHumana yaAvisada = humana("avisada@mail.com");
-        yaAvisada.setUltimaInteraccion(ahora.minusDays(30));
-        yaAvisada.setUltimoAvisoInactividad(ahora.minusDays(3));
+        PersonaHumana yaAvisada = humana("avisada@mail.com", ahora.minusDays(30), ahora.minusDays(3));
         repositorio.guardar(reciente);
         repositorio.guardar(vieja);
         repositorio.guardar(nunca);

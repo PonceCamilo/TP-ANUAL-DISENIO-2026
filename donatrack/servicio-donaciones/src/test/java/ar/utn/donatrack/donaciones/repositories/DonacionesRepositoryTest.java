@@ -1,9 +1,12 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
+import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.interfaces.repositories.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.repositories.jpa.DonacionJpaRepository;
 import ar.utn.donatrack.donaciones.util.Pagina;
@@ -18,6 +21,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,18 +52,53 @@ class DonacionesRepositoryTest {
     private final UUID comedor = UUID.randomUUID();
     private final SolicitudPagina primeraPagina = new SolicitudPagina(0, 20);
 
+    private static EntidadBeneficiaria entidad(UUID id) {
+        return EntidadBeneficiaria.builder().id(id).razonSocial("Entidad " + id).build();
+    }
+
+    /**
+     * Asigna como lo hace el dominio (asignarA), en la fecha indicada. Si ya estaba
+     * asignada, antes pasa por una entrega fallida y vuelve al depósito, que es la
+     * forma en que una donación se reasigna.
+     */
+    private static void asignarEn(Donacion donacion, UUID idEntidad, LocalDate fecha) {
+        if (donacion.estaEnEstado("ASIGNACION_REALIZADA")) {
+            donacion.cambiarEstado("LISTA_PARA_ENTREGAR", "despachar", null);
+            donacion.cambiarEstado("EN_TRASLADO", "inicio de ruta", null);
+            donacion.cambiarEstado("ENTREGA_FALLIDA", "entrega fallida", "nadie en el domicilio");
+            donacion.cambiarEstado("EN_DEPOSITO", "replanificar", null);
+        }
+        FechaHoraArgentina.usarReloj(Clock.fixed(fecha.atTime(12, 0).atZone(FechaHoraArgentina.ZONA).toInstant(),
+                FechaHoraArgentina.ZONA));
+        try {
+            donacion.asignarA(entidad(idEntidad));
+        } finally {
+            FechaHoraArgentina.restablecerReloj();
+        }
+    }
+
     private Donacion donacion(UUID idDonante, String subcategoria, LocalDateTime fecha) {
-        Donacion donacion = new Donacion();
-        donacion.setIdDonante(idDonante);
-        donacion.setSubcategoria(new Subcategoria(subcategoria));
-        donacion.setFechaDonacion(fecha);
-        donacion.getBienes().add(BienGenerico.builder()
+        return donacion(idDonante, subcategoria, fecha, BienGenerico.builder()
                 .subcategoria(new Subcategoria(subcategoria))
                 .descripcion(subcategoria)
                 .cantidad(1)
                 .unidad("unidades")
                 .build());
+    }
+
+    private Donacion donacion(UUID idDonante, String subcategoria, LocalDateTime fecha, Bien bien) {
+        Donacion donacion = new Donacion();
+        donacion.setIdDonante(idDonante);
+        donacion.setSubcategoria(new Subcategoria(subcategoria));
+        donacion.setFechaDonacion(fecha);
+        donacion.agregarBien(bien);
         return donacion;
+    }
+
+    private static Bien perecible(String subcategoria, LocalDate vence) {
+        return BienPerecible.builder().subcategoria(new Subcategoria(subcategoria))
+                .descripcion(subcategoria).cantidad(1).unidad("litros")
+                .fechaVencimiento(vence).build();
     }
 
     private void persistirYLimpiar(List<Donacion> donaciones) {
@@ -82,24 +121,15 @@ class DonacionesRepositoryTest {
             arrozDeAna = donacion(ana, "Arroz", base);
             ropaDeAna = donacion(ana, "Ropa", base.plusHours(1));
             arrozDeBetoAsignado = donacion(beto, "Arroz", base.plusHours(2));
-            arrozDeBetoAsignado.setIdEntidadBeneficiaria(comedor);
-            arrozDeBetoAsignado.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
+            arrozDeBetoAsignado.asignarA(entidad(comedor));
             persistirYLimpiar(List.of(arrozDeAna, ropaDeAna, arrozDeBetoAsignado));
         }
 
         @Test
         @DisplayName("vencidas=true devuelve solo las que tienen algún perecedero ya vencido")
         void soloConBienesVencidos() {
-            Donacion vencida = donacion(ana, "Leche", base.plusHours(3));
-            vencida.getBienes().clear();
-            vencida.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("Leche"))
-                    .descripcion("leche").cantidad(1).unidad("litros")
-                    .fechaVencimiento(java.time.LocalDate.of(2020, 1, 1)).build());
-            Donacion vigente = donacion(ana, "Yogur", base.plusHours(4));
-            vigente.getBienes().clear();
-            vigente.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("Yogur"))
-                    .descripcion("yogur").cantidad(1).unidad("litros")
-                    .fechaVencimiento(java.time.LocalDate.of(2099, 1, 1)).build());
+            Donacion vencida = donacion(ana, "Leche", base.plusHours(3), perecible("Leche", LocalDate.of(2020, 1, 1)));
+            Donacion vigente = donacion(ana, "Yogur", base.plusHours(4), perecible("Yogur", LocalDate.of(2099, 1, 1)));
             persistirYLimpiar(List.of(vencida, vigente));
 
             Pagina<Donacion> pagina = repositorio.buscar(
@@ -231,8 +261,7 @@ class DonacionesRepositoryTest {
         private void asignar(Donacion donacion, UUID idEntidad, LocalDate fecha) {
             Donacion actual = repositorio.buscarPorId(donacion.getId()).orElseThrow();
             em.clear(); // como en un pedido real de hoy: la donación llega desprendida
-            actual.setIdEntidadBeneficiaria(idEntidad);
-            actual.setFechaAsignacion(fecha);
+            asignarEn(actual, idEntidad, fecha);
             repositorio.guardar(actual);
             jpa.flush();
             em.clear();
@@ -317,7 +346,6 @@ class DonacionesRepositoryTest {
             Donacion donacion = guardadaEnDeposito();
             asignar(donacion, comedor, hoy);
             Donacion actual = repositorio.buscarPorId(donacion.getId()).orElseThrow();
-            actual.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
             actual.darDeBaja();
             repositorio.guardar(actual);
             jpa.flush();
@@ -351,13 +379,12 @@ class DonacionesRepositoryTest {
             UUID id = guardadaEnDeposito().getId();
 
             Donacion gestionada = repositorio.buscarPorId(id).orElseThrow();
-            gestionada.setIdEntidadBeneficiaria(comedor);
-            gestionada.setFechaAsignacion(hoy);
+            asignarEn(gestionada, comedor, hoy);
             repositorio.guardar(gestionada);
             jpa.flush();
             assertThat(recibidas(comedor)).isEqualTo(1);
 
-            gestionada.setIdEntidadBeneficiaria(otraEntidad);
+            asignarEn(gestionada, otraEntidad, hoy);
             repositorio.guardar(gestionada);
             repositorio.guardar(gestionada); // guardar dos veces no cuenta dos veces
             jpa.flush();

@@ -153,12 +153,12 @@ class MedicionConsultasTest {
                     .apellido("N" + i)
                     .documento(Documento.de("DNI", String.valueOf(30_000_000 + i)))
                     .email("donante" + i + "@mail.com")
+                    // La mitad interactuó hace 30 días: son las que detecta el proceso de inactividad.
+                    .ultimaInteraccion(i % 2 == 0
+                            ? FechaHoraArgentina.ahora()
+                            : FechaHoraArgentina.ahora().minusDays(30))
                     .build();
             persona.definirContactoPredeterminado(Email.builder().valor("donante" + i + "@mail.com").build());
-            // La mitad interactuó hace 30 días: son las que detecta el proceso de inactividad.
-            persona.setUltimaInteraccion(i % 2 == 0
-                    ? FechaHoraArgentina.ahora()
-                    : FechaHoraArgentina.ahora().minusDays(30));
             donantes.guardar(persona);
             idsDonantes.add(persona.getId());
         }
@@ -218,7 +218,7 @@ class MedicionConsultasTest {
         donacion.setIdDonante(idDonante);
         donacion.setSubcategoria(new Subcategoria("Arroz"));
         donacion.setDescripcion("Arroz");
-        donacion.getBienes().add(BienGenerico.builder()
+        donacion.agregarBien(BienGenerico.builder()
                 .subcategoria(new Subcategoria("Arroz"))
                 .descripcion("Paquete de arroz")
                 .cantidad(5)

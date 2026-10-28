@@ -4,9 +4,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
-import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
-import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
@@ -35,7 +32,6 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -120,7 +116,6 @@ class ManejadoresLogisticaTest {
         donacion = new Donacion();
         donacion.setIdDonante(idDonante);
         donacion.setSubcategoria(new Subcategoria("arroz"));
-        donacion.setIdEntidadBeneficiaria(entidad.getId());
     }
 
     private PersonaDonante donanteConEmail(String email) {
@@ -131,8 +126,18 @@ class ManejadoresLogisticaTest {
                 .build();
     }
 
-    /** Lleva la donación hasta LISTA_PARA_ENTREGAR, el estado previo al inicio de ruta. */
+    /** Lleva la donación hasta LISTA_PARA_ENTREGAR, el estado previo al inicio de ruta, asignada a la entidad. */
     private void prepararParaInicioDeRuta() {
+        donacion.asignarA(entidad);
+        donacion.cambiarEstado("LISTA_PARA_ENTREGAR", "planificar", null);
+    }
+
+    /**
+     * Lo mismo pero sin entidad: un caso que el dominio no produce (asignar exige
+     * entidad), que se arma con la transición directa para probar que los avisos
+     * no se rompen.
+     */
+    private void prepararSinEntidadParaInicioDeRuta() {
         donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
         donacion.cambiarEstado("LISTA_PARA_ENTREGAR", "planificar", null);
     }
@@ -187,9 +192,8 @@ class ManejadoresLogisticaTest {
             // la lista completa y todas deben pasar a EN_TRASLADO.
             Donacion segunda = new Donacion();
             segunda.setIdDonante(idDonante);
-            segunda.setIdEntidadBeneficiaria(entidad.getId());
             prepararParaInicioDeRuta();
-            segunda.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
+            segunda.asignarA(entidad);
             segunda.cambiarEstado("LISTA_PARA_ENTREGAR", "planificar", null);
 
             when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion, segunda));
@@ -246,8 +250,7 @@ class ManejadoresLogisticaTest {
         @Test
         @DisplayName("Una donación sin entidad asignada solo notifica al donante")
         void donacionSinEntidad() {
-            prepararParaInicioDeRuta();
-            donacion.setIdEntidadBeneficiaria(null);
+            prepararSinEntidadParaInicioDeRuta();
             when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion));
             when(donanteRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donanteConEmail(EMAIL_DONANTE)));
 
@@ -262,9 +265,8 @@ class ManejadoresLogisticaTest {
         void consultasPorLote() {
             Donacion segunda = new Donacion();
             segunda.setIdDonante(idDonante);
-            segunda.setIdEntidadBeneficiaria(entidad.getId());
             prepararParaInicioDeRuta();
-            segunda.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
+            segunda.asignarA(entidad);
             segunda.cambiarEstado("LISTA_PARA_ENTREGAR", "planificar", null);
             when(donacionesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(donacion, segunda));
             when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
@@ -491,8 +493,8 @@ class ManejadoresLogisticaTest {
         @Test
         @DisplayName("Al administrador se le avisa aunque falten los emails de entidad y donante")
         void adminSiempreRecibeElAviso() {
-            prepararParaEntrega();
-            donacion.setIdEntidadBeneficiaria(null);
+            prepararSinEntidadParaInicioDeRuta();
+            donacion.cambiarEstado("EN_TRASLADO", "iniciar ruta", null);
             when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
             when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(null)));
 

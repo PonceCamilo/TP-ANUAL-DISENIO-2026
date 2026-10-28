@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,10 +15,10 @@ import org.hibernate.annotations.BatchSize;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -30,7 +31,6 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor
 @Getter
-@Setter
 public class PersonaJuridica extends PersonaDonante {
 
     @Column(name = "razon_social")
@@ -64,9 +64,25 @@ public class PersonaJuridica extends PersonaDonante {
         this.razonSocial = razonSocial.trim();
     }
 
+    /**
+     * Un representante con el mismo email reemplaza al anterior. Se compara por la
+     * forma canónica del email (NormalizadorEmail), como en el resto del servicio:
+     * antes era equalsIgnoreCase y un espacio de más duplicaba al representante.
+     */
     public void agregarRepresentante(Representante representante) {
-        representantes.removeIf(rep -> rep.getEmail() != null
-                && rep.getEmail().equalsIgnoreCase(representante.getEmail()));
+        String email = NormalizadorEmail.normalizar(representante.getEmail());
+        representantes.removeIf(rep -> rep.getEmail() != null && NormalizadorEmail.normalizar(rep.getEmail()).equals(email));
         representantes.add(representante);
+    }
+
+    /** Los representantes, de solo lectura: se agregan con agregarRepresentante. */
+    public List<Representante> getRepresentantes() {
+        return Collections.unmodifiableList(representantes);
+    }
+
+    /** Los datos que se pueden editar; los que vienen en null no se modifican. */
+    public void actualizarDatosDeOrganizacion(String razonSocial, String rubro) {
+        if (razonSocial != null) this.razonSocial = razonSocial;
+        if (rubro != null) this.rubro = rubro;
     }
 }

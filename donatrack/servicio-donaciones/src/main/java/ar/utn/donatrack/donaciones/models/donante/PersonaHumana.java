@@ -8,7 +8,6 @@ import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
@@ -25,7 +24,6 @@ import java.time.LocalDate;
 @SuperBuilder
 @NoArgsConstructor
 @Getter
-@Setter
 public class PersonaHumana extends PersonaDonante {
 
     @Column(name = "nombre")
@@ -58,5 +56,12 @@ public class PersonaHumana extends PersonaDonante {
         if (partes.length > 1) {
             this.apellido = partes[1];
         }
+    }
+
+    /** Los datos que se pueden editar; los que vienen en null no se modifican. */
+    public void actualizarDatosPersonales(String nombre, String apellido, LocalDate fechaNacimiento) {
+        if (nombre != null) this.nombre = nombre;
+        if (apellido != null) this.apellido = apellido;
+        if (fechaNacimiento != null) this.fechaNacimiento = fechaNacimiento;
     }
 }

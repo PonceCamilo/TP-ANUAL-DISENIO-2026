@@ -19,7 +19,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,7 +67,7 @@ class DonacionTest {
         @DisplayName("Reemplaza el bien indicado; el nuevo conserva su propio id")
         void reemplaza() {
             Bien original = generico("arroz");
-            donacion.getBienes().add(original);
+            donacion.agregarBien(original);
             Bien corregido = generico("arroz");
 
             donacion.reemplazarBien(original.getId(), corregido);
@@ -79,7 +78,7 @@ class DonacionTest {
         @Test
         @DisplayName("Un id que no es de la donación es un 404")
         void bienInexistente() {
-            donacion.getBienes().add(generico("arroz"));
+            donacion.agregarBien(generico("arroz"));
 
             assertThatThrownBy(() -> donacion.reemplazarBien(UUID.randomUUID(), generico("arroz")))
                     .isInstanceOf(BienNoEncontradoException.class);
@@ -89,7 +88,7 @@ class DonacionTest {
         @DisplayName("El bien no puede cambiar de subcategoría: la donación tiene una sola")
         void otraSubcategoria() {
             Bien original = generico("arroz");
-            donacion.getBienes().add(original);
+            donacion.agregarBien(original);
 
             assertThatThrownBy(() -> donacion.reemplazarBien(original.getId(), generico("fideos")))
                     .isInstanceOf(BienIncompatibleConDonacionException.class);
@@ -100,8 +99,8 @@ class DonacionTest {
         void rompeLaSegmentacion() {
             Bien uno = perecedero("arroz", LocalDate.of(2027, 1, 1));
             Bien otro = perecedero("arroz", LocalDate.of(2027, 1, 1));
-            donacion.getBienes().add(uno);
-            donacion.getBienes().add(otro);
+            donacion.agregarBien(uno);
+            donacion.agregarBien(otro);
 
             assertThatThrownBy(() -> donacion.reemplazarBien(uno.getId(), perecedero("arroz", LocalDate.of(2028, 1, 1))))
                     .isInstanceOf(BienIncompatibleConDonacionException.class);
@@ -111,11 +110,23 @@ class DonacionTest {
         @DisplayName("Fuera del depósito los bienes ya no se modifican")
         void fueraDelDeposito() {
             Bien original = generico("arroz");
-            donacion.getBienes().add(original);
+            donacion.agregarBien(original);
             donacion.cambiarEstado("VENCIDA", "vencida", null);
 
             assertThatThrownBy(() -> donacion.reemplazarBien(original.getId(), generico("arroz")))
                     .isInstanceOf(DonacionNoModificableException.class);
+        }
+
+        @Test
+        @DisplayName("Los bienes y el historial se leen pero no se modifican desde afuera")
+        void listasDeSoloLectura() {
+            donacion.agregarBien(generico("arroz"));
+
+            assertThatThrownBy(() -> donacion.getBienes().add(generico("arroz")))
+                    .isInstanceOf(UnsupportedOperationException.class);
+            assertThatThrownBy(() -> donacion.getHistorialEstados().clear())
+                    .isInstanceOf(UnsupportedOperationException.class);
+            assertThat(donacion.getBienes()).hasSize(1);
         }
     }
 
@@ -126,7 +137,7 @@ class DonacionTest {
         @Test
         @DisplayName("Detecta un perecedero vencido antes de la fecha; vencer ese mismo día no cuenta")
         void detectaVencidos() {
-            donacion.getBienes().add(BienPerecible.builder().subcategoria(new Subcategoria("arroz"))
+            donacion.agregarBien(BienPerecible.builder().subcategoria(new Subcategoria("arroz"))
                     .descripcion("arroz").cantidad(1).unidad("kg").fechaVencimiento(LocalDate.of(2026, 5, 10)).build());
 
             assertThat(donacion.tieneBienesVencidosAl(LocalDate.of(2026, 5, 11))).isTrue();
@@ -136,7 +147,7 @@ class DonacionTest {
         @Test
         @DisplayName("Los bienes que no vencen nunca cuentan como vencidos")
         void noPerecederos() {
-            donacion.getBienes().add(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
+            donacion.agregarBien(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
                     .descripcion("arroz").cantidad(1).unidad("kg").build());
 
             assertThat(donacion.tieneBienesVencidosAl(LocalDate.of(2099, 1, 1))).isFalse();
@@ -330,13 +341,13 @@ class DonacionTest {
         @Test
         @DisplayName("esPerecible() es true cuando la donación contiene bienes perecederos")
         void esPerecible() {
-            donacion.setBienes(List.of(BienPerecible.builder()
+            donacion.agregarBien(BienPerecible.builder()
                     .subcategoria(new Subcategoria("arroz"))
                     .descripcion("Arroz")
                     .cantidad(10)
                     .unidad("kg")
                     .fechaVencimiento(LocalDate.of(2027, 1, 1))
-                    .build()));
+                    .build());
 
             assertThat(donacion.esPerecible()).isTrue();
             assertThat(donacion.requiereEstado()).isFalse();
@@ -345,13 +356,13 @@ class DonacionTest {
         @Test
         @DisplayName("requiereEstado() es true cuando la donación contiene bienes con estado nuevo/usado")
         void requiereEstado() {
-            donacion.setBienes(List.of(BienConEstado.builder()
+            donacion.agregarBien(BienConEstado.builder()
                     .subcategoria(new Subcategoria("sillas"))
                     .descripcion("Sillas")
                     .cantidad(6)
                     .unidad("unidades")
                     .esNuevo(false)
-                    .build()));
+                    .build());
 
             assertThat(donacion.requiereEstado()).isTrue();
             assertThat(donacion.esPerecible()).isFalse();
@@ -360,12 +371,12 @@ class DonacionTest {
         @Test
         @DisplayName("Una donación de bienes genéricos no es perecedera ni requiere estado")
         void bienGenerico() {
-            donacion.setBienes(List.of(BienGenerico.builder()
+            donacion.agregarBien(BienGenerico.builder()
                     .subcategoria(new Subcategoria("ropa"))
                     .descripcion("Camperas")
                     .cantidad(3)
                     .unidad("unidades")
-                    .build()));
+                    .build());
 
             assertThat(donacion.esPerecible()).isFalse();
             assertThat(donacion.requiereEstado()).isFalse();

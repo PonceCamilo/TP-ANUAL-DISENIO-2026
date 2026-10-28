@@ -4,6 +4,7 @@ import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.EntidadPersistible;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.Optional;
 import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
@@ -22,12 +23,10 @@ import org.hibernate.annotations.BatchSize;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Organización sin fines de lucro que recibe donaciones: comedores, escuelas
@@ -41,7 +40,6 @@ import java.util.UUID;
 @SuperBuilder
 @NoArgsConstructor
 @Getter
-@Setter
 public class EntidadBeneficiaria extends EntidadPersistible {
 
     @Column(name = "razon_social")
@@ -83,6 +81,28 @@ public class EntidadBeneficiaria extends EntidadPersistible {
     public void reemplazarRepresentantes(List<Representante> nuevos) {
         representantes.clear();
         representantes.addAll(nuevos);
+    }
+
+    /** Sin setters de clase: cada dato que se puede cambiar tiene su método. */
+    public void cambiarRazonSocial(String razonSocial) {
+        this.razonSocial = razonSocial;
+    }
+
+    public void cambiarDireccion(Direccion direccion) {
+        this.direccion = direccion;
+    }
+
+    /** Listas de solo lectura: se modifican con los métodos de la entidad. */
+    public List<MedioDeContacto> getContactos() {
+        return contactos == null ? null : Collections.unmodifiableList(contactos);
+    }
+
+    public List<Representante> getRepresentantes() {
+        return Collections.unmodifiableList(representantes);
+    }
+
+    public List<Campania> getCampanias() {
+        return Collections.unmodifiableList(campanias);
     }
 
     public void agregarCampania(Campania campania) {

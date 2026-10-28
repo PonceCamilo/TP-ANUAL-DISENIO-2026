@@ -92,16 +92,13 @@ public class PersonaDonanteService {
     PersonaDonante persona = validador.validarYObtenerPersona(id);
 
     if (persona instanceof PersonaHumana humana) {
-      if (dto.getNombre() != null) humana.setNombre(dto.getNombre());
-      if (dto.getApellido() != null) humana.setApellido(dto.getApellido());
-      if (dto.getFechaNacimiento() != null) humana.setFechaNacimiento(dto.getFechaNacimiento());
+      humana.actualizarDatosPersonales(dto.getNombre(), dto.getApellido(), dto.getFechaNacimiento());
     } else if (persona instanceof PersonaJuridica juridica) {
-      if (dto.getRazonSocial() != null) juridica.setRazonSocial(dto.getRazonSocial());
-      if (dto.getRubro() != null) juridica.setRubro(dto.getRubro());
+      juridica.actualizarDatosDeOrganizacion(dto.getRazonSocial(), dto.getRubro());
     }
 
     if (dto.getDireccion() != null) {
-      persona.setDireccion(direcciones.toDireccion(dto.getDireccion()));
+      persona.cambiarDireccion(direcciones.toDireccion(dto.getDireccion()));
     }
     if (dto.getContactos() != null) {
       persona.reemplazarContactos(contactos.toContactos(dto.getContactos()));

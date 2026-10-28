@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests de PersonaJuridica, en particular del alta/actualización de representantes.
@@ -85,6 +86,23 @@ class PersonaJuridicaTest {
 
             assertThat(organizacion.getRepresentantes()).hasSize(1);
             assertThat(organizacion.getRepresentantes().getFirst().getNombre()).isEqualTo("Ana María");
+        }
+
+        @Test
+        @DisplayName("Compara por la forma canónica del email: espacios y mayúsculas no lo duplican")
+        void comparacionPorEmailCanonico() {
+            organizacion.agregarRepresentante(representante("Ana", "ana@fundacion.org"));
+            organizacion.agregarRepresentante(representante("Ana María", "  Ana@Fundacion.org "));
+
+            assertThat(organizacion.getRepresentantes()).hasSize(1);
+            assertThat(organizacion.getRepresentantes().getFirst().getNombre()).isEqualTo("Ana María");
+        }
+
+        @Test
+        @DisplayName("La lista de representantes no se modifica desde afuera")
+        void listaDeSoloLectura() {
+            assertThatThrownBy(() -> organizacion.getRepresentantes().add(representante("Ana", "ana@fundacion.org")))
+                    .isInstanceOf(UnsupportedOperationException.class);
         }
 
         @Test

@@ -42,7 +42,7 @@ class IncentivosClientTest {
         Donacion donacion = new Donacion();
         donacion.setIdDonante(UUID.randomUUID());
         donacion.setFechaDonacion(LocalDateTime.of(2026, 1, 10, 9, 0));
-        donacion.getBienes().add(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
+        donacion.agregarBien(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
                 .descripcion("arroz").cantidad(3).unidad("kg").build());
 
         cliente.notificarDonacionExitosa(donacion, "ana@mail.com", "WHATSAPP", LocalDateTime.of(2026, 3, 15, 14, 30));

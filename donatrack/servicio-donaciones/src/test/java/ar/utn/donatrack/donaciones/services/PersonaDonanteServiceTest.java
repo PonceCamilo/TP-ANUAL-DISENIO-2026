@@ -512,7 +512,7 @@ class PersonaDonanteServiceTest {
         void reemplazaElContactoDelMismoTipo() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            donante.getContactos().add(
+            donante.reemplazarContacto(
                     ar.utn.donatrack.donaciones.models.contacto.Email.builder().valor("viejo@example.com").build());
             when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 

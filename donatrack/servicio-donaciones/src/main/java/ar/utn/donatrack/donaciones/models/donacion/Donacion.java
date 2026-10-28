@@ -45,6 +45,7 @@ import lombok.Setter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -100,7 +101,6 @@ public class Donacion extends EntidadPersistible {
      * La donación es dueña de sus bienes: se guardan y se borran con ella
      * (cascade + orphanRemoval). No tienen sentido por fuera de una donación.
      */
-    @Setter
     // @BatchSize (Entrega 5): al leer una página de donaciones, Hibernate trae
     // los bienes de hasta 100 donaciones en una sola consulta, en lugar de una
     // consulta por donación. Lo mismo vale para el historial.
@@ -128,7 +128,6 @@ public class Donacion extends EntidadPersistible {
     @Column(name = "id_donante")
     protected UUID idDonante;
 
-    @Setter
     @Column(name = "id_entidad_beneficiaria")
     protected UUID idEntidadBeneficiaria;
 
@@ -140,7 +139,6 @@ public class Donacion extends EntidadPersistible {
     @Column(name = "fecha_donacion")
     protected LocalDateTime fechaDonacion = FechaHoraArgentina.ahora();
 
-    @Setter
     @Column(name = "fecha_asignacion")
     protected LocalDate fechaAsignacion;
 
@@ -149,12 +147,10 @@ public class Donacion extends EntidadPersistible {
      * él (el id de la entrega en DONATRACK, un trackingId como EXT-7838BF20 en
      * EXTERNA). Los asigna el broker al despachar el envío.
      */
-    @Setter
     @Enumerated(EnumType.STRING)
     @Column(name = "proveedor_logistica")
     protected ProveedorLogistica proveedorLogistica;
 
-    @Setter
     @Column(name = "id_seguimiento_logistica")
     protected String idSeguimientoLogistica;
 
@@ -412,6 +408,24 @@ public class Donacion extends EntidadPersistible {
     /** Suma de las cantidades de sus bienes; es lo que se imputa a las necesidades al entregarla. */
     public int cantidadTotal() {
         return bienes.stream().mapToInt(Bien::getCantidad).sum();
+    }
+
+    /**
+     * Los bienes, de solo lectura: se agregan con agregarBien y se corrigen con
+     * reemplazarBien, así ninguna regla de la donación se saltea desde afuera.
+     */
+    public List<Bien> getBienes() {
+        return Collections.unmodifiableList(bienes);
+    }
+
+    /** El historial es de solo lectura: lo escribe cambiarEstado. */
+    public List<CambioEstado> getHistorialEstados() {
+        return Collections.unmodifiableList(historialEstados);
+    }
+
+    /** Agrega un bien a la donación (la segmentación agrupa los de una misma clave). */
+    public void agregarBien(Bien bien) {
+        bienes.add(bien);
     }
 
     public boolean fueEntregada() {

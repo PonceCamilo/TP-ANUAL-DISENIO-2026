@@ -31,7 +31,6 @@ import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
 import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.LogisticaNoDisponibleException;
 import ar.utn.donatrack.donaciones.services.PlanificacionEntregasService;
-import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,7 +50,6 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -132,12 +130,12 @@ class DonacionesControllerTest {
         donacion.setIdDonante(idDonante);
         donacion.setDescripcion("Colecta de alimentos");
         donacion.setSubcategoria(new Subcategoria("arroz"));
-        donacion.setBienes(List.of(BienGenerico.builder()
+        donacion.agregarBien(BienGenerico.builder()
                 .subcategoria(new Subcategoria("arroz"))
                 .descripcion("Arroz largo fino")
                 .cantidad(10)
                 .unidad("kg")
-                .build()));
+                .build());
         return donacion;
     }
 

@@ -237,7 +237,7 @@ class EntidadBeneficiariaTest {
         @Test
         @DisplayName("Devuelve el valor del contacto de tipo Email")
         void devuelveElEmail() {
-            entidad.setContactos(List.of(
+            entidad.reemplazarContactos(List.of(
                     Telefono.builder().valor("1155667788").build(),
                     Email.builder().valor("comedor@lospibes.org").build()
             ));
@@ -250,7 +250,7 @@ class EntidadBeneficiariaTest {
         void sinEmailDevuelveNull() {
             // El service usa este null para saltear la notificación en lugar de
             // fallar toda la operación logística.
-            entidad.setContactos(List.of(Telefono.builder().valor("1155667788").build()));
+            entidad.reemplazarContactos(List.of(Telefono.builder().valor("1155667788").build()));
 
             assertThat(entidad.obtenerEmail()).isNull();
         }
@@ -258,7 +258,7 @@ class EntidadBeneficiariaTest {
         @Test
         @DisplayName("Devuelve null si la lista de contactos es null")
         void contactosNullDevuelveNull() {
-            entidad.setContactos(null);
+            entidad = EntidadBeneficiaria.builder().id(UUID.randomUUID()).razonSocial("Comedor").contactos(null).build();
 
             assertThat(entidad.obtenerEmail()).isNull();
         }
@@ -270,7 +270,7 @@ class EntidadBeneficiariaTest {
                     Email.builder().valor("principal@lospibes.org").build(),
                     Email.builder().valor("secundario@lospibes.org").build()
             );
-            entidad.setContactos(contactos);
+            entidad.reemplazarContactos(contactos);
 
             assertThat(entidad.obtenerEmail()).isEqualTo("principal@lospibes.org");
         }
