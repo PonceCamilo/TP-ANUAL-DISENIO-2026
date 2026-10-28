@@ -10,6 +10,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -125,9 +126,24 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, detalle);
     }
 
-    /** Lo que no está previsto es un error del servidor: se registra completo y no se expone el detalle. */
+    /**
+     * Lo que no está previsto es un error del servidor: se registra completo y no
+     * se expone el detalle.
+     *
+     * Los errores del propio Spring MVC que no tienen un manejador acá traen su
+     * código (ErrorResponse): una ruta que no existe es 404, un método no
+     * soportado 405 (con el encabezado Allow), un tipo de contenido no soportado
+     * 415, un parámetro o una parte obligatoria que falta 400. Antes caían todos
+     * en este manejador y respondían 500.
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDTO> errorInesperado(Exception ex) {
+        if (ex instanceof ErrorResponse deSpring && deSpring.getStatusCode().is4xxClientError()) {
+            HttpStatus status = HttpStatus.valueOf(deSpring.getStatusCode().value());
+            String detalle = deSpring.getBody().getDetail();
+            return ResponseEntity.status(status).headers(deSpring.getHeaders())
+                    .body(cuerpo(status, detalle == null ? status.getReasonPhrase() : detalle));
+        }
         log.error("Error inesperado", ex);
         return responder(HttpStatus.INTERNAL_SERVER_ERROR, "Error inesperado. Contacte al administrador.");
     }
@@ -135,11 +151,15 @@ public class GlobalExceptionHandler {
     // ── Armado de la respuesta ──────────────────────────────────────────────
 
     private static ResponseEntity<ErrorResponseDTO> responder(HttpStatus status, String mensaje) {
-        return ResponseEntity.status(status).body(ErrorResponseDTO.builder()
+        return ResponseEntity.status(status).body(cuerpo(status, mensaje));
+    }
+
+    private static ErrorResponseDTO cuerpo(HttpStatus status, String mensaje) {
+        return ErrorResponseDTO.builder()
                 .timestamp(FechaHoraArgentina.ahora())
                 .status(status.value())
                 .error(status.getReasonPhrase())
                 .message(mensaje)
-                .build());
+                .build();
     }
 }

@@ -20,7 +20,9 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -104,6 +106,19 @@ class GlobalExceptionHandlerTest {
     @DisplayName("un estado desconocido en la base es un error del servidor, no del cliente")
     void estadoPersistidoDesconocidoResponde500() throws Exception {
         mockMvc.perform(get("/falla/estado-corrupto")).andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    @DisplayName("Los errores de Spring MVC conservan su código: ruta inexistente 404, método no soportado 405")
+    void erroresDeSpringConSuCodigo() throws Exception {
+        mockMvc.perform(get("/no-existe"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"));
+        mockMvc.perform(delete("/falla/conflicto"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(header().string("Allow", "GET"))
+                .andExpect(jsonPath("$.status").value(405));
     }
 
     @Test
