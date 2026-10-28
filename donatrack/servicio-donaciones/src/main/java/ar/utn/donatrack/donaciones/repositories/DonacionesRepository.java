@@ -111,38 +111,45 @@ public class DonacionesRepository implements RepositorioDonaciones {
   }
 
   /**
-   * Cada filtro presente agrega una condición; los ausentes no restringen.
-   * La subcategoría se compara contra la columna normalizada usando la misma
-   * normalización que Subcategoria, así "Arroz" y " arroz " son la misma.
+   * Una condición por filtro presente; Specification.allOf ignora las nulas, que
+   * son los filtros que no vinieron. Sumar un filtro es una línea más acá.
    */
   private static Specification<Donacion> especificacion(FiltroDonaciones filtro) {
-    Specification<Donacion> spec = (raiz, consulta, cb) -> cb.conjunction();
-    if (filtro.estado() != null && !filtro.estado().isBlank()) {
-      spec = spec.and((raiz, consulta, cb) -> cb.equal(raiz.get("estadoNombre"), filtro.estado()));
+    return Specification.allOf(
+        igual("estadoNombre", filtro.estado()),
+        igual("idDonante", filtro.idDonante()),
+        igual("idEntidadBeneficiaria", filtro.idEntidad()),
+        deSubcategoria(filtro.subcategoria()),
+        filtro.soloConBienesVencidos() ? conBienesVencidosAl(FechaHoraArgentina.hoy()) : null);
+  }
+
+  /** El atributo es igual al valor, o ninguna condición (null) si el filtro no vino. */
+  private static Specification<Donacion> igual(String atributo, Object valor) {
+    return valor == null ? null : (raiz, consulta, cb) -> cb.equal(raiz.get(atributo), valor);
+  }
+
+  /**
+   * Se compara contra la columna normalizada con la misma normalización que
+   * Subcategoria, así "Arroz" y " arroz " son la misma.
+   */
+  private static Specification<Donacion> deSubcategoria(String subcategoria) {
+    if (subcategoria == null) {
+      return null;
     }
-    if (filtro.idDonante() != null) {
-      spec = spec.and((raiz, consulta, cb) -> cb.equal(raiz.get("idDonante"), filtro.idDonante()));
-    }
-    if (filtro.idEntidad() != null) {
-      spec = spec.and((raiz, consulta, cb) -> cb.equal(raiz.get("idEntidadBeneficiaria"), filtro.idEntidad()));
-    }
-    if (filtro.subcategoria() != null && !filtro.subcategoria().isBlank()) {
-      String normalizada = new Subcategoria(filtro.subcategoria()).getTipoNormalizado();
-      spec = spec.and((raiz, consulta, cb) ->
-          cb.equal(raiz.get("subcategoria").get("tipoNormalizado"), normalizada));
-    }
-    if (filtro.soloConBienesVencidos()) {
-      LocalDate hoy = FechaHoraArgentina.hoy();
-      spec = spec.and((raiz, consulta, cb) -> {
-        Subquery<UUID> vencidos = consulta.subquery(UUID.class);
-        Root<Donacion> donacion = vencidos.from(Donacion.class);
-        ListJoin<Donacion, Bien> bien = donacion.joinList("bienes");
-        vencidos.select(donacion.get("id")).where(
-            cb.equal(donacion.get("id"), raiz.get("id")),
-            cb.lessThan(cb.treat(bien, BienPerecible.class).get("fechaVencimiento"), hoy));
-        return cb.exists(vencidos);
-      });
-    }
-    return spec;
+    String normalizada = new Subcategoria(subcategoria).getTipoNormalizado();
+    return (raiz, consulta, cb) -> cb.equal(raiz.get("subcategoria").get("tipoNormalizado"), normalizada);
+  }
+
+  /** Donaciones con algún bien perecedero vencido a la fecha. */
+  private static Specification<Donacion> conBienesVencidosAl(LocalDate fecha) {
+    return (raiz, consulta, cb) -> {
+      Subquery<UUID> vencidos = consulta.subquery(UUID.class);
+      Root<Donacion> donacion = vencidos.from(Donacion.class);
+      ListJoin<Donacion, Bien> bien = donacion.joinList("bienes");
+      vencidos.select(donacion.get("id")).where(
+          cb.equal(donacion.get("id"), raiz.get("id")),
+          cb.lessThan(cb.treat(bien, BienPerecible.class).get("fechaVencimiento"), fecha));
+      return cb.exists(vencidos);
+    };
   }
 }

@@ -3,9 +3,10 @@ package ar.utn.donatrack.donaciones.interfaces.repositories;
 import java.util.UUID;
 
 /**
- * Criterios opcionales del listado de donaciones. Un campo nulo o en blanco no
- * filtra. Los filtros se aplican en la base (Entrega 5): antes se traían todas
- * las donaciones y se filtraban en memoria.
+ * Criterios opcionales del listado de donaciones. Un campo nulo no filtra; los
+ * textos en blanco se convierten en nulos al construir el filtro, así quien lo
+ * usa solo pregunta por null. Los filtros se aplican en la base (Entrega 5):
+ * antes se traían todas las donaciones y se filtraban en memoria.
  *
  * @param estado       nombre del estado, por ejemplo EN_DEPOSITO
  * @param idDonante    donaciones de una persona donante ("mis donaciones")
@@ -17,11 +18,20 @@ import java.util.UUID;
 public record FiltroDonaciones(String estado, UUID idDonante, String subcategoria, UUID idEntidad,
                                boolean soloConBienesVencidos) {
 
+    public FiltroDonaciones {
+        estado = textoONulo(estado);
+        subcategoria = textoONulo(subcategoria);
+    }
+
     public FiltroDonaciones(String estado, UUID idDonante, String subcategoria, UUID idEntidad) {
         this(estado, idDonante, subcategoria, idEntidad, false);
     }
 
     public static FiltroDonaciones sinFiltros() {
         return new FiltroDonaciones(null, null, null, null);
+    }
+
+    private static String textoONulo(String texto) {
+        return texto == null || texto.isBlank() ? null : texto.strip();
     }
 }
