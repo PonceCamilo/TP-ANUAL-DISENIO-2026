@@ -104,25 +104,6 @@ public class EntidadBeneficiaria extends EntidadPersistible {
         campanias.add(campania);
     }
 
-    public void agregarNecesidadACampania(Campania campania, Necesidad necesidad) {
-        this.getCampanias().stream()
-                .filter(c -> c.getIdCampania().equals(campania.getIdCampania()))
-                .findFirst()
-                .ifPresent(c -> c.agregarNecesidad(necesidad));
-    }
-
-    /** Canal por el que el sistema le avisa de asignaciones y entregas. */
-    public String obtenerEmail() {
-        if (contactos == null) {
-            return null;
-        }
-        return contactos.stream()
-                .filter(contacto -> contacto.canal() == Canal.EMAIL)
-                .map(MedioDeContacto::getValor)
-                .findFirst()
-                .orElse(null);
-    }
-
     /** Contacto por el que se le avisa: su primer email o, si no tiene, su primer contacto. */
     public Optional<MedioDeContacto> contactoParaNotificar() {
         if (contactos == null || contactos.isEmpty()) {

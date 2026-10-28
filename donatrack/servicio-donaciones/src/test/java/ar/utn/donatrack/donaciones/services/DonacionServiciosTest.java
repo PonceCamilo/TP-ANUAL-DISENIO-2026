@@ -222,7 +222,7 @@ class DonacionServiciosTest {
         void delegaEnElRepositorio() {
             // Los filtros los resuelve la base (Entrega 5); su semántica se prueba
             // contra H2 en DonacionesRepositoryTest. Acá se verifica el pasamanos.
-            FiltroDonaciones filtro = new FiltroDonaciones("EN_DEPOSITO", idDonante, "arroz", null);
+            FiltroDonaciones filtro = new FiltroDonaciones("EN_DEPOSITO", idDonante, "arroz", null, false);
             SolicitudPagina pagina = new SolicitudPagina(1, 5);
             when(repositorio.buscar(filtro, pagina)).thenReturn(new Pagina<>(List.of(donacion), 1, 5, 6));
 
@@ -628,7 +628,6 @@ class DonacionServiciosTest {
             comandos.modificarUnicoBien(donacion.getId(), dtoBien("arroz", LocalDate.of(2027, 1, 1)));
 
             assertThat(donacion.getBienes().getFirst()).isInstanceOf(BienPerecible.class);
-            assertThat(donacion.esPerecible()).isTrue();
         }
 
         @Test

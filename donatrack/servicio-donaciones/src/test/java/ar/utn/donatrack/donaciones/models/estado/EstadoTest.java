@@ -27,8 +27,8 @@ class EstadoTest {
     void destinosYTransicionIlegal() {
         EnDepositoState enDeposito = new EnDepositoState();
 
-        assertThat(enDeposito.destinosPermitidos())
-                .containsExactlyInAnyOrder(EstadosDonacion.ASIGNACION_REALIZADA, EstadosDonacion.VENCIDA);
+        assertThat(enDeposito.transicionarA(EstadosDonacion.ASIGNACION_REALIZADA, null).nombre())
+                .isEqualTo(EstadosDonacion.ASIGNACION_REALIZADA);
         assertThat(enDeposito.transicionarA(EstadosDonacion.VENCIDA, null).nombre()).isEqualTo(EstadosDonacion.VENCIDA);
         assertThatThrownBy(() -> enDeposito.transicionarA(EstadosDonacion.ENTREGADA, null))
                 .isInstanceOf(TransicionDeEstadoIlegalException.class);

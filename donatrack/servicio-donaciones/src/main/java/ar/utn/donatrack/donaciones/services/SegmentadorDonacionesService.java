@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 @Transactional
 @Service
@@ -46,33 +45,19 @@ public class SegmentadorDonacionesService {
     if (donante.estaBloqueada()) {
       throw new DonanteBloqueadoException(donante.getId());
     }
-    return mapper.toDTOList(registrarCarga(mapper.toCargaDonacion(dto), donante));
-  }
-
-  public List<Donacion> segmentar(CargaDonacion carga) {
-    return registrarCarga(carga, donanteRepository.buscarPorId(carga.getIdDonante()).orElse(null));
-  }
-
-  private List<Donacion> registrarCarga(CargaDonacion carga, PersonaDonante donante) {
-    List<Donacion> resultado = carga.segmentar();
-
-    cargarDonaciones(resultado);
-    if (donante != null) {
-      // Donar es interactuar con la plataforma: reinicia el plazo de inactividad.
-      donante.registrarInteraccion();
-      donanteRepository.guardar(donante);
-    }
-    if (donante != null) {
-      // El aviso a incentivos sale después de confirmar (AvisosOyente).
-      eventos.publishEvent(new DonacionesRegistradas(donante.getId(), carga.getBienes().size(),
-          categorias(carga.getBienes()), FechaHoraArgentina.ahora()));
-    }
-
-    return resultado;
-  }
-
-  public void cargarDonaciones(List<Donacion> donaciones) {
+    CargaDonacion carga = mapper.toCargaDonacion(dto);
+    List<Donacion> donaciones = carga.segmentar();
     donacionesRepository.cargarDonaciones(donaciones);
+
+    // Donar es interactuar con la plataforma: reinicia el plazo de inactividad.
+    donante.registrarInteraccion();
+    donanteRepository.guardar(donante);
+
+    // El aviso a incentivos sale después de confirmar (AvisosOyente).
+    eventos.publishEvent(new DonacionesRegistradas(donante.getId(), carga.getBienes().size(),
+        categorias(carga.getBienes()), FechaHoraArgentina.ahora()));
+
+    return mapper.toDTOList(donaciones);
   }
 
   private static List<String> categorias(List<Bien> bienes) {

@@ -25,10 +25,6 @@ public enum Periodicidad {
         this.duracion = duracion;
     }
 
-    public Period getDuracion() {
-        return duracion;
-    }
-
     /** Primer día del período siguiente al que empieza en esa fecha (el fin es exclusivo). */
     public LocalDate finDelPeriodo(LocalDate inicio) {
         return inicio.plus(duracion);

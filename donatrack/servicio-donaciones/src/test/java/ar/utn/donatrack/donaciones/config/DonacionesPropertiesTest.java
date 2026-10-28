@@ -29,7 +29,7 @@ class DonacionesPropertiesTest {
     void defaults() {
         contexto.run(ctx -> {
             DonacionesProperties propiedades = ctx.getBean(DonacionesProperties.class);
-            assertThat(propiedades).isEqualTo(DonacionesProperties.porDefecto());
+            assertThat(propiedades).isEqualTo(PropiedadesDePrueba.porDefecto());
         });
     }
 

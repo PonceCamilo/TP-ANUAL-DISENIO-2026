@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.salida;
 
-import ar.utn.donatrack.donaciones.config.DonacionesProperties;
+import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.repositories.jpa.MensajeSalienteJpaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -46,7 +46,7 @@ class RelayDeMensajesTest {
     @BeforeEach
     void armar() {
         relay = new RelayDeMensajes(mensajes, List.of(enviador), TransactionOperations.withoutTransaction(),
-                DonacionesProperties.porDefecto());
+                PropiedadesDePrueba.porDefecto());
     }
 
     private MensajeSaliente pendiente(String destino, String payload) {
@@ -89,7 +89,7 @@ class RelayDeMensajesTest {
     @DisplayName("Dos enviadores para el mismo destino se rechazan al armar el relay")
     void destinosRepetidos() {
         assertThatThrownBy(() -> new RelayDeMensajes(mensajes, List.of(enviador, enviador),
-                TransactionOperations.withoutTransaction(), DonacionesProperties.porDefecto()))
+                TransactionOperations.withoutTransaction(), PropiedadesDePrueba.porDefecto()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(Destinos.NOTIFICACION);
     }

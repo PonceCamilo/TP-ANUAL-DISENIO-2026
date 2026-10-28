@@ -18,8 +18,6 @@ import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoMod
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
-import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
-import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.models.donacion.estado.EstadoDonacionBase;
 import ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -357,22 +355,14 @@ public class Donacion extends EntidadPersistible {
         cambiarEstado(estadoDestino, "Cambio manual de " + estadoNombre + " a " + estadoDestino, justificacion);
     }
 
-    public boolean esPerecible() {
-        return !bienes.isEmpty() && bienes.getFirst() instanceof BienPerecible;
-    }
-
-    public boolean requiereEstado() {
-        return !bienes.isEmpty() && bienes.getFirst() instanceof BienConEstado;
-    }
-
     /**
      * Registra que un proveedor de logística se hizo cargo de la entrega y pasa la
      * donación a LISTA_PARA_ENTREGAR.
      *
      * El paso de estado es obligatorio: la máquina es
      * ASIGNACION_REALIZADA → LISTA_PARA_ENTREGAR → EN_TRASLADO. Si la donación
-     * siguiera en ASIGNACION_REALIZADA cuando llega el evento de inicio de ruta,
-     * procesarInicioRuta fallaría con una transición ilegal.
+     * siguiera en ASIGNACION_REALIZADA cuando llega el aviso de inicio de ruta,
+     * el paso a EN_TRASLADO fallaría con una transición ilegal.
      */
     public void despacharA(ProveedorLogistica proveedor, String idSeguimiento) {
         this.proveedorLogistica = proveedor;
@@ -390,12 +380,6 @@ public class Donacion extends EntidadPersistible {
 
     public boolean estaEnEstado(String nombreEstado) {
         return estadoNombre.equals(nombreEstado);
-    }
-
-    public boolean esDeSubcategoria(String subcategoria) {
-        return this.subcategoria != null
-                && this.subcategoria.getTipo() != null
-                && this.subcategoria.getTipo().equalsIgnoreCase(subcategoria);
     }
 
     /** Suma de las cantidades de sus bienes; es lo que se imputa a las necesidades al entregarla. */
@@ -419,9 +403,5 @@ public class Donacion extends EntidadPersistible {
     /** Agrega un bien a la donación (la segmentación agrupa los de una misma clave). */
     public void agregarBien(Bien bien) {
         bienes.add(bien);
-    }
-
-    public boolean fueEntregada() {
-        return estaEnEstado(ENTREGADA);
     }
 }

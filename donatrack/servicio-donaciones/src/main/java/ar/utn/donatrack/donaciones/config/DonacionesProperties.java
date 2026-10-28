@@ -31,17 +31,6 @@ public record DonacionesProperties(
         @Valid @DefaultValue Matchmaking matchmaking,
         @Valid @DefaultValue Salida salida) {
 
-    /** Los mismos valores que se usan cuando no se configura nada. */
-    public static DonacionesProperties porDefecto() {
-        return new DonacionesProperties(
-                new Inactividad(20, "0 0 0 * * *", 100),
-                new Procesos("0 0 3 * * *", "0 30 3 * * *", "0 0 4 * * *"),
-                new Importacion(500, 100),
-                new Notificaciones("admin@donatrack.org"),
-                new Matchmaking(10),
-                new Salida(true, 5000, 50, 10, 7, "0 30 4 * * *"));
-    }
-
     /**
      * Aviso a donantes inactivos. El enunciado fija el plazo en 20 días sin
      * interacción con la plataforma.

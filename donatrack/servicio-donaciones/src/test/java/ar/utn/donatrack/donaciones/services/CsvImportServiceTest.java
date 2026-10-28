@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.models.donante.Documento;
-import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.importacion.DonanteCsvRowParser;
@@ -37,7 +37,6 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -78,7 +77,7 @@ class CsvImportServiceTest {
         // Sin transacción real: el repositorio está mockeado. La transacción por
         // lote se prueba contra la base en MedicionConsultasTest.
         servicio = new CsvImportService(donanteRepository, new DonanteCsvRowParser(), new DonanteFactory(),
-                DonacionesProperties.porDefecto(), TransactionOperations.withoutTransaction());
+                PropiedadesDePrueba.porDefecto(), TransactionOperations.withoutTransaction());
     }
 
     /** Convierte el contenido de un CSV en el stream que recibe el servicio. */
@@ -112,7 +111,7 @@ class CsvImportServiceTest {
 
             assertThat(reporte.totalCreados()).isEqualTo(2);
             assertThat(reporte.totalActualizados()).isZero();
-            assertThat(reporte.tieneErrores()).isFalse();
+            assertThat(reporte.getErrores()).isEmpty();
             assertThat(reporte.totalProcesadas()).isEqualTo(2);
         }
 
@@ -142,7 +141,7 @@ class CsvImportServiceTest {
             ImportReport reporte = servicio.importar(csv(contenido));
 
             assertThat(reporte.totalProcesadas()).isEqualTo(1);
-            assertThat(reporte.tieneErrores()).isFalse();
+            assertThat(reporte.getErrores()).isEmpty();
         }
 
         @Test
@@ -269,7 +268,7 @@ class CsvImportServiceTest {
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
-            assertThat(reporte.tieneErrores()).isTrue();
+            assertThat(reporte.getErrores()).isNotEmpty();
             assertThat(juridica.getRazonSocial()).isEqualTo("Fundación Vieja");
             assertThat(juridica.getNumeroDocumento()).isEqualTo("30111222335");
         }
@@ -294,7 +293,7 @@ class CsvImportServiceTest {
 
             assertThat(reporte.totalCreados()).isEqualTo(2);
             assertThat(reporte.getErrores()).hasSize(1);
-            assertThat(reporte.tieneErrores()).isTrue();
+            assertThat(reporte.getErrores()).isNotEmpty();
         }
 
         @Test
@@ -461,7 +460,7 @@ class CsvImportServiceTest {
 
             ImportReport reporte = servicio.importar(csv(contenido));
 
-            assertThat(reporte.tieneErrores()).isFalse();
+            assertThat(reporte.getErrores()).isEmpty();
             assertThat(reporte.totalProcesadas()).isEqualTo(2);
             assertThat(lineaDe(reporte, "c@x.com")).isEqualTo(5);
         }

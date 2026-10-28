@@ -193,7 +193,7 @@ class DonacionesControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(0)));
 
-            verify(consultas).obtenerDonaciones(FiltroDonaciones.sinFiltros(), new SolicitudPagina(0, 20));
+            verify(consultas).obtenerDonaciones(new FiltroDonaciones(null, null, null, null, false), new SolicitudPagina(0, 20));
         }
 
         @Test

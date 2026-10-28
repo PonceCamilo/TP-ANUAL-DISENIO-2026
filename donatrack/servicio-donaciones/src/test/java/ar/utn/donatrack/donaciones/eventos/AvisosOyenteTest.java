@@ -1,8 +1,8 @@
 package ar.utn.donatrack.donaciones.eventos;
 
+import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
-import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
@@ -50,7 +50,7 @@ class AvisosOyenteTest {
     private final NotificacionClient notificacionClient = mock(NotificacionClient.class);
     private final IncentivosClient incentivos = mock(IncentivosClient.class);
     private final AvisosOyente oyente = new AvisosOyente(donaciones, donantes, entidades,
-            new Notificador(notificacionClient, DonacionesProperties.porDefecto()), incentivos);
+            new Notificador(notificacionClient, PropiedadesDePrueba.porDefecto()), incentivos);
 
     private final UUID idDonante = UUID.randomUUID();
     private final LocalDateTime entrega = LocalDateTime.of(2026, 3, 15, 14, 30);

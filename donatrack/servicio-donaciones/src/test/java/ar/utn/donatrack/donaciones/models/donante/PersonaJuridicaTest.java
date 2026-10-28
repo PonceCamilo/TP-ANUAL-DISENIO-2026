@@ -126,8 +126,8 @@ class PersonaJuridicaTest {
         void heredaDePersonaDonante() {
             assertThat(organizacion.getRazonSocial()).isEqualTo("Fundación Ejemplo");
             assertThat(organizacion.getRubro()).isEqualTo("Alimentos");
-            // obtenerEmail() viene de la clase padre PersonaDonante.
-            assertThat(organizacion.obtenerEmail()).isEqualTo("contacto@fundacionejemplo.org");
+            // El email es de la clase padre PersonaDonante.
+            assertThat(organizacion.getEmail()).isEqualTo("contacto@fundacionejemplo.org");
         }
 
         @Test

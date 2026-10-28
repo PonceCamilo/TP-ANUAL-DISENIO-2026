@@ -145,7 +145,7 @@ class DonacionesRepositoryTest {
         @Test
         @DisplayName("Sin filtros devuelve todas, de la más nueva a la más vieja")
         void sinFiltros() {
-            Pagina<Donacion> pagina = repositorio.buscar(FiltroDonaciones.sinFiltros(), primeraPagina);
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, null, null, null, false), primeraPagina);
 
             assertThat(ids(pagina)).containsExactly(
                     arrozDeBetoAsignado.getId(), ropaDeAna.getId(), arrozDeAna.getId());
@@ -156,7 +156,7 @@ class DonacionesRepositoryTest {
         @DisplayName("Filtra por estado")
         void porEstado() {
             Pagina<Donacion> pagina = repositorio.buscar(
-                    new FiltroDonaciones("EN_DEPOSITO", null, null, null), primeraPagina);
+                    new FiltroDonaciones("EN_DEPOSITO", null, null, null, false), primeraPagina);
 
             assertThat(ids(pagina)).containsExactlyInAnyOrder(arrozDeAna.getId(), ropaDeAna.getId());
         }
@@ -164,7 +164,7 @@ class DonacionesRepositoryTest {
         @Test
         @DisplayName("Filtra por persona donante")
         void porDonante() {
-            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, beto, null, null), primeraPagina);
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, beto, null, null, false), primeraPagina);
 
             assertThat(ids(pagina)).containsExactly(arrozDeBetoAsignado.getId());
         }
@@ -173,7 +173,7 @@ class DonacionesRepositoryTest {
         @DisplayName("Filtra por subcategoría sin distinguir mayúsculas ni espacios")
         void porSubcategoria() {
             Pagina<Donacion> pagina = repositorio.buscar(
-                    new FiltroDonaciones(null, null, "  ARROZ ", null), primeraPagina);
+                    new FiltroDonaciones(null, null, "  ARROZ ", null, false), primeraPagina);
 
             assertThat(ids(pagina)).containsExactlyInAnyOrder(arrozDeAna.getId(), arrozDeBetoAsignado.getId());
         }
@@ -181,7 +181,7 @@ class DonacionesRepositoryTest {
         @Test
         @DisplayName("Filtra por entidad beneficiaria asignada")
         void porEntidad() {
-            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, null, null, comedor), primeraPagina);
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, null, null, comedor, false), primeraPagina);
 
             assertThat(ids(pagina)).containsExactly(arrozDeBetoAsignado.getId());
         }
@@ -190,7 +190,7 @@ class DonacionesRepositoryTest {
         @DisplayName("Los filtros se combinan: la donación tiene que cumplir todos")
         void combinados() {
             Pagina<Donacion> pagina = repositorio.buscar(
-                    new FiltroDonaciones("EN_DEPOSITO", ana, "arroz", null), primeraPagina);
+                    new FiltroDonaciones("EN_DEPOSITO", ana, "arroz", null, false), primeraPagina);
 
             assertThat(ids(pagina)).containsExactly(arrozDeAna.getId());
         }
@@ -198,7 +198,7 @@ class DonacionesRepositoryTest {
         @Test
         @DisplayName("Un filtro en blanco se ignora, igual que si no se hubiera enviado")
         void enBlancoSeIgnora() {
-            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones("  ", null, "  ", null), primeraPagina);
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones("  ", null, "  ", null, false), primeraPagina);
 
             assertThat(pagina.totalElementos()).isEqualTo(3);
         }
@@ -206,7 +206,7 @@ class DonacionesRepositoryTest {
         @Test
         @DisplayName("Las donaciones leídas traen sus bienes y su estado")
         void traeBienesYEstado() {
-            Donacion leida = repositorio.buscar(new FiltroDonaciones(null, beto, null, null), primeraPagina)
+            Donacion leida = repositorio.buscar(new FiltroDonaciones(null, beto, null, null, false), primeraPagina)
                     .contenido().getFirst();
 
             assertThat(leida.getBienes()).hasSize(1);
@@ -229,8 +229,8 @@ class DonacionesRepositoryTest {
                     donacion(ana, "Arroz", base.plusMinutes(4)));
             persistirYLimpiar(cinco);
 
-            Pagina<Donacion> primera = repositorio.buscar(FiltroDonaciones.sinFiltros(), new SolicitudPagina(0, 2));
-            Pagina<Donacion> tercera = repositorio.buscar(FiltroDonaciones.sinFiltros(), new SolicitudPagina(2, 2));
+            Pagina<Donacion> primera = repositorio.buscar(new FiltroDonaciones(null, null, null, null, false), new SolicitudPagina(0, 2));
+            Pagina<Donacion> tercera = repositorio.buscar(new FiltroDonaciones(null, null, null, null, false), new SolicitudPagina(2, 2));
 
             assertThat(primera.contenido()).extracting(Donacion::getId)
                     .containsExactly(cinco.get(4).getId(), cinco.get(3).getId());

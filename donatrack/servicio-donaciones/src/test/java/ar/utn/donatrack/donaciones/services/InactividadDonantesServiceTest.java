@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
@@ -32,7 +33,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -64,10 +64,10 @@ class InactividadDonantesServiceTest {
     private final NotificacionClient notificacionClient = mock(NotificacionClient.class);
 
     @Spy
-    private Notificador notificador = new Notificador(notificacionClient, DonacionesProperties.porDefecto());
+    private Notificador notificador = new Notificador(notificacionClient, PropiedadesDePrueba.porDefecto());
 
     @Spy
-    private DonacionesProperties propiedades = DonacionesProperties.porDefecto();
+    private DonacionesProperties propiedades = PropiedadesDePrueba.porDefecto();
 
     @InjectMocks
     private InactividadDonantesService servicio;

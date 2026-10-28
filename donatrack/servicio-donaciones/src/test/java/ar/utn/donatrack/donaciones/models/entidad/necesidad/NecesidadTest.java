@@ -2,13 +2,11 @@ package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.periodicidades.Periodicidad;
-import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
-import java.time.Period;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -309,15 +307,6 @@ class NecesidadTest {
         }
 
         @Test
-        @DisplayName("estaSatisfecha() sin fecha usa el día de hoy")
-        void satisfechaHoy() {
-            NecesidadRecurrente necesidad = semanalDesde(FechaHoraArgentina.hoy());
-            necesidad.recibir(100, FechaHoraArgentina.hoy());
-
-            assertThat(necesidad.estaSatisfecha()).isTrue();
-        }
-
-        @Test
         @DisplayName("NO está satisfecha si el período está vigente pero falta cantidad")
         void faltaCantidadDentroDelPeriodo() {
             NecesidadRecurrente necesidad = semanalDesde(LocalDate.of(2026, 3, 1));
@@ -336,10 +325,11 @@ class NecesidadTest {
         @DisplayName("Cada periodicidad es un Period de calendario y no una cantidad fija de días")
         void duracionDeCadaPeriodicidad() {
             // Los valores salen del enunciado: semanal, mensual, cuatrimestral y anual.
-            assertThat(Periodicidad.SEMANAL.getDuracion()).isEqualTo(Period.ofWeeks(1));
-            assertThat(Periodicidad.MENSUAL.getDuracion()).isEqualTo(Period.ofMonths(1));
-            assertThat(Periodicidad.CUATRIMESTRAL.getDuracion()).isEqualTo(Period.ofMonths(4));
-            assertThat(Periodicidad.ANUAL.getDuracion()).isEqualTo(Period.ofYears(1));
+            LocalDate inicio = LocalDate.of(2026, 3, 1);
+            assertThat(Periodicidad.SEMANAL.finDelPeriodo(inicio)).isEqualTo(LocalDate.of(2026, 3, 8));
+            assertThat(Periodicidad.MENSUAL.finDelPeriodo(inicio)).isEqualTo(LocalDate.of(2026, 4, 1));
+            assertThat(Periodicidad.CUATRIMESTRAL.finDelPeriodo(inicio)).isEqualTo(LocalDate.of(2026, 7, 1));
+            assertThat(Periodicidad.ANUAL.finDelPeriodo(inicio)).isEqualTo(LocalDate.of(2027, 3, 1));
         }
 
         @Test

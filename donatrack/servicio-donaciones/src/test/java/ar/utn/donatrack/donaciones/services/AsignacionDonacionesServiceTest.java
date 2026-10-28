@@ -1,6 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.config.DonacionesProperties;
+import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.interfaces.services.AlgoritmoAsignacion;
 import ar.utn.donatrack.donaciones.models.asignacion.ResultadoAsignacion;
@@ -64,7 +64,7 @@ class AsignacionDonacionesServiceTest {
     @BeforeEach
     void crearServicio() {
         servicio = new AsignacionDonacionesService(List.of(algoritmoSemantico, algoritmoSubAtendidos),
-                entidadesRepository, DonacionesProperties.porDefecto());
+                entidadesRepository, PropiedadesDePrueba.porDefecto());
         donacion = new Donacion();
         donacion.setSubcategoria(new Subcategoria("arroz"));
     }
@@ -123,7 +123,7 @@ class AsignacionDonacionesServiceTest {
             when(algoritmoSubAtendidos.evaluar(any(), anyList(), anyInt())).thenReturn(List.of(resultado(entidadA, 1.0)));
             AsignacionDonacionesService conTres = new AsignacionDonacionesService(
                     List.of(algoritmoSemantico, algoritmoSubAtendidos, cercania), entidadesRepository,
-                    DonacionesProperties.porDefecto());
+                    PropiedadesDePrueba.porDefecto());
 
             ResultadoMatchmaking resultado = conTres.generarRanking(donacion, List.of());
 
@@ -136,7 +136,7 @@ class AsignacionDonacionesServiceTest {
         void nombresRepetidos() {
             assertThatThrownBy(() -> new AsignacionDonacionesService(
                     List.of(algoritmoSemantico, algoritmo(SEMANTICO)), entidadesRepository,
-                    DonacionesProperties.porDefecto()))
+                    PropiedadesDePrueba.porDefecto()))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining(SEMANTICO);
         }

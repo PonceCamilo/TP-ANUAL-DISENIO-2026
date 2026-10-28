@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.services.logistica;
 import static org.mockito.ArgumentMatchers.any;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
@@ -85,10 +86,10 @@ class ManejadoresLogisticaTest {
     private final NotificacionClient notificacionClient = mock(NotificacionClient.class);
 
     @Spy
-    private Notificador notificador = new Notificador(notificacionClient, DonacionesProperties.porDefecto());
+    private Notificador notificador = new Notificador(notificacionClient, PropiedadesDePrueba.porDefecto());
 
     @Spy
-    private DonacionesProperties propiedades = DonacionesProperties.porDefecto();
+    private DonacionesProperties propiedades = PropiedadesDePrueba.porDefecto();
 
     private ManejadorInicioDeRuta inicioDeRuta;
     private ManejadorEntregaExitosa entregaExitosa;
@@ -317,7 +318,7 @@ class ManejadoresLogisticaTest {
 
             entregaExitosa.procesar(evento());
 
-            assertThat(donacion.fueEntregada()).isTrue();
+            assertThat(donacion.estaEnEstado("ENTREGADA")).isTrue();
             assertThat(donacion.getHistorialEstados().getLast().getJustificacion()).contains("AB123CD");
         }
 
@@ -363,7 +364,7 @@ class ManejadoresLogisticaTest {
 
             entregaExitosa.procesar(evento());
 
-            assertThat(donacion.fueEntregada()).isTrue();
+            assertThat(donacion.estaEnEstado("ENTREGADA")).isTrue();
             verify(notificacionClient).enviarNotificacion(eq(EMAIL_ENTIDAD), anyString(), eq("EMAIL"));
         }
 

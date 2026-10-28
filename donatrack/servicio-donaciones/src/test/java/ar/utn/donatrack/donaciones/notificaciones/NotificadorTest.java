@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.notificaciones;
 
+import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.clientes.NotificacionClient;
-import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.verify;
 class NotificadorTest {
 
     private final NotificacionClient cliente = mock(NotificacionClient.class);
-    private final Notificador notificador = new Notificador(cliente, DonacionesProperties.porDefecto());
+    private final Notificador notificador = new Notificador(cliente, PropiedadesDePrueba.porDefecto());
 
     private PersonaHumana donanteCon(Canal canal) {
         PersonaHumana persona = PersonaHumana.builder().id(UUID.randomUUID()).email("ana@mail.com").build();

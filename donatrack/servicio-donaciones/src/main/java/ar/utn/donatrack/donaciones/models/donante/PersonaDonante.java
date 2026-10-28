@@ -219,15 +219,7 @@ public abstract class PersonaDonante extends EntidadPersistible {
         return EstadosDonante.BLOQUEADO.equals(estadoNombre);
     }
 
-    public String obtenerEmail() {
-        return this.email;
-    }
-
     public void registrarInteraccion() {
         this.ultimaInteraccion = FechaHoraArgentina.ahora();
-    }
-
-    public boolean estaInactivoDesde(LocalDateTime fechaLimite) {
-        return this.ultimaInteraccion == null || this.ultimaInteraccion.isBefore(fechaLimite);
     }
 }

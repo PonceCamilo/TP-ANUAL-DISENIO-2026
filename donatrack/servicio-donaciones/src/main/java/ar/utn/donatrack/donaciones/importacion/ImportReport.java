@@ -40,10 +40,6 @@ public class ImportReport {
             .toList();
     }
 
-    public boolean tieneErrores() {
-        return resultados.stream().anyMatch(ImportFilaCSV::esError);
-    }
-
     public int totalProcesadas() {
         return resultados.size();
     }

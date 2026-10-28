@@ -8,7 +8,6 @@ import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienIncompati
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
-import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -29,8 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * Tras el refactor de Entrega 3, la Donación dejó de ser un contenedor de datos:
  * ahora sabe cambiar su propio estado, registrar el historial de esos cambios,
- * asignarse a una entidad y responder preguntas sobre sí misma (si es perecedera,
- * si requiere estado nuevo/usado, si pertenece a una subcategoría, etc.).
+ * asignarse a una entidad, corregir sus bienes y atender los avisos de logística.
  *
  * Estas pruebas cubren esos métodos. La lógica de qué transiciones son válidas
  * está probada aparte en EstadoDonacionBaseTest; acá se verifica cómo la
@@ -335,107 +333,6 @@ class DonacionTest {
     }
 
     @Nested
-    @DisplayName("Consultas sobre el tipo de bienes que contiene")
-    class ConsultasSobreBienes {
-
-        @Test
-        @DisplayName("esPerecible() es true cuando la donación contiene bienes perecederos")
-        void esPerecible() {
-            donacion.agregarBien(BienPerecible.builder()
-                    .subcategoria(new Subcategoria("arroz"))
-                    .descripcion("Arroz")
-                    .cantidad(10)
-                    .unidad("kg")
-                    .fechaVencimiento(LocalDate.of(2027, 1, 1))
-                    .build());
-
-            assertThat(donacion.esPerecible()).isTrue();
-            assertThat(donacion.requiereEstado()).isFalse();
-        }
-
-        @Test
-        @DisplayName("requiereEstado() es true cuando la donación contiene bienes con estado nuevo/usado")
-        void requiereEstado() {
-            donacion.agregarBien(BienConEstado.builder()
-                    .subcategoria(new Subcategoria("sillas"))
-                    .descripcion("Sillas")
-                    .cantidad(6)
-                    .unidad("unidades")
-                    .esNuevo(false)
-                    .build());
-
-            assertThat(donacion.requiereEstado()).isTrue();
-            assertThat(donacion.esPerecible()).isFalse();
-        }
-
-        @Test
-        @DisplayName("Una donación de bienes genéricos no es perecedera ni requiere estado")
-        void bienGenerico() {
-            donacion.agregarBien(BienGenerico.builder()
-                    .subcategoria(new Subcategoria("ropa"))
-                    .descripcion("Camperas")
-                    .cantidad(3)
-                    .unidad("unidades")
-                    .build());
-
-            assertThat(donacion.esPerecible()).isFalse();
-            assertThat(donacion.requiereEstado()).isFalse();
-        }
-
-        @Test
-        @DisplayName("Una donación sin bienes responde false a ambas preguntas (sin romper)")
-        void sinBienesNoRompe() {
-            // Caso borde: las implementaciones miran el primer bien de la lista,
-            // por lo que deben contemplar la lista vacía.
-            assertThat(donacion.esPerecible()).isFalse();
-            assertThat(donacion.requiereEstado()).isFalse();
-        }
-    }
-
-    @Nested
-    @DisplayName("Consultas de estado y subcategoría")
-    class ConsultasVarias {
-
-        @Test
-        @DisplayName("esDeSubcategoria() ignora mayúsculas y minúsculas")
-        void esDeSubcategoriaIgnoraCase() {
-            // El algoritmo de asignación compara la subcategoría de la donación
-            // contra el texto de las necesidades, y ahí el case no debe importar.
-            assertThat(donacion.esDeSubcategoria("arroz")).isTrue();
-            assertThat(donacion.esDeSubcategoria("ARROZ")).isTrue();
-            assertThat(donacion.esDeSubcategoria("Arroz")).isTrue();
-        }
-
-        @Test
-        @DisplayName("esDeSubcategoria() es false para otra subcategoría")
-        void esDeSubcategoriaOtra() {
-            assertThat(donacion.esDeSubcategoria("ropa")).isFalse();
-        }
-
-        @Test
-        @DisplayName("esDeSubcategoria() no rompe cuando la donación aún no tiene subcategoría")
-        void esDeSubcategoriaSinSubcategoria() {
-            Donacion sinSubcategoria = new Donacion();
-
-            assertThat(sinSubcategoria.esDeSubcategoria("arroz")).isFalse();
-        }
-
-        @Test
-        @DisplayName("fueEntregada() solo es true al final del circuito")
-        void fueEntregada() {
-            assertThat(donacion.fueEntregada()).isFalse();
-
-            donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
-            donacion.cambiarEstado("LISTA_PARA_ENTREGAR", "planificar", null);
-            donacion.cambiarEstado("EN_TRASLADO", "iniciar ruta", null);
-            assertThat(donacion.fueEntregada()).isFalse();
-
-            donacion.cambiarEstado("ENTREGADA", "entregar", null);
-            assertThat(donacion.fueEntregada()).isTrue();
-        }
-    }
-
-    @Nested
     @DisplayName("Avisos de logística: idempotentes")
     class AvisosDeLogistica {
 
@@ -463,7 +360,7 @@ class DonacionTest {
             donacion.registrarEntrega(java.time.LocalDateTime.of(2026, 3, 15, 14, 30), "entregada");
 
             assertThat(donacion.iniciarTraslado("ruta 1")).isFalse();
-            assertThat(donacion.fueEntregada()).isTrue();
+            assertThat(donacion.estaEnEstado("ENTREGADA")).isTrue();
         }
 
         @Test

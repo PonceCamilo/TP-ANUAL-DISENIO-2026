@@ -3,7 +3,6 @@ package ar.utn.donatrack.donaciones.models.estado;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -52,10 +51,6 @@ public abstract class Estado<E extends Estado<E>> {
 
     public boolean es(String nombreEstado) {
         return nombre.equals(nombreEstado);
-    }
-
-    public Set<String> destinosPermitidos() {
-        return transiciones.keySet();
     }
 
     protected static boolean sinJustificacion(String justificacion) {

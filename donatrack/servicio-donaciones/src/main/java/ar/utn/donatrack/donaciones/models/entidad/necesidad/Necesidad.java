@@ -1,7 +1,6 @@
 package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
-import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -94,10 +93,6 @@ public abstract class Necesidad {
 
     public boolean estaSatisfechaAl(LocalDate fecha) {
         return cantidadRecibidaAl(fecha) >= cantidadObjetivo;
-    }
-
-    public boolean estaSatisfecha() {
-        return estaSatisfechaAl(FechaHoraArgentina.hoy());
     }
 
     /**

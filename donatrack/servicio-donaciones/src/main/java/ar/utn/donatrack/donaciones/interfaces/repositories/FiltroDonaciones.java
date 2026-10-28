@@ -23,14 +23,6 @@ public record FiltroDonaciones(String estado, UUID idDonante, String subcategori
         subcategoria = textoONulo(subcategoria);
     }
 
-    public FiltroDonaciones(String estado, UUID idDonante, String subcategoria, UUID idEntidad) {
-        this(estado, idDonante, subcategoria, idEntidad, false);
-    }
-
-    public static FiltroDonaciones sinFiltros() {
-        return new FiltroDonaciones(null, null, null, null);
-    }
-
     private static String textoONulo(String texto) {
         return texto == null || texto.isBlank() ? null : texto.strip();
     }
