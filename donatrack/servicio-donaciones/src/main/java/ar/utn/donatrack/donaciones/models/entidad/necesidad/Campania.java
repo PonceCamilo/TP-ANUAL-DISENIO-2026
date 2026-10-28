@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -78,9 +79,24 @@ public class Campania {
         return necesidades.removeIf(necesidad -> necesidad.getId().equals(necesidadId));
     }
 
-    public List<Necesidad> necesidadesCompatiblesCon(String subcategoria) {
+    /** Una campaña sin fecha de inicio o de fin no está acotada de ese lado. */
+    public boolean estaVigenteAl(LocalDate fecha) {
+        return (fechaInicio == null || !fecha.isBefore(fechaInicio))
+                && (fechaFin == null || !fecha.isAfter(fechaFin));
+    }
+
+    /**
+     * Necesidades que todavía pueden recibir una donación de esa subcategoría a
+     * la fecha: compatibles y sin satisfacer, en una campaña vigente. Antes se
+     * contaban también las satisfechas y las de campañas terminadas.
+     */
+    public List<Necesidad> necesidadesAbiertasCompatiblesCon(Subcategoria subcategoria, LocalDate fecha) {
+        if (!estaVigenteAl(fecha)) {
+            return List.of();
+        }
         return necesidades.stream()
                 .filter(necesidad -> necesidad.esCompatibleCon(subcategoria))
+                .filter(necesidad -> !necesidad.estaSatisfechaAl(fecha))
                 .toList();
     }
 }

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
@@ -96,8 +97,7 @@ public class EntidadesBeneficiariasService {
 
         Campania campaniaTarget = validador.validarYObtenerCampania(entidad, campaniaId);
 
-        // Transformamos el DTO a la Necesidad real de forma segura
-        Necesidad nuevaNecesidad = mapper.toNecesidadModel(dto);
+        Necesidad nuevaNecesidad = dto.crear(FechaHoraArgentina.hoy());
         campaniaTarget.agregarNecesidad(nuevaNecesidad);
 
         repositorio.guardar(entidad);
@@ -128,7 +128,7 @@ public class EntidadesBeneficiariasService {
         Necesidad necesidad = validador.validarYObtenerNecesidad(campania, necesidadId);
 
         // Rechaza el cambio de tipo (EXTRAORDINARIA <-> RECURRENTE)
-        mapper.actualizarNecesidadDesde(necesidad, dto);
+        dto.aplicarEn(necesidad);
 
         repositorio.guardar(entidad);
 

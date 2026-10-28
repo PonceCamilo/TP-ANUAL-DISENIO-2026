@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
@@ -29,6 +32,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -270,6 +274,32 @@ class LogisticaEventosServiceTest {
 
             assertThat(donacion.fueEntregada()).isTrue();
             assertThat(donacion.getHistorialEstados().getLast().getJustificacion()).contains("AB123CD");
+        }
+
+        @Test
+        @DisplayName("Lo entregado cuenta para las necesidades de la entidad a la fecha de entrega")
+        void imputaALasNecesidades() {
+            // Cierra el ciclo de cantidades: antes cantidadRecibida no se movía nunca.
+            prepararParaEntrega();
+            donacion.getBienes().add(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
+                    .cantidad(30).unidad("kg").build());
+            Campania campania = new Campania();
+            campania.setIdCampania(UUID.randomUUID());
+            campania.setFechaInicio(LocalDate.of(2026, 3, 1));
+            campania.setFechaFin(LocalDate.of(2026, 3, 31));
+            NecesidadExtraordinaria arroz = new NecesidadExtraordinaria();
+            arroz.setNombre("Arroz para el comedor");
+            arroz.setCantidadObjetivo(100);
+            campania.agregarNecesidad(arroz);
+            entidad.agregarCampania(campania);
+            when(donacionesRepositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+            when(donanteRepositorio.buscarPorId(idDonante)).thenReturn(Optional.of(donanteConEmail(EMAIL_DONANTE)));
+
+            servicio.procesarEntregaExitosa(evento());
+
+            assertThat(arroz.getCantidadRecibida()).isEqualTo(30);
+            verify(entidadesRepositorio).guardar(entidad);
         }
 
         @Test

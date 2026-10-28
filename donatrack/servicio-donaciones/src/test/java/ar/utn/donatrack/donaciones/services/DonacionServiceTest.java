@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.config.DonacionesProperties;
 import ar.utn.donatrack.donaciones.notificaciones.Notificador;
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
@@ -329,6 +331,32 @@ class DonacionServiceTest {
             servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
 
             verify(incentivosClient).notificarDonacionExitosa(eq(donacion), eq("juan@example.com"), eq("EMAIL"), any());
+        }
+
+        @Test
+        @DisplayName("Al pasar a ENTREGADA a mano, lo entregado cuenta para las necesidades de la entidad")
+        void entregadaImputaALasNecesidades() {
+            EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
+            Campania campania = new Campania();
+            campania.setIdCampania(UUID.randomUUID());
+            NecesidadExtraordinaria arroz = new NecesidadExtraordinaria();
+            arroz.setNombre("Arroz");
+            arroz.setCantidadObjetivo(100);
+            campania.agregarNecesidad(arroz);
+            entidad.agregarCampania(campania);
+            donacion.getBienes().add(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
+                    .cantidad(25).unidad("kg").build());
+            avanzarHastaEnTraslado(donacion);
+            donacion.setIdEntidadBeneficiaria(entidad.getId());
+            when(repositorio.buscarPorId(donacion.getId())).thenReturn(Optional.of(donacion));
+            when(entidadesRepositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+
+            servicio.cambiarEstado(donacion.getId(), dtoCambioEstado("ENTREGADA", null));
+
+            // Se imputa la suma de los bienes: el del escenario (5) y el agregado (25).
+            assertThat(donacion.cantidadTotal()).isEqualTo(30);
+            assertThat(arroz.getCantidadRecibida()).isEqualTo(30);
+            verify(entidadesRepositorio).guardar(entidad);
         }
 
         @Test

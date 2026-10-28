@@ -1,7 +1,9 @@
 package ar.utn.donatrack.donaciones.models.entidad;
 
-import lombok.experimental.SuperBuilder;
+import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.EntidadPersistible;
+import java.time.LocalDate;
 import java.util.Optional;
 import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
@@ -21,6 +23,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -116,10 +119,47 @@ public class EntidadBeneficiaria extends EntidadPersistible {
                 .or(() -> Optional.of(contactos.getFirst()));
     }
 
-    /** Puntaje del algoritmo de compatibilidad semántica: a más coincidencias, más prioridad. */
-    public int contarNecesidadesCompatiblesCon(String subcategoria) {
+    /**
+     * Puntaje del algoritmo de compatibilidad semántica: cuántas necesidades
+     * abiertas y compatibles tiene la entidad en sus campañas vigentes a la fecha.
+     */
+    public int contarNecesidadesCompatiblesCon(Subcategoria subcategoria, LocalDate fecha) {
+        return necesidadesAbiertasCompatiblesCon(subcategoria, fecha).size();
+    }
+
+    /**
+     * Imputa una donación entregada a las necesidades abiertas compatibles con su
+     * subcategoría: cada una toma lo que le falta para su objetivo, en orden, y si
+     * sobra, el excedente queda en la última, para que lo recibido refleje lo que
+     * llegó. Si ninguna necesidad abierta es compatible, no se imputa nada.
+     *
+     * Las cantidades se toman tal como vienen en los bienes: la necesidad no tiene
+     * unidad propia. Devuelve la cantidad imputada.
+     */
+    public int recibirDonacion(Subcategoria subcategoria, int cantidad, LocalDate fecha) {
+        List<Necesidad> abiertas = necesidadesAbiertasCompatiblesCon(subcategoria, fecha);
+        if (abiertas.isEmpty() || cantidad <= 0) {
+            return 0;
+        }
+        int restante = cantidad;
+        for (Necesidad necesidad : abiertas) {
+            int tomado = Math.min(restante, necesidad.faltanteAl(fecha));
+            necesidad.recibir(tomado, fecha);
+            restante -= tomado;
+        }
+        if (restante > 0) {
+            abiertas.getLast().recibir(restante, fecha);
+        }
+        return cantidad;
+    }
+
+    public int recibirDonacion(Donacion donacion, LocalDate fecha) {
+        return recibirDonacion(donacion.getSubcategoria(), donacion.cantidadTotal(), fecha);
+    }
+
+    private List<Necesidad> necesidadesAbiertasCompatiblesCon(Subcategoria subcategoria, LocalDate fecha) {
         return campanias.stream()
-                .mapToInt(campania -> campania.necesidadesCompatiblesCon(subcategoria).size())
-                .sum();
+                .flatMap(campania -> campania.necesidadesAbiertasCompatiblesCon(subcategoria, fecha).stream())
+                .toList();
     }
 }

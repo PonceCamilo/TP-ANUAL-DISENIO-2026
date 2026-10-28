@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.categoria;
 
+import ar.utn.donatrack.donaciones.util.NormalizadorTexto;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import lombok.EqualsAndHashCode;
@@ -9,9 +10,10 @@ import lombok.Getter;
  * Unidad mínima de asignación dentro del sistema.
  * Cada Donacion resultante de la segmentación queda asociada a una única Subcategoria.
  *
- * La igualdad se basa en el tipo normalizado (lowercase, sin espacios extra)
- * para evitar que "Arroz" y "arroz" sean subcategorías distintas. De eso depende
- * la segmentación, que usa la subcategoría como clave de un Map.
+ * La igualdad se basa en el tipo normalizado (ver NormalizadorTexto: sin
+ * acentos, mayúsculas ni espacios de más) para evitar que "Arroz" y "arroz"
+ * sean subcategorías distintas. De eso depende la segmentación, que usa la
+ * subcategoría como clave de un Map, y el matching contra las necesidades.
  *
  * MAPEO (Entrega 4): es un @Embeddable, así que sus dos columnas viven en la
  * tabla de quien la contiene (donacion y bien) en lugar de tener tabla propia.
@@ -39,7 +41,21 @@ public class Subcategoria {
 
     public Subcategoria(String tipo) {
         this.tipo = tipo;
-        this.tipoNormalizado = tipo == null ? "" : tipo.trim().toLowerCase();
+        this.tipoNormalizado = NormalizadorTexto.normalizar(tipo);
+    }
+
+    public boolean estaVacia() {
+        return tipoNormalizado == null || tipoNormalizado.isEmpty();
+    }
+
+    /** Misma subcategoría, normalizada. Una vacía no coincide con ninguna. */
+    public boolean coincideCon(Subcategoria otra) {
+        return otra != null && !estaVacia() && tipoNormalizado.equals(otra.tipoNormalizado);
+    }
+
+    /** Si el texto (un nombre, una descripción) menciona esta subcategoría. */
+    public boolean estaMencionadaEn(String texto) {
+        return !estaVacia() && NormalizadorTexto.normalizar(texto).contains(tipoNormalizado);
     }
 
     @Override

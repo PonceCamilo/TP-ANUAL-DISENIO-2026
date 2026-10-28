@@ -78,8 +78,16 @@ public class LogisticaEventosService {
         donacion.cambiarEstado(ENTREGADA, "Entrega confirmada", "Entrega confirmada. Camión: " + dto.patenteCamion() + " | Fecha: " + dto.fechaHoraEntrega());
         donacionesRepositorio.guardar(donacion);
 
+        // Lo entregado cuenta para las necesidades de la entidad (cierra el ciclo
+        // de cantidades: antes cantidadRecibida no se actualizaba nunca).
+        EntidadBeneficiaria entidad = entidadDe(donacion);
+        if (entidad != null) {
+            entidad.recibirDonacion(donacion, dto.fechaHoraEntrega().toLocalDate());
+            entidadesRepositorio.guardar(entidad);
+        }
+
         PersonaDonante donante = donanteDe(donacion);
-        notificador.entregaExitosa(donante, entidadDe(donacion), armarComprobante(dto));
+        notificador.entregaExitosa(donante, entidad, armarComprobante(dto));
 
         // notificar a incentivos: DonacionesExitosas depende de entregas confirmadas por logística
         notificador.destinoDe(donante).ifPresent(destino ->

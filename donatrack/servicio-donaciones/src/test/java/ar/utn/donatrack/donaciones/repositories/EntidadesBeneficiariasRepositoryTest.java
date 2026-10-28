@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.repositories;
 
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
@@ -45,6 +46,7 @@ class EntidadesBeneficiariasRepositoryTest {
         fideos.setFechaRegistro(LocalDate.of(2026, 10, 20));
         NecesidadExtraordinaria sillas = new NecesidadExtraordinaria();
         sillas.setNombre("Sillas");
+        sillas.setSubcategoria(new Subcategoria("Sillas"));
         sillas.setCantidadObjetivo(30);
         sillas.setFechaRegistro(LocalDate.of(2026, 10, 21));
 
@@ -99,8 +101,15 @@ class EntidadesBeneficiariasRepositoryTest {
             assertThat(((NecesidadRecurrente) necesidad).getPeriodo()).isEqualTo(Periodicidad.SEMANAL);
             assertThat(necesidad.getFechaRegistro()).isEqualTo(LocalDate.of(2026, 10, 20));
         });
-        assertThat(leida.getNecesidades()).anySatisfy(necesidad ->
-                assertThat(necesidad).isInstanceOf(NecesidadExtraordinaria.class));
+        assertThat(leida.getNecesidades()).anySatisfy(necesidad -> {
+            assertThat(necesidad).isInstanceOf(NecesidadExtraordinaria.class);
+            assertThat(necesidad.getSubcategoria()).isEqualTo(new Subcategoria("sillas"));
+        });
+        // La subcategoría es opcional: la de fideos no tiene y vuelve nula.
+        assertThat(leida.getNecesidades()).anySatisfy(necesidad -> {
+            assertThat(necesidad.getNombre()).isEqualTo("Fideos secos");
+            assertThat(necesidad.getSubcategoria()).isNull();
+        });
     }
 
     @Test

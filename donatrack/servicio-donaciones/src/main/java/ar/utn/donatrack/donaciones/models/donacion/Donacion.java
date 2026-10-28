@@ -305,6 +305,11 @@ public class Donacion extends EntidadPersistible {
                 && this.subcategoria.getTipo().equalsIgnoreCase(subcategoria);
     }
 
+    /** Suma de las cantidades de sus bienes; es lo que se imputa a las necesidades al entregarla. */
+    public int cantidadTotal() {
+        return bienes.stream().mapToInt(Bien::getCantidad).sum();
+    }
+
     public boolean fueEntregada() {
         return estaEnEstado(ENTREGADA);
     }

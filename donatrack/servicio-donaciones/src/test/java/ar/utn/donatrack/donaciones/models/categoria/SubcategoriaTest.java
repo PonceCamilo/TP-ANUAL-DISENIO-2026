@@ -20,6 +20,29 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SubcategoriaTest {
 
     @Test
+    @DisplayName("Normaliza también acentos y espacios internos (como el matching de necesidades)")
+    void normalizaAcentosYEspacios() {
+        assertThat(new Subcategoria("Ropa   de Abrígo")).isEqualTo(new Subcategoria("ropa de abrigo"));
+    }
+
+    @Test
+    @DisplayName("coincideCon() compara normalizado y una vacía no coincide con nada")
+    void coincideCon() {
+        assertThat(new Subcategoria("Arroz").coincideCon(new Subcategoria(" arroz "))).isTrue();
+        assertThat(new Subcategoria("Arroz").coincideCon(new Subcategoria("fideos"))).isFalse();
+        assertThat(new Subcategoria("  ").coincideCon(new Subcategoria("  "))).isFalse();
+        assertThat(new Subcategoria("Arroz").coincideCon(null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("estaMencionadaEn() busca la subcategoría dentro de un texto")
+    void estaMencionadaEn() {
+        assertThat(new Subcategoria("arroz").estaMencionadaEn("Bolsas de ARROZ de 1 kg")).isTrue();
+        assertThat(new Subcategoria("arroz").estaMencionadaEn(null)).isFalse();
+        assertThat(new Subcategoria("").estaMencionadaEn("cualquier cosa")).isFalse();
+    }
+
+    @Test
     @DisplayName("Conserva el texto original tal como lo escribió el usuario")
     void conservaElTextoOriginal() {
         // La normalización es solo para comparar: lo que se muestra sigue siendo

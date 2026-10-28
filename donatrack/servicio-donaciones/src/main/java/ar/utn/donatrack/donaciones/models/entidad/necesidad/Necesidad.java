@@ -1,6 +1,9 @@
 package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
@@ -24,6 +27,10 @@ import java.util.UUID;
  * SINGLE_TABLE esas columnas quedarían nullable y nada impediría cargar una
  * extraordinaria con periodicidad, que es un estado imposible en el dominio.
  * JOINED hace que la base misma impida esa inconsistencia.
+ *
+ * CICLO DE CANTIDADES: lo recibido aumenta cuando se entrega una donación
+ * compatible a la entidad (EntidadBeneficiaria.recibirDonacion). Las necesidades
+ * satisfechas dejan de sumar puntaje en el matching.
  */
 @Entity
 @Table(name = "necesidad", indexes = @Index(name = "idx_necesidad_campania", columnList = "campania_id"))
@@ -43,6 +50,14 @@ public abstract class Necesidad {
     @Column(name = "descripcion", length = 1000)
     protected String descripcion;
 
+    /**
+     * Lo que la entidad necesita (sillas, ropa de abrigo, arroz…), como pide el
+     * enunciado. Es opcional para no romper las necesidades ya cargadas: sin ella,
+     * el matching busca la subcategoría en el nombre y la descripción.
+     */
+    @Embedded
+    protected Subcategoria subcategoria;
+
     @Column(name = "fecha_registro")
     protected LocalDate fechaRegistro;
 
@@ -52,25 +67,52 @@ public abstract class Necesidad {
     @Column(name = "cantidad_recibida")
     protected int cantidadRecibida;
 
-    public void recibirDonacion(int cantidad) {
+    public abstract TipoNecesidad tipo();
+
+    /** Datos que se pueden editar (PUT): no incluyen lo recibido ni el período en curso. */
+    public void actualizarDatos(String nombre, String descripcion, int cantidadObjetivo, Subcategoria subcategoria) {
+        this.nombre = nombre;
+        this.descripcion = descripcion;
+        this.cantidadObjetivo = cantidadObjetivo;
+        this.subcategoria = subcategoria;
+    }
+
+    /** Suma lo recibido en esa fecha (la recurrente, antes, pasa al período que corresponda). */
+    public void recibir(int cantidad, LocalDate fecha) {
         this.cantidadRecibida += cantidad;
     }
 
+    /** Lo que falta para el objetivo a esa fecha; 0 si ya se alcanzó. */
+    public int faltanteAl(LocalDate fecha) {
+        return Math.max(0, cantidadObjetivo - cantidadRecibidaAl(fecha));
+    }
+
+    /** Lo recibido que cuenta a esa fecha (en la recurrente, solo lo del período vigente). */
+    public int cantidadRecibidaAl(LocalDate fecha) {
+        return cantidadRecibida;
+    }
+
+    public boolean estaSatisfechaAl(LocalDate fecha) {
+        return cantidadRecibidaAl(fecha) >= cantidadObjetivo;
+    }
+
+    public boolean estaSatisfecha() {
+        return estaSatisfechaAl(FechaHoraArgentina.hoy());
+    }
+
     /**
-     * Base del algoritmo de compatibilidad semántica: la necesidad sirve para una
-     * donación si su nombre o su descripción mencionan la subcategoría donada.
+     * Si una donación de esa subcategoría sirve para esta necesidad. Si la
+     * necesidad declara su subcategoría, se comparan las dos normalizadas; si no,
+     * se busca la subcategoría en el nombre o la descripción, con la misma
+     * normalización (sin acentos, mayúsculas ni espacios de más).
      */
-    public boolean esCompatibleCon(String subcategoria) {
-        if (subcategoria == null || subcategoria.isBlank()) {
+    public boolean esCompatibleCon(Subcategoria buscada) {
+        if (buscada == null || buscada.estaVacia()) {
             return false;
         }
-        String objetivo = subcategoria.toLowerCase();
-        return contieneTexto(nombre, objetivo) || contieneTexto(descripcion, objetivo);
+        if (subcategoria != null && !subcategoria.estaVacia()) {
+            return subcategoria.coincideCon(buscada);
+        }
+        return buscada.estaMencionadaEn(nombre) || buscada.estaMencionadaEn(descripcion);
     }
-
-    private boolean contieneTexto(String texto, String objetivo) {
-        return texto != null && texto.toLowerCase().contains(objetivo);
-    }
-
-    public abstract boolean estaSatisfecha();
 }

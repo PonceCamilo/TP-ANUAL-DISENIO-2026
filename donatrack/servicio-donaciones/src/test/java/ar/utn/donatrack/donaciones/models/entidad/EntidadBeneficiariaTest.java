@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.entidad;
 
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
@@ -113,6 +114,9 @@ class EntidadBeneficiariaTest {
     @DisplayName("contarNecesidadesCompatiblesCon() - insumo del algoritmo de asignación")
     class ContarNecesidadesCompatibles {
 
+        /** Un día dentro de las campañas de prueba (1 de marzo a 1 de abril de 2026). */
+        private final LocalDate durante = LocalDate.of(2026, 3, 15);
+
         @Test
         @DisplayName("Cuenta las necesidades compatibles a lo largo de TODAS las campañas")
         void cuentaEnTodasLasCampanias() {
@@ -127,7 +131,7 @@ class EntidadBeneficiariaTest {
             entidad.agregarNecesidadACampania(primera, necesidad("Colchones", "Colchones de una plaza"));
             entidad.agregarNecesidadACampania(segunda, necesidad("Más arroz", "Arroz para el guiso"));
 
-            assertThat(entidad.contarNecesidadesCompatiblesCon("arroz")).isEqualTo(2);
+            assertThat(entidad.contarNecesidadesCompatiblesCon(new Subcategoria("arroz"), durante)).isEqualTo(2);
         }
 
         @Test
@@ -137,13 +141,24 @@ class EntidadBeneficiariaTest {
             entidad.agregarCampania(campania);
             entidad.agregarNecesidadACampania(campania, necesidad("Colchones", "Colchones de una plaza"));
 
-            assertThat(entidad.contarNecesidadesCompatiblesCon("arroz")).isZero();
+            assertThat(entidad.contarNecesidadesCompatiblesCon(new Subcategoria("arroz"), durante)).isZero();
         }
 
         @Test
         @DisplayName("Devuelve 0 cuando la entidad no tiene ninguna campaña")
         void ceroSinCampanias() {
-            assertThat(entidad.contarNecesidadesCompatiblesCon("arroz")).isZero();
+            assertThat(entidad.contarNecesidadesCompatiblesCon(new Subcategoria("arroz"), durante)).isZero();
+        }
+
+        @Test
+        @DisplayName("No cuenta las campañas que no están vigentes a la fecha")
+        void noCuentaCampaniasTerminadas() {
+            Campania campania = campaniaVacia("Colecta post inundación");
+            entidad.agregarCampania(campania);
+            entidad.agregarNecesidadACampania(campania, necesidad("Arroz", "Bolsas de arroz"));
+
+            assertThat(entidad.contarNecesidadesCompatiblesCon(new Subcategoria("arroz"), LocalDate.of(2026, 10, 1)))
+                    .isZero();
         }
 
         @Test
@@ -153,7 +168,65 @@ class EntidadBeneficiariaTest {
             entidad.agregarCampania(campania);
             entidad.agregarNecesidadACampania(campania, necesidad("Arroz", "Bolsas de arroz"));
 
-            assertThat(entidad.contarNecesidadesCompatiblesCon("ARROZ")).isEqualTo(1);
+            assertThat(entidad.contarNecesidadesCompatiblesCon(new Subcategoria("ARROZ"), durante)).isEqualTo(1);
+        }
+    }
+
+    @Nested
+    @DisplayName("recibirDonacion() - lo entregado se imputa a las necesidades")
+    class RecibirDonacion {
+
+        private final LocalDate durante = LocalDate.of(2026, 3, 15);
+        private Necesidad arroz;
+        private Necesidad masArroz;
+
+        @BeforeEach
+        void cargar() {
+            Campania campania = campaniaVacia("Colecta post inundación");
+            entidad.agregarCampania(campania);
+            arroz = necesidad("Arroz", "Bolsas de arroz");             // objetivo 100
+            masArroz = necesidad("Más arroz", "Arroz para el guiso");  // objetivo 100
+            entidad.agregarNecesidadACampania(campania, arroz);
+            entidad.agregarNecesidadACampania(campania, necesidad("Colchones", "Colchones de una plaza"));
+            entidad.agregarNecesidadACampania(campania, masArroz);
+        }
+
+        @Test
+        @DisplayName("Llena las necesidades compatibles en orden, cada una hasta su objetivo")
+        void llenaEnOrden() {
+            int imputado = entidad.recibirDonacion(new Subcategoria("arroz"), 130, durante);
+
+            assertThat(imputado).isEqualTo(130);
+            assertThat(arroz.getCantidadRecibida()).isEqualTo(100);
+            assertThat(masArroz.getCantidadRecibida()).isEqualTo(30);
+        }
+
+        @Test
+        @DisplayName("Si sobra después de cubrir todas, el excedente queda en la última")
+        void excedenteEnLaUltima() {
+            entidad.recibirDonacion(new Subcategoria("arroz"), 250, durante);
+
+            assertThat(arroz.getCantidadRecibida()).isEqualTo(100);
+            assertThat(masArroz.getCantidadRecibida()).isEqualTo(150);
+        }
+
+        @Test
+        @DisplayName("Las satisfechas no reciben más: va a la siguiente abierta")
+        void saltaLasSatisfechas() {
+            arroz.recibir(100, durante);
+
+            entidad.recibirDonacion(new Subcategoria("arroz"), 40, durante);
+
+            assertThat(arroz.getCantidadRecibida()).isEqualTo(100);
+            assertThat(masArroz.getCantidadRecibida()).isEqualTo(40);
+        }
+
+        @Test
+        @DisplayName("Sin necesidades abiertas compatibles no se imputa nada")
+        void sinCompatibles() {
+            assertThat(entidad.recibirDonacion(new Subcategoria("bicicletas"), 10, durante)).isZero();
+            assertThat(entidad.recibirDonacion(new Subcategoria("arroz"), 10, LocalDate.of(2026, 10, 1))).isZero();
+            assertThat(arroz.getCantidadRecibida()).isZero();
         }
     }
 

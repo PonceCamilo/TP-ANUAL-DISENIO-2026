@@ -348,7 +348,7 @@ class EntidadesBeneficiariasServiceTest {
             // Si una edición del catálogo borrara lo recibido, se perdería el
             // avance real de la necesidad.
             Necesidad necesidad = necesidadYaCargada("Arroz");
-            necesidad.recibirDonacion(40);
+            necesidad.recibir(40, FechaHoraArgentina.hoy());
             when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             servicio.actualizarNecesidad(entidad.getId(), campania.getIdCampania(), necesidad.getId(),

@@ -25,6 +25,7 @@ public abstract class NecesidadResponseDTO {
     private UUID id;
     private String nombre;
     private String descripcion;
+    private String subcategoria;
     private Double cantidadObjetivo;
     private Double cantidadRecibida;
     private boolean satisfecha;

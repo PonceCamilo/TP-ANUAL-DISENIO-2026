@@ -87,8 +87,20 @@ public class DonacionService {
     }
 
     if (donacion.fueEntregada()) {
+      imputarANecesidades(donacion);
       notificarDonacionExitosa(donacion);
     }
+  }
+
+  /** Lo entregado cuenta para las necesidades de la entidad, igual que con el aviso de logística. */
+  private void imputarANecesidades(Donacion donacion) {
+    if (donacion.getIdEntidadBeneficiaria() == null) {
+      return;
+    }
+    entidadesRepositorio.buscarPorId(donacion.getIdEntidadBeneficiaria()).ifPresent(entidad -> {
+      entidad.recibirDonacion(donacion, FechaHoraArgentina.hoy());
+      entidadesRepositorio.guardar(entidad);
+    });
   }
 
   /** Corrige un bien puntual de la donación (ver Donacion.reemplazarBien para las reglas). */

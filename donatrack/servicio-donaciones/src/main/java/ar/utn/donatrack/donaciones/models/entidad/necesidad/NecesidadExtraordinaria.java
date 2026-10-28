@@ -20,7 +20,8 @@ import lombok.Setter;
 @Setter
 public class NecesidadExtraordinaria extends Necesidad {
 
-    public boolean estaSatisfecha() {
-        return this.cantidadRecibida >= this.cantidadObjetivo;
+    @Override
+    public TipoNecesidad tipo() {
+        return TipoNecesidad.EXTRAORDINARIA;
     }
 }
