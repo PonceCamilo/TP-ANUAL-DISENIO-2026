@@ -174,7 +174,7 @@ class DonanteCsvRowParserTest {
         }
 
         @Test
-        @DisplayName("Un documento que no corresponde a su tipo se rechaza (DNI de 3 dígitos, CUIT mal verificado)")
+        @DisplayName("Un documento que no corresponde a su tipo se rechaza (DNI de 3 dígitos, CUIT de 10)")
         void documentoInvalido() {
             assertThatThrownBy(() -> parser.parsear(
                     new String[]{"HUMANA", "DNI", "123", "Juan Pérez", "juan@mail.com", ""}, 4))
@@ -182,9 +182,18 @@ class DonanteCsvRowParserTest {
                     .hasMessageContaining("Línea 4")
                     .hasMessageContaining("DNI");
             assertThatThrownBy(() -> parser.parsear(
-                    new String[]{"JURIDICA", "CUIT", "30-11122233-4", "Fundación", "info@fundacion.org", ""}, 5))
+                    new String[]{"JURIDICA", "CUIT", "30-1112223-4", "Fundación", "info@fundacion.org", ""}, 5))
                     .isInstanceOf(CsvFormatoException.class)
                     .hasMessageContaining("CUIT");
+        }
+
+        @Test
+        @DisplayName("Un CUIT con la forma correcta se acepta aunque su dígito verificador no cierre, como los del CSV del enunciado")
+        void cuitDelEnunciado() {
+            DonanteImportDto fila = parser.parsear(
+                    new String[]{"JURIDICA", "CUIT", "30-46632757-9", "Fundación", "info@fundacion.org", ""}, 5);
+
+            assertThat(fila.documento()).isEqualTo("30466327579");
         }
 
         @Test

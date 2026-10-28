@@ -56,8 +56,8 @@ public class DonanteCsvRowParser {
     }
 
     /**
-     * El documento validado por tipo (DNI de 7 u 8 dígitos, CUIT con dígito
-     * verificador…), y CUIT para las personas jurídicas. Antes se aceptaba
+     * El documento validado por tipo (DNI de 7 u 8 dígitos, CUIT de 11 dígitos…),
+     * y CUIT para las personas jurídicas. Antes se aceptaba
      * cualquier texto no vacío.
      */
     private static Documento documentoDe(String tipoPersona, String tipoDoc, String doc, int numeroLinea) {

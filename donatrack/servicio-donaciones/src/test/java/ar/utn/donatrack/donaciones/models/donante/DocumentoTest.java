@@ -25,6 +25,7 @@ class DocumentoTest {
             "DNI, 1234567", "DNI, 28456905",
             "LC, 123456", "LE, 12345678",
             "CUIT, 30-11122233-5", "CUIT, 20-12345678-6", "CUIL, 27-33444555-6",
+            "CUIT, 30-12345678-9", "CUIT, 30-46632757-9",
             "PASAPORTE, AAA123456"
     })
     void validos(String tipo, String numero) {
@@ -35,7 +36,7 @@ class DocumentoTest {
     @CsvSource({
             "DNI, 123456", "DNI, 123456789", "DNI, 12A45678",
             "LC, 12345",
-            "CUIT, 30-11122233-4", "CUIT, 3011122233", "CUIL, 27-33444555-3",
+            "CUIT, 3011122233", "CUIT, 301112223355", "CUIT, 30-1112223A-5", "CUIL, 2733444555",
             "PASAPORTE, AB12"
     })
     void invalidos(String tipo, String numero) {
@@ -62,9 +63,12 @@ class DocumentoTest {
     }
 
     @Test
-    @DisplayName("El dígito verificador del CUIT: un dígito cambiado no pasa")
-    void digitoVerificador() {
-        assertThat(TipoDocumento.CUIT.esValido("30111222335")).isTrue();
-        assertThat(TipoDocumento.CUIT.esValido("30111222325")).isFalse();
+    @DisplayName("CUIT y CUIL se validan por su forma, sin dígito verificador: pasan los del enunciado y su CSV")
+    void cuitSinDigitoVerificador() {
+        // El ejemplo del enunciado y 580 CUIT del CSV de 20.000 filas no cumplen el
+        // dígito verificador: con él no se podían importar.
+        assertThat(TipoDocumento.CUIT.esValido("30123456789")).isTrue();
+        assertThat(TipoDocumento.CUIT.esValido("30466327579")).isTrue();
+        assertThat(TipoDocumento.CUIT.esValido("3046632757")).isFalse();
     }
 }

@@ -14,8 +14,7 @@ import java.util.Arrays;
  * Antes eran dos String sueltos y nadie revisaba que el número tuviera sentido
  * para el tipo (el CSV aceptaba cualquier cosa no vacía). Ahora un Documento solo
  * se crea válido: el número se guarda normalizado (sin puntos, guiones ni
- * espacios) y debe cumplir la forma de su tipo; CUIT y CUIL, también el dígito
- * verificador.
+ * espacios) y debe cumplir la forma de su tipo (ver TipoDocumento).
  *
  * MAPEO: @Embeddable en las mismas columnas de antes (tipo_documento y
  * numero_documento): no cambia el esquema.
