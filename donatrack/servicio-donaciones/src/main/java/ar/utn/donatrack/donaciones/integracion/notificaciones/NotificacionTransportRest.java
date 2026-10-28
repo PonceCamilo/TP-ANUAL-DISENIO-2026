@@ -1,8 +1,6 @@
 package ar.utn.donatrack.donaciones.integracion.notificaciones;
 
 import ar.utn.donatrack.donaciones.interfaces.integracion.NotificacionTransport;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -16,15 +14,13 @@ import org.springframework.web.client.RestClient;
  *   - permite volver atrás con una sola property si la cola da problemas;
  *   - sirve para comparar los dos enfoques en la defensa.
  *
- * Si notificaciones no está levantado, loguea el error pero NO corta el flujo
- * que lo invocó: una donación ya registrada no puede reportarse como fallida
- * porque el aviso posterior no se pudo enviar.
+ * Si notificaciones no está levantado, la excepción sale hacia RelayDeMensajes,
+ * que reintenta el aviso más tarde. El flujo de negocio ya no se entera: el aviso
+ * se guardó en la bandeja de salida y se envía fuera de la operación.
  */
 @Component
 @ConditionalOnProperty(name = "notificaciones.transporte", havingValue = "rest", matchIfMissing = true)
 public class NotificacionTransportRest implements NotificacionTransport {
-
-    private static final Logger log = LoggerFactory.getLogger(NotificacionTransportRest.class);
 
     private final RestClient restClient;
 
@@ -33,16 +29,11 @@ public class NotificacionTransportRest implements NotificacionTransport {
     }
 
     public void enviar(SolicitudNotificacionMensaje solicitud) {
-        try {
-            restClient.post()
-                    .uri("/notificaciones")
-                    .body(solicitud)
-                    .retrieve()
-                    .toBodilessEntity();
-        } catch (Exception e) {
-            log.error("[Notificaciones/REST] Error al enviar notificación a {}: {}",
-                    solicitud.destinatario(), e.getMessage());
-        }
+        restClient.post()
+                .uri("/notificaciones")
+                .body(solicitud)
+                .retrieve()
+                .toBodilessEntity();
     }
 
     public String nombre() {

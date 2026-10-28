@@ -16,7 +16,10 @@ import ar.utn.donatrack.donaciones.integracion.notificaciones.SolicitudNotificac
  */
 public interface NotificacionTransport {
 
-    /** Entrega la solicitud al Servicio de Notificaciones por el medio que corresponda. */
+    /**
+     * Entrega la solicitud al Servicio de Notificaciones. Si no pudo, lanza la
+     * excepción: el aviso está en la bandeja de salida y RelayDeMensajes lo reintenta.
+     */
     void enviar(SolicitudNotificacionMensaje solicitud);
 
     /** Nombre del transporte, solo para dejar rastro en los logs de arranque. */

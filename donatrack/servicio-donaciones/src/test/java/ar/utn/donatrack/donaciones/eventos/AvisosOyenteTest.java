@@ -33,11 +33,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Lo que sale hacia afuera cuando algo le pasa a una donación. Antes se probaba
- * dentro de los tests de DonacionService y SegmentadorDonacionesService.
+ * dentro de los tests de DonacionService y SegmentadorDonacionesService. Acá el
+ * NotificacionClient es un mock: lo que verifica el test es qué avisos se dejan
+ * (el envío real lo hace el relay de la bandeja de salida).
  */
 @DisplayName("AvisosOyente - avisos a las personas y a incentivos, después de confirmar")
 class AvisosOyenteTest {
@@ -110,7 +112,7 @@ class AvisosOyenteTest {
         }
 
         @Test
-        @DisplayName("Un aviso que falla no se propaga: el cambio ya está confirmado")
+        @DisplayName("Si el aviso no se puede dejar en la bandeja, falla: el cambio se deshace con él")
         void avisoQueFalla() {
             EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
             when(entidades.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
@@ -118,8 +120,9 @@ class AvisosOyenteTest {
             doThrow(new IllegalStateException("caído")).when(notificacionClient)
                     .enviarNotificacion(anyString(), anyString(), anyString());
 
-            assertThatCode(() -> oyente.alAsignarse(new DonacionAsignada(UUID.randomUUID(), idDonante, entidad.getId())))
-                    .doesNotThrowAnyException();
+            // Corre antes del commit: el aviso y el cambio se confirman juntos o no.
+            assertThatThrownBy(() -> oyente.alAsignarse(new DonacionAsignada(UUID.randomUUID(), idDonante, entidad.getId())))
+                    .isInstanceOf(IllegalStateException.class);
         }
     }
 

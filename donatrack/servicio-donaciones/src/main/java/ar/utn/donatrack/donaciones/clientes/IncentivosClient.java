@@ -1,13 +1,12 @@
 package ar.utn.donatrack.donaciones.clientes;
 
+import ar.utn.donatrack.donaciones.salida.Destinos;
+import ar.utn.donatrack.donaciones.salida.BandejaDeSalida;
+import lombok.RequiredArgsConstructor;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,7 +14,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Cliente HTTP que llama al servicio-incentivos (puerto 8083).
+ * Avisos al servicio-incentivos (puerto 8083).
  *
  *  - Cuando el donante registra una donación → notifica a incentivos para que
  *    actualice métricas y verifique misiones completadas.
@@ -27,38 +26,26 @@ import java.util.UUID;
  * fecha en que se había registrado la donación y no con la de la entrega, y el
  * registro tomaba la hora de la zona del servidor en lugar de la de Argentina.
  *
- * Si incentivos no está levantado, loguea el error pero NO frena el flujo de donaciones.
+ * Desde la Entrega 5 los avisos no se envían en el momento: quedan en la bandeja
+ * de salida, en la transacción de quien llama, y los manda EnviadorIncentivos a
+ * través de RelayDeMensajes, con reintentos si incentivos no está levantado.
  */
 @Component
+@RequiredArgsConstructor
 public class IncentivosClient {
 
-    private static final Logger log = LoggerFactory.getLogger(IncentivosClient.class);
-
-    private final RestClient restClient;
-
-    public IncentivosClient(@Value("${servicios.incentivos.url:http://localhost:8083}") String baseUrl) {
-        this.restClient = RestClient.create(baseUrl);
-    }
+    private final BandejaDeSalida salida;
 
     public void notificarDonacionRegistrada(UUID donanteId, String destinatario, String medio,
                                             int cantidadBienes, List<String> categoriasDonadas, LocalDateTime fecha) {
-        enviar("/api/incentivos/donantes/donacion", "Donación registrada", new SolicitudIncentivo(
+        salida.encolar(Destinos.INCENTIVOS_DONACION_REGISTRADA, new SolicitudIncentivo(
                 donanteId, destinatario, medio, cantidadBienes, categoriasDonadas, fecha, null));
     }
 
     public void notificarDonacionExitosa(Donacion donacion, String destinatario, String medio, LocalDateTime fechaEntrega) {
-        enviar("/api/incentivos/donantes/donacion-exitosa", "Donación exitosa", new SolicitudIncentivo(
+        salida.encolar(Destinos.INCENTIVOS_DONACION_EXITOSA, new SolicitudIncentivo(
                 donacion.getIdDonante(), destinatario, medio,
                 cantidadBienes(donacion), categoriasDonadas(donacion), fechaEntrega, entidadBeneficiaria(donacion)));
-    }
-
-    private void enviar(String ruta, String evento, SolicitudIncentivo solicitud) {
-        try {
-            restClient.post().uri(ruta).body(solicitud).retrieve().toBodilessEntity();
-            log.info("[IncentivosClient] {} enviada para donante {}", evento, solicitud.donanteId());
-        } catch (Exception e) {
-            log.error("[IncentivosClient] Error al notificar {}: {}", evento.toLowerCase(), e.getMessage());
-        }
     }
 
     private int cantidadBienes(Donacion donacion) {

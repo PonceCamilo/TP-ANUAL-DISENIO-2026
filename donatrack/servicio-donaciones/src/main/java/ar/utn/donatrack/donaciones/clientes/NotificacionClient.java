@@ -1,41 +1,28 @@
 package ar.utn.donatrack.donaciones.clientes;
 
 import ar.utn.donatrack.donaciones.integracion.notificaciones.SolicitudNotificacionMensaje;
-import ar.utn.donatrack.donaciones.interfaces.integracion.NotificacionTransport;
-import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import ar.utn.donatrack.donaciones.salida.BandejaDeSalida;
+import ar.utn.donatrack.donaciones.salida.Destinos;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
  * Punto único de salida hacia el Servicio de Notificaciones.
  *
- * Desde la Entrega 4 ya no habla HTTP directamente: arma el mensaje y delega en
- * un NotificacionTransport, que puede ser sincrónico (REST) o asincrónico
- * (cola de RabbitMQ) según la property `notificaciones.transporte`.
+ * Desde la Entrega 5 no envía en el momento: deja el aviso en la bandeja de
+ * salida, en la transacción de quien llama, y RelayDeMensajes lo manda por el
+ * transporte configurado (REST o la cola de RabbitMQ) y lo reintenta si falla.
  *
- * La firma de enviarNotificacion() NO cambió a propósito: DonacionService,
- * LogisticaEventosService e InactividadDonantesService siguen usándola igual y
- * no saben —ni les importa— por dónde viaja el aviso.
+ * La firma de enviarNotificacion() NO cambió a propósito: Notificador y quienes
+ * lo usan no saben —ni les importa— por dónde ni cuándo viaja el aviso.
  */
 @Component
+@RequiredArgsConstructor
 public class NotificacionClient {
 
-    private static final Logger log = LoggerFactory.getLogger(NotificacionClient.class);
-
-    private final NotificacionTransport transporte;
-
-    public NotificacionClient(NotificacionTransport transporte) {
-        this.transporte = transporte;
-    }
-
-    /** Deja constancia en el arranque de qué transporte quedó activo. */
-    @PostConstruct
-    public void registrarTransporteActivo() {
-        log.info("[NotificacionClient] Transporte de notificaciones: {}", transporte.nombre());
-    }
+    private final BandejaDeSalida salida;
 
     public void enviarNotificacion(String destinatario, String mensaje, String medio) {
-        transporte.enviar(new SolicitudNotificacionMensaje(destinatario, mensaje, medio));
+        salida.encolar(Destinos.NOTIFICACION, new SolicitudNotificacionMensaje(destinatario, mensaje, medio));
     }
 }

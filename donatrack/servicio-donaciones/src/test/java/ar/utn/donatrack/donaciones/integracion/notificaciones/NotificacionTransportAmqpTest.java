@@ -11,10 +11,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.core.RabbitOperations;
+import org.springframework.amqp.AmqpTimeoutException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -32,11 +37,14 @@ import static org.mockito.Mockito.verify;
  * originó la notificación.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("NotificacionTransportAmqp - publicación en la cola de notificaciones")
+@DisplayName("NotificacionTransportAmqp - publicación con confirmación del broker")
 class NotificacionTransportAmqpTest {
 
     @Mock
     private RabbitTemplate rabbitTemplate;
+
+    @Mock
+    private RabbitOperations operaciones;
 
     @InjectMocks
     private NotificacionTransportAmqp transporte;
@@ -49,21 +57,29 @@ class NotificacionTransportAmqpTest {
                 "juan@example.com", "Tu donación fue asignada a Comedor Los Pibes.", "EMAIL");
     }
 
+    /** El template ejecuta el bloque sobre un canal con confirmaciones (acá, simulado). */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void conCanal() {
+        when(rabbitTemplate.invoke(any(RabbitOperations.OperationsCallback.class))).thenAnswer(invocacion ->
+                ((RabbitOperations.OperationsCallback) invocacion.getArgument(0)).doInRabbit(operaciones));
+    }
+
     @Nested
     @DisplayName("Publicación del mensaje")
     class Publicacion {
 
         @Test
-        @DisplayName("Publica en el exchange y la routing key configurados")
-        void publicaEnElDestinoCorrecto() {
+        @DisplayName("Publica en el exchange y la routing key configurados y espera la confirmación")
+        void publicaYEsperaLaConfirmacion() {
             // Si el exchange o la routing key no coinciden con los que declara
             // RabbitMQConfig, el mensaje se descarta en silencio.
+            conCanal();
+
             transporte.enviar(solicitud());
 
-            verify(rabbitTemplate).convertAndSend(
-                    org.mockito.ArgumentMatchers.eq(RabbitMQConfig.EXCHANGE),
-                    org.mockito.ArgumentMatchers.eq(RabbitMQConfig.ROUTING_KEY),
+            verify(operaciones).convertAndSend(eq(RabbitMQConfig.EXCHANGE), eq(RabbitMQConfig.ROUTING_KEY),
                     any(SolicitudNotificacionMensaje.class));
+            verify(operaciones).waitForConfirmsOrDie(NotificacionTransportAmqp.TIEMPO_CONFIRMACION_MS);
         }
 
         @Test
@@ -71,49 +87,36 @@ class NotificacionTransportAmqpTest {
         void payloadIntacto() {
             // Los tres campos tienen que llegar tal cual: son exactamente los que
             // el consumidor espera en su SolicitudNotificacionDto.
-            transporte.enviar(solicitud());
+            conCanal();
 
-            verify(rabbitTemplate).convertAndSend(anyString(), anyString(), mensajeCaptor.capture());
-            SolicitudNotificacionMensaje publicado = mensajeCaptor.getValue();
-
-            assertThat(publicado.destinatario()).isEqualTo("juan@example.com");
-            assertThat(publicado.mensaje()).isEqualTo("Tu donación fue asignada a Comedor Los Pibes.");
-            assertThat(publicado.medio()).isEqualTo("EMAIL");
-        }
-
-        @Test
-        @DisplayName("Respeta el medio elegido por el donante (EMAIL, SMS o WHATSAPP)")
-        void respetaElMedio() {
             transporte.enviar(new SolicitudNotificacionMensaje("1155667788", "Hace rato que no donás", "WHATSAPP"));
 
-            verify(rabbitTemplate).convertAndSend(anyString(), anyString(), mensajeCaptor.capture());
-            assertThat(mensajeCaptor.getValue().medio()).isEqualTo("WHATSAPP");
+            verify(operaciones).convertAndSend(anyString(), anyString(), mensajeCaptor.capture());
+            assertThat(mensajeCaptor.getValue())
+                    .isEqualTo(new SolicitudNotificacionMensaje("1155667788", "Hace rato que no donás", "WHATSAPP"));
         }
     }
 
     @Nested
-    @DisplayName("Resiliencia ante fallas del broker")
-    class Resiliencia {
+    @DisplayName("Fallas del broker")
+    class Fallas {
 
         @Test
-        @DisplayName("Si RabbitMQ está caído, NO propaga la excepción al flujo de negocio")
-        void brokerCaidoNoRompeElFlujo() {
-            // Mismo criterio que ya tenía el transporte HTTP: una donación que ya
-            // se registró no puede reportarse como fallida porque el aviso
-            // posterior no se pudo encolar.
-            doThrow(new AmqpException("Connection refused"))
-                    .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class));
+        @DisplayName("Si RabbitMQ está caído, la excepción sale: el aviso sigue en la bandeja y se reintenta")
+        void brokerCaido() {
+            when(rabbitTemplate.invoke(any())).thenThrow(new AmqpException("Connection refused"));
 
-            assertThatCode(() -> transporte.enviar(solicitud())).doesNotThrowAnyException();
+            assertThatThrownBy(() -> transporte.enviar(solicitud())).isInstanceOf(AmqpException.class);
         }
 
         @Test
-        @DisplayName("Una excepción inesperada tampoco escapa del transporte")
-        void cualquierErrorQuedaContenido() {
-            doThrow(new RuntimeException("fallo inesperado de serialización"))
-                    .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class));
+        @DisplayName("Si el broker no confirma a tiempo (o rechaza el mensaje), también falla")
+        void sinConfirmacion() {
+            conCanal();
+            doThrow(new AmqpTimeoutException("sin confirmación"))
+                    .when(operaciones).waitForConfirmsOrDie(anyLong());
 
-            assertThatCode(() -> transporte.enviar(solicitud())).doesNotThrowAnyException();
+            assertThatThrownBy(() -> transporte.enviar(solicitud())).isInstanceOf(AmqpTimeoutException.class);
         }
     }
 

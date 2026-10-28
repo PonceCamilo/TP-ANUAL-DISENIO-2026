@@ -28,7 +28,8 @@ public record DonacionesProperties(
         @Valid @DefaultValue Procesos procesos,
         @Valid @DefaultValue Importacion importacion,
         @Valid @DefaultValue Notificaciones notificaciones,
-        @Valid @DefaultValue Matchmaking matchmaking) {
+        @Valid @DefaultValue Matchmaking matchmaking,
+        @Valid @DefaultValue Salida salida) {
 
     /** Los mismos valores que se usan cuando no se configura nada. */
     public static DonacionesProperties porDefecto() {
@@ -37,7 +38,8 @@ public record DonacionesProperties(
                 new Procesos("0 0 3 * * *", "0 30 3 * * *", "0 0 4 * * *"),
                 new Importacion(500, 100),
                 new Notificaciones("admin@donatrack.org"),
-                new Matchmaking(10));
+                new Matchmaking(10),
+                new Salida(true, 5000, 50, 10, 7, "0 30 4 * * *"));
     }
 
     /**
@@ -78,5 +80,19 @@ public record DonacionesProperties(
     /** Cuántas entidades candidatas devuelve cada algoritmo de asignación. */
     public record Matchmaking(
             @DefaultValue("10") @Positive int tamanioRanking) {
+    }
+
+    /**
+     * Bandeja de salida (outbox): cada cuánto se envían los avisos pendientes,
+     * cuántos por vez, cuántas veces se reintenta uno antes de darlo por fallido y
+     * cuántos días se conservan los ya enviados.
+     */
+    public record Salida(
+            @DefaultValue("true") boolean habilitada,
+            @DefaultValue("5000") @Positive long intervaloMs,
+            @DefaultValue("50") @Positive int tamanioLote,
+            @DefaultValue("10") @Positive int maxIntentos,
+            @DefaultValue("7") @Positive int diasRetencion,
+            @DefaultValue("0 30 4 * * *") @NotBlank String cronLimpieza) {
     }
 }
