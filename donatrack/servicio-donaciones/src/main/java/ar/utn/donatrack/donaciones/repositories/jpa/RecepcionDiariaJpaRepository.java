@@ -39,11 +39,16 @@ public interface RecepcionDiariaJpaRepository
     @Query(value = "DELETE FROM entidad_recepcion_diaria", nativeQuery = true)
     void vaciar();
 
-    /** Recalcula el contador entero desde la tabla donacion, que es la fuente de verdad. */
+    /**
+     * Recalcula el contador entero desde la tabla donacion, que es la fuente de
+     * verdad. Es SQL nativo, así que la baja lógica se filtra a mano: las
+     * donaciones dadas de baja no cuentan.
+     */
     @Modifying(clearAutomatically = true)
     @Query(value = "INSERT INTO entidad_recepcion_diaria (entidad_id, fecha, cantidad) "
             + "SELECT id_entidad_beneficiaria, fecha_asignacion, COUNT(*) FROM donacion "
             + "WHERE id_entidad_beneficiaria IS NOT NULL AND fecha_asignacion IS NOT NULL "
+            + "AND fecha_baja IS NULL "
             + "GROUP BY id_entidad_beneficiaria, fecha_asignacion", nativeQuery = true)
     int recalcularDesdeDonaciones();
 }

@@ -246,9 +246,11 @@ public class DonacionesController {
   }
 
   @Operation(
-      summary = "Eliminar una donación",
+      summary = "Dar de baja una donación",
+      description = "Baja lógica: la donación queda guardada con su historial pero deja de aparecer en las "
+          + "consultas. Si estaba asignada, deja de contar como recepción de la entidad.",
       responses = {
-          @ApiResponse(responseCode = "204", description = "Donación eliminada"),
+          @ApiResponse(responseCode = "204", description = "Donación dada de baja"),
           @ApiResponse(responseCode = "404", description = "Donación no encontrada")
       }
   )

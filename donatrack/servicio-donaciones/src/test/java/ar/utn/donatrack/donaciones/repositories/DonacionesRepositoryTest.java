@@ -302,10 +302,43 @@ class DonacionesRepositoryTest {
             Donacion donacion = guardadaEnDeposito();
             asignar(donacion, comedor, hoy);
 
-            repositorio.eliminar(repositorio.buscarPorId(donacion.getId()).orElseThrow());
+            Donacion actual = repositorio.buscarPorId(donacion.getId()).orElseThrow();
+            actual.darDeBaja();
+            repositorio.guardar(actual);
             jpa.flush();
             em.clear();
 
+            assertThat(recibidas(comedor)).isZero();
+        }
+
+        @Test
+        @DisplayName("Una donación dada de baja no se borra pero desaparece de las consultas y de la reconciliación")
+        void bajaLogica() {
+            Donacion donacion = guardadaEnDeposito();
+            asignar(donacion, comedor, hoy);
+            Donacion actual = repositorio.buscarPorId(donacion.getId()).orElseThrow();
+            actual.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
+            actual.darDeBaja();
+            repositorio.guardar(actual);
+            jpa.flush();
+            em.clear();
+
+            assertThat(repositorio.buscarPorId(donacion.getId())).isEmpty();
+            assertThat(repositorio.obtenerPorEstado("ASIGNACION_REALIZADA")).extracting(Donacion::getId)
+                    .doesNotContain(donacion.getId());
+            assertThat(repositorio.existenAsignadasA(comedor)).isFalse();
+            // La fila y su historial siguen en la base.
+            Number filas = (Number) em.getEntityManager().createNativeQuery(
+                    "SELECT COUNT(*) FROM donacion WHERE id = :id AND fecha_baja IS NOT NULL")
+                    .setParameter("id", donacion.getId()).getSingleResult();
+            assertThat(filas.longValue()).isEqualTo(1);
+            Number historial = (Number) em.getEntityManager().createNativeQuery(
+                    "SELECT COUNT(*) FROM cambio_estado WHERE donacion_id = :id")
+                    .setParameter("id", donacion.getId()).getSingleResult();
+            assertThat(historial.longValue()).isEqualTo(1);
+            assertThat(recibidas(comedor)).isZero();
+            // La reconciliación nocturna (SQL nativo) tampoco la cuenta.
+            recepciones.reconciliar();
             assertThat(recibidas(comedor)).isZero();
         }
 

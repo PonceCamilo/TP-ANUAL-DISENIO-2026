@@ -58,7 +58,8 @@ public class DonacionesRepository implements RepositorioDonaciones {
    * desnormalizado de recepciones (resta una a la asignación anterior, suma una
    * a la nueva) en la misma transacción. La asignación anterior la recuerda la
    * donación, así que no hace falta leerla de la base; sin cambio de asignación,
-   * no hay trabajo extra.
+   * no hay trabajo extra. Una baja lógica cuenta como quitar la asignación: la
+   * recepción se descuenta.
    */
   public void guardar(Donacion donacion) {
     if (donacion.cambioLaAsignacion()) {
@@ -96,10 +97,6 @@ public class DonacionesRepository implements RepositorioDonaciones {
     return jpa.existsByIdEntidadBeneficiaria(idEntidad);
   }
 
-  public void eliminar(Donacion donacion) {
-    ajustarRecepciones(donacion.asignacionGuardada(), -1);
-    jpa.delete(donacion);
-  }
 
   /**
    * Suma o resta una recepción. Si la fila del día todavía no existe y hay que

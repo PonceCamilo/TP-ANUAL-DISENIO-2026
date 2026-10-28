@@ -36,6 +36,7 @@ import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.SQLRestriction;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
@@ -71,8 +72,15 @@ import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion
  * mapeara directo habría significado mover esas reglas a un switch, que es
  * exactamente lo que el patrón evita. Guardar el nombre cuesta una línea de
  * rehidratación y deja la columna legible en el DER.
+ *
+ * BAJA LÓGICA (Entrega 5): dar de baja una donación no borra la fila. Queda con
+ * sus bienes y su historial de estados (la trazabilidad que pide el enunciado)
+ * marcada con fecha_baja, y @SQLRestriction la saca de todas las consultas,
+ * incluida la búsqueda por id. Antes DELETE /donaciones/{id} borraba la fila y su
+ * historial sin dejar rastro.
  */
 @Entity
+@SQLRestriction("fecha_baja IS NULL")
 @Table(name = "donacion", indexes = {
         // Filtros de GET /donaciones y de los procesos nocturnos (por estado).
         @Index(name = "idx_donacion_estado", columnList = "estado"),
@@ -149,6 +157,10 @@ public class Donacion extends EntidadPersistible {
     @Column(name = "id_seguimiento_logistica")
     protected String idSeguimientoLogistica;
 
+    /** Cuándo se dio de baja; null mientras está vigente (ver BAJA LÓGICA). */
+    @Column(name = "fecha_baja")
+    protected LocalDateTime fechaBaja;
+
     /**
      * La asignación que ya está en la base: la que se leyó o la del último
      * guardado. Con ella el repositorio sabe qué mover en el contador de
@@ -159,8 +171,13 @@ public class Donacion extends EntidadPersistible {
     @Getter(AccessLevel.NONE)
     private Asignacion asignacionGuardada = Asignacion.NINGUNA;
 
+    /**
+     * La asignación que cuenta como recepción de la entidad. Una donación dada de
+     * baja ya no cuenta: así, al guardar la baja, el repositorio descuenta la
+     * recepción igual que cuando cambia la asignación.
+     */
     public Asignacion asignacion() {
-        return new Asignacion(idEntidadBeneficiaria, fechaAsignacion);
+        return estaDadaDeBaja() ? Asignacion.NINGUNA : new Asignacion(idEntidadBeneficiaria, fechaAsignacion);
     }
 
     public Asignacion asignacionGuardada() {
@@ -245,11 +262,20 @@ public class Donacion extends EntidadPersistible {
     }
 
     /**
-     * La donación se va a borrar: deja el evento para que los oyentes limpien lo
-     * que dependía de ella (su ranking en la bandeja).
+     * Baja lógica: la donación queda guardada pero fuera de las consultas, y deja
+     * el evento para que los oyentes limpien lo que dependía de ella (su ranking en
+     * la bandeja). Dar de baja dos veces no cambia nada.
      */
     public void darDeBaja() {
+        if (estaDadaDeBaja()) {
+            return;
+        }
+        this.fechaBaja = FechaHoraArgentina.ahora();
         registrarEvento(new DonacionDadaDeBaja(id));
+    }
+
+    public boolean estaDadaDeBaja() {
+        return fechaBaja != null;
     }
 
     /**

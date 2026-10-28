@@ -155,11 +155,15 @@ public class DonacionService {
     repositorio.guardar(donacion);
   }
 
-  /** Su ranking sale de la bandeja por el evento de baja: no quedan rankings huérfanos. */
+  /**
+   * Baja lógica: la donación queda guardada con su historial y desaparece de las
+   * consultas. Al guardarla se descuenta su recepción, y su ranking sale de la
+   * bandeja por el evento de baja.
+   */
   public void eliminar(UUID id) {
     Donacion donacion = validador.validarYObtenerDonacion(id);
     donacion.darDeBaja();
-    repositorio.eliminar(donacion);
+    repositorio.guardar(donacion);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────

@@ -45,6 +45,4 @@ public interface RepositorioDonaciones {
   boolean existenAsignadasA(UUID idEntidad);
 
   /** Borra la donación y, si estaba asignada, descuenta la recepción de su entidad. */
-  /** Borra la donación y descuenta su recepción si estaba asignada. */
-  void eliminar(Donacion donacion);
 }

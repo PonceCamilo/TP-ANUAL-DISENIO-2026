@@ -679,7 +679,9 @@ class DonacionServiceTest {
 
             servicio.eliminar(donacion.getId());
 
-            verify(repositorio).eliminar(donacion);
+            // Baja lógica: se guarda la donación marcada, no se borra.
+            assertThat(donacion.estaDadaDeBaja()).isTrue();
+            verify(repositorio).guardar(donacion);
         }
 
         @Test
@@ -700,7 +702,7 @@ class DonacionServiceTest {
 
             assertThatThrownBy(() -> servicio.eliminar(idInexistente))
                     .isInstanceOf(DonacionNoEncontradaException.class);
-            verify(repositorio, never()).eliminar(any());
+            verify(repositorio, never()).guardar(any());
         }
     }
 }
