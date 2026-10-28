@@ -15,7 +15,7 @@ public interface RepositorioRecepcionesEntidad {
      * Donaciones asignadas a cada entidad desde la fecha indicada, inclusive.
      * Las entidades que no recibieron nada no aparecen en el mapa.
      */
-    Map<UUID, Long> contarRecepcionesDesde(LocalDate desde);
+    Map<UUID, Long> contarRecepcionesPorEntidadDesde(LocalDate desde);
 
     /** Lo mismo para una sola entidad. */
     long contarRecepcionesDesde(UUID idEntidad, LocalDate desde);

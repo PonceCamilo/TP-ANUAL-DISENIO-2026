@@ -170,7 +170,7 @@ class AlgoritmosAsignacionTest {
         void sinDonacionesRecibidasPuntajeMaximo() {
             // El puntaje es 1 / (1 + recibidas): con 0 recibidas da exactamente 1.
             EntidadBeneficiaria entidad = entidadCon("Comedor A");
-            when(recepciones.contarRecepcionesDesde(any(LocalDate.class))).thenReturn(Map.of());
+            when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of());
 
             List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad));
 
@@ -181,7 +181,7 @@ class AlgoritmosAsignacionTest {
         @DisplayName("A más donaciones recibidas en el trimestre, menor puntaje")
         void masRecibidasMenorPuntaje() {
             EntidadBeneficiaria entidad = entidadCon("Comedor A");
-            when(recepciones.contarRecepcionesDesde(any(LocalDate.class))).thenReturn(Map.of(entidad.getId(), 3L));
+            when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of(entidad.getId(), 3L));
 
             List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad));
 
@@ -195,7 +195,7 @@ class AlgoritmosAsignacionTest {
             // Éste es el objetivo del criterio: repartir en vez de concentrar.
             EntidadBeneficiaria muyAtendida = entidadCon("Comedor A");
             EntidadBeneficiaria pocoAtendida = entidadCon("Comedor B");
-            when(recepciones.contarRecepcionesDesde(any(LocalDate.class)))
+            when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class)))
                     .thenReturn(Map.of(muyAtendida.getId(), 2L));
 
             List<ResultadoAsignacion> ranking = algoritmoSubAtendidos
@@ -210,12 +210,12 @@ class AlgoritmosAsignacionTest {
         @DisplayName("Consulta las recepciones de los últimos 3 meses una sola vez para todas las entidades")
         void unaConsultaConLaVentanaDelTrimestre() {
             // Antes se leían todas las donaciones una vez POR ENTIDAD.
-            when(recepciones.contarRecepcionesDesde(any(LocalDate.class))).thenReturn(Map.of());
+            when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of());
 
             algoritmoSubAtendidos.evaluar(donacionDe("arroz"),
                     List.of(entidadCon("A"), entidadCon("B"), entidadCon("C")));
 
-            verify(recepciones, times(1)).contarRecepcionesDesde(FechaHoraArgentina.hoy().minusMonths(3));
+            verify(recepciones, times(1)).contarRecepcionesPorEntidadDesde(FechaHoraArgentina.hoy().minusMonths(3));
         }
 
         @Test
@@ -224,7 +224,7 @@ class AlgoritmosAsignacionTest {
             // No sobreescribe el hook incluir(), así que toda entidad tiene una
             // chance: incluso una muy atendida sigue en el ranking, pero al final.
             EntidadBeneficiaria sinNecesidades = entidadCon("Comedor A");
-            when(recepciones.contarRecepcionesDesde(any(LocalDate.class))).thenReturn(Map.of());
+            when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of());
 
             assertThat(algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(sinNecesidades))).hasSize(1);
         }

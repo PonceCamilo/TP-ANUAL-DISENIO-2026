@@ -16,7 +16,7 @@ public class RecepcionesEntidadRepository implements RepositorioRecepcionesEntid
 
     private final RecepcionDiariaJpaRepository jpa;
 
-    public Map<UUID, Long> contarRecepcionesDesde(LocalDate desde) {
+    public Map<UUID, Long> contarRecepcionesPorEntidadDesde(LocalDate desde) {
         return jpa.totalesDesde(desde).stream()
                 .collect(Collectors.toMap(
                         RecepcionDiariaJpaRepository.TotalPorEntidad::getIdEntidad,

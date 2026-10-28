@@ -249,7 +249,7 @@ class DonacionesRepositoryTest {
             asignar(guardadaEnDeposito(), comedor, hoy);
 
             assertThat(recibidas(comedor)).isEqualTo(2);
-            assertThat(recepciones.contarRecepcionesDesde(hoy.minusMonths(3))).containsEntry(comedor, 2L);
+            assertThat(recepciones.contarRecepcionesPorEntidadDesde(hoy.minusMonths(3))).containsEntry(comedor, 2L);
         }
 
         @Test

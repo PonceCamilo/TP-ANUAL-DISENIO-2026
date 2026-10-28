@@ -39,7 +39,7 @@ public class AlgoritmoPrioridadSubAtendidos extends AlgoritmoAsignacionBase {
     @Override
     protected ToDoubleFunction<EntidadBeneficiaria> prepararPuntaje(Donacion donacion,
                                                                   List<EntidadBeneficiaria> entidades) {
-        Map<UUID, Long> recibidas = recepciones.contarRecepcionesDesde(inicioDelTrimestre());
+        Map<UUID, Long> recibidas = recepciones.contarRecepcionesPorEntidadDesde(inicioDelTrimestre());
         return entidad -> puntaje(recibidas.getOrDefault(entidad.getId(), 0L));
     }
 
