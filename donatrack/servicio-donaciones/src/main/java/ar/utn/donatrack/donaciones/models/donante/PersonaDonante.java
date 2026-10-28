@@ -24,6 +24,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.OptimisticLock;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -87,6 +88,16 @@ public abstract class PersonaDonante extends EntidadPersistible {
     @Column(name = "estado", nullable = false)
     protected String estadoNombre = EstadosDonante.inicial().nombre();
 
+    /**
+     * Cuándo interactuó por última vez (donar, editar el perfil, importarse).
+     *
+     * Excluida del bloqueo optimista: registrarla no sube la versión. Es una marca
+     * de tiempo que pisa la anterior, no un cambio que se pueda perder: si dos
+     * donaciones de la misma persona se registran a la vez, las dos tienen que
+     * guardarse, y con la versión la segunda respondía 409. Cualquier otro cambio
+     * de la persona sigue protegido por la versión.
+     */
+    @OptimisticLock(excluded = true)
     @Column(name = "ultima_interaccion")
     protected LocalDateTime ultimaInteraccion;
 

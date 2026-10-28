@@ -5,6 +5,7 @@ import ar.utn.donatrack.donaciones.models.contacto.Telefono;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
+import ar.utn.donatrack.donaciones.models.donante.estado.EstadosDonante;
 import ar.utn.donatrack.donaciones.repositories.jpa.PersonaDonanteJpaRepository;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
@@ -16,12 +17,14 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -181,5 +184,55 @@ class PersonaDonanteRepositoryTest {
         PersonaDonante releida = repositorio.buscarPorId(persona.getId()).orElseThrow();
         assertThat(releida.getContactos()).hasSize(1);
         assertThat(releida.getMedioContactoPredeterminado().getValor()).isEqualTo("2222");
+    }
+
+    @Test
+    @DisplayName("Registrar la interacción desde dos copias leídas a la vez no choca: no cuenta para el bloqueo optimista")
+    void interaccionesSimultaneasNoChocan() {
+        // Es lo que pasa con dos donaciones de la misma persona registradas a la vez:
+        // cada una lee a la persona y registra su interacción.
+        PersonaHumana persona = humana("simultanea@mail.com");
+        repositorio.guardar(persona);
+        jpa.flush();
+        em.clear();
+        PersonaDonante copiaA = repositorio.buscarPorId(persona.getId()).orElseThrow();
+        em.clear();
+        PersonaDonante copiaB = repositorio.buscarPorId(persona.getId()).orElseThrow();
+        em.clear();
+
+        copiaA.registrarInteraccion();
+        repositorio.guardar(copiaA);
+        jpa.flush();
+        em.clear();
+        copiaB.registrarInteraccion();
+
+        assertThatCode(() -> {
+            repositorio.guardar(copiaB);
+            jpa.flush();
+        }).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Los demás cambios siguen protegidos: guardar una copia vieja después de un cambio de estado falla")
+    void otrosCambiosSiguenProtegidos() {
+        PersonaHumana persona = humana("protegida@mail.com");
+        repositorio.guardar(persona);
+        jpa.flush();
+        em.clear();
+        PersonaDonante copiaA = repositorio.buscarPorId(persona.getId()).orElseThrow();
+        em.clear();
+        PersonaDonante copiaB = repositorio.buscarPorId(persona.getId()).orElseThrow();
+        em.clear();
+
+        copiaA.cambiarEstado(EstadosDonante.INACTIVO, null);
+        repositorio.guardar(copiaA);
+        jpa.flush();
+        em.clear();
+        copiaB.registrarInteraccion();
+
+        assertThatThrownBy(() -> {
+            repositorio.guardar(copiaB);
+            jpa.flush();
+        }).isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 }
