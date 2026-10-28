@@ -206,6 +206,7 @@ class PersonaDonanteServiceTest {
             assertThat(respuesta).isInstanceOf(PersonaJuridicaResponseDTO.class);
             PersonaJuridicaResponseDTO juridica = (PersonaJuridicaResponseDTO) respuesta;
             assertThat(juridica.getRazonSocial()).isEqualTo("Fundación Ejemplo");
+            assertThat(juridica.getTipoOrganizacion()).isEqualTo(TipoPersonaJuridica.ONG);
             assertThat(juridica.getRepresentantes()).hasSize(1);
         }
 

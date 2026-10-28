@@ -93,7 +93,7 @@ public class PersonaDonanteMapper {
                     .tipoDocumento(j.getTipoDocumento())
                     .numeroDocumento(j.getNumeroDocumento())
                     .rubro(j.getRubro())
-                    .tipo(j.getTipo())
+                    .tipoOrganizacion(j.getTipo())
                     .estado(j.getEstado().nombre())
                     .direccion(direcciones.toDireccionDTO(j.getDireccion()))
                     .representantes(representantes.toRepresentantesDTO(j.getRepresentantes()))

@@ -12,6 +12,7 @@ import ar.utn.donatrack.donaciones.dtos.response.NecesidadRecurrenteResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.NecesidadResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaHumanaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PersonaJuridicaResponseDTO;
 import ar.utn.donatrack.donaciones.models.donante.Genero;
 import ar.utn.donatrack.donaciones.models.donante.TipoPersonaJuridica;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.periodicidades.Periodicidad;
@@ -117,6 +118,20 @@ class JsonDeDtosTest {
             assertThat(json).extractingJsonPathStringValue("$.tipo").isEqualTo("HUMANA");
             assertThat(json).extractingJsonPathStringValue("$.genero").isEqualTo("FEMENINO");
             assertThat(json).extractingJsonPathStringValue("$.contactos[0].tipo").isEqualTo("EMAIL");
+        }
+
+        @Test
+        @DisplayName("Una organización sale con tipo JURIDICA y su tipo de organización en otra clave, sin repetir \"tipo\"")
+        void personaJuridica() throws Exception {
+            PersonaDonanteResponseDTO respuesta = PersonaJuridicaResponseDTO.builder()
+                    .id(UUID.randomUUID()).razonSocial("Fundación").tipoOrganizacion(TipoPersonaJuridica.ONG)
+                    .build();
+
+            JsonContent<PersonaDonanteResponseDTO> json = donante.write(respuesta);
+
+            assertThat(json).extractingJsonPathStringValue("$.tipo").isEqualTo("JURIDICA");
+            assertThat(json).extractingJsonPathStringValue("$.tipoOrganizacion").isEqualTo("ONG");
+            assertThat(json.getJson().split("\"tipo\":", -1)).hasSize(2);
         }
 
         @Test
