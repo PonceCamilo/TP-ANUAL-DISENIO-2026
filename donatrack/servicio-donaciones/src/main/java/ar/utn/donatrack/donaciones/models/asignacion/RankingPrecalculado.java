@@ -5,6 +5,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PostLoad;
@@ -58,7 +59,8 @@ public class RankingPrecalculado implements Persistable<UUID> {
     private UUID idDonacion;
 
     @ElementCollection
-    @CollectionTable(name = "ranking_puesto", joinColumns = @JoinColumn(name = "id_donacion"))
+    @CollectionTable(name = "ranking_puesto", joinColumns = @JoinColumn(name = "id_donacion"),
+            indexes = @Index(name = "idx_ranking_puesto_donacion", columnList = "id_donacion"))
     @OrderBy("algoritmo ASC, posicion ASC")
     @Fetch(FetchMode.SUBSELECT)
     @Getter(AccessLevel.NONE)
