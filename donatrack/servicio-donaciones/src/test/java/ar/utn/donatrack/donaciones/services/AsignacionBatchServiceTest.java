@@ -53,6 +53,9 @@ import static org.mockito.Mockito.when;
 @DisplayName("AsignacionBatchService - matchmaking nocturno de las donaciones en depósito")
 class AsignacionBatchServiceTest {
 
+    private static final List<String> ALGORITMOS =
+            List.of(AlgoritmoCompatibilidadSemantica.NOMBRE, AlgoritmoPrioridadSubAtendidos.NOMBRE);
+
     @Mock
     private RepositorioDonaciones donacionesRepositorio;
 
@@ -219,9 +222,9 @@ class AsignacionBatchServiceTest {
 
             RankingPrecalculado guardado = bandejaGuardada().getFirst();
             assertThat(guardado.getIdDonacion()).isEqualTo(donacion.getId());
-            assertThat(guardado.resultado().ranking(AlgoritmoCompatibilidadSemantica.NOMBRE)).hasSize(2);
-            assertThat(guardado.resultado().ranking(AlgoritmoPrioridadSubAtendidos.NOMBRE)).hasSize(1);
-            assertThat(guardado.resultado().coincidencias()).extracting(ResultadoAsignacion::getIdEntidad)
+            assertThat(guardado.resultado(ALGORITMOS).ranking(AlgoritmoCompatibilidadSemantica.NOMBRE)).hasSize(2);
+            assertThat(guardado.resultado(ALGORITMOS).ranking(AlgoritmoPrioridadSubAtendidos.NOMBRE)).hasSize(1);
+            assertThat(guardado.resultado(ALGORITMOS).coincidencias()).extracting(ResultadoAsignacion::getIdEntidad)
                     .containsExactly(ambos.getIdEntidad());
             assertThat(guardado.getFechaCalculo()).isNotNull();
         }
@@ -237,7 +240,7 @@ class AsignacionBatchServiceTest {
 
             servicio.ejecutarMatchmakingNocturno();
 
-            assertThat(bandejaGuardada().getFirst().huboCoincidencias()).isTrue();
+            assertThat(bandejaGuardada().getFirst().resultado(ALGORITMOS).huboCoincidencias()).isTrue();
         }
 
         @Test

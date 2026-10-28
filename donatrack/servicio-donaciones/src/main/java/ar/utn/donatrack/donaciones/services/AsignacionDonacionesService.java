@@ -46,6 +46,11 @@ public class AsignacionDonacionesService {
     }
 
     /** Ranking a demanda de una sola donación: carga las entidades y evalúa. */
+    /** Los nombres de los algoritmos registrados, en el orden en que se ejecutan. */
+    public List<String> nombresDeAlgoritmos() {
+        return algoritmos.stream().map(AlgoritmoAsignacion::nombre).toList();
+    }
+
     public ResultadoMatchmaking generarRanking(Donacion donacion) {
         return generarRanking(donacion, entidadesRepository.buscarTodas());
     }

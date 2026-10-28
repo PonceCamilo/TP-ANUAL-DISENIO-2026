@@ -584,6 +584,29 @@ class DonacionServiciosTest {
         }
 
         @Test
+        @DisplayName("Un algoritmo que no encontró entidades aparece vacío y no convierte al otro ranking en coincidencias")
+        void algoritmoSinCandidatas() {
+            // El ranking guardado no tiene puestos del algoritmo semántico: sin
+            // completarlo, las 'coincidencias' serían todo el ranking de sub-atendidos.
+            EntidadBeneficiaria entidad = entidadConEmail("comedor@lospibes.org");
+            when(asignacionService.nombresDeAlgoritmos())
+                    .thenReturn(List.of(AlgoritmoCompatibilidadSemantica.NOMBRE, AlgoritmoPrioridadSubAtendidos.NOMBRE));
+            when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of(RankingPrecalculado.de(donacion.getId(),
+                    matchmaking(List.of(), List.of(new ResultadoAsignacion(entidad.getId(), 1.0))),
+                    LocalDateTime.now())));
+            when(entidadesRepositorio.obtenerPorIds(anyCollection())).thenReturn(List.of(entidad));
+
+            CandidatosPendientesResponseDTO pendiente = consultas.obtenerCandidatosPendientes().getFirst();
+
+            assertThat(pendiente.isHuboCoincidencias()).isFalse();
+            assertThat(pendiente.getCoincidencias()).isEmpty();
+            assertThat(pendiente.getRankings()).extracting(RankingAlgoritmoResponseDTO::algoritmo)
+                    .containsExactly(AlgoritmoCompatibilidadSemantica.NOMBRE, AlgoritmoPrioridadSubAtendidos.NOMBRE);
+            assertThat(pendiente.getRankings().getFirst().entidades()).isEmpty();
+            assertThat(pendiente.getRankings().getLast().entidades()).hasSize(1);
+        }
+
+        @Test
         @DisplayName("Devuelve lista vacía si el proceso nocturno todavía no corrió")
         void sinCorridaPrevia() {
             when(candidatosRepositorio.obtenerTodos()).thenReturn(List.of());

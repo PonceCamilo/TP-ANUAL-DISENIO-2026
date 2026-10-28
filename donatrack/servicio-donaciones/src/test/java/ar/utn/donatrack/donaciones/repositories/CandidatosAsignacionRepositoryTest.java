@@ -71,7 +71,7 @@ class CandidatosAsignacionRepositoryTest {
         sincronizar();
 
         RankingPrecalculado leido = jpa.findById(idDonacion).orElseThrow();
-        ResultadoMatchmaking resultado = leido.resultado();
+        ResultadoMatchmaking resultado = leido.resultado(List.of(SEMANTICO, SUBATENDIDOS));
 
         assertThat(leido.getFechaCalculo()).isEqualTo(LocalDateTime.of(2026, 10, 26, 3, 30));
         assertThat(resultado.rankings().keySet()).containsExactly(SEMANTICO, SUBATENDIDOS);
@@ -147,6 +147,26 @@ class CandidatosAsignacionRepositoryTest {
 
         RankingPrecalculado leido = jpa.findById(idDonacion).orElseThrow();
         assertThat(leido.sinCandidatas()).isTrue();
-        assertThat(leido.huboCoincidencias()).isFalse();
+        assertThat(leido.resultado(List.of(SEMANTICO, SUBATENDIDOS)).huboCoincidencias()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Un algoritmo sin candidatas no deja puestos, pero al releerlo vuelve como ranking vacío y no inventa coincidencias")
+    void algoritmoSinCandidatasNoInventaCoincidencias() {
+        UUID idDonacion = UUID.randomUUID();
+        Map<String, List<ResultadoAsignacion>> rankings = new LinkedHashMap<>();
+        rankings.put(SEMANTICO, List.of());
+        rankings.put(SUBATENDIDOS, List.of(new ResultadoAsignacion(entidadA, 1.0), new ResultadoAsignacion(entidadB, 0.5)));
+        repositorio.reemplazarTodos(List.of(RankingPrecalculado.de(idDonacion, new ResultadoMatchmaking(rankings),
+                LocalDateTime.of(2026, 10, 26, 3, 30))));
+        sincronizar();
+
+        ResultadoMatchmaking resultado = jpa.findById(idDonacion).orElseThrow().resultado(List.of(SEMANTICO, SUBATENDIDOS));
+
+        assertThat(resultado.rankings().keySet()).containsExactly(SEMANTICO, SUBATENDIDOS);
+        assertThat(resultado.ranking(SEMANTICO)).isEmpty();
+        assertThat(resultado.ranking(SUBATENDIDOS)).hasSize(2);
+        assertThat(resultado.coincidencias()).isEmpty();
+        assertThat(resultado.huboCoincidencias()).isFalse();
     }
 }

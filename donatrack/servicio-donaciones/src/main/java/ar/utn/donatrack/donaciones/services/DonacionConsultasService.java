@@ -90,8 +90,12 @@ public class DonacionConsultasService {
      */
     public List<CandidatosPendientesResponseDTO> obtenerCandidatosPendientes() {
         List<RankingPrecalculado> rankings = candidatosRepositorio.obtenerTodos();
+        // Cada ranking se completa con todos los algoritmos: el que no encontró
+        // entidades aparece con una lista vacía, como en el cálculo a demanda, y las
+        // coincidencias lo tienen en cuenta.
+        List<String> algoritmos = asignacionService.nombresDeAlgoritmos();
         Map<UUID, ResultadoMatchmaking> resultados = rankings.stream()
-                .collect(Collectors.toMap(RankingPrecalculado::getIdDonacion, RankingPrecalculado::resultado));
+                .collect(Collectors.toMap(RankingPrecalculado::getIdDonacion, ranking -> ranking.resultado(algoritmos)));
         Map<UUID, EntidadBeneficiariaResponseDTO> entidades = cargarEntidades(resultados.values().stream()
                 .flatMap(resultado -> resultado.rankings().values().stream())
                 .toList());

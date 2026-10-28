@@ -33,6 +33,23 @@ public record ResultadoMatchmaking(Map<String, List<ResultadoAsignacion>> rankin
         return rankings.getOrDefault(algoritmo, List.of());
     }
 
+    /**
+     * El mismo resultado con un ranking para cada algoritmo indicado, en ese orden:
+     * el que no tiene ranking queda con una lista vacía. Los demás se conservan al
+     * final.
+     *
+     * Hace falta al leer un ranking guardado: un algoritmo que no encontró ninguna
+     * entidad no deja puestos en la base, así que al rearmarlo desaparecería, y las
+     * coincidencias saldrían de los rankings que quedan (con uno solo, todo su
+     * ranking parecería una coincidencia).
+     */
+    public ResultadoMatchmaking completadoCon(List<String> algoritmos) {
+        Map<String, List<ResultadoAsignacion>> completo = new LinkedHashMap<>();
+        algoritmos.forEach(algoritmo -> completo.put(algoritmo, ranking(algoritmo)));
+        rankings.forEach(completo::putIfAbsent);
+        return new ResultadoMatchmaking(completo);
+    }
+
     /** Las entidades que aparecen en todos los rankings, en el orden del primero. */
     public List<ResultadoAsignacion> coincidencias() {
         if (rankings.isEmpty()) {

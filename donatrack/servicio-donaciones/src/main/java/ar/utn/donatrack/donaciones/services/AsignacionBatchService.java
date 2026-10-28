@@ -96,7 +96,10 @@ public class AsignacionBatchService {
         // corta a mitad de camino, la bandeja anterior queda entera.
         transaccion.executeWithoutResult(estado -> candidatosRepositorio.reemplazarTodos(rankings));
 
-        long conCoincidencias = rankings.stream().filter(RankingPrecalculado::huboCoincidencias).count();
+        List<String> algoritmos = asignacionService.nombresDeAlgoritmos();
+        long conCoincidencias = rankings.stream()
+                .filter(ranking -> ranking.resultado(algoritmos).huboCoincidencias())
+                .count();
         long sinCandidatas = rankings.stream().filter(RankingPrecalculado::sinCandidatas).count();
         log.info("[ASIGNACION] Matchmaking finalizado. Procesadas: {} | Con bienes vencidos (fuera): {} | "
                         + "Con coincidencia entre todos los algoritmos: {} | Sin ninguna candidata: {}",

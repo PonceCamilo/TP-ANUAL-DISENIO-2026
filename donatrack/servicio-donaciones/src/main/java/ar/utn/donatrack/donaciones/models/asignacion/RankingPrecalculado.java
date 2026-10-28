@@ -85,17 +85,19 @@ public class RankingPrecalculado implements Persistable<UUID> {
         return ranking;
     }
 
-    /** Los rankings por algoritmo, rearmados a partir de los puestos guardados. */
-    public ResultadoMatchmaking resultado() {
+    /**
+     * Los rankings por algoritmo, rearmados a partir de los puestos guardados, con
+     * uno (vacío si no tiene puestos) para cada algoritmo que corrió.
+     *
+     * Hay que indicar los algoritmos porque un ranking vacío no deja filas en
+     * ranking_puesto: sin completarlo, las coincidencias se calcularían sin él.
+     */
+    public ResultadoMatchmaking resultado(List<String> algoritmos) {
         Map<String, List<ResultadoAsignacion>> rankings = new LinkedHashMap<>();
         for (PuestoRanking puesto : puestos) {
             rankings.computeIfAbsent(puesto.getAlgoritmo(), algoritmo -> new ArrayList<>()).add(puesto.getResultado());
         }
-        return new ResultadoMatchmaking(rankings);
-    }
-
-    public boolean huboCoincidencias() {
-        return resultado().huboCoincidencias();
+        return new ResultadoMatchmaking(rankings).completadoCon(algoritmos);
     }
 
     public boolean sinCandidatas() {
