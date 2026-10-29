@@ -1,7 +1,9 @@
 package ar.utn.donatrack.donaciones;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -11,12 +13,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * ejecución nocturna de los algoritmos de asignación (AsignacionBatchService)
  * llegaban a correr.
  */
+@Slf4j
 @EnableScheduling
+@ConfigurationPropertiesScan
 @SpringBootApplication
 public class ServicioDonacionesApp {
     public static void main(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(ServicioDonacionesApp.class, args);
         String puerto = context.getEnvironment().getProperty("server.port");
-        System.out.println("Escuchando en el puerto: " + puerto);
+        log.info("Servicio de donaciones escuchando en el puerto {}", puerto);
     }
 }

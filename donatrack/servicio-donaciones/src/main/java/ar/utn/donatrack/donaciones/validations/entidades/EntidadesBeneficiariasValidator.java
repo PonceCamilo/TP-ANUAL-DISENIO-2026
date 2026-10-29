@@ -4,7 +4,7 @@ import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEnco
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
@@ -18,21 +18,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class EntidadesBeneficiariasValidator {
 
-    private final EntidadesBeneficiariasRepositoryInterface repositorio;
+    private final RepositorioEntidadesBeneficiarias repositorio;
 
-    public void validarExistenciaEntidad(UUID id) {
-        if (!repositorio.existePorId(id)) {
-            throw new EntidadBeneficiariaNoEncontradaException(id);
-        }
-    }
-
-    /** Recupera la entidad o lanza la excepción de dominio si no existe. */
+    /** Recupera la entidad o lanza la excepción de dominio si no existe (404). */
     public EntidadBeneficiaria validarYObtenerEntidad(UUID id) {
-        EntidadBeneficiaria entidad = repositorio.obtenerPorId(id);
-        if (entidad == null) {
-            throw new EntidadBeneficiariaNoEncontradaException(id);
-        }
-        return entidad;
+        return repositorio.buscarPorId(id).orElseThrow(() -> new EntidadBeneficiariaNoEncontradaException(id));
     }
 
     public Campania validarYObtenerCampania(EntidadBeneficiaria entidad, UUID campaniaId) {

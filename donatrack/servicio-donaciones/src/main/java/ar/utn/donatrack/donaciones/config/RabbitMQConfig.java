@@ -5,8 +5,6 @@ import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -19,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
  *   donaciones ──publish──▶ [exchange donatrack.notificaciones]
  *                                    │ routing key: notificacion.enviar
  *                                    ▼
- *                           [queue notificaciones.pendientes] ──▶ servicio-notificaciones
+ *                           [queue notificaciones.queue] ──▶ servicio-notificaciones
  *
  * POR QUÉ SE DECLARA DESDE ACÁ: lo habitual es que la cola la declare quien
  * consume. Se declara también del lado productor a propósito, para que la cola
@@ -70,16 +68,13 @@ public class RabbitMQConfig {
      * Serializa el mensaje como JSON en lugar del binario de Java.
      * Es lo que permite que el consumidor lo reciba como su propio
      * SolicitudNotificacionDto sin compartir clases entre servicios.
+     *
+     * Spring Boot se lo aplica a su RabbitTemplate autoconfigurado: ya no hace
+     * falta armar uno a mano (y así toma también las propiedades spring.rabbitmq.*,
+     * como las confirmaciones del publicador).
      */
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
-    }
-
-    @Bean
-    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory, MessageConverter jsonMessageConverter) {
-        RabbitTemplate template = new RabbitTemplate(connectionFactory);
-        template.setMessageConverter(jsonMessageConverter);
-        return template;
     }
 }

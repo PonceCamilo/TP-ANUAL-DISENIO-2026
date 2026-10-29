@@ -1,9 +1,23 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConBienesVencidosException;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionDadaDeBaja;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionCambioDeEstado;
+import ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionAsignada;
+import jakarta.persistence.PostUpdate;
+import jakarta.persistence.PostPersist;
+import ar.utn.donatrack.donaciones.models.EntidadPersistible;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienIncompatibleConDonacionException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienNoEncontradoException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionConVariosBienesException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoModificableException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
-import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
-import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.models.donacion.estado.EstadoDonacionBase;
 import ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -12,22 +26,32 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
+import org.hibernate.annotations.SQLRestriction;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ASIGNACION_REALIZADA;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGADA;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGA_FALLIDA;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_TRASLADO;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.LISTA_PARA_ENTREGAR;
 
 /**
  * Una donación ya segmentada: pertenece a una única subcategoría y es la unidad
@@ -35,33 +59,45 @@ import java.util.UUID;
  *
  * MAPEO DEL PATRÓN STATE (Entrega 4) — el punto más interesante del mapeo:
  *
- * `estado` es un objeto de la jerarquía EstadoDonacionBase, no un enum, y NO se
- * persiste. Lo que se guarda es su nombre en la columna `estado`. Al cargar la
- * donación, @PostLoad vuelve a instanciar la clase correspondiente con
- * EstadosDonacion.desde(...).
+ * el estado es un objeto de la jerarquía EstadoDonacionBase, no un enum, y NO se
+ * persiste. Lo único que se guarda es su nombre, en la columna `estado`, y
+ * getEstado() arma el objeto al vuelo con EstadosDonacion, igual que
+ * CambioEstado. Antes había dos campos (el nombre y el objeto) que había que
+ * mantener sincronizados con un @PostLoad; con uno solo no pueden desfasarse.
  *
  * Por qué así y no con un enum: el estado no es un dato, es comportamiento —cada
  * clase conoce sus transiciones válidas. Convertirlo en enum para que JPA lo
  * mapeara directo habría significado mover esas reglas a un switch, que es
  * exactamente lo que el patrón evita. Guardar el nombre cuesta una línea de
  * rehidratación y deja la columna legible en el DER.
+ *
+ * BAJA LÓGICA (Entrega 5): dar de baja una donación no borra la fila. Queda con
+ * sus bienes y su historial de estados (la trazabilidad que pide el enunciado)
+ * marcada con fecha_baja, y @SQLRestriction la saca de todas las consultas,
+ * incluida la búsqueda por id. Antes DELETE /donaciones/{id} borraba la fila y su
+ * historial sin dejar rastro.
  */
 @Entity
-@Table(name = "donacion")
+@SQLRestriction("fecha_baja IS NULL")
+@Table(name = "donacion", indexes = {
+        // Filtros de GET /donaciones y de los procesos nocturnos (por estado).
+        @Index(name = "idx_donacion_estado", columnList = "estado"),
+        // "Mis donaciones": un donante filtra las suyas, casi siempre por estado.
+        @Index(name = "idx_donacion_donante_estado", columnList = "id_donante, estado"),
+        // Donaciones de una entidad y reconciliación del contador de recepciones.
+        @Index(name = "idx_donacion_entidad_fecha", columnList = "id_entidad_beneficiaria, fecha_asignacion"),
+        @Index(name = "idx_donacion_subcategoria", columnList = "subcategoria_tipo_normalizado"),
+        // Orden de la paginación: más nuevas primero, el id desempata.
+        @Index(name = "idx_donacion_fecha", columnList = "fecha_donacion DESC, id")
+})
 @Getter
-public class Donacion {
-
-    @Id
-    @Setter
-    @Column(name = "id")
-    protected UUID id = UUID.randomUUID();
+public class Donacion extends EntidadPersistible {
 
     /**
      * La donación es dueña de sus bienes: se guardan y se borran con ella
      * (cascade + orphanRemoval). No tienen sentido por fuera de una donación.
      */
-    @Setter
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "donacion_id")
     protected List<Bien> bienes = new ArrayList<>();
 
@@ -69,16 +105,12 @@ public class Donacion {
     @Embedded
     protected Subcategoria subcategoria;
 
-    /** Nombre del estado actual. Es la única forma en que el estado llega a la base. */
+    /** Nombre del estado actual: el único dato del estado que llega a la base. */
     @Column(name = "estado", nullable = false)
     protected String estadoNombre = EstadosDonacion.inicial().nombre();
 
-    /** El objeto de estado: se rehidrata desde estadoNombre, nunca se persiste. */
-    @Transient
-    protected EstadoDonacionBase estado = EstadosDonacion.inicial();
-
     /** Historial ordenado por fecha: es la trazabilidad que exige el enunciado. */
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "donacion_id")
     @OrderBy("fechaHora ASC")
     protected List<CambioEstado> historialEstados = new ArrayList<>();
@@ -87,7 +119,6 @@ public class Donacion {
     @Column(name = "id_donante")
     protected UUID idDonante;
 
-    @Setter
     @Column(name = "id_entidad_beneficiaria")
     protected UUID idEntidadBeneficiaria;
 
@@ -99,42 +130,229 @@ public class Donacion {
     @Column(name = "fecha_donacion")
     protected LocalDateTime fechaDonacion = FechaHoraArgentina.ahora();
 
-    @Setter
     @Column(name = "fecha_asignacion")
     protected LocalDate fechaAsignacion;
 
     /**
-     * Qué proveedor de logística tomó la donación ("DONATRACK" o "EXTERNA") y con
-     * qué identificador la sigue él (el id del lote en DONATRACK, un trackingId
-     * como EXT-7838BF20 en EXTERNA). Los asigna el broker al despachar el envío.
+     * Qué proveedor de logística tomó la donación y con qué identificador la sigue
+     * él (el id de la entrega en DONATRACK, un trackingId como EXT-7838BF20 en
+     * EXTERNA). Los asigna el broker al despachar el envío.
      */
-    @Setter
+    @Enumerated(EnumType.STRING)
     @Column(name = "proveedor_logistica")
-    protected String proveedorLogistica;
+    protected ProveedorLogistica proveedorLogistica;
 
-    @Setter
     @Column(name = "id_seguimiento_logistica")
     protected String idSeguimientoLogistica;
 
-    /** Reconstruye el objeto de estado después de cargar la fila. */
+    /** Cuándo se dio de baja; null mientras está vigente (ver BAJA LÓGICA). */
+    @Column(name = "fecha_baja")
+    protected LocalDateTime fechaBaja;
+
+    /**
+     * La asignación que ya está en la base: la que se leyó o la del último
+     * guardado. Con ella el repositorio sabe qué mover en el contador de
+     * recepciones cuando la asignación cambia, o cuando la donación se borra, sin
+     * volver a consultar la base.
+     */
+    @Transient
+    @Getter(AccessLevel.NONE)
+    private Asignacion asignacionGuardada = Asignacion.NINGUNA;
+
+    /**
+     * La asignación que cuenta como recepción de la entidad. Una donación dada de
+     * baja ya no cuenta: así, al guardar la baja, el repositorio descuenta la
+     * recepción igual que cuando cambia la asignación.
+     */
+    public Asignacion asignacion() {
+        return estaDadaDeBaja() ? Asignacion.NINGUNA : new Asignacion(idEntidadBeneficiaria, fechaAsignacion);
+    }
+
+    public Asignacion asignacionGuardada() {
+        return asignacionGuardada;
+    }
+
+    /** Si la entidad o la fecha de la asignación cambiaron desde la última vez que se guardó. */
+    public boolean cambioLaAsignacion() {
+        return !asignacion().equals(asignacionGuardada);
+    }
+
+    /** Lo llama el repositorio al guardar, y JPA al leer, insertar o actualizar la fila. */
     @PostLoad
-    private void rehidratarEstado() {
-        this.estado = EstadosDonacion.desde(this.estadoNombre);
+    @PostPersist
+    @PostUpdate
+    public void marcarAsignacionGuardada() {
+        this.asignacionGuardada = asignacion();
+    }
+
+    /** El objeto de estado, armado a partir del nombre guardado. */
+    public EstadoDonacionBase getEstado() {
+        return EstadosDonacion.desde(estadoNombre);
     }
 
     public void cambiarEstado(String estadoDestino, String nombreTransicion, String justificacion) {
-        EstadoDonacionBase estadoPrevio = this.estado;
-        this.estado = this.estado.transicionarA(estadoDestino, justificacion);
-        this.estadoNombre = this.estado.nombre();
-        historialEstados.add(CambioEstado.de(estadoPrevio, this.estado, nombreTransicion, justificacion));
+        transicionar(estadoDestino, nombreTransicion, justificacion, FechaHoraArgentina.ahora());
     }
 
-    public boolean esPerecible() {
-        return !bienes.isEmpty() && bienes.getFirst() instanceof BienPerecible;
+    /*
+     * Avisos de logística. Son idempotentes: si el aviso llega repetido (la
+     * donación ya está en el estado que informa, o ya lo superó), no cambian nada
+     * y devuelven false, así el callback responde bien sin repetir el historial
+     * ni las notificaciones. Antes un aviso repetido respondía 422 y el proveedor
+     * lo seguía reintentando.
+     */
+
+    /** El proveedor inició el recorrido. */
+    public boolean iniciarTraslado(String justificacion) {
+        if (estaEnEstado(EN_TRASLADO) || estaEnEstado(ENTREGADA)) {
+            return false;
+        }
+        cambiarEstado(EN_TRASLADO, "Inicio de ruta", justificacion);
+        return true;
     }
 
-    public boolean requiereEstado() {
-        return !bienes.isEmpty() && bienes.getFirst() instanceof BienConEstado;
+    /**
+     * La entrega que informa logística, con la fecha y hora en que ocurrió (no la
+     * del aviso): es la que se informa a incentivos.
+     */
+    public boolean registrarEntrega(LocalDateTime fechaEntrega, String justificacion) {
+        if (estaEnEstado(ENTREGADA)) {
+            return false;
+        }
+        transicionar(ENTREGADA, "Entrega confirmada", justificacion, fechaEntrega);
+        return true;
+    }
+
+    public boolean registrarEntregaFallida(String justificacion) {
+        if (estaEnEstado(ENTREGA_FALLIDA)) {
+            return false;
+        }
+        cambiarEstado(ENTREGA_FALLIDA, "Entrega fallida", justificacion);
+        return true;
+    }
+
+    /**
+     * Toda transición queda en el historial y como evento. Llegar a ENTREGADA es
+     * además su propio evento: los oyentes imputan lo entregado a las necesidades
+     * de la entidad y avisan a incentivos.
+     */
+    private void transicionar(String estadoDestino, String nombreTransicion, String justificacion,
+                              LocalDateTime cuando) {
+        EstadoDonacionBase previo = getEstado();
+        EstadoDonacionBase nuevo = previo.transicionarA(estadoDestino, justificacion);
+        this.estadoNombre = nuevo.nombre();
+        historialEstados.add(CambioEstado.de(previo, nuevo, nombreTransicion, justificacion));
+        registrarEvento(new DonacionCambioDeEstado(id, previo.nombre(), nuevo.nombre()));
+        if (nuevo.es(ENTREGADA)) {
+            registrarEvento(new DonacionEntregada(id, idDonante, idEntidadBeneficiaria, subcategoria, cantidadTotal(),
+                    cuando));
+        }
+    }
+
+    /**
+     * Baja lógica: la donación queda guardada pero fuera de las consultas, y deja
+     * el evento para que los oyentes limpien lo que dependía de ella (su ranking en
+     * la bandeja). Dar de baja dos veces no cambia nada.
+     */
+    public void darDeBaja() {
+        if (estaDadaDeBaja()) {
+            return;
+        }
+        this.fechaBaja = FechaHoraArgentina.ahora();
+        registrarEvento(new DonacionDadaDeBaja(id));
+    }
+
+    public boolean estaDadaDeBaja() {
+        return fechaBaja != null;
+    }
+
+    /**
+     * Reemplaza un bien por su versión corregida.
+     *
+     * Solo mientras la donación está EN_DEPOSITO, y sin romper la segmentación:
+     * el bien sigue siendo de la subcategoría de la donación y, si la donación
+     * tiene otros bienes, comparte con ellos la clave de segmentación (mismo tipo
+     * y mismo vencimiento o mismo estado). Con un solo bien, la clave puede
+     * cambiar, porque es la de toda la donación.
+     *
+     * El bien nuevo tiene su propio id: se reemplaza el objeto, no se edita.
+     */
+    public void reemplazarBien(UUID idBien, Bien nuevo) {
+        if (!estaEnEstado(EN_DEPOSITO)) {
+            throw new DonacionNoModificableException(id, estadoNombre);
+        }
+        int posicion = posicionDelBien(idBien);
+        if (subcategoria != null && !subcategoria.equals(nuevo.getSubcategoria())) {
+            throw new BienIncompatibleConDonacionException(
+                    "la donación es de la subcategoría '" + subcategoria + "' y el bien de '" + nuevo.getSubcategoria() + "'.");
+        }
+        boolean rompeLaSegmentacion = bienes.stream()
+                .filter(bien -> !bien.getId().equals(idBien))
+                .anyMatch(otro -> !otro.claveDeSegmentacion().equals(nuevo.claveDeSegmentacion()));
+        if (rompeLaSegmentacion) {
+            throw new BienIncompatibleConDonacionException(
+                    "los demás bienes de la donación tienen otro tipo, vencimiento o estado.");
+        }
+        bienes.set(posicion, nuevo);
+    }
+
+    /** Para donaciones de un solo bien, que es lo que suele producir la segmentación. */
+    public void reemplazarUnicoBien(Bien nuevo) {
+        if (bienes.isEmpty()) {
+            throw new DonacionSinBienesException(id);
+        }
+        if (bienes.size() > 1) {
+            throw new DonacionConVariosBienesException(id, bienes.size());
+        }
+        reemplazarBien(bienes.getFirst().getId(), nuevo);
+    }
+
+    private int posicionDelBien(UUID idBien) {
+        for (int i = 0; i < bienes.size(); i++) {
+            if (bienes.get(i).getId().equals(idBien)) {
+                return i;
+            }
+        }
+        throw new BienNoEncontradoException(id, idBien);
+    }
+
+    /**
+     * Si algún bien perecedero ya venció a la fecha indicada. Una donación así no
+     * entra al matching ni se asigna; la persona administradora la pasa a VENCIDA.
+     */
+    public boolean tieneBienesVencidosAl(LocalDate fecha) {
+        return bienes.stream()
+                .map(Bien::vencimiento)
+                .flatMap(Optional::stream)
+                .anyMatch(vencimiento -> vencimiento.isBefore(fecha));
+    }
+
+    /** Una donación con bienes vencidos no se asigna ni se le buscan candidatas (422). */
+    public void exigirSinBienesVencidosAl(LocalDate fecha) {
+        if (tieneBienesVencidosAl(fecha)) {
+            throw new DonacionConBienesVencidosException(id);
+        }
+    }
+
+    /**
+     * Cambio de estado pedido por la persona administradora (PATCH .../estado).
+     *
+     * ASIGNACION_REALIZADA queda afuera: a ese estado se llega asignando la
+     * donación, que además registra la entidad, la fecha y el contador de
+     * recepciones. Antes se podía pasar a mano y la donación quedaba asignada a
+     * nadie. Las demás transiciones manuales siguen permitidas como intervención
+     * de la persona administradora.
+     *
+     * El nombre de la transición se deriva del estado de origen y el de destino
+     * ("Cambio manual de EN_DEPOSITO a VENCIDA"): antes lo mandaba el cliente como
+     * texto libre y el historial podía decir cualquier cosa.
+     */
+    public void cambiarEstadoManualmente(String estadoDestino, String justificacion) {
+        if (ASIGNACION_REALIZADA.equals(estadoDestino)) {
+            throw new TransicionReservadaException(estadoDestino,
+                    "se llega asignando la donación (PATCH /donaciones/" + id + "/asignar).");
+        }
+        cambiarEstado(estadoDestino, "Cambio manual de " + estadoNombre + " a " + estadoDestino, justificacion);
     }
 
     /**
@@ -143,33 +361,47 @@ public class Donacion {
      *
      * El paso de estado es obligatorio: la máquina es
      * ASIGNACION_REALIZADA → LISTA_PARA_ENTREGAR → EN_TRASLADO. Si la donación
-     * siguiera en ASIGNACION_REALIZADA cuando llega el evento de inicio de ruta,
-     * procesarInicioRuta fallaría con una transición ilegal.
+     * siguiera en ASIGNACION_REALIZADA cuando llega el aviso de inicio de ruta,
+     * el paso a EN_TRASLADO fallaría con una transición ilegal.
      */
-    public void despacharA(String proveedor, String idSeguimiento) {
+    public void despacharA(ProveedorLogistica proveedor, String idSeguimiento) {
         this.proveedorLogistica = proveedor;
         this.idSeguimientoLogistica = idSeguimiento;
-        cambiarEstado("LISTA_PARA_ENTREGAR", "envio a logistica",
+        cambiarEstado(LISTA_PARA_ENTREGAR, "envio a logistica",
                 "Tomada por " + proveedor + " (seguimiento " + idSeguimiento + ")");
     }
 
     public void asignarA(EntidadBeneficiaria entidad) {
         this.idEntidadBeneficiaria = entidad.getId();
         this.fechaAsignacion = FechaHoraArgentina.hoy();
-        cambiarEstado("ASIGNACION_REALIZADA", "asignar", "Asignada a " + entidad.getRazonSocial());
+        cambiarEstado(ASIGNACION_REALIZADA, "asignar", "Asignada a " + entidad.getRazonSocial());
+        registrarEvento(new DonacionAsignada(id, idDonante, entidad.getId()));
     }
 
     public boolean estaEnEstado(String nombreEstado) {
-        return this.estado.nombre().equals(nombreEstado);
+        return estadoNombre.equals(nombreEstado);
     }
 
-    public boolean esDeSubcategoria(String subcategoria) {
-        return this.subcategoria != null
-                && this.subcategoria.getTipo() != null
-                && this.subcategoria.getTipo().equalsIgnoreCase(subcategoria);
+    /** Suma de las cantidades de sus bienes; es lo que se imputa a las necesidades al entregarla. */
+    public int cantidadTotal() {
+        return bienes.stream().mapToInt(Bien::getCantidad).sum();
     }
 
-    public boolean fueEntregada() {
-        return estaEnEstado("ENTREGADA");
+    /**
+     * Los bienes, de solo lectura: se agregan con agregarBien y se corrigen con
+     * reemplazarBien, así ninguna regla de la donación se saltea desde afuera.
+     */
+    public List<Bien> getBienes() {
+        return Collections.unmodifiableList(bienes);
+    }
+
+    /** El historial es de solo lectura: lo escribe cambiarEstado. */
+    public List<CambioEstado> getHistorialEstados() {
+        return Collections.unmodifiableList(historialEstados);
+    }
+
+    /** Agrega un bien a la donación (la segmentación agrupa los de una misma clave). */
+    public void agregarBien(Bien bien) {
+        bienes.add(bien);
     }
 }

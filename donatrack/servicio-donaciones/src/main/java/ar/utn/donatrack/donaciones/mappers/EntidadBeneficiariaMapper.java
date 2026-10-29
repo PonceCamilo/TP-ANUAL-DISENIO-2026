@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.mappers;
 
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.dtos.request.*;
 import ar.utn.donatrack.donaciones.dtos.response.*;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -8,11 +9,11 @@ import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadRecurrente;
 import ar.utn.donatrack.donaciones.exceptions.comunes.TipoDesconocidoException;
-import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CambioTipoNecesidadException;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -20,17 +21,18 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class EntidadBeneficiariaMapper {
 
-    private final PersonaDonanteMapper dependenciasMapper;
+    private final DireccionMapper direcciones;
+    private final ContactoMapper contactos;
+    private final RepresentanteMapper representantes;
 
     // ── ENTIDAD ─────────────────────────────────────────────────────────────
 
     public EntidadBeneficiaria toModel(EntidadBeneficiariaRequestDTO dto) {
         return EntidadBeneficiaria.builder()
                 .razonSocial(dto.getRazonSocial())
-                .direccion(dependenciasMapper.toDireccion(dto.getDireccion()))
-                .contactos(dto.getContactos() != null ?
-                        dto.getContactos().stream().map(dependenciasMapper::toContacto).toList() : new ArrayList<>())
-                .representantes(dependenciasMapper.toRepresentantes(dto.getRepresentantes()))
+                .direccion(direcciones.toDireccion(dto.getDireccion()))
+                .contactos(contactos.toContactos(dto.getContactos()))
+                .representantes(representantes.toRepresentantes(dto.getRepresentantes()))
                 .campanias(new ArrayList<>())
                 .build();
     }
@@ -39,9 +41,9 @@ public class EntidadBeneficiariaMapper {
         return EntidadBeneficiariaResponseDTO.builder()
                 .id(entidad.getId())
                 .razonSocial(entidad.getRazonSocial())
-                .direccion(dependenciasMapper.toDireccionDTO(entidad.getDireccion()))
-                .contactos(dependenciasMapper.toContactosDTO(entidad.getContactos()))
-                .representantes(dependenciasMapper.toRepresentantesDTO(entidad.getRepresentantes()))
+                .direccion(direcciones.toDireccionDTO(entidad.getDireccion()))
+                .contactos(contactos.toContactosDTO(entidad.getContactos()))
+                .representantes(representantes.toRepresentantesDTO(entidad.getRepresentantes()))
                 .campanias(entidad.getCampanias() != null ?
                         entidad.getCampanias().stream().map(this::toCampaniaDTO).toList() : new ArrayList<>())
                 .build();
@@ -74,81 +76,21 @@ public class EntidadBeneficiariaMapper {
 
     // ── NECESIDADES ─────────────────────────────────────────────────────────
 
-    public Necesidad toNecesidadModel(NecesidadRequestDTO dto) {
-
-        if (dto instanceof NecesidadExtraordinariaRequestDTO extraDto) {
-            NecesidadExtraordinaria necesidad = new NecesidadExtraordinaria();
-            necesidad.setNombre(extraDto.getNombre());
-            necesidad.setDescripcion(extraDto.getDescripcion());
-            necesidad.setCantidadObjetivo(extraDto.getCantidadObjetivo());
-            // Toda necesidad nueva arranca con 0 recibido
-            necesidad.setCantidadRecibida(0);
-            return necesidad;
-
-        } else if (dto instanceof NecesidadRecurrenteRequestDTO recuDto) {
-            NecesidadRecurrente necesidad = new NecesidadRecurrente();
-            necesidad.setNombre(recuDto.getNombre());
-            necesidad.setDescripcion(recuDto.getDescripcion());
-            necesidad.setCantidadObjetivo(recuDto.getCantidadObjetivo());
-            necesidad.setCantidadRecibida(0);
-
-            // Setear atributos propios de la recurrente
-            necesidad.setPeriodo(recuDto.getPeriodo());
-            // Como recién se crea, el período arranca hoy
-            necesidad.setFechaInicioPeriodo(FechaHoraArgentina.hoy());
-
-            return necesidad;
-        }
-        throw new TipoDesconocidoException("necesidad");
-    }
-
     /**
-     * Aplica los datos del DTO sobre una necesidad ya existente (PUT).
-     *
-     * No se permite cambiar el tipo: si el DTO no corresponde a la clase concreta
-     * de la necesidad, se rechaza. Tampoco se toca cantidadRecibida (la registra
-     * el flujo de donaciones, no una edición) ni fechaInicioPeriodo, para no
-     * reiniciar el período en curso de una recurrente.
+     * Lo recibido y la satisfacción se informan a hoy: en una recurrente cuyo
+     * período ya terminó, lo recibido del período anterior no cuenta.
      */
-    public void actualizarNecesidadDesde(Necesidad necesidad, NecesidadRequestDTO dto) {
-        if (necesidad instanceof NecesidadExtraordinaria && dto instanceof NecesidadExtraordinariaRequestDTO) {
-            aplicarCamposComunes(necesidad, dto);
-
-        } else if (necesidad instanceof NecesidadRecurrente recu && dto instanceof NecesidadRecurrenteRequestDTO recuDto) {
-            aplicarCamposComunes(recu, recuDto);
-            recu.setPeriodo(recuDto.getPeriodo());
-
-        } else {
-            throw new CambioTipoNecesidadException(nombreTipo(necesidad), nombreTipo(dto));
-        }
-    }
-
-    private void aplicarCamposComunes(Necesidad necesidad, NecesidadRequestDTO dto) {
-        necesidad.setNombre(dto.getNombre());
-        necesidad.setDescripcion(dto.getDescripcion());
-        necesidad.setCantidadObjetivo(dto.getCantidadObjetivo());
-    }
-
-    private String nombreTipo(Object necesidadODto) {
-        if (necesidadODto instanceof NecesidadExtraordinaria || necesidadODto instanceof NecesidadExtraordinariaRequestDTO) {
-            return "EXTRAORDINARIA";
-        }
-        if (necesidadODto instanceof NecesidadRecurrente || necesidadODto instanceof NecesidadRecurrenteRequestDTO) {
-            return "RECURRENTE";
-        }
-        throw new TipoDesconocidoException("necesidad");
-    }
-
-    // Para cuando devuelva la info al frontend con un GET
     public NecesidadResponseDTO toNecesidadDTO(Necesidad necesidad) {
+        LocalDate hoy = FechaHoraArgentina.hoy();
         if (necesidad instanceof NecesidadExtraordinaria extra) {
             return NecesidadExtraordinariaResponseDTO.builder()
                     .id(extra.getId())
                     .nombre(extra.getNombre())
                     .descripcion(extra.getDescripcion())
-                    .cantidadObjetivo((double) extra.getCantidadObjetivo())
-                    .cantidadRecibida((double) extra.getCantidadRecibida())
-                    .satisfecha(extra.estaSatisfecha())
+                    .subcategoria(textoDe(extra.getSubcategoria()))
+                    .cantidadObjetivo(extra.getCantidadObjetivo())
+                    .cantidadRecibida(extra.cantidadRecibidaAl(hoy))
+                    .satisfecha(extra.estaSatisfechaAl(hoy))
                     .build();
 
         } else if (necesidad instanceof NecesidadRecurrente recu) {
@@ -156,13 +98,18 @@ public class EntidadBeneficiariaMapper {
                     .id(recu.getId())
                     .nombre(recu.getNombre())
                     .descripcion(recu.getDescripcion())
-                    .cantidadObjetivo((double) recu.getCantidadObjetivo())
-                    .cantidadRecibida((double) recu.getCantidadRecibida())
-                    .satisfecha(recu.estaSatisfecha())
+                    .subcategoria(textoDe(recu.getSubcategoria()))
+                    .cantidadObjetivo(recu.getCantidadObjetivo())
+                    .cantidadRecibida(recu.cantidadRecibidaAl(hoy))
+                    .satisfecha(recu.estaSatisfechaAl(hoy))
                     .periodo(recu.getPeriodo())
                     .fechaInicioPeriodo(recu.getFechaInicioPeriodo())
                     .build();
         }
         throw new TipoDesconocidoException("necesidad");
+    }
+
+    private static String textoDe(Subcategoria subcategoria) {
+        return subcategoria == null ? null : subcategoria.getTipo();
     }
 }

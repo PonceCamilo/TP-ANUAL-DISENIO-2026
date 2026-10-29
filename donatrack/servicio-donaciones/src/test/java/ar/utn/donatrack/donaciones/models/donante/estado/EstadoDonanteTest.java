@@ -1,7 +1,7 @@
 package ar.utn.donatrack.donaciones.models.donante.estado;
 
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -76,7 +76,7 @@ class EstadoDonanteTest {
         @DisplayName("BLOQUEADO -> INACTIVO no está permitida: desde BLOQUEADO solo se puede volver a ACTIVO")
         void bloqueadoAInactivoEsIlegal() {
             assertThatThrownBy(() -> new BloqueadoState().transicionarA("INACTIVO", "cualquier motivo"))
-                    .isInstanceOf(CambioEstadoPersonaIlegalException.class)
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class)
                     .hasMessageContaining("BLOQUEADO")
                     .hasMessageContaining("INACTIVO");
         }
@@ -85,7 +85,7 @@ class EstadoDonanteTest {
         @DisplayName("INACTIVO -> BLOQUEADO no está permitida: primero hay que reactivar al donante")
         void inactivoABloqueadoEsIlegal() {
             assertThatThrownBy(() -> new InactivoState().transicionarA("BLOQUEADO", "spam"))
-                    .isInstanceOf(CambioEstadoPersonaIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
 
         @Test
@@ -94,7 +94,7 @@ class EstadoDonanteTest {
             // Como el estado viaja por la API como String, un valor arbitrario
             // debe caer en el mismo camino que una transición no permitida.
             assertThatThrownBy(() -> new ActivoState().transicionarA("ESTADO_INVENTADO", null))
-                    .isInstanceOf(CambioEstadoPersonaIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
     }
 

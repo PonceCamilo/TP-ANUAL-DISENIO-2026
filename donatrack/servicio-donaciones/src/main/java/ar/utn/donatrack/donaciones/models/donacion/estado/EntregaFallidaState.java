@@ -2,6 +2,10 @@ package ar.utn.donatrack.donaciones.models.donacion.estado;
 
 import java.util.Map;
 
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_DEPOSITO;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.EN_TRASLADO;
+import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion.ENTREGA_FALLIDA;
+
 /**
  * La entrega no pudo concretarse.
  *
@@ -14,7 +18,7 @@ import java.util.Map;
  * intentar una entrega fallida (el externo permite FALLIDO → EN_CAMINO). Cuando
  * eso pasa, llega otro inicio-ruta para una donación que está en ENTREGA_FALLIDA.
  * Sin esta transición, el callback fallaría con una transición ilegal, Donaciones
- * respondería 400, el broker devolvería 502 al proveedor y la donación quedaría
+ * respondería 422, el broker devolvería 502 al proveedor y la donación quedaría
  * desincronizada respecto de lo que el proveedor cree que está pasando.
  *
  * Se eligió esta opción sobre la alternativa de encadenar
@@ -25,10 +29,8 @@ import java.util.Map;
 public class EntregaFallidaState extends EstadoDonacionBase {
 
     public EntregaFallidaState() {
-        super("ENTREGA_FALLIDA", Map.of(
-            "EN_DEPOSITO", EnDepositoState::new,
-            "EN_TRASLADO", EnTrasladoState::new
-        ));
+        super(ENTREGA_FALLIDA, Map.of(
+                EN_DEPOSITO, EnDepositoState::new,
+                EN_TRASLADO, EnTrasladoState::new));
     }
-
 }

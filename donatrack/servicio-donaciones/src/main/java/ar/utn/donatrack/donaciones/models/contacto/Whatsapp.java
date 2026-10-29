@@ -13,4 +13,9 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor
 public class Whatsapp extends MedioDeContacto {
+
+    @Override
+    public Canal canal() {
+        return Canal.WHATSAPP;
+    }
 }

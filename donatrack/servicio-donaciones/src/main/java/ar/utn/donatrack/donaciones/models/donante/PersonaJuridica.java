@@ -1,11 +1,11 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrimaryKeyJoinColumn;
@@ -13,10 +13,10 @@ import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -29,7 +29,6 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor
 @Getter
-@Setter
 public class PersonaJuridica extends PersonaDonante {
 
     @Column(name = "razon_social")
@@ -43,18 +42,41 @@ public class PersonaJuridica extends PersonaDonante {
     private String rubro;
 
     @Builder.Default
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "persona_juridica_id")
     private List<Representante> representantes = new ArrayList<>();
 
+    @Override
+    public TipoPersona tipoPersona() {
+        return TipoPersona.JURIDICA;
+    }
+
+    @Override
+    public void actualizarNombreImportado(String razonSocial) {
+        this.razonSocial = razonSocial.trim();
+    }
+
     /**
-     * El email identifica al representante: volver a agregar a alguien con el
-     * mismo email actualiza sus datos en lugar de duplicarlo. La comparación
-     * ignora mayúsculas porque los emails no distinguen case en la práctica.
+     * El email identifica al representante: uno con el mismo email reemplaza al
+     * anterior en lugar de duplicarse. Se compara por la forma canónica del email
+     * (NormalizadorEmail), como en el resto del servicio: antes era
+     * equalsIgnoreCase y un espacio de más duplicaba al representante.
      */
     public void agregarRepresentante(Representante representante) {
-        representantes.removeIf(rep -> rep.getEmail() != null
-                && rep.getEmail().equalsIgnoreCase(representante.getEmail()));
+        String email = NormalizadorEmail.normalizar(representante.getEmail());
+        representantes.removeIf(rep -> rep.getEmail() != null && NormalizadorEmail.normalizar(rep.getEmail()).equals(email));
         representantes.add(representante);
+    }
+
+    /** Los representantes, de solo lectura: se agregan con agregarRepresentante. */
+    public List<Representante> getRepresentantes() {
+        return Collections.unmodifiableList(representantes);
+    }
+
+    /** Los datos que se pueden editar; los que vienen en null no se modifican. */
+    public void actualizarDatosDeOrganizacion(String razonSocial, String rubro, TipoPersonaJuridica tipo) {
+        if (razonSocial != null) this.razonSocial = razonSocial;
+        if (rubro != null) this.rubro = rubro;
+        if (tipo != null) this.tipo = tipo;
     }
 }

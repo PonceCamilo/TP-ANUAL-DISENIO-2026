@@ -1,0 +1,172 @@
+package ar.utn.donatrack.donaciones.salida;
+
+import java.time.Duration;
+import java.time.Clock;
+import java.util.List;
+import java.util.UUID;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
+import ar.utn.donatrack.donaciones.interfaces.integracion.NotificacionTransport;
+import ar.utn.donatrack.donaciones.integracion.incentivos.EnviadorIncentivos;
+import ar.utn.donatrack.donaciones.integracion.notificaciones.SolicitudNotificacionMensaje;
+import ar.utn.donatrack.donaciones.repositories.jpa.MensajeSalienteJpaRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.RequestBuilder;
+
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * La bandeja de salida contra la base y con los clientes reales: los avisos se
+ * guardan con el cambio que los origina y el relay los envía (los transportes
+ * hacia los otros servicios se simulan).
+ */
+@SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:bandeja_salida;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
+@AutoConfigureMockMvc
+@DisplayName("Integración: bandeja de salida (outbox)")
+class BandejaDeSalidaIntegracionTest {
+
+    @Autowired private MockMvc mvc;
+    @Autowired private ObjectMapper json;
+    @Autowired private MensajeSalienteJpaRepository mensajes;
+    @Autowired private RelayDeMensajes relay;
+
+    @MockitoBean private NotificacionTransport transporte;
+    /** Espía del enviador real: conserva sus destinos y solo se simula el envío HTTP. */
+    @MockitoSpyBean private EnviadorIncentivos enviadorIncentivos;
+
+    @BeforeEach
+    void vaciar() {
+        mensajes.deleteAll();
+        doNothing().when(enviadorIncentivos).enviar(anyString(), anyString());
+    }
+
+    /**
+     * El relay corre con el reloj un segundo adelantado: si el reloj del sistema
+     * retrocede unos milisegundos entre que se guarda el aviso y corre el relay
+     * (una sincronización de hora), el aviso quedaría "en el futuro" hasta la
+     * vuelta siguiente y el test fallaría de a ratos.
+     */
+    private int enviarPendientes() {
+        FechaHoraArgentina.usarReloj(Clock.offset(Clock.systemUTC(), Duration.ofSeconds(1)));
+        try {
+            return relay.enviarPendientes(Duration.ofSeconds(30));
+        } finally {
+            FechaHoraArgentina.restablecerReloj();
+        }
+    }
+
+    private JsonNode enviar(RequestBuilder pedido) throws Exception {
+        String cuerpo = mvc.perform(pedido).andReturn().getResponse().getContentAsString();
+        return cuerpo.isBlank() ? null : json.readTree(cuerpo);
+    }
+
+    private UUID donacionAsignada() throws Exception {
+        String donante = """
+                {"tipo":"HUMANA","tipoDocumento":"DNI","numeroDocumento":"30111222","email":"%s",
+                 "nombre":"Ana","apellido":"Pérez","fechaNacimiento":"1990-05-10","genero":"FEMENINO",
+                 "direccion":{"calle":"Medrano","numero":951,"codigoPostal":"1179",
+                              "localidad":{"nombre":"CABA","provincia":{"nombre":"Buenos Aires"}}},
+                 "medioContactoPredeterminado":{"tipo":"EMAIL","valor":"ana@mail.com"}}
+                """.formatted("ana" + UUID.randomUUID() + "@mail.com");
+        UUID idDonante = UUID.fromString(enviar(post("/donantes").contentType(MediaType.APPLICATION_JSON).content(donante))
+                .get("id").asText());
+        String entidad = """
+                {"razonSocial":"Comedor Los Pibes",
+                 "direccion":{"calle":"Medrano","numero":951,"codigoPostal":"1179",
+                              "localidad":{"nombre":"CABA","provincia":{"nombre":"Buenos Aires"}}},
+                 "contactos":[{"tipo":"EMAIL","valor":"comedor@mail.com"}]}
+                """;
+        UUID idEntidad = UUID.fromString(enviar(post("/entidades").contentType(MediaType.APPLICATION_JSON).content(entidad))
+                .get("id").asText());
+        String donacion = """
+                {"idDonante":"%s","descripcion":"Colecta","bienes":[{"subcategoria":"Arroz","cantidad":5,"unidad":"kg"}]}
+                """.formatted(idDonante);
+        UUID idDonacion = UUID.fromString(enviar(post("/donaciones").contentType(MediaType.APPLICATION_JSON)
+                .content(donacion)).get(0).get("id").asText());
+        mvc.perform(patch("/donaciones/{id}/asignar", idDonacion).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"idEntidadBeneficiaria\":\"" + idEntidad + "\"}"))
+                .andExpect(status().isNoContent());
+        return idDonacion;
+    }
+
+    @Test
+    @DisplayName("Los avisos quedan guardados con el cambio y el relay los envía")
+    void guardaYEnvia() throws Exception {
+        donacionAsignada();
+
+        // Registro (incentivos) + asignación (donante y entidad): todavía no salió nada.
+        assertThat(mensajes.findByDestino(Destinos.NOTIFICACION)).hasSize(2);
+        assertThat(mensajes.findByDestino(Destinos.INCENTIVOS_DONACION_REGISTRADA)).singleElement()
+                .satisfies(m -> assertThat(m.getPayload()).contains("\"fecha\":\"20"));
+        verify(transporte, never()).enviar(any());
+
+        assertThat(enviarPendientes()).isEqualTo(3);
+
+        verify(transporte).enviar(argThat((SolicitudNotificacionMensaje s) ->
+                s.destinatario().equals("comedor@mail.com") && s.medio().equals("EMAIL")));
+        verify(transporte).enviar(argThat((SolicitudNotificacionMensaje s) ->
+                s.destinatario().equals("ana@mail.com") && s.mensaje().contains("Comedor Los Pibes")));
+        verify(enviadorIncentivos).enviar(eq(Destinos.INCENTIVOS_DONACION_REGISTRADA), anyString());
+        assertThat(mensajes.countByEstado(EstadoMensaje.ENVIADO)).isEqualTo(3);
+        assertThat(mensajes.countByEstado(EstadoMensaje.PENDIENTE)).isZero();
+    }
+
+    @Test
+    @DisplayName("Si el servicio de notificaciones está caído, sus avisos esperan el reintento y los de Incentivos salen igual")
+    void reintentaDespues() throws Exception {
+        doThrow(new IllegalStateException("notificaciones caído")).when(transporte).enviar(any());
+        donacionAsignada();
+
+        assertThat(enviarPendientes()).isEqualTo(1);
+
+        assertThat(mensajes.findByDestino(Destinos.INCENTIVOS_DONACION_REGISTRADA)).singleElement()
+                .satisfies(m -> assertThat(m.getEstado()).isEqualTo(EstadoMensaje.ENVIADO));
+        List<MensajeSaliente> avisos = mensajes.findByDestino(Destinos.NOTIFICACION);
+        assertThat(avisos).allSatisfy(m -> assertThat(m.getEstado()).isEqualTo(EstadoMensaje.PENDIENTE));
+        // El primero falló y espera su reintento; el segundo no se intentó porque su destino ya había fallado.
+        assertThat(avisos).filteredOn(m -> m.getIntentos() == 1).singleElement().satisfies(m -> {
+            assertThat(m.getUltimoError()).isEqualTo("notificaciones caído");
+            assertThat(m.getProximoIntento()).isAfter(m.getCreado());
+        });
+        assertThat(avisos).filteredOn(m -> m.getIntentos() == 0).hasSize(1);
+
+        // En la corrida siguiente se intenta el segundo; el primero no se toma hasta su próximo intento.
+        assertThat(enviarPendientes()).isZero();
+        assertThat(mensajes.findByDestino(Destinos.NOTIFICACION)).allSatisfy(m -> assertThat(m.getIntentos()).isEqualTo(1));
+    }
+
+    @Test
+    @DisplayName("Un cambio que falla no deja avisos")
+    void cambioFallidoSinAvisos() throws Exception {
+        UUID idDonacion = donacionAsignada();
+        mensajes.deleteAll();
+
+        mvc.perform(patch("/donaciones/{id}/estado", idDonacion).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\":\"ENTREGADA\"}"))
+                .andExpect(status().isUnprocessableEntity());
+
+        assertThat(mensajes.count()).isZero();
+    }
+}

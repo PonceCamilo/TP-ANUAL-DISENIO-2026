@@ -1,6 +1,5 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -9,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests de PersonaJuridica, en particular del alta/actualización de representantes.
@@ -29,10 +29,8 @@ class PersonaJuridicaTest {
                 .id(UUID.randomUUID())
                 .razonSocial("Fundación Ejemplo")
                 .rubro("Alimentos")
-                .tipoDocumento("CUIT")
-                .numeroDocumento("30-11122233-4")
+                .documento(Documento.de("CUIT", "30-11122233-5"))
                 .email("contacto@fundacionejemplo.org")
-                .estado(new ActivoState())
                 .build();
     }
 
@@ -91,6 +89,23 @@ class PersonaJuridicaTest {
         }
 
         @Test
+        @DisplayName("Compara por la forma canónica del email: espacios y mayúsculas no lo duplican")
+        void comparacionPorEmailCanonico() {
+            organizacion.agregarRepresentante(representante("Ana", "ana@fundacion.org"));
+            organizacion.agregarRepresentante(representante("Ana María", "  Ana@Fundacion.org "));
+
+            assertThat(organizacion.getRepresentantes()).hasSize(1);
+            assertThat(organizacion.getRepresentantes().getFirst().getNombre()).isEqualTo("Ana María");
+        }
+
+        @Test
+        @DisplayName("La lista de representantes no se modifica desde afuera")
+        void listaDeSoloLectura() {
+            assertThatThrownBy(() -> organizacion.getRepresentantes().add(representante("Ana", "ana@fundacion.org")))
+                    .isInstanceOf(UnsupportedOperationException.class);
+        }
+
+        @Test
         @DisplayName("Un representante sin email no desplaza a los ya cargados")
         void representanteSinEmailNoDesplaza() {
             // Caso borde: si el email es null no puede usarse como identidad,
@@ -111,8 +126,8 @@ class PersonaJuridicaTest {
         void heredaDePersonaDonante() {
             assertThat(organizacion.getRazonSocial()).isEqualTo("Fundación Ejemplo");
             assertThat(organizacion.getRubro()).isEqualTo("Alimentos");
-            // obtenerEmail() viene de la clase padre PersonaDonante.
-            assertThat(organizacion.obtenerEmail()).isEqualTo("contacto@fundacionejemplo.org");
+            // El email es de la clase padre PersonaDonante.
+            assertThat(organizacion.getEmail()).isEqualTo("contacto@fundacionejemplo.org");
         }
 
         @Test

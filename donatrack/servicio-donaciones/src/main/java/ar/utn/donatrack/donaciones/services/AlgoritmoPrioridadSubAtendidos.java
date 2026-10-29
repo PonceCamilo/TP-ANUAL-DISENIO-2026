@@ -1,36 +1,62 @@
 package ar.utn.donatrack.donaciones.services;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioRecepcionesEntidad;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.ToDoubleFunction;
 
 /**
- * Prioriza a las entidades que menos donaciones recibieron en el último
- * trimestre: a menor cantidad recibida, mayor puntaje (más prioridad).
- * Esto reparte las donaciones y evita concentrarlas en pocas entidades.
+ * Prioriza a las entidades que recibieron menos donaciones en el último
+ * trimestre: puntaje = 1 / (1 + donaciones recibidas en los últimos 3 meses).
+ *
+ * DESNORMALIZACIÓN (Entrega 5): las recepciones salen del contador
+ * entidad_recepcion_diaria y no de recorrer la tabla donacion. Antes, para
+ * puntuar cada entidad se leían todas las donaciones con sus bienes e historial;
+ * ahora prepararPuntaje trae los totales de todas las entidades en una sola
+ * consulta agregada.
  */
 @Component
+@Order(2)
 @RequiredArgsConstructor
 public class AlgoritmoPrioridadSubAtendidos extends AlgoritmoAsignacionBase {
 
+    public static final String NOMBRE = "PRIORIDAD_SUBATENDIDOS";
+
     private static final int MESES_TRIMESTRE = 3;
 
-    private final DonacionesRepositoryInterface donacionesRepository;
+    private final RepositorioRecepcionesEntidad recepciones;
+
+    @Override
+    public String nombre() {
+        return NOMBRE;
+    }
 
     @Override
     protected double calcularPuntaje(Donacion donacion, EntidadBeneficiaria entidad) {
-        LocalDate fechaLimite = FechaHoraArgentina.hoy().minusMonths(MESES_TRIMESTRE);
+        return puntaje(recepciones.contarRecepcionesDesde(entidad.getId(), inicioDelTrimestre()));
+    }
 
-        long donacionesRecibidas = donacionesRepository.obtenerTodas().stream()
-                .filter(d -> entidad.getId().equals(d.getIdEntidadBeneficiaria()))
-                .filter(d -> d.getFechaAsignacion() != null && !d.getFechaAsignacion().isBefore(fechaLimite))
-                .count();
+    @Override
+    protected ToDoubleFunction<EntidadBeneficiaria> prepararPuntaje(Donacion donacion,
+                                                                  List<EntidadBeneficiaria> entidades) {
+        Map<UUID, Long> recibidas = recepciones.contarRecepcionesPorEntidadDesde(inicioDelTrimestre());
+        return entidad -> puntaje(recibidas.getOrDefault(entidad.getId(), 0L));
+    }
 
+    private static LocalDate inicioDelTrimestre() {
+        return FechaHoraArgentina.hoy().minusMonths(MESES_TRIMESTRE);
+    }
+
+    private static double puntaje(long donacionesRecibidas) {
         return 1.0 / (1 + donacionesRecibidas);
     }
 }

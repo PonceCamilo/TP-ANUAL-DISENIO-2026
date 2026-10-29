@@ -20,6 +20,11 @@
     <name>servicio-donaciones</name>
     <description>Servicio encargado de la gestión de donaciones.</description>
 
+    <properties>
+        <shedlock.version>5.16.0</shedlock.version>
+        <archunit.version>1.3.0</archunit.version>
+    </properties>
+
     <dependencies>
 
         <!-- API REST -->
@@ -51,6 +56,37 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+        <!--
+            Entrega 5: el esquema lo crean y lo cambian migraciones versionadas
+            (src/main/resources/db/migration y el paquete db.migration); Hibernate
+            solo lo valida al arrancar.
+        -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!--
+            Entrega 5: con dos instancias del servicio, cada tarea programada corre
+            en una sola. El bloqueo es una fila de la tabla shedlock.
+        -->
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-spring</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.javacrumbs.shedlock</groupId>
+            <artifactId>shedlock-provider-jdbc-template</artifactId>
+            <version>${shedlock.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
@@ -63,6 +99,36 @@
             <scope>test</scope>
         </dependency>
 
+        <!--
+            Entrega 5: reglas de arquitectura en los tests (qué capa puede usar a
+            cuál) y tests contra PostgreSQL 16 en un contenedor, que corren solo si
+            hay Docker disponible.
+        -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+            <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>com.opencsv</groupId>
             <artifactId>opencsv</artifactId>
@@ -71,6 +137,15 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
+        </dependency>
+
+        <!--
+            Entrega 5: /actuator/health para el healthcheck del contenedor y
+            métricas en /actuator/metrics.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
         <!-- Swagger / OpenAPI UI -->
@@ -94,6 +169,21 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!--
+                            Versión de la API de Docker que usa Testcontainers en los tests contra
+                            PostgreSQL. Docker Engine 29 rechaza la que pide por defecto (1.32) y,
+                            sin esto, esos tests se saltean aunque Docker esté corriendo. La 1.44 la
+                            acepta Docker Engine 25 en adelante.
+                        -->
+                        <api.version>1.44</api.version>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
         </plugins>

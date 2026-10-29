@@ -18,15 +18,15 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class PersonaHumanaRequestDTO extends PersonaDonanteRequestDTO {
 
-  @NotBlank
-  private String nombre;
+    @NotBlank
+    private String nombre;
 
-  @NotBlank
-  private String apellido;
+    @NotBlank
+    private String apellido;
 
-  @NotNull
-  private LocalDate fechaNacimiento;
+    @NotNull
+    private LocalDate fechaNacimiento;
 
-  @NotNull
-  private Genero genero;
+    @NotNull
+    private Genero genero;
 }

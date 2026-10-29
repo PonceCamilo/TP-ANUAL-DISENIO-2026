@@ -1,34 +1,44 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.mappers.RepresentanteMapper;
+import ar.utn.donatrack.donaciones.mappers.DireccionMapper;
+import ar.utn.donatrack.donaciones.mappers.ContactoMapper;
+import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CampaniaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.NecesidadResponseDTO;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDonacionesException;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
-import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
 import ar.utn.donatrack.donaciones.validations.entidades.EntidadesBeneficiariasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+@Transactional
 @Service
 @RequiredArgsConstructor
-public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServiceInterface {
+public class EntidadesBeneficiariasService {
 
-    private final EntidadesBeneficiariasRepositoryInterface repositorio;
+    private final RepositorioEntidadesBeneficiarias repositorio;
+    private final RepositorioDonaciones donaciones;
     private final EntidadesBeneficiariasValidator validador;
     private final EntidadBeneficiariaMapper mapper;
-    private final PersonaDonanteMapper dependenciasMapper;
+    private final DireccionMapper direcciones;
+    private final ContactoMapper contactos;
+    private final RepresentanteMapper representantes;
 
     public EntidadBeneficiariaResponseDTO guardar(EntidadBeneficiariaRequestDTO dto) {
         EntidadBeneficiaria entidad = mapper.toModel(dto);
@@ -36,45 +46,47 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         return mapper.toDTO(entidad);
     }
 
-    public List<EntidadBeneficiariaResponseDTO> obtenerTodas() {
-        return repositorio.buscarTodas().stream().map(mapper::toDTO).toList();
+    @Transactional(readOnly = true)
+    public PaginaResponseDTO<EntidadBeneficiariaResponseDTO> obtenerEntidades(SolicitudPagina pagina) {
+        return PaginaResponseDTO.desde(repositorio.buscar(pagina).map(mapper::toDTO));
     }
 
+    @Transactional(readOnly = true)
     public EntidadBeneficiariaResponseDTO obtenerPorId(UUID id) {
-        validador.validarExistenciaEntidad(id);
-        return mapper.toDTO(repositorio.obtenerPorId(id));
+        return mapper.toDTO(validador.validarYObtenerEntidad(id));
     }
 
     public void actualizar(UUID id, EntidadBeneficiariaRequestDTO dtoNueva) {
-        validador.validarExistenciaEntidad(id);
-        EntidadBeneficiaria entidadExistente = repositorio.obtenerPorId(id);
+        EntidadBeneficiaria entidadExistente = validador.validarYObtenerEntidad(id);
 
-        entidadExistente.setRazonSocial(dtoNueva.getRazonSocial());
-        entidadExistente.setDireccion(dependenciasMapper.toDireccion(dtoNueva.getDireccion()));
+        entidadExistente.cambiarRazonSocial(dtoNueva.getRazonSocial());
+        entidadExistente.cambiarDireccion(direcciones.toDireccion(dtoNueva.getDireccion()));
 
         if (dtoNueva.getContactos() != null) {
-            entidadExistente.setContactos(dtoNueva.getContactos().stream()
-                    .map(dependenciasMapper::toContacto).toList());
+            entidadExistente.reemplazarContactos(contactos.toContactos(dtoNueva.getContactos()));
         }
         if (dtoNueva.getRepresentantes() != null) {
-            entidadExistente.setRepresentantes(dependenciasMapper.toRepresentantes(dtoNueva.getRepresentantes()));
+            entidadExistente.reemplazarRepresentantes(representantes.toRepresentantes(dtoNueva.getRepresentantes()));
         }
 
         repositorio.guardar(entidadExistente);
     }
 
-    // NUEVO REQUERIDO: Eliminar entidad
+    /** Borra la entidad con sus campañas y necesidades, si no tiene donaciones asignadas. */
     public void eliminarEntidad(UUID id) {
-        validador.validarExistenciaEntidad(id);
-        repositorio.eliminar(id);
+        EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(id);
+        // Sin FK entre donacion y entidad_beneficiaria: la integridad la cuida el
+        // servicio. Borrar la entidad dejaría donaciones apuntando a nadie.
+        if (donaciones.existenAsignadasA(id)) {
+            throw new EntidadConDonacionesException(id);
+        }
+        repositorio.eliminar(entidad);
     }
 
-    // NUEVO REQUERIDO: Crear Campaña dentro de Entidad
+    /** Agrega una campaña a la entidad; sus fechas tienen que ser coherentes. */
     public CampaniaResponseDTO agregarCampaniaAEntidad(UUID idEntidad, CampaniaRequestDTO dto) {
-        validador.validarExistenciaEntidad(idEntidad);
+        EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(idEntidad);
         validador.validarFechasCampania(dto.getFechaInicio(), dto.getFechaFin());
-
-        EntidadBeneficiaria entidad = repositorio.obtenerPorId(idEntidad);
         Campania nuevaCampania = mapper.toCampaniaModel(dto, idEntidad);
 
         entidad.agregarCampania(nuevaCampania);
@@ -83,14 +95,13 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         return mapper.toCampaniaDTO(nuevaCampania);
     }
 
-    // ACTUALIZADO CON DTO
+    /** Agrega una necesidad a una campaña de la entidad; el DTO decide si es extraordinaria o recurrente. */
     public NecesidadResponseDTO agregarNecesidadACampania(UUID entidadId, UUID campaniaId, NecesidadRequestDTO dto) {
         EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
 
         Campania campaniaTarget = validador.validarYObtenerCampania(entidad, campaniaId);
 
-        // Transformamos el DTO a la Necesidad real de forma segura
-        Necesidad nuevaNecesidad = mapper.toNecesidadModel(dto);
+        Necesidad nuevaNecesidad = dto.crear(FechaHoraArgentina.hoy());
         campaniaTarget.agregarNecesidad(nuevaNecesidad);
 
         repositorio.guardar(entidad);
@@ -98,6 +109,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         return mapper.toNecesidadDTO(nuevaNecesidad);
     }
 
+    @Transactional(readOnly = true)
     public List<NecesidadResponseDTO> obtenerNecesidadesDeCampania(UUID entidadId, UUID campaniaId) {
         EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
         Campania campania = validador.validarYObtenerCampania(entidad, campaniaId);
@@ -105,6 +117,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         return campania.getNecesidades().stream().map(mapper::toNecesidadDTO).toList();
     }
 
+    @Transactional(readOnly = true)
     public NecesidadResponseDTO obtenerNecesidad(UUID entidadId, UUID campaniaId, UUID necesidadId) {
         EntidadBeneficiaria entidad = validador.validarYObtenerEntidad(entidadId);
         Campania campania = validador.validarYObtenerCampania(entidad, campaniaId);
@@ -119,7 +132,7 @@ public class EntidadesBeneficiariasService implements EntidadesBeneficiariasServ
         Necesidad necesidad = validador.validarYObtenerNecesidad(campania, necesidadId);
 
         // Rechaza el cambio de tipo (EXTRAORDINARIA <-> RECURRENTE)
-        mapper.actualizarNecesidadDesde(necesidad, dto);
+        dto.aplicarEn(necesidad);
 
         repositorio.guardar(entidad);
 

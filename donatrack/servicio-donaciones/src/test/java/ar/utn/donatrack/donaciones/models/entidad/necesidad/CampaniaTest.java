@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.models.entidad.necesidad;
 
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -123,8 +124,11 @@ class CampaniaTest {
     }
 
     @Nested
-    @DisplayName("necesidadesCompatiblesCon() - filtro usado por el algoritmo de asignación")
+    @DisplayName("necesidadesAbiertasCompatiblesCon() - filtro usado por el algoritmo de asignación")
     class NecesidadesCompatibles {
+
+        /** Un día dentro de la campaña (1 de marzo a 1 de abril de 2026). */
+        private final LocalDate durante = LocalDate.of(2026, 3, 15);
 
         @BeforeEach
         void cargarNecesidades() {
@@ -136,7 +140,7 @@ class CampaniaTest {
         @Test
         @DisplayName("Devuelve solo las necesidades que mencionan la subcategoría")
         void filtraPorSubcategoria() {
-            assertThat(campania.necesidadesCompatiblesCon("arroz"))
+            assertThat(campania.necesidadesAbiertasCompatiblesCon(new Subcategoria("arroz"), durante))
                     .hasSize(1)
                     .allMatch(n -> n.getNombre().contains("Arroz"));
         }
@@ -144,13 +148,41 @@ class CampaniaTest {
         @Test
         @DisplayName("Devuelve lista vacía si ninguna necesidad coincide")
         void sinCoincidencias() {
-            assertThat(campania.necesidadesCompatiblesCon("bicicletas")).isEmpty();
+            assertThat(campania.necesidadesAbiertasCompatiblesCon(new Subcategoria("bicicletas"), durante)).isEmpty();
         }
 
         @Test
         @DisplayName("El filtro ignora mayúsculas y minúsculas")
         void filtroIgnoraCase() {
-            assertThat(campania.necesidadesCompatiblesCon("COLCHONES")).hasSize(1);
+            assertThat(campania.necesidadesAbiertasCompatiblesCon(new Subcategoria("COLCHONES"), durante)).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Las necesidades ya satisfechas no cuentan")
+        void satisfechasAfuera() {
+            campania.getNecesidades().getFirst().recibir(100, durante);
+
+            assertThat(campania.necesidadesAbiertasCompatiblesCon(new Subcategoria("arroz"), durante)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Fuera de las fechas de la campaña no hay necesidades abiertas")
+        void campaniaNoVigente() {
+            assertThat(campania.estaVigenteAl(LocalDate.of(2026, 4, 1))).isTrue();
+            assertThat(campania.estaVigenteAl(LocalDate.of(2026, 4, 2))).isFalse();
+            assertThat(campania.necesidadesAbiertasCompatiblesCon(new Subcategoria("arroz"), LocalDate.of(2026, 5, 1)))
+                    .isEmpty();
+            assertThat(campania.necesidadesAbiertasCompatiblesCon(new Subcategoria("arroz"), LocalDate.of(2026, 2, 28)))
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("Una campaña sin fechas no está acotada")
+        void sinFechas() {
+            campania.setFechaInicio(null);
+            campania.setFechaFin(null);
+
+            assertThat(campania.estaVigenteAl(LocalDate.of(2030, 1, 1))).isTrue();
         }
     }
 }

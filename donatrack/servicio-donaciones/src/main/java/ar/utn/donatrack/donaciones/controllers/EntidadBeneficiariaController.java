@@ -1,12 +1,14 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.services.EntidadesBeneficiariasService;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CampaniaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.NecesidadResponseDTO;
-import ar.utn.donatrack.donaciones.interfaces.services.EntidadesBeneficiariasServiceInterface;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -31,7 +33,7 @@ import java.util.UUID;
 @Tag(name = "Entidades Beneficiarias", description = "Gestión de entidades beneficiarias, sus campañas y necesidades materiales")
 public class EntidadBeneficiariaController {
 
-    private final EntidadesBeneficiariasServiceInterface entidadesBeneficiariasService;
+    private final EntidadesBeneficiariasService entidadesBeneficiariasService;
 
     @Operation(
         summary = "Crear una entidad beneficiaria",
@@ -51,15 +53,23 @@ public class EntidadBeneficiariaController {
     }
 
     @Operation(
-        summary = "Listar entidades beneficiarias",
+        summary = "Listar entidades beneficiarias (paginado)",
+        description = "Ordenadas por razón social, como página igual que donaciones y donantes (antes devolvía todas "
+            + "juntas). Las páginas empiezan en 0; el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
+            + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
         responses = {
-            @ApiResponse(responseCode = "200", description = "Entidades encontradas",
-                content = @Content(array = @ArraySchema(schema = @Schema(implementation = EntidadBeneficiariaResponseDTO.class))))
+            @ApiResponse(responseCode = "200", description = "Página de entidades con el total de resultados"),
+            @ApiResponse(responseCode = "400", description = "Número o tamaño de página fuera de rango")
         }
     )
     @GetMapping
-    public ResponseEntity<List<EntidadBeneficiariaResponseDTO>> obtenerTodas() {
-        return ResponseEntity.ok(entidadesBeneficiariasService.obtenerTodas());
+    public ResponseEntity<PaginaResponseDTO<EntidadBeneficiariaResponseDTO>> obtenerEntidades(
+        @Parameter(description = "Número de página, desde 0", example = "0")
+        @RequestParam(required = false) Integer page,
+        @Parameter(description = "Elementos por página (1 a 100)", example = "20")
+        @RequestParam(required = false) Integer size
+    ) {
+        return ResponseEntity.ok(entidadesBeneficiariasService.obtenerEntidades(SolicitudPagina.de(page, size)));
     }
 
     @Operation(

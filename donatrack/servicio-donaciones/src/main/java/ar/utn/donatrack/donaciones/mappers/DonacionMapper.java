@@ -20,95 +20,84 @@ import java.util.List;
 @Component
 public class DonacionMapper {
 
-  public DonacionResponseDTO toDTO(Donacion donacion) {
-    return DonacionResponseDTO.builder()
-        .id(donacion.getId())
-        .idDonante(donacion.getIdDonante())
-        .idEntidadBeneficiaria(donacion.getIdEntidadBeneficiaria())
-        .descripcion(donacion.getDescripcion())
-        .fechaDonacion(donacion.getFechaDonacion())
-        .subcategoria(donacion.getSubcategoria() != null ? donacion.getSubcategoria().getTipo() : null)
-        .estado(donacion.getEstado().nombre())
-        .proveedorLogistica(donacion.getProveedorLogistica())
-        .idSeguimientoLogistica(donacion.getIdSeguimientoLogistica())
-        .bienes(toBienesDTO(donacion.getBienes()))
-        .historialEstados(toHistorialDTO(donacion.getHistorialEstados()))
-        .build();
-  }
-
-  public List<DonacionResponseDTO> toDTOList(List<Donacion> donaciones) {
-    return donaciones.stream().map(this::toDTO).toList();
-  }
-
-  public CargaDonacion toCargaDonacion(DonacionRequestDTO dto) {
-    return new CargaDonacion(
-        dto.getIdDonante(),
-        dto.getDescripcion(),
-        dto.getBienes().stream().map(this::toBien).toList()
-    );
-  }
-
-  public Bien toBien(BienRequestDTO dto) {
-    if (dto.getFechaVencimiento() != null) {
-      return BienPerecible.builder()
-          .subcategoria(new Subcategoria(dto.getSubcategoria()))
-          .descripcion(dto.getDescripcion())
-          .foto(dto.getFoto())
-          .cantidad(dto.getCantidad())
-          .unidad(dto.getUnidad())
-          .fechaVencimiento(dto.getFechaVencimiento())
-          .build();
-    }
-    if (dto.getEsNuevo() != null) {
-      return BienConEstado.builder()
-          .subcategoria(new Subcategoria(dto.getSubcategoria()))
-          .descripcion(dto.getDescripcion())
-          .foto(dto.getFoto())
-          .cantidad(dto.getCantidad())
-          .unidad(dto.getUnidad())
-          .esNuevo(dto.getEsNuevo())
-          .build();
-    }
-    return BienGenerico.builder()
-        .subcategoria(new Subcategoria(dto.getSubcategoria()))
-        .descripcion(dto.getDescripcion())
-        .foto(dto.getFoto())
-        .cantidad(dto.getCantidad())
-        .unidad(dto.getUnidad())
-        .build();
-  }
-
-  private List<BienResponseDTO> toBienesDTO(List<Bien> bienes) {
-    return bienes.stream().map(this::toBienDTO).toList();
-  }
-
-  private BienResponseDTO toBienDTO(Bien bien) {
-    BienResponseDTO.BienResponseDTOBuilder builder = BienResponseDTO.builder()
-        .subcategoria(bien.getSubcategoria() != null ? bien.getSubcategoria().getTipo() : null)
-        .descripcion(bien.getDescripcion())
-        .foto(bien.getFoto())
-        .cantidad(bien.getCantidad())
-        .unidad(bien.getUnidad());
-
-    if (bien instanceof BienConEstado bienConEstado) {
-      builder.esNuevo(bienConEstado.isEsNuevo());
-    }
-    if (bien instanceof BienPerecible bienPerecible) {
-      builder.fechaVencimiento(bienPerecible.getFechaVencimiento());
+    public DonacionResponseDTO toDTO(Donacion donacion) {
+        return DonacionResponseDTO.builder()
+                .id(donacion.getId())
+                .idDonante(donacion.getIdDonante())
+                .idEntidadBeneficiaria(donacion.getIdEntidadBeneficiaria())
+                .descripcion(donacion.getDescripcion())
+                .fechaDonacion(donacion.getFechaDonacion())
+                .subcategoria(donacion.getSubcategoria() != null ? donacion.getSubcategoria().getTipo() : null)
+                .estado(donacion.getEstado().nombre())
+                .proveedorLogistica(donacion.getProveedorLogistica())
+                .idSeguimientoLogistica(donacion.getIdSeguimientoLogistica())
+                .bienes(toBienesDTO(donacion.getBienes()))
+                .historialEstados(toHistorialDTO(donacion.getHistorialEstados()))
+                .build();
     }
 
-    return builder.build();
-  }
+    public List<DonacionResponseDTO> toDTOList(List<Donacion> donaciones) {
+        return donaciones.stream().map(this::toDTO).toList();
+    }
 
-  private List<CambioEstadoResponseDTO> toHistorialDTO(List<CambioEstado> historial) {
-    return historial.stream()
-        .map(c -> CambioEstadoResponseDTO.builder()
-            .estadoPrevio(c.getEstadoPrevio() != null ? c.getEstadoPrevio().nombre() : null)
-            .estado(c.getEstado().nombre())
-            .nombreTransicion(c.getNombreTransicion())
-            .justificacion(c.getJustificacion())
-            .fechaHora(c.getFechaHora())
-            .build())
-        .toList();
-  }
+    public CargaDonacion toCargaDonacion(DonacionRequestDTO dto) {
+        return new CargaDonacion(
+                dto.getIdDonante(),
+                dto.getDescripcion(),
+                dto.getBienes().stream().map(this::toBien).toList()
+        );
+    }
+
+    /** Arma la subclase que corresponde al tipo del bien (indicado o deducido, ver BienRequestDTO). */
+    public Bien toBien(BienRequestDTO dto) {
+        return switch (dto.tipoResuelto()) {
+            case PERECIBLE -> conDatosComunes(BienPerecible.builder(), dto)
+                    .fechaVencimiento(dto.getFechaVencimiento())
+                    .build();
+            case CON_ESTADO -> conDatosComunes(BienConEstado.builder(), dto)
+                    .esNuevo(dto.getEsNuevo())
+                    .build();
+            case GENERICO -> conDatosComunes(BienGenerico.builder(), dto).build();
+        };
+    }
+
+    private static <C extends Bien, B extends Bien.BienBuilder<C, B>> B conDatosComunes(
+            Bien.BienBuilder<C, B> builder, BienRequestDTO dto) {
+        return builder
+                .subcategoria(new Subcategoria(dto.getSubcategoria()))
+                .descripcion(dto.getDescripcion())
+                .foto(dto.getFoto())
+                .cantidad(dto.getCantidad())
+                .unidad(dto.getUnidad());
+    }
+
+    private List<BienResponseDTO> toBienesDTO(List<Bien> bienes) {
+        return bienes.stream().map(this::toBienDTO).toList();
+    }
+
+    private BienResponseDTO toBienDTO(Bien bien) {
+        return BienResponseDTO.builder()
+                .id(bien.getId())
+                .tipo(bien.tipo())
+                .subcategoria(bien.getSubcategoria() != null ? bien.getSubcategoria().getTipo() : null)
+                .descripcion(bien.getDescripcion())
+                .foto(bien.getFoto())
+                .cantidad(bien.getCantidad())
+                .unidad(bien.getUnidad())
+                .esNuevo(bien.nuevo().orElse(null))
+                .fechaVencimiento(bien.vencimiento().orElse(null))
+                .build();
+    }
+
+    private List<CambioEstadoResponseDTO> toHistorialDTO(List<CambioEstado> historial) {
+        return historial.stream()
+                .map(c -> CambioEstadoResponseDTO.builder()
+                        .estadoPrevio(c.getEstadoPrevio() != null ? c.getEstadoPrevio().nombre() : null)
+                        .estado(c.getEstado().nombre())
+                        .nombreTransicion(c.getNombreTransicion())
+                        .justificacion(c.getJustificacion())
+                        .fechaHora(c.getFechaHora())
+                        .build())
+                .toList();
+    }
 }

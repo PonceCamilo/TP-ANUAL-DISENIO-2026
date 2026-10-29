@@ -15,13 +15,13 @@ import lombok.Setter;
 @Builder
 public class RepresentanteRequestDTO {
 
-  @NotBlank
-  private String nombre;
+    @NotBlank
+    private String nombre;
 
-  @NotBlank
-  private String apellido;
+    @NotBlank
+    private String apellido;
 
-  @NotBlank
-  @Email
-  private String email;
+    @NotBlank
+    @Email
+    private String email;
 }

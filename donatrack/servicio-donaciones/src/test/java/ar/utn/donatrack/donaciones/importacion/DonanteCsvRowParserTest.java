@@ -1,10 +1,6 @@
 package ar.utn.donatrack.donaciones.importacion;
 
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoDocumentoException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoLineaException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoMailException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoNombreException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoPersonaException;
+import ar.utn.donatrack.donaciones.exceptions.csvExceptions.CsvFormatoException;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -62,7 +58,7 @@ class DonanteCsvRowParserTest {
         @Test
         @DisplayName("Parsea una fila de persona jurídica")
         void parseaPersonaJuridica() {
-            String[] fila = {"JURIDICA", "CUIT", "30-11122233-4", "Fundación Ejemplo", "contacto@fundacion.org", ""};
+            String[] fila = {"JURIDICA", "CUIT", "30-11122233-5", "Fundación Ejemplo", "contacto@fundacion.org", ""};
 
             DonanteImportDto dto = parser.parsear(fila, LINEA);
 
@@ -134,7 +130,7 @@ class DonanteCsvRowParserTest {
             String[] incompleta = {"HUMANA", "DNI", "30111222"};
 
             assertThatThrownBy(() -> parser.parsear(incompleta, LINEA))
-                    .isInstanceOf(CsvFormatoLineaException.class)
+                    .isInstanceOf(CsvFormatoException.class)
                     .hasMessageContaining(String.valueOf(LINEA));
         }
 
@@ -142,7 +138,7 @@ class DonanteCsvRowParserTest {
         @DisplayName("Una fila sin columnas lanza CsvFormatoLineaException")
         void filaVacia() {
             assertThatThrownBy(() -> parser.parsear(new String[]{}, LINEA))
-                    .isInstanceOf(CsvFormatoLineaException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
 
         @Test
@@ -152,7 +148,7 @@ class DonanteCsvRowParserTest {
             String[] fila = {"EMPRESA", "CUIT", "30111222", "Fundación", "contacto@fundacion.org"};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoPersonaException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
 
         @Test
@@ -163,7 +159,61 @@ class DonanteCsvRowParserTest {
             String[] fila = {"HUMANA", "DNI", "30111222", "Juan Pérez", "   "};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoMailException.class);
+                    .isInstanceOf(CsvFormatoException.class);
+        }
+
+        @Test
+        @DisplayName("Un email con formato inválido se rechaza (antes solo se pedía que no estuviera vacío)")
+        void emailInvalido() {
+            String[] fila = {"HUMANA", "DNI", "30111222", "Juan Pérez", "juan@mail", ""};
+
+            assertThatThrownBy(() -> parser.parsear(fila, 7))
+                    .isInstanceOf(CsvFormatoException.class)
+                    .hasMessageContaining("Línea 7")
+                    .hasMessageContaining("juan@mail");
+        }
+
+        @Test
+        @DisplayName("Un documento que no corresponde a su tipo se rechaza (DNI de 3 dígitos, CUIT de 10)")
+        void documentoInvalido() {
+            assertThatThrownBy(() -> parser.parsear(
+                    new String[]{"HUMANA", "DNI", "123", "Juan Pérez", "juan@mail.com", ""}, 4))
+                    .isInstanceOf(CsvFormatoException.class)
+                    .hasMessageContaining("Línea 4")
+                    .hasMessageContaining("DNI");
+            assertThatThrownBy(() -> parser.parsear(
+                    new String[]{"JURIDICA", "CUIT", "30-1112223-4", "Fundación", "info@fundacion.org", ""}, 5))
+                    .isInstanceOf(CsvFormatoException.class)
+                    .hasMessageContaining("CUIT");
+        }
+
+        @Test
+        @DisplayName("Un CUIT con la forma correcta se acepta aunque su dígito verificador no cierre, como los del CSV del enunciado")
+        void cuitDelEnunciado() {
+            DonanteImportDto fila = parser.parsear(
+                    new String[]{"JURIDICA", "CUIT", "30-46632757-9", "Fundación", "info@fundacion.org", ""}, 5);
+
+            assertThat(fila.documento()).isEqualTo("30466327579");
+        }
+
+        @Test
+        @DisplayName("Una persona jurídica tiene que venir con CUIT")
+        void juridicaSinCuit() {
+            String[] fila = {"JURIDICA", "DNI", "30111222", "Fundación", "info@fundacion.org", ""};
+
+            assertThatThrownBy(() -> parser.parsear(fila, 9))
+                    .isInstanceOf(CsvFormatoException.class)
+                    .hasMessageContaining("CUIT");
+        }
+
+        @Test
+        @DisplayName("El documento queda normalizado en la fila parseada")
+        void documentoNormalizado() {
+            DonanteImportDto dto = parser.parsear(
+                    new String[]{"HUMANA", "dni", "30.111.222", "Juan Pérez", "juan@mail.com", ""}, 2);
+
+            assertThat(dto.tipoDoc()).isEqualTo("DNI");
+            assertThat(dto.documento()).isEqualTo("30111222");
         }
 
         @Test
@@ -172,7 +222,7 @@ class DonanteCsvRowParserTest {
             String[] fila = {"HUMANA", "DNI", "  ", "Juan Pérez", "juan@example.com"};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoDocumentoException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
 
         @Test
@@ -181,7 +231,7 @@ class DonanteCsvRowParserTest {
             String[] fila = {"HUMANA", "DNI", "30111222", "   ", "juan@example.com"};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoNombreException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
 
         @Test
@@ -192,7 +242,7 @@ class DonanteCsvRowParserTest {
             String[] fila = {"EMPRESA", "DNI", "30111222", "Juan Pérez", ""};
 
             assertThatThrownBy(() -> parser.parsear(fila, LINEA))
-                    .isInstanceOf(CsvFormatoPersonaException.class);
+                    .isInstanceOf(CsvFormatoException.class);
         }
     }
 }

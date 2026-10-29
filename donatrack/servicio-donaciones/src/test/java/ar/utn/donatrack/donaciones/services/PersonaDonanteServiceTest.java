@@ -1,10 +1,18 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DocumentoInvalidoException;
+import ar.utn.donatrack.donaciones.models.donante.Documento;
+import ar.utn.donatrack.donaciones.mappers.MappersDePrueba;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.models.donante.Representante;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DireccionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EmailRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EstadoDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.LocalidadRequestDTO;
-import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaHumanaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaJuridicaRequestDTO;
@@ -17,13 +25,12 @@ import ar.utn.donatrack.donaciones.dtos.response.PersonaJuridicaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
-import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.donante.Genero;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
@@ -45,12 +52,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -75,7 +82,10 @@ import static org.mockito.Mockito.when;
 class PersonaDonanteServiceTest {
 
     @Mock
-    private PersonaDonanteRepositoryInterface repositorio;
+    private RepositorioPersonasDonantes repositorio;
+
+    @Mock
+    private RepositorioDonaciones donaciones;
 
     @Captor
     private ArgumentCaptor<PersonaDonante> donanteCaptor;
@@ -86,8 +96,12 @@ class PersonaDonanteServiceTest {
     void crearServicio() {
         servicio = new PersonaDonanteService(
                 repositorio,
+                donaciones,
                 new PersonasValidator(repositorio),
-                new PersonaDonanteMapper());
+                MappersDePrueba.personas(),
+                MappersDePrueba.DIRECCIONES,
+                MappersDePrueba.CONTACTOS,
+                MappersDePrueba.REPRESENTANTES);
     }
 
     // ── Constructores de DTOs de prueba ──────────────────────────────────────
@@ -124,7 +138,7 @@ class PersonaDonanteServiceTest {
                 .rubro("Alimentos")
                 .tipoOrganizacion(TipoPersonaJuridica.ONG)
                 .tipoDocumento("CUIT")
-                .numeroDocumento("30-11122233-4")
+                .numeroDocumento("30-11122233-5")
                 .email(email)
                 .direccion(direccion())
                 .medioContactoPredeterminado(EmailRequestDTO.builder().valor(email).build())
@@ -141,10 +155,8 @@ class PersonaDonanteServiceTest {
                 .nombre("Juan")
                 .apellido("Pérez")
                 .fechaNacimiento(LocalDate.of(1990, 5, 20))
-                .tipoDocumento("DNI")
-                .numeroDocumento("30111222")
+                .documento(Documento.de("DNI", "30111222"))
                 .email("juan@example.com")
-                .estado(new ActivoState())
                 .build();
     }
 
@@ -155,7 +167,6 @@ class PersonaDonanteServiceTest {
                 .rubro("Alimentos")
                 .tipo(TipoPersonaJuridica.ONG)
                 .email("contacto@fundacion.org")
-                .estado(new ActivoState())
                 .build();
     }
 
@@ -195,6 +206,7 @@ class PersonaDonanteServiceTest {
             assertThat(respuesta).isInstanceOf(PersonaJuridicaResponseDTO.class);
             PersonaJuridicaResponseDTO juridica = (PersonaJuridicaResponseDTO) respuesta;
             assertThat(juridica.getRazonSocial()).isEqualTo("Fundación Ejemplo");
+            assertThat(juridica.getTipoOrganizacion()).isEqualTo(TipoPersonaJuridica.ONG);
             assertThat(juridica.getRepresentantes()).hasSize(1);
         }
 
@@ -211,6 +223,21 @@ class PersonaDonanteServiceTest {
             int edadEsperada = java.time.Period.between(
                     LocalDate.of(1990, 5, 20), LocalDate.now()).getYears();
             assertThat(respuesta.getEdad()).isEqualTo(edadEsperada);
+        }
+
+        @Test
+        @DisplayName("Rechaza un documento que no corresponde a su tipo, y una organización sin CUIT (400)")
+        void rechazaDocumentoInvalido() {
+            PersonaHumanaRequestDTO conDniCorto = dtoHumana("juan@example.com");
+            conDniCorto.setNumeroDocumento("123");
+            PersonaJuridicaRequestDTO conDni = dtoJuridica("contacto@fundacion.org");
+            conDni.setTipoDocumento("DNI");
+            conDni.setNumeroDocumento("30111222");
+
+            assertThatThrownBy(() -> servicio.registrar(conDniCorto)).isInstanceOf(DocumentoInvalidoException.class);
+            assertThatThrownBy(() -> servicio.registrar(conDni)).isInstanceOf(DocumentoInvalidoException.class)
+                    .hasMessageContaining("CUIT");
+            verify(repositorio, never()).guardar(any());
         }
 
         @Test
@@ -240,7 +267,7 @@ class PersonaDonanteServiceTest {
         @DisplayName("obtenerDonante() devuelve el donante por id")
         void obtenerPorId() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(humanaGuardada(id));
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
 
             assertThat(servicio.obtenerDonante(id).getId()).isEqualTo(id);
         }
@@ -249,36 +276,24 @@ class PersonaDonanteServiceTest {
         @DisplayName("obtenerDonante() lanza 404 si el donante no existe")
         void obtenerPorIdInexistente() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(null);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.obtenerDonante(id))
                     .isInstanceOf(PersonaDonanteNoEncontradaException.class);
         }
 
         @Test
-        @DisplayName("Sin filtro de estado devuelve todos los donantes")
-        void listarTodos() {
-            when(repositorio.obtenerTodosDonantes())
-                    .thenReturn(List.of(humanaGuardada(UUID.randomUUID()), juridicaGuardada(UUID.randomUUID())));
+        @DisplayName("Delega estado y página en el repositorio y devuelve la página mapeada")
+        void listarPaginado() {
+            SolicitudPagina pagina = new SolicitudPagina(0, 20);
+            when(repositorio.buscar("BLOQUEADO", pagina)).thenReturn(new Pagina<>(
+                    List.of(humanaGuardada(UUID.randomUUID()), juridicaGuardada(UUID.randomUUID())), 0, 20, 2));
 
-            assertThat(servicio.obtenerDonantes(null)).hasSize(2);
-        }
+            PaginaResponseDTO<PersonaDonanteResponseDTO> resultado = servicio.obtenerDonantes("BLOQUEADO", pagina);
 
-        @Test
-        @DisplayName("Con filtro de estado delega la búsqueda en el repositorio")
-        void listarPorEstado() {
-            when(repositorio.obtenerPorEstado("BLOQUEADO")).thenReturn(List.of(humanaGuardada(UUID.randomUUID())));
-
-            assertThat(servicio.obtenerDonantes("BLOQUEADO")).hasSize(1);
-            verify(repositorio, never()).obtenerTodosDonantes();
-        }
-
-        @Test
-        @DisplayName("Un filtro de estado en blanco se trata como si no se hubiera enviado")
-        void filtroEnBlancoSeIgnora() {
-            when(repositorio.obtenerTodosDonantes()).thenReturn(List.of(humanaGuardada(UUID.randomUUID())));
-
-            assertThat(servicio.obtenerDonantes("   ")).hasSize(1);
+            assertThat(resultado.getContenido()).hasSize(2);
+            assertThat(resultado.getTotalElementos()).isEqualTo(2);
+            assertThat(resultado.getTotalPaginas()).isEqualTo(1);
         }
     }
 
@@ -291,7 +306,7 @@ class PersonaDonanteServiceTest {
         void darDeBaja() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.cambiarEstado(id, dtoEstado("INACTIVO", null));
 
@@ -303,7 +318,7 @@ class PersonaDonanteServiceTest {
         void bloquearConJustificacion() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.cambiarEstado(id, dtoEstado("BLOQUEADO", "Reportes de uso indebido"));
 
@@ -315,7 +330,7 @@ class PersonaDonanteServiceTest {
         void bloquearSinJustificacion() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(id, dtoEstado("BLOQUEADO", null)))
                     .isInstanceOf(FaltaJustificacionException.class);
@@ -328,17 +343,17 @@ class PersonaDonanteServiceTest {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
             donante.cambiarEstado("INACTIVO", null);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(id, dtoEstado("BLOQUEADO", "motivo")))
-                    .isInstanceOf(CambioEstadoPersonaIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
 
         @Test
         @DisplayName("Cambiar al mismo estado se rechaza (409)")
         void mismoEstado() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(humanaGuardada(id));
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
 
             assertThatThrownBy(() -> servicio.cambiarEstado(id, dtoEstado("ACTIVO", null)))
                     .isInstanceOf(PersonaConMismoEstadoException.class);
@@ -349,7 +364,7 @@ class PersonaDonanteServiceTest {
         void registraInteraccion() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.cambiarEstado(id, dtoEstado("INACTIVO", null));
 
@@ -366,7 +381,7 @@ class PersonaDonanteServiceTest {
         void actualizaPersonaHumana() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setNombre("Juan Carlos");
@@ -383,7 +398,7 @@ class PersonaDonanteServiceTest {
         void actualizaPersonaJuridica() {
             UUID id = UUID.randomUUID();
             PersonaJuridica donante = juridicaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setRazonSocial("Fundación Renovada");
@@ -396,13 +411,37 @@ class PersonaDonanteServiceTest {
         }
 
         @Test
+        @DisplayName("Corrige el género de una persona humana y el tipo de una organización, como en el alta")
+        void actualizaGeneroYTipoDeOrganizacion() {
+            UUID idHumana = UUID.randomUUID();
+            UUID idJuridica = UUID.randomUUID();
+            PersonaHumana humana = humanaGuardada(idHumana);
+            PersonaJuridica juridica = juridicaGuardada(idJuridica);
+            when(repositorio.buscarPorId(idHumana)).thenReturn(Optional.of(humana));
+            when(repositorio.buscarPorId(idJuridica)).thenReturn(Optional.of(juridica));
+
+            PersonaDonanteUpdateRequestDTO paraHumana = new PersonaDonanteUpdateRequestDTO();
+            paraHumana.setGenero(Genero.NO_BINARIO);
+            paraHumana.setTipoOrganizacion(TipoPersonaJuridica.EMPRESA);
+            PersonaDonanteUpdateRequestDTO paraJuridica = new PersonaDonanteUpdateRequestDTO();
+            paraJuridica.setTipoOrganizacion(TipoPersonaJuridica.EMPRESA);
+
+            servicio.actualizar(idHumana, paraHumana);
+            servicio.actualizar(idJuridica, paraJuridica);
+
+            assertThat(humana.getGenero()).isEqualTo(Genero.NO_BINARIO);
+            assertThat(juridica.getTipo()).isEqualTo(TipoPersonaJuridica.EMPRESA);
+            assertThat(juridica.getRazonSocial()).isEqualTo("Fundación Ejemplo");
+        }
+
+        @Test
         @DisplayName("Los campos no enviados NO se pisan (actualización parcial)")
         void camposNulosNoSePisan() {
             // Comportamiento clave del PUT: mandar solo el apellido no debe borrar
             // el nombre ni la dirección ya cargados.
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setApellido("Pérez García");
@@ -419,7 +458,7 @@ class PersonaDonanteServiceTest {
         void camposDeOtroSubtipoSeIgnoran() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setRazonSocial("Esto no aplica a una persona humana");
@@ -435,7 +474,7 @@ class PersonaDonanteServiceTest {
         void reemplazaContactos() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             PersonaDonanteUpdateRequestDTO dto = new PersonaDonanteUpdateRequestDTO();
             dto.setContactos(List.of(
@@ -452,7 +491,7 @@ class PersonaDonanteServiceTest {
         void registraInteraccionYPersiste() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.actualizar(id, new PersonaDonanteUpdateRequestDTO());
 
@@ -464,7 +503,7 @@ class PersonaDonanteServiceTest {
         @DisplayName("Lanza 404 si el donante a actualizar no existe")
         void actualizarInexistente() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(null);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.actualizar(id, new PersonaDonanteUpdateRequestDTO()))
                     .isInstanceOf(PersonaDonanteNoEncontradaException.class);
@@ -482,7 +521,7 @@ class PersonaDonanteServiceTest {
             // validador queda detached, así que sin guardar no pasa nada.
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.modificarContacto(id, EmailRequestDTO.builder().valor("nuevo@example.com").build());
 
@@ -498,9 +537,9 @@ class PersonaDonanteServiceTest {
         void reemplazaElContactoDelMismoTipo() {
             UUID id = UUID.randomUUID();
             PersonaHumana donante = humanaGuardada(id);
-            donante.getContactos().add(
+            donante.reemplazarContacto(
                     ar.utn.donatrack.donaciones.models.contacto.Email.builder().valor("viejo@example.com").build());
-            when(repositorio.obtenerPersona(id)).thenReturn(donante);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donante));
 
             servicio.modificarContacto(id, EmailRequestDTO.builder().valor("nuevo@example.com").build());
 
@@ -512,7 +551,7 @@ class PersonaDonanteServiceTest {
         @DisplayName("Rechaza un contacto con valor en blanco sin guardar nada")
         void rechazaContactoEnBlanco() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPersona(id)).thenReturn(humanaGuardada(id));
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
 
             assertThatThrownBy(() -> servicio.modificarContacto(
                     id, EmailRequestDTO.builder().valor("   ").build()))
@@ -521,16 +560,31 @@ class PersonaDonanteServiceTest {
         }
 
         @Test
-        @DisplayName("Modificar un representante funciona sobre una persona jurídica")
+        @DisplayName("Agrega el representante a la persona jurídica que leyó y la guarda una sola vez")
         void modificaRepresentanteEnJuridica() {
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(true);
-            when(repositorio.obtenerPersona(id)).thenReturn(juridicaGuardada(id));
+            PersonaJuridica juridica = juridicaGuardada(id);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(juridica));
 
             servicio.modificarRepresentante(id, RepresentanteRequestDTO.builder()
                     .nombre("Ana").apellido("Gómez").email("ana@fundacion.org").build());
 
-            verify(repositorio).modificarRepresentante(eq(id), any());
+            assertThat(juridica.getRepresentantes()).extracting(Representante::getEmail).contains("ana@fundacion.org");
+            assertThat(juridica.getUltimaInteraccion()).isNotNull();
+            verify(repositorio).buscarPorId(id);
+            verify(repositorio).guardar(juridica);
+        }
+
+        @Test
+        @DisplayName("Modificar un representante de una persona inexistente es 404")
+        void representanteDePersonaInexistente() {
+            UUID id = UUID.randomUUID();
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> servicio.modificarRepresentante(id, RepresentanteRequestDTO.builder()
+                    .nombre("Ana").apellido("Gómez").email("ana@fundacion.org").build()))
+                    .isInstanceOf(PersonaDonanteNoEncontradaException.class);
+            verify(repositorio, never()).guardar(any());
         }
 
         @Test
@@ -539,13 +593,12 @@ class PersonaDonanteServiceTest {
             // Solo las organizaciones tienen representantes; pedirlo sobre una
             // persona humana es un error del cliente, no un caso válido.
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(true);
-            when(repositorio.obtenerPersona(id)).thenReturn(humanaGuardada(id));
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
 
             assertThatThrownBy(() -> servicio.modificarRepresentante(id, RepresentanteRequestDTO.builder()
                     .nombre("Ana").apellido("Gómez").email("ana@fundacion.org").build()))
                     .isInstanceOf(TipoPersonaIlegalException.class);
-            verify(repositorio, never()).modificarRepresentante(any(), any());
+            verify(repositorio, never()).guardar(any());
         }
     }
 
@@ -554,25 +607,39 @@ class PersonaDonanteServiceTest {
     class Baja {
 
         @Test
-        @DisplayName("Elimina al donante después de validar que existe")
+        @DisplayName("Elimina al donante que leyó")
         void elimina() {
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(true);
+            PersonaHumana persona = humanaGuardada(id);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(persona));
 
             servicio.eliminar(id);
 
-            verify(repositorio).eliminar(id);
+            verify(repositorio).eliminar(persona);
         }
 
         @Test
         @DisplayName("Lanza 404 y no borra nada si el donante no existe")
         void eliminarInexistente() {
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(false);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.eliminar(id))
                     .isInstanceOf(PersonaDonanteNoEncontradaException.class);
-            verify(repositorio, never()).eliminar(id);
+            verify(repositorio, never()).eliminar(any());
+        }
+
+        @Test
+        @DisplayName("Rechaza el borrado (409) si la persona tiene donaciones registradas")
+        void bajaConDonaciones() {
+            // Entrega 5: donacion.id_donante no es FK; si se borrara la persona,
+            // sus donaciones quedarían apuntando a nadie.
+            UUID id = UUID.randomUUID();
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(humanaGuardada(id)));
+            when(donaciones.existenDelDonante(id)).thenReturn(true);
+
+            assertThatThrownBy(() -> servicio.eliminar(id)).isInstanceOf(PersonaConDonacionesException.class);
+            verify(repositorio, never()).eliminar(any());
         }
     }
 }

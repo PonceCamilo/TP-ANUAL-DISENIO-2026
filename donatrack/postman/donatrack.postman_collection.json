@@ -287,7 +287,13 @@
                       "});",
                       "if (pm.response.text()) {",
                       "  const json = pm.response.json();",
-                      "  if (Array.isArray(json) && json.length > 0 && json[0].id) pm.collectionVariables.set('donanteId', json[0].id);",
+                      "  // Desde la Entrega 5 el listado es paginado: { contenido, pagina, tamanio, totalElementos, totalPaginas }.",
+                      "  pm.test('Respuesta paginada', function () {",
+                      "    pm.expect(json).to.have.property('contenido');",
+                      "    pm.expect(json).to.have.property('totalElementos');",
+                      "  });",
+                      "  const lista = json.contenido || [];",
+                      "  if (lista.length > 0 && lista[0].id) pm.collectionVariables.set('donanteId', lista[0].id);",
                       "}"
                     ]
                   }
@@ -324,7 +330,15 @@
                     "exec": [
                       "pm.test('Status correcto', function () {",
                       "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
-                      "});"
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  // Desde la Entrega 5 el listado es paginado: { contenido, pagina, tamanio, totalElementos, totalPaginas }.",
+                      "  pm.test('Respuesta paginada', function () {",
+                      "    pm.expect(json).to.have.property('contenido');",
+                      "    pm.expect(json).to.have.property('totalElementos');",
+                      "  });",
+                      "}"
                     ]
                   }
                 }
@@ -1215,7 +1229,13 @@
                       "});",
                       "if (pm.response.text()) {",
                       "  const json = pm.response.json();",
-                      "  if (Array.isArray(json) && json.length > 0 && json[0].id) pm.collectionVariables.set('donacionId', json[0].id);",
+                      "  // Desde la Entrega 5 el listado es paginado: { contenido, pagina, tamanio, totalElementos, totalPaginas }.",
+                      "  pm.test('Respuesta paginada', function () {",
+                      "    pm.expect(json).to.have.property('contenido');",
+                      "    pm.expect(json).to.have.property('totalElementos');",
+                      "  });",
+                      "  const lista = json.contenido || [];",
+                      "  if (lista.length > 0 && lista[0].id) pm.collectionVariables.set('donacionId', lista[0].id);",
                       "}"
                     ]
                   }
@@ -1252,7 +1272,15 @@
                     "exec": [
                       "pm.test('Status correcto', function () {",
                       "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
-                      "});"
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  // Desde la Entrega 5 el listado es paginado: { contenido, pagina, tamanio, totalElementos, totalPaginas }.",
+                      "  pm.test('Respuesta paginada', function () {",
+                      "    pm.expect(json).to.have.property('contenido');",
+                      "    pm.expect(json).to.have.property('totalElementos');",
+                      "  });",
+                      "}"
                     ]
                   }
                 }
@@ -1288,7 +1316,15 @@
                     "exec": [
                       "pm.test('Status correcto', function () {",
                       "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
-                      "});"
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  // Desde la Entrega 5 el listado es paginado: { contenido, pagina, tamanio, totalElementos, totalPaginas }.",
+                      "  pm.test('Respuesta paginada', function () {",
+                      "    pm.expect(json).to.have.property('contenido');",
+                      "    pm.expect(json).to.have.property('totalElementos');",
+                      "  });",
+                      "}"
                     ]
                   }
                 }
@@ -1324,7 +1360,15 @@
                     "exec": [
                       "pm.test('Status correcto', function () {",
                       "  pm.expect(pm.response.code).to.be.oneOf([200, 201, 204]);",
-                      "});"
+                      "});",
+                      "if (pm.response.text()) {",
+                      "  const json = pm.response.json();",
+                      "  // Desde la Entrega 5 el listado es paginado: { contenido, pagina, tamanio, totalElementos, totalPaginas }.",
+                      "  pm.test('Respuesta paginada', function () {",
+                      "    pm.expect(json).to.have.property('contenido');",
+                      "    pm.expect(json).to.have.property('totalElementos');",
+                      "  });",
+                      "}"
                     ]
                   }
                 }

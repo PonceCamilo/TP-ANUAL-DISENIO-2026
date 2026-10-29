@@ -9,6 +9,7 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 /**
  * Bien con fecha de vencimiento (alimentos, medicamentos).
@@ -24,4 +25,20 @@ public class BienPerecible extends Bien {
 
     @Column(name = "fecha_vencimiento")
     private LocalDate fechaVencimiento;
+
+    @Override
+    public TipoBien tipo() {
+        return TipoBien.PERECIBLE;
+    }
+
+    @Override
+    public Optional<LocalDate> vencimiento() {
+        return Optional.ofNullable(fechaVencimiento);
+    }
+
+    /** Vencimientos distintos generan donaciones separadas. */
+    @Override
+    protected Object criterioDeSegmentacion() {
+        return fechaVencimiento;
+    }
 }

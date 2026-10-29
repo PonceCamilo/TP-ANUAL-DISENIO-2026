@@ -8,11 +8,11 @@ import lombok.Setter;
 @Setter
 public class EstadoDonanteRequestDTO {
 
-  @NotBlank
-  private String estado;
+    @NotBlank
+    private String estado;
 
-  // Opcional a nivel contrato: PersonasValidator la exige SOLO cuando el nuevo
-  // estado es BLOQUEADO. Forzar @NotBlank aquí rechazaría transiciones válidas
-  // como ACTIVO -> INACTIVO que no requieren justificación.
-  private String justificacion;
+    // Opcional a nivel contrato: PersonasValidator la exige SOLO cuando el nuevo
+    // estado es BLOQUEADO. Forzar @NotBlank aquí rechazaría transiciones válidas
+    // como ACTIVO -> INACTIVO que no requieren justificación.
+    private String justificacion;
 }

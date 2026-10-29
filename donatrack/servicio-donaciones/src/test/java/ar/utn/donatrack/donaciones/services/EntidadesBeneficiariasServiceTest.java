@@ -1,5 +1,12 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.mappers.MappersDePrueba;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadConDonacionesException;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadExtraordinariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRecurrenteRequestDTO;
@@ -11,9 +18,8 @@ import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEnco
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.mappers.EntidadBeneficiariaMapper;
-import ar.utn.donatrack.donaciones.mappers.PersonaDonanteMapper;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
@@ -33,10 +39,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,7 +66,10 @@ import static org.mockito.Mockito.when;
 class EntidadesBeneficiariasServiceTest {
 
     @Mock
-    private EntidadesBeneficiariasRepositoryInterface repositorio;
+    private RepositorioEntidadesBeneficiarias repositorio;
+
+    @Mock
+    private RepositorioDonaciones donaciones;
 
     private EntidadesBeneficiariasService servicio;
 
@@ -67,11 +78,11 @@ class EntidadesBeneficiariasServiceTest {
 
     @BeforeEach
     void prepararEscenario() {
-        PersonaDonanteMapper dependenciasMapper = new PersonaDonanteMapper();
-        EntidadBeneficiariaMapper mapper = new EntidadBeneficiariaMapper(dependenciasMapper);
+        EntidadBeneficiariaMapper mapper = MappersDePrueba.entidades();
         EntidadesBeneficiariasValidator validador = new EntidadesBeneficiariasValidator(repositorio);
 
-        servicio = new EntidadesBeneficiariasService(repositorio, validador, mapper, dependenciasMapper);
+        servicio = new EntidadesBeneficiariasService(repositorio, donaciones, validador, mapper,
+                MappersDePrueba.DIRECCIONES, MappersDePrueba.CONTACTOS, MappersDePrueba.REPRESENTANTES);
 
         entidad = EntidadBeneficiaria.builder()
                 .id(UUID.randomUUID())
@@ -124,8 +135,7 @@ class EntidadesBeneficiariasServiceTest {
         @Test
         @DisplayName("obtenerPorId() devuelve la entidad con sus campañas")
         void obtenerPorId() {
-            when(repositorio.existePorId(entidad.getId())).thenReturn(true);
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             assertThat(servicio.obtenerPorId(entidad.getId()).getRazonSocial()).isEqualTo("Comedor Los Pibes");
         }
@@ -134,39 +144,57 @@ class EntidadesBeneficiariasServiceTest {
         @DisplayName("obtenerPorId() lanza 404 si la entidad no existe")
         void obtenerPorIdInexistente() {
             UUID idInexistente = UUID.randomUUID();
-            when(repositorio.existePorId(idInexistente)).thenReturn(false);
+            when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.obtenerPorId(idInexistente))
                     .isInstanceOf(EntidadBeneficiariaNoEncontradaException.class);
         }
 
         @Test
-        @DisplayName("obtenerTodas() devuelve todas las entidades registradas")
-        void obtenerTodas() {
-            when(repositorio.buscarTodas()).thenReturn(List.of(entidad));
+        @DisplayName("obtenerEntidades() devuelve la página pedida con el total")
+        void obtenerEntidades() {
+            SolicitudPagina pagina = new SolicitudPagina(0, 20);
+            when(repositorio.buscar(pagina)).thenReturn(new Pagina<>(List.of(entidad), 0, 20, 1));
 
-            assertThat(servicio.obtenerTodas()).hasSize(1);
+            PaginaResponseDTO<EntidadBeneficiariaResponseDTO> respuesta = servicio.obtenerEntidades(pagina);
+
+            assertThat(respuesta.getContenido()).extracting(EntidadBeneficiariaResponseDTO::getId)
+                    .containsExactly(entidad.getId());
+            assertThat(respuesta.getTotalElementos()).isEqualTo(1);
         }
 
         @Test
-        @DisplayName("eliminarEntidad() valida que exista antes de borrar")
+        @DisplayName("eliminarEntidad() borra la entidad que leyó")
         void eliminarEntidad() {
-            when(repositorio.existePorId(entidad.getId())).thenReturn(true);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             servicio.eliminarEntidad(entidad.getId());
 
-            verify(repositorio).eliminar(entidad.getId());
+            verify(repositorio).eliminar(entidad);
         }
 
         @Test
         @DisplayName("eliminarEntidad() no borra nada si la entidad no existe")
         void eliminarEntidadInexistente() {
             UUID idInexistente = UUID.randomUUID();
-            when(repositorio.existePorId(idInexistente)).thenReturn(false);
+            when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.eliminarEntidad(idInexistente))
                     .isInstanceOf(EntidadBeneficiariaNoEncontradaException.class);
-            verify(repositorio, never()).eliminar(idInexistente);
+            verify(repositorio, never()).eliminar(any());
+        }
+
+        @Test
+        @DisplayName("eliminarEntidad() rechaza el borrado (409) si la entidad tiene donaciones asignadas")
+        void eliminarEntidadConDonaciones() {
+            // Entrega 5: donacion.id_entidad_beneficiaria no es FK; si se borrara
+            // la entidad, sus donaciones quedarían apuntando a nadie.
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
+            when(donaciones.existenAsignadasA(entidad.getId())).thenReturn(true);
+
+            assertThatThrownBy(() -> servicio.eliminarEntidad(entidad.getId()))
+                    .isInstanceOf(EntidadConDonacionesException.class);
+            verify(repositorio, never()).eliminar(any());
         }
     }
 
@@ -177,8 +205,7 @@ class EntidadesBeneficiariasServiceTest {
         @Test
         @DisplayName("Agrega la campaña a la entidad y devuelve el DTO con su id generado")
         void agregarCampania() {
-            when(repositorio.existePorId(entidad.getId())).thenReturn(true);
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             CampaniaRequestDTO dto = CampaniaRequestDTO.builder()
                     .descripcionGeneral("Campaña de invierno")
@@ -198,7 +225,7 @@ class EntidadesBeneficiariasServiceTest {
         @DisplayName("Rechaza una campaña cuya fecha de inicio es posterior a la de fin")
         void rechazaFechasInvertidas() {
             // Regla de coherencia temporal: una campaña no puede terminar antes de empezar.
-            when(repositorio.existePorId(entidad.getId())).thenReturn(true);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             CampaniaRequestDTO dto = CampaniaRequestDTO.builder()
                     .descripcionGeneral("Campaña mal cargada")
@@ -219,7 +246,7 @@ class EntidadesBeneficiariasServiceTest {
         @Test
         @DisplayName("Agrega una necesidad extraordinaria y la deja con 0 recibido")
         void agregarExtraordinaria() {
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             NecesidadResponseDTO respuesta = servicio.agregarNecesidadACampania(
                     entidad.getId(), campania.getIdCampania(), dtoExtraordinaria("Colchones", 50));
@@ -235,7 +262,7 @@ class EntidadesBeneficiariasServiceTest {
         void agregarRecurrente() {
             // El período debe arrancar en el alta: si quedara nulo, periodoVencido()
             // devolvería siempre false y la necesidad nunca se reiniciaría.
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             NecesidadResponseDTO respuesta = servicio.agregarNecesidadACampania(
                     entidad.getId(), campania.getIdCampania(), dtoRecurrente("Fideos", 100, Periodicidad.SEMANAL));
@@ -249,7 +276,7 @@ class EntidadesBeneficiariasServiceTest {
         @Test
         @DisplayName("Lanza 404 si la campaña no pertenece a la entidad")
         void campaniaInexistente() {
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             assertThatThrownBy(() -> servicio.agregarNecesidadACampania(
                     entidad.getId(), UUID.randomUUID(), dtoExtraordinaria("Colchones", 50)))
@@ -260,7 +287,7 @@ class EntidadesBeneficiariasServiceTest {
         @DisplayName("Lanza 404 si la entidad no existe")
         void entidadInexistente() {
             UUID idInexistente = UUID.randomUUID();
-            when(repositorio.obtenerPorId(idInexistente)).thenReturn(null);
+            when(repositorio.buscarPorId(idInexistente)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> servicio.agregarNecesidadACampania(
                     idInexistente, campania.getIdCampania(), dtoExtraordinaria("Colchones", 50)))
@@ -277,7 +304,7 @@ class EntidadesBeneficiariasServiceTest {
         void listarNecesidades() {
             necesidadYaCargada("Arroz");
             necesidadYaCargada("Colchones");
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             assertThat(servicio.obtenerNecesidadesDeCampania(entidad.getId(), campania.getIdCampania()))
                     .hasSize(2)
@@ -289,7 +316,7 @@ class EntidadesBeneficiariasServiceTest {
         @DisplayName("obtenerNecesidad() devuelve una necesidad puntual por id")
         void obtenerUnaNecesidad() {
             Necesidad necesidad = necesidadYaCargada("Arroz");
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             assertThat(servicio.obtenerNecesidad(entidad.getId(), campania.getIdCampania(), necesidad.getId())
                     .getNombre()).isEqualTo("Arroz");
@@ -298,7 +325,7 @@ class EntidadesBeneficiariasServiceTest {
         @Test
         @DisplayName("obtenerNecesidad() lanza 404 si la necesidad no está en esa campaña")
         void necesidadInexistente() {
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             assertThatThrownBy(() -> servicio.obtenerNecesidad(
                     entidad.getId(), campania.getIdCampania(), UUID.randomUUID()))
@@ -314,7 +341,7 @@ class EntidadesBeneficiariasServiceTest {
         @DisplayName("Actualiza nombre, descripción y cantidad objetivo de una necesidad existente")
         void actualizaCamposComunes() {
             Necesidad necesidad = necesidadYaCargada("Arroz");
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             servicio.actualizarNecesidad(entidad.getId(), campania.getIdCampania(), necesidad.getId(),
                     dtoExtraordinaria("Arroz integral", 250));
@@ -330,8 +357,8 @@ class EntidadesBeneficiariasServiceTest {
             // Si una edición del catálogo borrara lo recibido, se perdería el
             // avance real de la necesidad.
             Necesidad necesidad = necesidadYaCargada("Arroz");
-            necesidad.recibirDonacion(40);
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            necesidad.recibir(40, FechaHoraArgentina.hoy());
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             servicio.actualizarNecesidad(entidad.getId(), campania.getIdCampania(), necesidad.getId(),
                     dtoExtraordinaria("Arroz", 300));
@@ -349,7 +376,7 @@ class EntidadesBeneficiariasServiceTest {
             LocalDate inicioOriginal = LocalDate.now().minusDays(3);
             recurrente.setFechaInicioPeriodo(inicioOriginal);
             campania.agregarNecesidad(recurrente);
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             servicio.actualizarNecesidad(entidad.getId(), campania.getIdCampania(), recurrente.getId(),
                     dtoRecurrente("Fideos", 100, Periodicidad.MENSUAL));
@@ -365,7 +392,7 @@ class EntidadesBeneficiariasServiceTest {
             // (una recurrente se reinicia por período y una extraordinaria no),
             // así que se obliga a eliminar y volver a crear.
             Necesidad extraordinaria = necesidadYaCargada("Colchones");
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             assertThatThrownBy(() -> servicio.actualizarNecesidad(
                     entidad.getId(), campania.getIdCampania(), extraordinaria.getId(),
@@ -381,7 +408,7 @@ class EntidadesBeneficiariasServiceTest {
             recurrente.setCantidadObjetivo(100);
             recurrente.setPeriodo(Periodicidad.SEMANAL);
             campania.agregarNecesidad(recurrente);
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             assertThatThrownBy(() -> servicio.actualizarNecesidad(
                     entidad.getId(), campania.getIdCampania(), recurrente.getId(),
@@ -399,7 +426,7 @@ class EntidadesBeneficiariasServiceTest {
         void eliminaLaNecesidad() {
             Necesidad necesidad = necesidadYaCargada("Arroz");
             necesidadYaCargada("Colchones");
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             servicio.eliminarNecesidad(entidad.getId(), campania.getIdCampania(), necesidad.getId());
 
@@ -413,7 +440,7 @@ class EntidadesBeneficiariasServiceTest {
             // El servicio valida ANTES de eliminar justamente para poder responder
             // 404 y no un 204 que haría creer al cliente que borró algo.
             necesidadYaCargada("Arroz");
-            when(repositorio.obtenerPorId(entidad.getId())).thenReturn(entidad);
+            when(repositorio.buscarPorId(entidad.getId())).thenReturn(Optional.of(entidad));
 
             assertThatThrownBy(() -> servicio.eliminarNecesidad(
                     entidad.getId(), campania.getIdCampania(), UUID.randomUUID()))

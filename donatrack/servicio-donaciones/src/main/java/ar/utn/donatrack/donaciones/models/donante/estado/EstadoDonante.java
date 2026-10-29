@@ -1,34 +1,23 @@
 package ar.utn.donatrack.donaciones.models.donante.estado;
 
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
+import ar.utn.donatrack.donaciones.models.estado.Estado;
 
 import java.util.Map;
 import java.util.function.Supplier;
 
-public abstract class EstadoDonante {
-
-    private final String nombre;
-    private final Map<String, Supplier<EstadoDonante>> transiciones;
+/** Raíz de los estados de una persona donante (ver Estado para el mecanismo común). */
+public abstract class EstadoDonante extends Estado<EstadoDonante> {
 
     protected EstadoDonante(String nombre, Map<String, Supplier<EstadoDonante>> transiciones) {
-        this.nombre = nombre;
-        this.transiciones = transiciones;
+        super(nombre, transiciones);
     }
 
-    public EstadoDonante transicionarA(String estadoDestino, String justificacion) {
-        if (nombre.equals(estadoDestino)) {
+    /** Pedir el estado que la persona ya tiene es un error propio (409), no una transición ilegal. */
+    @Override
+    protected void validarTransicion(String estadoDestino, String justificacion) {
+        if (es(estadoDestino)) {
             throw new PersonaConMismoEstadoException(estadoDestino);
         }
-        Supplier<EstadoDonante> factory = transiciones.get(estadoDestino);
-        if (factory == null) {
-            throw new CambioEstadoPersonaIlegalException(nombre, estadoDestino);
-        }
-        return factory.get();
     }
-
-    public String nombre() {
-        return nombre;
-    }
-
 }

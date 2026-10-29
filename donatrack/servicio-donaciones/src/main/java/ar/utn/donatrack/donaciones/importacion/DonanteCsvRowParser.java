@@ -1,10 +1,9 @@
 package ar.utn.donatrack.donaciones.importacion;
 
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoDocumentoException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoLineaException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoMailException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoNombreException;
-import ar.utn.donatrack.donaciones.exceptions.csvExcepctions.CsvFormatoPersonaException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DocumentoInvalidoException;
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
+import ar.utn.donatrack.donaciones.models.donante.Documento;
+import ar.utn.donatrack.donaciones.exceptions.csvExceptions.CsvFormatoException;
 import ar.utn.donatrack.donaciones.importacion.dto.DonanteImportDto;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +22,7 @@ public class DonanteCsvRowParser {
 
     public DonanteImportDto parsear(String[] columnas, int numeroLinea) {
         if (columnas.length < 5) {
-            throw new CsvFormatoLineaException(numeroLinea, columnas.length);
+            throw CsvFormatoException.columnasInsuficientes(numeroLinea, columnas.length);
         }
 
         String tipoPersona = columnas[0].trim().toUpperCase();
@@ -34,21 +33,38 @@ public class DonanteCsvRowParser {
         String tel     = columnas.length > 5 ? columnas[5].trim() : null;
 
         if (!tipoPersona.equals("HUMANA") && !tipoPersona.equals("JURIDICA")) {
-            throw new CsvFormatoPersonaException(numeroLinea, tipoPersona);
+            throw CsvFormatoException.tipoPersonaInvalido(numeroLinea, tipoPersona);
         }
         if (email.isBlank()) {
-            throw new CsvFormatoMailException(numeroLinea);
+            throw CsvFormatoException.emailVacio(numeroLinea);
+        }
+        if (!NormalizadorEmail.esValido(email)) {
+            throw CsvFormatoException.emailInvalido(numeroLinea, email);
         }
         if (doc.isBlank()) {
-            throw new CsvFormatoDocumentoException(numeroLinea);
+            throw CsvFormatoException.documentoVacio(numeroLinea);
         }
         if (nombre.isBlank()) {
-            throw new CsvFormatoNombreException(numeroLinea);
+            throw CsvFormatoException.nombreVacio(numeroLinea);
         }
+        Documento documento = documentoDe(tipoPersona, tipoDoc, doc, numeroLinea);
 
         return new DonanteImportDto(
-            tipoPersona, tipoDoc, doc, nombre, email,
+            numeroLinea, tipoPersona, documento.getTipo(), documento.getNumero(), nombre, email,
                 (tel != null && tel.isBlank()) ? null : tel
         );
+    }
+
+    /**
+     * El documento validado por tipo (DNI de 7 u 8 dígitos, CUIT de 11 dígitos…),
+     * y CUIT para las personas jurídicas. Antes se aceptaba
+     * cualquier texto no vacío.
+     */
+    private static Documento documentoDe(String tipoPersona, String tipoDoc, String doc, int numeroLinea) {
+        try {
+            return "JURIDICA".equals(tipoPersona) ? Documento.deOrganizacion(tipoDoc, doc) : Documento.de(tipoDoc, doc);
+        } catch (DocumentoInvalidoException e) {
+            throw CsvFormatoException.documentoInvalido(numeroLinea, e.getMessage());
+        }
     }
 }

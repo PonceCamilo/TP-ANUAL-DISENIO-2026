@@ -1,6 +1,8 @@
 package ar.utn.donatrack.donaciones.exceptions.entidadesExceptions;
 
-public class FechasCampaniaInvalidasException extends RuntimeException {
+import ar.utn.donatrack.donaciones.exceptions.SolicitudInvalidaException;
+
+public class FechasCampaniaInvalidasException extends SolicitudInvalidaException {
     public FechasCampaniaInvalidasException(String mensaje) {
         super(mensaje);
     }

@@ -1,7 +1,6 @@
 package ar.utn.donatrack.donaciones.validations;
 
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
-import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
@@ -11,16 +10,15 @@ import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRe
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.MedioContactoInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.interfaces.repositories.DonacionesRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.interfaces.repositories.PersonaDonanteRepositoryInterface;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioPersonasDonantes;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.contacto.Email;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
-import ar.utn.donatrack.donaciones.models.donante.estado.ActivoState;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
@@ -41,11 +39,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -70,7 +70,7 @@ class ValidatorsTest {
     class DonacionesValidatorTest {
 
         @Mock
-        private DonacionesRepositoryInterface repositorio;
+        private RepositorioDonaciones repositorio;
 
         @InjectMocks
         private DonacionesValidator validador;
@@ -80,7 +80,7 @@ class ValidatorsTest {
         void devuelveLaDonacionExistente() {
             UUID id = UUID.randomUUID();
             Donacion donacion = new Donacion();
-            when(repositorio.obtenerPorId(id)).thenReturn(donacion);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(donacion));
 
             assertThat(validador.validarYObtenerDonacion(id)).isSameAs(donacion);
         }
@@ -89,34 +89,12 @@ class ValidatorsTest {
         @DisplayName("validarYObtenerDonacion() lanza DonacionNoEncontrada (404) si el id no existe")
         void lanzaSiNoExiste() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPorId(id)).thenReturn(null);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> validador.validarYObtenerDonacion(id))
                     .isInstanceOf(DonacionNoEncontradaException.class);
         }
 
-        @Test
-        @DisplayName("validarTieneBienes() pasa si la donación tiene al menos un bien")
-        void pasaSiTieneBienes() {
-            Donacion donacion = new Donacion();
-            donacion.setBienes(List.of(BienGenerico.builder()
-                    .subcategoria(new Subcategoria("ropa"))
-                    .descripcion("Camperas")
-                    .cantidad(1)
-                    .unidad("unidades")
-                    .build()));
-
-            assertThatCode(() -> validador.validarTieneBienes(donacion)).doesNotThrowAnyException();
-        }
-
-        @Test
-        @DisplayName("validarTieneBienes() lanza DonacionSinBienes si la donación está vacía")
-        void lanzaSiNoTieneBienes() {
-            // Protege el endpoint que modifica el bien de una donación: sin bienes
-            // no hay nada que modificar y un acceso por índice explotaría.
-            assertThatThrownBy(() -> validador.validarTieneBienes(new Donacion()))
-                    .isInstanceOf(DonacionSinBienesException.class);
-        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -126,7 +104,7 @@ class ValidatorsTest {
     class PersonasValidatorTest {
 
         @Mock
-        private PersonaDonanteRepositoryInterface repositorio;
+        private RepositorioPersonasDonantes repositorio;
 
         @InjectMocks
         private PersonasValidator validador;
@@ -183,6 +161,30 @@ class ValidatorsTest {
                 assertThatThrownBy(() -> validador.validarEmail("juan@example.com"))
                         .isInstanceOf(EmailYaRegistradoException.class);
             }
+
+            @ParameterizedTest(name = "\"{0}\" es un email válido")
+            @ValueSource(strings = {
+                    "benjamíncastro8929@yahoo.com",
+                    "sofíagarcía1520@gmail.com",
+                    "muñoz@mail.com"
+            })
+            @DisplayName("Acepta emails con tilde o ñ, como los del CSV de prueba del enunciado")
+            void aceptaEmailsConTilde(String email) {
+                when(repositorio.existePorEmail(email)).thenReturn(false);
+
+                assertThatCode(() -> validador.validarEmail(email)).doesNotThrowAnyException();
+            }
+
+            @Test
+            @DisplayName("Detecta un duplicado aunque difiera en mayúsculas o espacios (409)")
+            void detectaDuplicadoConOtrasMayusculas() {
+                // El repositorio guarda y busca la forma canónica: el validador
+                // tiene que consultar con esa misma forma.
+                when(repositorio.existePorEmail("juan@example.com")).thenReturn(true);
+
+                assertThatThrownBy(() -> validador.validarEmail("  Juan@Example.COM "))
+                        .isInstanceOf(EmailYaRegistradoException.class);
+            }
         }
 
         @Nested
@@ -190,21 +192,12 @@ class ValidatorsTest {
         class ExistenciaYTipo {
 
             @Test
-            @DisplayName("validarExistenciaPersona() pasa si el donante existe")
-            void existenciaOk() {
-                UUID id = UUID.randomUUID();
-                when(repositorio.existePorId(id)).thenReturn(true);
-
-                assertThatCode(() -> validador.validarExistenciaPersona(id)).doesNotThrowAnyException();
-            }
-
-            @Test
-            @DisplayName("validarExistenciaPersona() lanza PersonaDonanteNoEncontrada (404) si no existe")
+            @DisplayName("validarYObtenerPersona() lanza PersonaDonanteNoEncontrada (404) si no existe")
             void existenciaFalla() {
                 UUID id = UUID.randomUUID();
-                when(repositorio.existePorId(id)).thenReturn(false);
+                when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
-                assertThatThrownBy(() -> validador.validarExistenciaPersona(id))
+                assertThatThrownBy(() -> validador.validarYObtenerPersona(id))
                         .isInstanceOf(PersonaDonanteNoEncontradaException.class);
             }
 
@@ -212,33 +205,44 @@ class ValidatorsTest {
             @DisplayName("validarYObtenerPersona() devuelve el donante cuando existe")
             void obtenerPersonaOk() {
                 UUID id = UUID.randomUUID();
-                PersonaHumana persona = PersonaHumana.builder().id(id).estado(new ActivoState()).build();
-                when(repositorio.obtenerPersona(id)).thenReturn(persona);
+                PersonaHumana persona = PersonaHumana.builder().id(id).build();
+                when(repositorio.buscarPorId(id)).thenReturn(Optional.of(persona));
 
                 assertThat(validador.validarYObtenerPersona(id)).isSameAs(persona);
             }
 
             @Test
-            @DisplayName("validarEsPersonaJuridica() pasa cuando el donante es una organización")
+            @DisplayName("validarYObtenerJuridica() devuelve la organización con una sola lectura")
             void esJuridicaOk() {
                 // Solo las personas jurídicas tienen representantes, así que este
                 // chequeo protege ese endpoint.
                 UUID id = UUID.randomUUID();
-                when(repositorio.obtenerPersona(id))
-                        .thenReturn(PersonaJuridica.builder().id(id).estado(new ActivoState()).build());
+                PersonaJuridica juridica = PersonaJuridica.builder().id(id).build();
+                when(repositorio.buscarPorId(id)).thenReturn(Optional.of(juridica));
 
-                assertThatCode(() -> validador.validarEsPersonaJuridica(id)).doesNotThrowAnyException();
+                assertThat(validador.validarYObtenerJuridica(id)).isSameAs(juridica);
+                verify(repositorio).buscarPorId(id);
             }
 
             @Test
-            @DisplayName("validarEsPersonaJuridica() lanza TipoPersonaIlegal si el donante es una persona humana")
+            @DisplayName("validarYObtenerJuridica() lanza TipoPersonaIlegal si el donante es una persona humana")
             void esJuridicaFallaConHumana() {
                 UUID id = UUID.randomUUID();
-                when(repositorio.obtenerPersona(id))
-                        .thenReturn(PersonaHumana.builder().id(id).estado(new ActivoState()).build());
+                when(repositorio.buscarPorId(id))
+                        .thenReturn(Optional.of(PersonaHumana.builder().id(id).build()));
 
-                assertThatThrownBy(() -> validador.validarEsPersonaJuridica(id))
+                assertThatThrownBy(() -> validador.validarYObtenerJuridica(id))
                         .isInstanceOf(TipoPersonaIlegalException.class);
+            }
+
+            @Test
+            @DisplayName("validarYObtenerJuridica() lanza PersonaDonanteNoEncontrada (404) si no existe")
+            void esJuridicaFallaSiNoExiste() {
+                UUID id = UUID.randomUUID();
+                when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> validador.validarYObtenerJuridica(id))
+                        .isInstanceOf(PersonaDonanteNoEncontradaException.class);
             }
         }
 
@@ -281,7 +285,7 @@ class ValidatorsTest {
     class EntidadesBeneficiariasValidatorTest {
 
         @Mock
-        private EntidadesBeneficiariasRepositoryInterface repositorio;
+        private RepositorioEntidadesBeneficiarias repositorio;
 
         @InjectMocks
         private EntidadesBeneficiariasValidator validador;
@@ -308,7 +312,7 @@ class ValidatorsTest {
         void obtenerEntidadOk() {
             UUID id = UUID.randomUUID();
             EntidadBeneficiaria entidad = EntidadBeneficiaria.builder().id(id).build();
-            when(repositorio.obtenerPorId(id)).thenReturn(entidad);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.of(entidad));
 
             assertThat(validador.validarYObtenerEntidad(id)).isSameAs(entidad);
         }
@@ -317,19 +321,19 @@ class ValidatorsTest {
         @DisplayName("validarYObtenerEntidad() lanza EntidadBeneficiariaNoEncontrada (404) si no existe")
         void obtenerEntidadFalla() {
             UUID id = UUID.randomUUID();
-            when(repositorio.obtenerPorId(id)).thenReturn(null);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> validador.validarYObtenerEntidad(id))
                     .isInstanceOf(EntidadBeneficiariaNoEncontradaException.class);
         }
 
         @Test
-        @DisplayName("validarExistenciaEntidad() lanza si el id no está registrado")
+        @DisplayName("validarYObtenerEntidad() lanza si el id no está registrado")
         void existenciaFalla() {
             UUID id = UUID.randomUUID();
-            when(repositorio.existePorId(id)).thenReturn(false);
+            when(repositorio.buscarPorId(id)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> validador.validarExistenciaEntidad(id))
+            assertThatThrownBy(() -> validador.validarYObtenerEntidad(id))
                     .isInstanceOf(EntidadBeneficiariaNoEncontradaException.class);
         }
 

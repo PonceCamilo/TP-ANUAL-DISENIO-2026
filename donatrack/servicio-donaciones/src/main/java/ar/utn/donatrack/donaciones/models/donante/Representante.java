@@ -1,13 +1,16 @@
 package ar.utn.donatrack.donaciones.models.donante;
 
 import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,7 +34,10 @@ import java.util.UUID;
  * sería peor: el representante es el mismo concepto en los dos casos.
  */
 @Entity
-@Table(name = "representante")
+@Table(name = "representante", indexes = {
+        @Index(name = "idx_representante_juridica", columnList = "persona_juridica_id"),
+        @Index(name = "idx_representante_entidad", columnList = "entidad_id")
+})
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -54,7 +60,14 @@ public class Representante {
     private String email;
 
     @Builder.Default
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "representante_id")
     private List<MedioDeContacto> contactos = new ArrayList<>();
+
+    /** A la base llega solo la forma canónica del email, como el de las personas donantes. */
+    @PrePersist
+    @PreUpdate
+    void normalizarEmail() {
+        this.email = NormalizadorEmail.normalizar(this.email);
+    }
 }

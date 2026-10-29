@@ -19,6 +19,14 @@ skinparam class {
     BorderColor<<abstracta>> #5A5A5A
     BackgroundColor<<externa>> #BFDFF2
     BorderColor<<externa>> #2E6E9E
+    BackgroundColor<<enum>> #F5DEB3
+    BorderColor<<enum>> #B8860B
+    BackgroundColor<<record>> #F4F4F4
+    BorderColor<<record>> #7A7A7A
+    BackgroundColor<<proyeccion>> #F4F4F4
+    BorderColor<<proyeccion>> #7A7A7A
+    BackgroundColor<<entidad>> #EEF3FA
+    BorderColor<<entidad>> #5B7BA6
 }
 
 skinparam interface {
@@ -34,238 +42,1172 @@ skinparam package {
     FontColor #444444
 }
 
+' Capa de servicios de servicio-donaciones y sus colaboradores (paquete ar.utn.donatrack.donaciones).
+' Las clases del modelo y los DTOs aparecen solo como tipos (ver donaciones-modelo.puml).
+' No se dibujan los controllers, los DTOs (salvo PaginaResponseDTO), las excepciones ni OpenApiConfig.
+' --> asociación (atributo), ..> dependencia, ..|> realización, --|> herencia, +-- clase anidada.
+' «@Transactional»: la clase o el método corre en una transacción (readOnly: solo lectura).
+' «@SchedulerLock»: la tarea toma un bloqueo en la base antes de correr (una instancia a la vez); las
+' nocturnas lo retienen al menos donaciones.procesos.bloqueo-minimo (5 min) después de terminar.
+
 package interfaces.services {
 
-    interface AlgoritmoAsignacionInterface {
-        public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
-    }
-
-    interface SegmentadorDonacionesServiceInterface {
-        public segmentar(carga: CargaDonacion): List<Donacion>
-        public cargarDonaciones(donaciones: List<Donacion>): void
-    }
-
-    interface DonacionServiceInterface {
-        public obtenerDonaciones(estado: String, donante: PersonaDonante, subcategoria: String): List<DonacionResponseDTO>
-        public obtenerDonacion(donacion: Donacion): DonacionResponseDTO
-        public cambiarEstado(donacion: Donacion, dto: CambioEstadoRequestDTO): void
-        public modificarBien(donacion: Donacion, dto: BienRequestDTO): void
-        public eliminar(donacion: Donacion): void
-        public obtenerCandidatos(donacion: Donacion): CandidatosAsignacionResponseDTO
-        public asignarEntidadBeneficiaria(donacion: Donacion, dto: AsignacionRequestDTO): void
-    }
-
-    interface PersonaDonanteServiceInterface {
-        public registrar(dto: PersonaDonanteRequestDTO): PersonaDonante
-        public obtenerDonante(donante: PersonaDonante): PersonaDonanteResponseDTO
-        public obtenerDonantes(estado: EstadoDonante): List<PersonaDonanteResponseDTO>
-        public cambiarEstado(donante: PersonaDonante, dto: EstadoDonanteRequestDTO): void
-        public modificarContacto(donante: PersonaDonante, dto: MedioDeContactoRequestDTO): void
-        public modificarRepresentante(donante: PersonaDonante, dto: RepresentanteRequestDTO): void
-        public actualizar(donante: PersonaDonante, dto: PersonaDonanteUpdateRequestDTO): PersonaDonanteResponseDTO
-        public eliminar(donante: PersonaDonante): void
-    }
-
-    interface EntidadesBeneficiariasServiceInterface {
-        public guardar(dto: EntidadBeneficiariaRequestDTO): EntidadBeneficiaria
-        public obtenerTodas(): List<EntidadBeneficiariaResponseDTO>
-        public obtenerEntidad(entidad: EntidadBeneficiaria): EntidadBeneficiariaResponseDTO
-        public actualizar(entidad: EntidadBeneficiaria, dto: EntidadBeneficiariaRequestDTO): void
-        public eliminarEntidad(entidad: EntidadBeneficiaria): void
-        public agregarCampaniaAEntidad(entidad: EntidadBeneficiaria, dto: CampaniaRequestDTO): Campania
-        public agregarNecesidadACampania(entidad: EntidadBeneficiaria, campania: Campania, dto: NecesidadRequestDTO): NecesidadResponseDTO
+    interface AlgoritmoAsignacion {
+        public nombre(): String
+        public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>, tamanio: int): List<ResultadoAsignacion>
     }
 }
 
 package services {
 
-    class DonacionService {
-        private repositorio: DonacionesRepositoryInterface
+    class DonacionComandosService <<@Transactional>> {
+        private repositorio: RepositorioDonaciones
         private mapper: DonacionMapper
-        private asignacionService: AsignacionDonacionesService
-        private entidadesRepositorio: EntidadesBeneficiariasRepositoryInterface
-        private entidadMapper: EntidadBeneficiariaMapper
-        private donanteRepositorio: PersonaDonanteRepositoryInterface
-        private notificacionClient: NotificacionClient
-        private incentivosClient: IncentivosClient
         private validador: DonacionesValidator
         private entidadesValidator: EntidadesBeneficiariasValidator
 
-        public obtenerDonaciones(estado: String, donante: PersonaDonante, subcategoria: String): List<DonacionResponseDTO>
-        public obtenerDonacion(donacion: Donacion): DonacionResponseDTO
-        public cambiarEstado(donacion: Donacion, dto: CambioEstadoRequestDTO): void
-        public modificarBien(donacion: Donacion, dto: BienRequestDTO): void
-        public obtenerCandidatos(donacion: Donacion): CandidatosAsignacionResponseDTO
-        public asignarEntidadBeneficiaria(donacion: Donacion, dto: AsignacionRequestDTO): void
-        public eliminar(donacion: Donacion): void
-        private mapearRanking(ranking: List<ResultadoAsignacion>): List<EntidadBeneficiariaResponseDTO>
+        public cambiarEstado(id: UUID, dto: CambioEstadoRequestDTO): void
+        public modificarBien(id: UUID, idBien: UUID, dto: BienRequestDTO): DonacionResponseDTO
+        public modificarUnicoBien(id: UUID, dto: BienRequestDTO): void
+        public asignar(idDonacion: UUID, dto: AsignacionRequestDTO): void
+        public eliminar(id: UUID): void
     }
 
-    class SegmentadorDonacionesService {
-        private donacionesRepository: DonacionesRepositoryInterface
-        private donanteRepository: PersonaDonanteRepositoryInterface
-        private incentivosClient: IncentivosClient
+    class DonacionConsultasService <<@Transactional(readOnly)>> {
+        private repositorio: RepositorioDonaciones
+        private mapper: DonacionMapper
+        private asignacionService: AsignacionDonacionesService
+        private entidadesRepositorio: RepositorioEntidadesBeneficiarias
+        private entidadMapper: EntidadBeneficiariaMapper
+        private validador: DonacionesValidator
+        private candidatosRepositorio: RepositorioCandidatosAsignacion
 
-        public segmentar(carga: CargaDonacion): List<Donacion>
-        public cargarDonaciones(donaciones: List<Donacion>): void
+        public obtenerDonaciones(filtro: FiltroDonaciones, pagina: SolicitudPagina): PaginaResponseDTO<DonacionResponseDTO>
+        public obtenerPorId(id: UUID): DonacionResponseDTO
+        public obtenerCandidatos(idDonacion: UUID): CandidatosAsignacionResponseDTO
+        public obtenerCandidatosPendientes(): List<CandidatosPendientesResponseDTO>
     }
 
-    class PersonaDonanteService {
-        private repositorio: PersonaDonanteRepositoryInterface
+    note as NotaComandosConsultas
+        Comandos y consultas separados: los comandos
+        cambian un agregado y lo guardan (sus eventos
+        se publican al guardarlo); las consultas leen
+        y arman DTOs dentro de una transacción de solo
+        lectura (las colecciones se cargan al usarse).
+    end note
+
+    class SegmentadorDonacionesService <<@Transactional>> {
+        private donacionesRepository: RepositorioDonaciones
+        private donanteRepository: RepositorioPersonasDonantes
+        private eventos: ApplicationEventPublisher
+        private personasValidator: PersonasValidator
+        private mapper: DonacionMapper
+
+        public registrar(dto: DonacionRequestDTO): List<DonacionResponseDTO>
+    }
+
+    class PersonaDonanteService <<@Transactional>> {
+        private repositorio: RepositorioPersonasDonantes
+        private donaciones: RepositorioDonaciones
         private validador: PersonasValidator
         private mapper: PersonaDonanteMapper
+        private direcciones: DireccionMapper
+        private contactos: ContactoMapper
+        private representantes: RepresentanteMapper
 
-        public registrar(dto: PersonaDonanteRequestDTO): PersonaDonante
-        public obtenerDonante(donante: PersonaDonante): PersonaDonanteResponseDTO
-        public obtenerDonantes(estado: EstadoDonante): List<PersonaDonanteResponseDTO>
-        public cambiarEstado(donante: PersonaDonante, dto: EstadoDonanteRequestDTO): void
-        public modificarContacto(donante: PersonaDonante, dto: MedioDeContactoRequestDTO): void
-        public modificarRepresentante(donante: PersonaDonante, dto: RepresentanteRequestDTO): void
-        public actualizar(donante: PersonaDonante, dto: PersonaDonanteUpdateRequestDTO): PersonaDonanteResponseDTO
-        public eliminar(donante: PersonaDonante): void
+        public registrar(dto: PersonaDonanteRequestDTO): PersonaDonanteResponseDTO
+        public obtenerDonante(id: UUID): PersonaDonanteResponseDTO
+        public obtenerDonantes(estado: String, pagina: SolicitudPagina): PaginaResponseDTO<PersonaDonanteResponseDTO>
+        public cambiarEstado(id: UUID, dto: EstadoDonanteRequestDTO): void
+        public modificarContacto(id: UUID, dto: MedioDeContactoRequestDTO): void
+        public modificarRepresentante(id: UUID, dto: RepresentanteRequestDTO): void
+        public actualizar(id: UUID, dto: PersonaDonanteUpdateRequestDTO): PersonaDonanteResponseDTO
+        public eliminar(id: UUID): void
     }
 
-    class EntidadesBeneficiariasService {
-        private repositorio: EntidadesBeneficiariasRepositoryInterface
+    class EntidadesBeneficiariasService <<@Transactional>> {
+        private repositorio: RepositorioEntidadesBeneficiarias
+        private donaciones: RepositorioDonaciones
         private validador: EntidadesBeneficiariasValidator
         private mapper: EntidadBeneficiariaMapper
-        private dependenciasMapper: PersonaDonanteMapper
+        private direcciones: DireccionMapper
+        private contactos: ContactoMapper
+        private representantes: RepresentanteMapper
 
-        public guardar(dto: EntidadBeneficiariaRequestDTO): EntidadBeneficiaria
-        public obtenerTodas(): List<EntidadBeneficiariaResponseDTO>
-        public obtenerEntidad(entidad: EntidadBeneficiaria): EntidadBeneficiariaResponseDTO
-        public actualizar(entidad: EntidadBeneficiaria, dtoNueva: EntidadBeneficiariaRequestDTO): void
-        public eliminarEntidad(entidad: EntidadBeneficiaria): void
-        public agregarCampaniaAEntidad(entidad: EntidadBeneficiaria, dto: CampaniaRequestDTO): Campania
-        public agregarNecesidadACampania(entidad: EntidadBeneficiaria, campania: Campania, dto: NecesidadRequestDTO): NecesidadResponseDTO
+        public guardar(dto: EntidadBeneficiariaRequestDTO): EntidadBeneficiariaResponseDTO
+        public obtenerEntidades(pagina: SolicitudPagina): PaginaResponseDTO<EntidadBeneficiariaResponseDTO>
+        public obtenerPorId(id: UUID): EntidadBeneficiariaResponseDTO
+        public actualizar(id: UUID, dtoNueva: EntidadBeneficiariaRequestDTO): void
+        public eliminarEntidad(id: UUID): void
+        public agregarCampaniaAEntidad(idEntidad: UUID, dto: CampaniaRequestDTO): CampaniaResponseDTO
+        public agregarNecesidadACampania(entidadId: UUID, campaniaId: UUID, dto: NecesidadRequestDTO): NecesidadResponseDTO
+        public obtenerNecesidadesDeCampania(entidadId: UUID, campaniaId: UUID): List<NecesidadResponseDTO>
+        public obtenerNecesidad(entidadId: UUID, campaniaId: UUID, necesidadId: UUID): NecesidadResponseDTO
+        public actualizarNecesidad(entidadId: UUID, campaniaId: UUID, necesidadId: UUID, dto: NecesidadRequestDTO): NecesidadResponseDTO
+        public eliminarNecesidad(entidadId: UUID, campaniaId: UUID, necesidadId: UUID): void
     }
 
-    class InactividadDonantesService {
-        private donanteRepository: PersonaDonanteRepositoryInterface
-        private notificacionClient: NotificacionClient
+    note as NotaBorrados
+        PersonaDonanteService.eliminar y
+        EntidadesBeneficiariasService.eliminarEntidad
+        rechazan con 409 el borrado si hay donaciones
+        (PersonaConDonacionesException /
+        EntidadConDonacionesException).
+        Una persona BLOQUEADA no registra donaciones (422).
+    end note
 
-        public notificarDonantesInactivos(): void
+    class InactividadDonantesService {
+        private donanteRepository: RepositorioPersonasDonantes
+        private notificador: Notificador
+        private propiedades: DonacionesProperties
+        private transaccion: TransactionOperations
+
+        public notificarDonantesInactivos(): void «@Scheduled 0 0 0 * * *, @SchedulerLock»
+        private avisarLote(fechaLimite: LocalDateTime, procesados: Set<UUID>): int
     }
 
     class CsvImportService {
-        private donanteRepository: PersonaDonanteRepositoryInterface
+        private donanteRepository: RepositorioPersonasDonantes
         private parser: DonanteCsvRowParser
         private factory: DonanteFactory
+        private propiedades: DonacionesProperties
+        private transaccion: TransactionOperations
 
+        public importarYResumir(csvStream: InputStream): ImportacionResumenResponseDTO
         public importar(csvStream: InputStream): ImportReport
     }
 
-    package asignacion {
+    note as NotaCsv
+        Cada lote de 500 filas es una transacción.
+        Busca los emails del lote en una consulta
+        (obtenerPorEmails) y guarda con guardarTodos
+        (inserts en lotes de 50). Si el lote falla, lo
+        reprocesa fila por fila para informar el error exacto.
+        La respuesta resume y detalla hasta 100 errores.
+    end note
 
-        abstract class AlgoritmoAsignacionBase <<abstracta>> {
-            private TOP_N: int
+    class AsignacionDonacionesService {
+        private algoritmos: List<AlgoritmoAsignacion>
+        private entidadesRepository: RepositorioEntidadesBeneficiarias
+        private tamanioRanking: int
 
-            public evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>): List<ResultadoAsignacion>
-            private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
-            private incluir(puntaje: double): boolean
-        }
-
-        class AlgoritmoCompatibilidadSemantica {
-            private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
-            private incluir(puntaje: double): boolean
-        }
-
-        class AlgoritmoPrioridadSubAtendidos {
-            private donacionesRepository: DonacionesRepositoryInterface
-
-            private calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
-        }
-
-        class AsignacionDonacionesService {
-            private algoritmoSemantico: AlgoritmoCompatibilidadSemantica
-            private algoritmoSubAtendidos: AlgoritmoPrioridadSubAtendidos
-            private entidadesRepository: EntidadesBeneficiariasRepositoryInterface
-
-            public generarRanking(donacion: Donacion): ResultadoMatchmaking
-            private intersectar(a: List<ResultadoAsignacion>, b: List<ResultadoAsignacion>): List<ResultadoAsignacion>
-        }
-
-        class ResultadoMatchmaking {
-            private coincidencias: List<ResultadoAsignacion>
-            private rankingSemantico: List<ResultadoAsignacion>
-            private rankingSubAtendidos: List<ResultadoAsignacion>
-
-            public huboCoincidencias(): boolean
-        }
+        public generarRanking(donacion: Donacion): ResultadoMatchmaking
+        public generarRanking(donacion: Donacion, entidades: List<EntidadBeneficiaria>): ResultadoMatchmaking
+        public nombresDeAlgoritmos(): List<String>
     }
+
+    note as NotaMatchmaking
+        Algoritmos enchufables: recibe todos los beans
+        AlgoritmoAsignacion (en su @Order) y devuelve el
+        ranking de cada uno por su nombre. Sumar un algoritmo
+        no toca esta clase, ni el esquema, ni el JSON.
+        La bandeja completa cada ranking guardado con
+        nombresDeAlgoritmos(): el algoritmo que no encontró
+        entidades aparece con la lista vacía.
+    end note
+
+    class AsignacionBatchService {
+        private donacionesRepositorio: RepositorioDonaciones
+        private asignacionService: AsignacionDonacionesService
+        private candidatosRepositorio: RepositorioCandidatosAsignacion
+        private entidadesRepositorio: RepositorioEntidadesBeneficiarias
+        private propiedades: DonacionesProperties
+        private transaccion: TransactionOperations
+
+        public ejecutarMatchmakingNocturno(): void «@Scheduled 0 30 3 * * *, @SchedulerLock»
+    }
+
+    class ReconciliacionRecepcionesService {
+        private recepciones: RepositorioRecepcionesEntidad
+
+        public reconciliar(): void «@Scheduled 0 0 3 * * *, @SchedulerLock, @Transactional»
+    }
+
+    class PlanificacionEntregasService {
+        private donacionesRepositorio: RepositorioDonaciones
+        private entidadesRepositorio: RepositorioEntidadesBeneficiarias
+        private brokerClient: BrokerLogisticaClient
+        private propiedades: DonacionesProperties
+        private transaccion: TransactionOperations
+
+        public despachar(idsDonaciones: List<UUID>, proveedor: ProveedorLogistica): EnvioLogisticaResponseDTO
+        public despacharPendientesDelDia(): void «@Scheduled 0 0 4 * * *, @SchedulerLock»
+    }
+
+    note as NotaProcesos
+        Los procesos nocturnos recorren las donaciones de a
+        lotes de 100 ordenados por id (obtenerLoteEnEstado),
+        cada uno en una transacción corta. El despacho manda
+        cada lote al broker por separado y deja la llamada
+        fuera de la transacción. El matchmaking reemplaza la
+        bandeja al final y en esa misma transacción descarta
+        las donaciones que dejaron el depósito mientras
+        corría. El aviso de inactividad también confirma
+        cada lote de 100 personas por separado.
+        Todos los cron usan la zona America/Argentina/Buenos_Aires
+        (FechaHoraArgentina.ZONA_ID), no la del servidor.
+    end note
+
+    abstract class AlgoritmoAsignacionBase <<abstracta>> {
+        public final evaluar(donacion: Donacion, entidades: List<EntidadBeneficiaria>, tamanio: int): List<ResultadoAsignacion>
+        protected prepararPuntaje(donacion: Donacion, entidades: List<EntidadBeneficiaria>): ToDoubleFunction<EntidadBeneficiaria>
+        {abstract} protected calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+        protected incluir(puntaje: double): boolean
+    }
+
+    class AlgoritmoCompatibilidadSemantica {
+        {static} public NOMBRE: String = "COMPATIBILIDAD_SEMANTICA"
+
+        public nombre(): String
+        protected calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+        protected incluir(puntaje: double): boolean
+    }
+
+    class AlgoritmoPrioridadSubAtendidos {
+        {static} public NOMBRE: String = "PRIORIDAD_SUBATENDIDOS"
+        {static} private MESES_TRIMESTRE: int = 3
+        private recepciones: RepositorioRecepcionesEntidad
+
+        public nombre(): String
+        protected prepararPuntaje(donacion: Donacion, entidades: List<EntidadBeneficiaria>): ToDoubleFunction<EntidadBeneficiaria>
+        protected calcularPuntaje(donacion: Donacion, entidad: EntidadBeneficiaria): double
+    }
+
+    note as NotaAlgoritmos
+        Template method: evaluar() puntúa, filtra, ordena y
+        recorta al tamaño configurado
+        (donaciones.matchmaking.tamanio-ranking).
+        SubAtendidos redefine prepararPuntaje para leer en UNA
+        consulta las recepciones del trimestre de todas las
+        entidades (tabla entidad_recepcion_diaria).
+    end note
 }
 
-package validations.donaciones {
-    class DonacionesValidator {
-        private repositorio: DonacionesRepositoryInterface
+package services.logistica {
 
-        public validarExistencia(donacion: Donacion): void
-        public validarTieneBienes(donacion: Donacion): void
+    class ManejadorInicioDeRuta <<@Transactional>> {
+        private donaciones: RepositorioDonaciones
+        private participantes: ParticipantesDeDonaciones
+        private notificador: Notificador
+
+        public procesar(dto: InicioRutaCallbackDTO): void
     }
+
+    class ManejadorEntregaExitosa <<@Transactional>> {
+        private donaciones: RepositorioDonaciones
+        private validador: DonacionesValidator
+        private participantes: ParticipantesDeDonaciones
+        private notificador: Notificador
+
+        public procesar(dto: EntregaExitosaCallbackDTO): void
+    }
+
+    class ManejadorEntregaFallida <<@Transactional>> {
+        private donaciones: RepositorioDonaciones
+        private validador: DonacionesValidator
+        private participantes: ParticipantesDeDonaciones
+        private notificador: Notificador
+
+        public procesar(dto: EntregaFallidaCallbackDTO): void
+    }
+
+    class ParticipantesDeDonaciones {
+        private donantes: RepositorioPersonasDonantes
+        private entidades: RepositorioEntidadesBeneficiarias
+
+        public donanteDe(donacion: Donacion): PersonaDonante
+        public entidadDe(donacion: Donacion): EntidadBeneficiaria
+        public de(donaciones: List<Donacion>): Lote
+    }
+
+    class "ParticipantesDeDonaciones.Lote" as LoteParticipantes <<record>> {
+        donantes: Map<UUID, PersonaDonante>
+        entidades: Map<UUID, EntidadBeneficiaria>
+    }
+
+    note as NotaLogistica
+        Un manejador por aviso del broker. Los avisos son
+        idempotentes: uno repetido responde 200 y no
+        cambia el estado ni avisa de nuevo. Donantes y
+        entidades de un lote se leen en dos consultas.
+    end note
 }
 
-package validations.entidades {
-    class EntidadesBeneficiariasValidator {
-        private repositorio: EntidadesBeneficiariasRepositoryInterface
+package eventos {
 
-        public validarExistenciaEntidad(entidad: EntidadBeneficiaria): void
-        public validarCampaniaDeEntidad(entidad: EntidadBeneficiaria, campania: Campania): void
-        public validarFechasCampania(inicio: LocalDate, fin: LocalDate): void
+    class AvisosOyente {
+        private donaciones: RepositorioDonaciones
+        private donantes: RepositorioPersonasDonantes
+        private entidades: RepositorioEntidadesBeneficiarias
+        private notificador: Notificador
+        private incentivos: IncentivosClient
+
+        public alAsignarse(evento: DonacionAsignada): void «antes del commit»
+        public alEntregarse(evento: DonacionEntregada): void «antes del commit»
+        public alRegistrarse(evento: DonacionesRegistradas): void «antes del commit»
     }
+
+    class BandejaDeCandidatosOyente {
+        private candidatos: RepositorioCandidatosAsignacion
+
+        public alCambiarDeEstado(evento: DonacionCambioDeEstado): void
+        public alDarseDeBaja(evento: DonacionDadaDeBaja): void
+    }
+
+    class NecesidadesOyente {
+        private entidades: RepositorioEntidadesBeneficiarias
+
+        public alEntregarse(evento: DonacionEntregada): void
+    }
+
+    note as NotaEventos
+        Los agregados registran eventos de dominio y Spring
+        los publica al guardarlos (@DomainEvents). Los oyentes
+        corren en la misma transacción: la bandeja quita la
+        donación que salió del depósito, las necesidades
+        reciben lo entregado y los avisos se escriben en la
+        bandeja de salida (no salen si la transacción no confirma).
+    end note
 }
 
-package validations.personas {
-    class PersonasValidator {
-        private repositorio: PersonaDonanteRepositoryInterface
+package notificaciones {
 
-        public validarEmail(email: String): void
-        public validarExistenciaPersona(donante: PersonaDonante): void
-        public validarEsPersonaJuridica(donante: PersonaDonante): void
-        public validarMedioContacto(medio: MedioDeContacto): void
-        public validarCambioEstado(actual: EstadoDonante, nuevo: EstadoDonante, justificacion: String): void
+    class Notificador {
+        private cliente: NotificacionClient
+        private propiedades: DonacionesProperties
+
+        public destinoDe(donante: PersonaDonante): Optional<Destino>
+        public destinoDe(entidad: EntidadBeneficiaria): Optional<Destino>
+        public donacionAsignada(donante: PersonaDonante, entidad: EntidadBeneficiaria): void
+        public inicioDeRuta(donante: PersonaDonante, entidad: EntidadBeneficiaria, urlMapa: String): void
+        public entregaExitosa(donante: PersonaDonante, entidad: EntidadBeneficiaria, comprobante: String): void
+        public entregaFallida(idDonacion: UUID, donante, entidad, motivo: String, replanificable: boolean): void
+        public inactividad(donante: PersonaDonante): boolean
     }
+
+    class "Notificador.Destino" as Destino <<record>> {
+        valor: String
+        canal: Canal
+    }
+
+    note as NotaNotificador
+        Arma el texto de cada aviso y elige el canal:
+        el contacto predeterminado de la persona o, si
+        no tiene, su email; para la entidad, su email o
+        su primer contacto. Las entregas fallidas
+        también avisan a la persona administradora.
+        Si la entidad no se encuentra, el aviso de
+        asignación a la persona no la nombra.
+    end note
+}
+
+package salida {
+
+    class BandejaDeSalida {
+        private mensajes: MensajeSalienteJpaRepository
+        private json: ObjectMapper
+
+        public encolar(destino: String, contenido: Object): void
+    }
+
+    class MensajeSaliente <<entidad>> {
+        private id: UUID
+        private destino: String
+        private payload: String
+        private estado: EstadoMensaje
+        private intentos: int
+        private creado: LocalDateTime
+        private proximoIntento: LocalDateTime
+        private enviado: LocalDateTime
+        private ultimoError: String
+
+        {static} public nuevo(destino: String, payload: String, ahora: LocalDateTime): MensajeSaliente
+        public marcarEnviado(ahora: LocalDateTime): void
+        public registrarFalla(error: String, ahora: LocalDateTime, maxIntentos: int): void
+    }
+
+    enum EstadoMensaje <<enum>> {
+        PENDIENTE
+        ENVIADO
+        FALLIDO
+    }
+
+    class Destinos {
+        {static} public NOTIFICACION: String
+        {static} public INCENTIVOS_DONACION_REGISTRADA: String
+        {static} public INCENTIVOS_DONACION_EXITOSA: String
+    }
+
+    interface EnviadorDeMensajes {
+        public destinos(): Set<String>
+        public enviar(destino: String, payload: String): void
+    }
+
+    class RelayDeMensajes {
+        private mensajes: MensajeSalienteJpaRepository
+        private enviadores: Map<String, EnviadorDeMensajes>
+        private transaccion: TransactionOperations
+        private configuracion: DonacionesProperties.Salida
+
+        public enviarPendientes(tiempoMaximo: Duration): int
+        private enviarDestino(destino: String, ahora: LocalDateTime, corte: Instant, tiempoMaximo: Duration): int
+        public borrarEnviadosAntiguos(): int
+    }
+
+    class RelayProgramado {
+        {static} ~BLOQUEO_MAXIMO: String = "PT1M"
+        {static} ~CORTE: Duration = 30 s
+        private relay: RelayDeMensajes
+
+        public enviarPendientes(): void «@Scheduled cada 5 s, @SchedulerLock»
+        public borrarEnviadosAntiguos(): void «@Scheduled 0 30 4 * * *, @SchedulerLock»
+    }
+
+    note as NotaSalida
+        Bandeja de salida (outbox): el aviso se guarda en
+        mensaje_saliente en la transacción del cambio. En
+        cada corrida, el relay envía cada destino en su
+        propio hilo, en orden de llegada y de a lotes de 50,
+        por el enviador de ese destino. Si un envío falla, el
+        resto de ese destino espera a la corrida siguiente y
+        el que falló se reintenta con una espera que se
+        duplica (30 s hasta 1 h), hasta 10 intentos; después
+        queda FALLIDO. Los enviados se borran a los 7 días.
+        ..
+        La corrida deja de tomar mensajes a los 30 s (CORTE),
+        la mitad de su bloqueo: con los timeouts, el envío
+        en curso termina antes de que el bloqueo venza y
+        dos instancias nunca envían a la vez.
+    end note
 }
 
 package clientes {
 
     class NotificacionClient {
+        private salida: BandejaDeSalida
+
         public enviarNotificacion(destinatario: String, mensaje: String, medio: String): void
     }
 
     class IncentivosClient {
-        public notificarDonacionRegistrada(donante: PersonaDonante, destinatario: String, medio: String, cantidadBienes: int, categoriasDonadas: List<String>): void
-        public notificarDonacionExitosa(donante: PersonaDonante, destinatario: String, medio: String): void
+        private salida: BandejaDeSalida
+
+        public notificarDonacionRegistrada(donanteId, destinatario, medio, cantidadBienes, categoriasDonadas, fecha): void
+        public notificarDonacionExitosa(donacion: Donacion, destinatario: String, medio: String, fechaEntrega: LocalDateTime): void
+    }
+
+    class BrokerLogisticaClient {
+        private api: Api
+
+        public solicitarEnvio(proveedor: String, donaciones: List<DonacionEnvio>): ResultadoEnvio
+    }
+
+    interface "BrokerLogisticaClient.Api" as BrokerApi {
+        public solicitarEnvio(pedido: SolicitudEnvio): ResultadoEnvio «@PostExchange /api/broker/envios»
+    }
+
+    class SolicitudEnvio <<record>> {
+        proveedor: String
+        donaciones: List<DonacionEnvio>
+    }
+
+    class DonacionEnvio <<record>> {
+        idDonacion: UUID
+        idEntidadBeneficiaria: UUID
+        nombreEntidad: String
+        direccionEntrega: DireccionEnvio
+    }
+
+    class DireccionEnvio <<record>> {
+        calle: String
+        numero: int
+        localidad: String
+        provincia: String
+        codigoPostal: String
+    }
+
+    class ResultadoEnvio <<record>> {
+        proveedor: String
+        proveedoresDescartados: List<String>
+        envios: List<EnvioAsignado>
+    }
+
+    class EnvioAsignado <<record>> {
+        idDonacion: UUID
+        proveedor: String
+        idSeguimiento: String
+        fechaAsignacion: LocalDateTime
+    }
+
+    note as NotaClientes
+        NotificacionClient e IncentivosClient no llaman a nadie:
+        encolan el aviso en la bandeja de salida.
+        BrokerLogisticaClient llama directo al broker
+        (servicio-broker-logistica, 8087): el despacho
+        necesita la respuesta.
+    end note
+}
+
+package interfaces.integracion {
+
+    interface NotificacionTransport {
+        public enviar(solicitud: SolicitudNotificacionMensaje): void
+        public nombre(): String
     }
 }
 
-AlgoritmoAsignacionBase --|> AlgoritmoAsignacionInterface
+package integracion.notificaciones {
+
+    class EnviadorNotificaciones {
+        private transporte: NotificacionTransport
+        private json: ObjectMapper
+
+        public destinos(): Set<String>
+        public enviar(destino: String, payload: String): void
+    }
+
+    class NotificacionTransportRest {
+        private api: Api
+
+        public enviar(solicitud: SolicitudNotificacionMensaje): void
+        public nombre(): String
+    }
+
+    interface "NotificacionTransportRest.Api" as NotificacionesApi {
+        public enviar(solicitud: SolicitudNotificacionMensaje): void «@PostExchange /notificaciones»
+    }
+
+    class NotificacionTransportAmqp {
+        {static} public TIEMPO_CONFIRMACION_MS: long = 5000
+        private rabbitTemplate: RabbitTemplate
+
+        public enviar(solicitud: SolicitudNotificacionMensaje): void
+        public nombre(): String
+    }
+
+    class SolicitudNotificacionMensaje <<record>> {
+        destinatario: String
+        mensaje: String
+        medio: String
+    }
+
+    note as NotaTransporte
+        Se crea una sola implementación según
+        la property notificaciones.transporte:
+        rest (predeterminado) → POST /notificaciones (8084)
+        amqp → exchange donatrack.notificaciones, routing key
+        notificacion.enviar; espera la confirmación del broker
+        (hasta 5 s) y si no llega, el relay reintenta. La
+        conexión a RabbitMQ espera como mucho 2 s.
+    end note
+}
+
+package integracion.incentivos {
+
+    class EnviadorIncentivos {
+        private envios: Map<String, Consumer<String>>
+
+        public destinos(): Set<String>
+        public enviar(destino: String, payload: String): void
+    }
+
+    interface "EnviadorIncentivos.Api" as IncentivosApi {
+        public donacionRegistrada(solicitud: String): void «@PostExchange /api/incentivos/donantes/donacion»
+        public donacionExitosa(solicitud: String): void «@PostExchange /api/incentivos/donantes/donacion-exitosa»
+    }
+}
+
+package validations {
+
+    class DonacionesValidator {
+        private repositorio: RepositorioDonaciones
+
+        public validarYObtenerDonacion(id: UUID): Donacion
+    }
+
+    class EntidadesBeneficiariasValidator {
+        private repositorio: RepositorioEntidadesBeneficiarias
+
+        public validarYObtenerEntidad(id: UUID): EntidadBeneficiaria
+        public validarYObtenerCampania(entidad: EntidadBeneficiaria, campaniaId: UUID): Campania
+        public validarYObtenerNecesidad(campania: Campania, necesidadId: UUID): Necesidad
+        public validarFechasCampania(inicio: LocalDate, fin: LocalDate): void
+    }
+
+    class PersonasValidator {
+        private repositorio: RepositorioPersonasDonantes
+
+        public validarEmail(email: String): void
+        public validarYObtenerPersona(id: UUID): PersonaDonante
+        public validarYObtenerJuridica(id: UUID): PersonaJuridica
+        public validarMedioContacto(medio: MedioDeContacto): void
+    }
+}
+
+package mappers {
+
+    class DonacionMapper {
+        public toDTO(donacion: Donacion): DonacionResponseDTO
+        public toDTOList(donaciones: List<Donacion>): List<DonacionResponseDTO>
+        public toCargaDonacion(dto: DonacionRequestDTO): CargaDonacion
+        public toBien(dto: BienRequestDTO): Bien
+    }
+
+    class EntidadBeneficiariaMapper {
+        private direcciones: DireccionMapper
+        private contactos: ContactoMapper
+        private representantes: RepresentanteMapper
+
+        public toModel(dto: EntidadBeneficiariaRequestDTO): EntidadBeneficiaria
+        public toDTO(entidad: EntidadBeneficiaria): EntidadBeneficiariaResponseDTO
+        public toCampaniaModel(dto: CampaniaRequestDTO, idEntidad: UUID): Campania
+        public toCampaniaDTO(campania: Campania): CampaniaResponseDTO
+        public toNecesidadDTO(necesidad: Necesidad): NecesidadResponseDTO
+    }
+
+    class PersonaDonanteMapper {
+        private direcciones: DireccionMapper
+        private contactos: ContactoMapper
+        private representantes: RepresentanteMapper
+
+        public toModel(dto: PersonaDonanteRequestDTO): PersonaDonante
+        public toDTO(persona: PersonaDonante): PersonaDonanteResponseDTO
+    }
+
+    class DireccionMapper {
+        public toDireccion(dto: DireccionRequestDTO): Direccion
+        public toDireccionDTO(direccion: Direccion): DireccionResponseDTO
+    }
+
+    class ContactoMapper {
+        public toContacto(dto: MedioDeContactoRequestDTO): MedioDeContacto
+        public toContactos(dtos: List<MedioDeContactoRequestDTO>): List<MedioDeContacto>
+        public toContactoDTO(contacto: MedioDeContacto): MedioDeContactoResponseDTO
+        public toContactosDTO(contactos: List<MedioDeContacto>): List<MedioDeContactoResponseDTO>
+    }
+
+    class RepresentanteMapper {
+        private contactos: ContactoMapper
+
+        public toRepresentante(dto: RepresentanteRequestDTO): Representante
+        public toRepresentantes(dtos: List<RepresentanteRequestDTO>): List<Representante>
+        public toRepresentantesDTO(representantes: List<Representante>): List<RepresentanteResponseDTO>
+    }
+}
+
+package importacion {
+
+    class DonanteCsvRowParser {
+        public parsear(columnas: String[], numeroLinea: int): DonanteImportDto
+    }
+
+    class DonanteFactory {
+        public crearPersona(dto: DonanteImportDto): PersonaDonante
+    }
+
+    class ImportReport {
+        private resultados: List<ImportFilaCSV>
+
+        public agregar(result: ImportFilaCSV): void
+        public totalCreados(): long
+        public totalActualizados(): long
+        public getErrores(): List<ImportFilaCSV>
+        public totalProcesadas(): int
+    }
+
+    class ImportFilaCSV {
+        private numeroLinea: int
+        private estado: EstadoImport
+        private email: String
+        private detalle: String
+
+        {static} public creado(linea: int, email: String): ImportFilaCSV
+        {static} public actualizado(linea: int, email: String): ImportFilaCSV
+        {static} public error(linea: int, email: String, motivo: String): ImportFilaCSV
+    }
+
+    enum EstadoImport <<enum>> {
+        CREADO
+        ACTUALIZADO
+        ERROR
+    }
+
+    class DonanteImportDto <<record>> {
+        linea: int
+        tipoPersona: String
+        tipoDoc: String
+        documento: String
+        nombreORazonSocial: String
+        email: String
+        telefono: String
+    }
+
+    note as NotaParser
+        Valida cada fila antes de procesarla: el email
+        con su forma, el documento con su tipo
+        (Documento.de) y que una jurídica traiga CUIT.
+        Una fila inválida se informa con su línea.
+    end note
+}
+
+package util {
+
+    class "Pagina<T>" as Pagina <<record>> {
+        contenido: List<T>
+        numero: int
+        tamanio: int
+        totalElementos: long
+
+        public totalPaginas(): int
+        public map(transformacion: Function<T, R>): Pagina<R>
+    }
+
+    class SolicitudPagina <<record>> {
+        {static} public TAMANIO_POR_DEFECTO: int = 20
+        {static} public TAMANIO_MAXIMO: int = 100
+        numero: int
+        tamanio: int
+
+        {static} public de(numero: Integer, tamanio: Integer): SolicitudPagina
+    }
+
+    class FiltroDonaciones <<record>> {
+        estado: String
+        idDonante: UUID
+        subcategoria: String
+        idEntidad: UUID
+        soloConBienesVencidos: boolean
+    }
+
+    class NormalizadorEmail {
+        {static} public normalizar(email: String): String
+        {static} public esValido(email: String): boolean
+    }
+
+    class NormalizadorTexto {
+        {static} public normalizar(texto: String): String
+    }
+
+    class FechaHoraArgentina {
+        {static} public ZONA_ID: String = "America/Argentina/Buenos_Aires"
+        {static} public ZONA: ZoneId
+
+        {static} public ahora(): LocalDateTime
+        {static} public hoy(): LocalDate
+        {static} public usarReloj(reloj: Clock): void
+        {static} public restablecerReloj(): void
+    }
+
+    note as NotaUtil
+        SolicitudPagina valida en su constructor page >= 0 y
+        1 <= size <= 100 (de(): sin valor, 0 y 20);
+        si no, PaginaInvalidaException → 400.
+        NormalizadorEmail: trim + NFC + minúsculas (Locale.ROOT).
+        NormalizadorTexto: minúsculas, sin acentos y con los
+        espacios colapsados (subcategorías y matching).
+        FechaHoraArgentina: el reloj se puede reemplazar en los tests.
+        Donaciones, donantes y entidades responden sus listados
+        con PaginaResponseDTO.desde(Pagina).
+    end note
+}
+
+package dtos.response {
+
+    class "PaginaResponseDTO<T>" as PaginaResponseDTO {
+        private contenido: List<T>
+        private pagina: int
+        private tamanio: int
+        private totalElementos: long
+        private totalPaginas: int
+
+        {static} public desde(pagina: Pagina<T>): PaginaResponseDTO<T>
+    }
+}
+
+package interfaces.repositories {
+
+    interface RepositorioDonaciones {
+        public cargarDonaciones(donaciones: List<Donacion>): void
+        public guardar(donacion: Donacion): void
+        public obtenerLoteEnEstado(estado: String, despuesDe: UUID, cantidad: int): List<Donacion>
+        public buscar(filtro: FiltroDonaciones, pagina: SolicitudPagina): Pagina<Donacion>
+        public buscarPorId(id: UUID): Optional<Donacion>
+        public obtenerPorIds(ids: Collection<UUID>): List<Donacion>
+        public existenDelDonante(idDonante: UUID): boolean
+        public existenAsignadasA(idEntidad: UUID): boolean
+    }
+
+    interface RepositorioEntidadesBeneficiarias {
+        public guardar(entidad: EntidadBeneficiaria): void
+        public buscarTodas(): List<EntidadBeneficiaria>
+        public buscar(pagina: SolicitudPagina): Pagina<EntidadBeneficiaria>
+        public buscarPorId(id: UUID): Optional<EntidadBeneficiaria>
+        public obtenerPorIds(ids: Collection<UUID>): List<EntidadBeneficiaria>
+        public eliminar(entidad: EntidadBeneficiaria): void
+    }
+
+    interface RepositorioPersonasDonantes {
+        public buscar(estado: String, pagina: SolicitudPagina): Pagina<PersonaDonante>
+        public obtenerParaAvisoDeInactividad(limite: LocalDateTime, cantidad: int): List<PersonaDonante>
+        public registrarAvisoDeInactividad(ids: Collection<UUID>, cuando: LocalDateTime): void
+        public guardar(donante: PersonaDonante): void
+        public guardarTodos(donantes: Collection<PersonaDonante>): void
+        public existePorEmail(email: String): boolean
+        public buscarPorId(id: UUID): Optional<PersonaDonante>
+        public obtenerPorIds(ids: Collection<UUID>): List<PersonaDonante>
+        public buscarPorEmail(email: String): Optional<PersonaDonante>
+        public obtenerPorEmails(emails: Collection<String>): Map<String, PersonaDonante>
+        public eliminar(persona: PersonaDonante): void
+    }
+
+    interface RepositorioCandidatosAsignacion {
+        public reemplazarTodos(rankings: Collection<RankingPrecalculado>): void
+        public descartarFueraDelDeposito(): void
+        public obtenerTodos(): List<RankingPrecalculado>
+        public eliminar(idDonacion: UUID): void
+    }
+
+    interface RepositorioRecepcionesEntidad {
+        public contarRecepcionesPorEntidadDesde(desde: LocalDate): Map<UUID, Long>
+        public contarRecepcionesDesde(idEntidad: UUID, desde: LocalDate): long
+        public reconciliar(): int
+    }
+}
+
+package repositories {
+
+    class DonacionesRepository {
+        {static} private ORDEN_LISTADO: Sort = fechaDonacion DESC, id ASC
+        private jpa: DonacionJpaRepository
+        private recepciones: RecepcionDiariaJpaRepository
+
+        public guardar(donacion: Donacion): void
+        public obtenerLoteEnEstado(estado: String, despuesDe: UUID, cantidad: int): List<Donacion>
+        public buscar(filtro: FiltroDonaciones, pagina: SolicitudPagina): Pagina<Donacion>
+        private ajustarRecepciones(asignacion: Asignacion, delta: long): void
+        {static} private especificacion(filtro: FiltroDonaciones): Specification<Donacion>
+    }
+
+    class EntidadesBeneficiariasRepository {
+        {static} private ORDEN_LISTADO: Sort = razonSocial ASC, id ASC
+        private jpa: EntidadBeneficiariaJpaRepository
+    }
+
+    class PersonaDonanteRepository {
+        {static} private ORDEN_LISTADO: Sort = email ASC
+        private jpa: PersonaDonanteJpaRepository
+    }
+
+    class CandidatosAsignacionRepository {
+        private jpa: RankingPrecalculadoJpaRepository
+
+        public reemplazarTodos(rankings: Collection<RankingPrecalculado>): void
+        public descartarFueraDelDeposito(): void
+    }
+
+    class RecepcionesEntidadRepository {
+        private jpa: RecepcionDiariaJpaRepository
+
+        public reconciliar(): int
+    }
+
+    package jpa {
+
+        interface DonacionJpaRepository {
+            public findByEstadoNombre(estadoNombre: String, lote: Pageable): List<Donacion>
+            public findByEstadoNombreAndIdGreaterThan(estadoNombre: String, id: UUID, lote: Pageable): List<Donacion>
+            public existsByIdDonante(idDonante: UUID): boolean
+            public existsByIdEntidadBeneficiaria(idEntidadBeneficiaria: UUID): boolean
+        }
+
+        interface EntidadBeneficiariaJpaRepository {
+        }
+
+        interface PersonaDonanteJpaRepository {
+            public findByEmail(email: String): Optional<PersonaDonante>
+            public existsByEmail(email: String): boolean
+            public findByEmailIn(emails: Collection<String>): List<PersonaDonante>
+            public findByEstadoNombre(estadoNombre: String, pagina: Pageable): Page<PersonaDonante>
+            public buscarParaAvisoDeInactividad(limite: LocalDateTime, pagina: Pageable): List<PersonaDonante> «@Query»
+            public registrarAvisoDeInactividad(ids: Collection<UUID>, cuando: LocalDateTime): int «@Modifying nativa»
+        }
+
+        interface RankingPrecalculadoJpaRepository {
+            public vaciarPuestos(): void «@Modifying nativa»
+            public vaciarRankings(): void «@Modifying nativa»
+            public borrarPuestosFueraDelDeposito(): int «@Modifying nativa»
+            public borrarRankingsFueraDelDeposito(): int «@Modifying nativa»
+        }
+
+        interface RecepcionDiariaJpaRepository {
+            public totalesDesde(desde: LocalDate): List<TotalPorEntidad> «@Query»
+            public totalDesde(idEntidad: UUID, desde: LocalDate): long «@Query»
+            public sumar(idEntidad: UUID, fecha: LocalDate, delta: long): int «@Modifying»
+            public vaciar(): void «@Modifying nativa»
+            public recalcularDesdeDonaciones(): int «@Modifying nativa»
+        }
+
+        interface "RecepcionDiariaJpaRepository.TotalPorEntidad" as TotalPorEntidad <<proyeccion>> {
+            public getIdEntidad(): UUID
+            public getTotal(): Long
+        }
+
+        interface MensajeSalienteJpaRepository {
+            public buscarDestinosConListos(estado: EstadoMensaje, ahora: LocalDateTime): List<String> «@Query»
+            public buscarListos(estado: EstadoMensaje, destino: String, ahora: LocalDateTime, pagina: Pageable): List<MensajeSaliente> «@Query»
+            public countByEstado(estado: EstadoMensaje): long
+            public borrarEnviadosAntesDe(estado: EstadoMensaje, limite: LocalDateTime): int «@Modifying»
+        }
+    }
+
+    note as NotaRepositorios
+        Adaptadores sobre Spring Data JPA (base donaciones_db).
+        No abren transacciones: participan de la del service.
+        - DonacionesRepository.guardar mueve el contador
+          entidad_recepcion_diaria si cambió la asignación
+          (la donación recuerda la que tenía al leerse) y una
+          baja lógica lo descuenta.
+        - CandidatosAsignacionRepository.reemplazarTodos vacía
+          la bandeja (2 DELETE) y guarda la nueva de una vez;
+          descartarFueraDelDeposito borra (2 DELETE) los rankings
+          de las donaciones que ya no están en depósito.
+        - RecepcionesEntidadRepository.reconciliar vacía el contador
+          y lo recalcula con un INSERT ... SELECT ... GROUP BY.
+        - Los listados (buscar) paginan y ordenan en la base;
+          obtenerLoteEnEstado recorre por id.
+    end note
+}
+
+package "Spring Data JPA" as springdata {
+
+    interface "JpaRepository<Donacion, UUID>" as JpaDonacion <<externa>> #BFDFF2 {
+    }
+
+    interface "JpaSpecificationExecutor<Donacion>" as SpecDonacion <<externa>> #BFDFF2 {
+    }
+
+    interface "JpaRepository<EntidadBeneficiaria, UUID>" as JpaEntidad <<externa>> #BFDFF2 {
+    }
+
+    interface "JpaRepository<PersonaDonante, UUID>" as JpaPersona <<externa>> #BFDFF2 {
+    }
+
+    interface "JpaRepository<RankingPrecalculado, UUID>" as JpaRanking <<externa>> #BFDFF2 {
+    }
+
+    interface "JpaRepository<RecepcionDiariaEntidad, Clave>" as JpaRecepcion <<externa>> #BFDFF2 {
+    }
+
+    interface "JpaRepository<MensajeSaliente, UUID>" as JpaMensaje <<externa>> #BFDFF2 {
+    }
+}
+
+package config {
+
+    class DonacionesProperties <<record>> {
+        inactividad: Inactividad
+        procesos: Procesos
+        importacion: Importacion
+        notificaciones: Notificaciones
+        matchmaking: Matchmaking
+        salida: Salida
+    }
+
+    note as NotaPropiedades
+        Configuración tipada y validada al arrancar
+        (prefijo donaciones.): días de inactividad,
+        crones, tamaños de lote, email del administrador,
+        tamaño del ranking y parámetros de la bandeja
+        de salida. Cada valor tiene su default.
+    end note
+
+    class BloqueoDeTareasConfig {
+        public lockProvider(dataSource: DataSource): LockProvider
+    }
+
+    note as NotaBloqueo
+        ShedLock con la hora de la base: cada tarea
+        toma su fila de shedlock antes de correr.
+        Las nocturnas la retienen al menos 5 min
+        (lockAtLeastFor): una instancia que llega tarde
+        no repite la corrida que otra ya terminó.
+        Las tareas corren en 4 hilos
+        (spring.task.scheduling.pool.size).
+    end note
+
+    NotaBloqueo .. BloqueoDeTareasConfig
+
+    class ClientesHttp {
+        {static} public crear(builder: RestClient.Builder, urlBase: String, api: Class<T>): T
+    }
+
+    class IdDeCorrelacion {
+        {static} public ENCABEZADO: String = "X-Correlation-Id"
+        {static} public CLAVE_MDC: String = "correlationId"
+
+        {static} public propagador(): ClientHttpRequestInterceptor
+    }
+
+    class RabbitMQConfig {
+        {static} public EXCHANGE: String = "donatrack.notificaciones"
+        {static} public ROUTING_KEY: String = "notificacion.enviar"
+        {static} public QUEUE: String = "notificaciones.queue"
+    }
+}
+
+' ─────────────── REALIZACIÓN Y HERENCIA ───────────────
+
+AlgoritmoAsignacionBase ..|> AlgoritmoAsignacion
 AlgoritmoCompatibilidadSemantica --|> AlgoritmoAsignacionBase
 AlgoritmoPrioridadSubAtendidos --|> AlgoritmoAsignacionBase
 
-DonacionService --|> DonacionServiceInterface
-SegmentadorDonacionesService --|> SegmentadorDonacionesServiceInterface
-PersonaDonanteService --|> PersonaDonanteServiceInterface
-EntidadesBeneficiariasService --|> EntidadesBeneficiariasServiceInterface
+DonacionesRepository ..|> RepositorioDonaciones
+EntidadesBeneficiariasRepository ..|> RepositorioEntidadesBeneficiarias
+PersonaDonanteRepository ..|> RepositorioPersonasDonantes
+CandidatosAsignacionRepository ..|> RepositorioCandidatosAsignacion
+RecepcionesEntidadRepository ..|> RepositorioRecepcionesEntidad
 
+DonacionJpaRepository --|> JpaDonacion
+DonacionJpaRepository --|> SpecDonacion
+EntidadBeneficiariaJpaRepository --|> JpaEntidad
+PersonaDonanteJpaRepository --|> JpaPersona
+RankingPrecalculadoJpaRepository --|> JpaRanking
+RecepcionDiariaJpaRepository --|> JpaRecepcion
+MensajeSalienteJpaRepository --|> JpaMensaje
 
-AsignacionDonacionesService -- AlgoritmoCompatibilidadSemantica
-AsignacionDonacionesService -- AlgoritmoPrioridadSubAtendidos
-AsignacionDonacionesService -- ResultadoMatchmaking
+NotificacionTransportRest ..|> NotificacionTransport
+NotificacionTransportAmqp ..|> NotificacionTransport
+EnviadorNotificaciones ..|> EnviadorDeMensajes
+EnviadorIncentivos ..|> EnviadorDeMensajes
 
-DonacionService -- AsignacionDonacionesService
-DonacionService -- NotificacionClient
-DonacionService -- IncentivosClient
-DonacionService -- DonacionesValidator
-DonacionService -- EntidadesBeneficiariasValidator
+' ─────────────── ASIGNACIÓN ───────────────
 
-SegmentadorDonacionesService -- IncentivosClient
+AsignacionDonacionesService --> "1..*" AlgoritmoAsignacion
+NotaMatchmaking .. AsignacionDonacionesService
+AsignacionBatchService --> AsignacionDonacionesService
+DonacionConsultasService --> AsignacionDonacionesService
+NotaAlgoritmos .. AlgoritmoPrioridadSubAtendidos
+NotaProcesos .. AsignacionBatchService
+NotaProcesos .. PlanificacionEntregasService
 
-PersonaDonanteService -- PersonasValidator
+' ─────────────── DONACIONES ───────────────
 
-EntidadesBeneficiariasService -- EntidadesBeneficiariasValidator
+NotaComandosConsultas .. DonacionComandosService
+NotaComandosConsultas .. DonacionConsultasService
+DonacionComandosService --> DonacionMapper
+DonacionComandosService --> DonacionesValidator
+DonacionComandosService --> EntidadesBeneficiariasValidator
+DonacionConsultasService --> DonacionMapper
+DonacionConsultasService --> EntidadBeneficiariaMapper
+DonacionConsultasService --> DonacionesValidator
+SegmentadorDonacionesService --> PersonasValidator
+SegmentadorDonacionesService --> DonacionMapper
+PlanificacionEntregasService --> BrokerLogisticaClient
 
-InactividadDonantesService -- NotificacionClient
+' ─────────────── LOGÍSTICA ───────────────
 
+ManejadorInicioDeRuta --> ParticipantesDeDonaciones
+ManejadorEntregaExitosa --> ParticipantesDeDonaciones
+ManejadorEntregaFallida --> ParticipantesDeDonaciones
+ManejadorInicioDeRuta --> Notificador
+ManejadorEntregaExitosa --> Notificador
+ManejadorEntregaFallida --> Notificador
+ManejadorEntregaExitosa --> DonacionesValidator
+ManejadorEntregaFallida --> DonacionesValidator
+ParticipantesDeDonaciones +-- LoteParticipantes
+NotaLogistica .. ParticipantesDeDonaciones
 
+' ─────────────── EVENTOS Y AVISOS ───────────────
+
+AvisosOyente --> Notificador
+AvisosOyente --> IncentivosClient
+NotaEventos .. AvisosOyente
+InactividadDonantesService --> Notificador
+Notificador --> NotificacionClient
+Notificador +-- Destino
+NotaNotificador .. Notificador
+
+NotificacionClient --> BandejaDeSalida
+IncentivosClient --> BandejaDeSalida
+BandejaDeSalida --> MensajeSalienteJpaRepository
+BandejaDeSalida ..> MensajeSaliente : <<crea>>
+BandejaDeSalida ..> Destinos
+MensajeSaliente --> EstadoMensaje
+RelayProgramado --> RelayDeMensajes
+RelayDeMensajes --> MensajeSalienteJpaRepository
+RelayDeMensajes --> "1..*" EnviadorDeMensajes
+NotaSalida .. RelayDeMensajes
+NotaClientes .. NotificacionClient
+
+EnviadorNotificaciones --> NotificacionTransport
+NotificacionTransport ..> SolicitudNotificacionMensaje
+NotificacionTransportRest +-- NotificacionesApi
+NotificacionTransportAmqp ..> RabbitMQConfig
+EnviadorIncentivos +-- IncentivosApi
+BrokerLogisticaClient +-- BrokerApi
+BrokerLogisticaClient +-- SolicitudEnvio
+BrokerLogisticaClient +-- DonacionEnvio
+BrokerLogisticaClient +-- DireccionEnvio
+BrokerLogisticaClient +-- ResultadoEnvio
+BrokerLogisticaClient +-- EnvioAsignado
+DonacionEnvio --> DireccionEnvio
+SolicitudEnvio --> "0..*" DonacionEnvio
+ResultadoEnvio --> "0..*" EnvioAsignado
+NotificacionTransportRest ..> ClientesHttp
+EnviadorIncentivos ..> ClientesHttp
+BrokerLogisticaClient ..> ClientesHttp
+ClientesHttp ..> IdDeCorrelacion
+
+' ─────────────── DONANTES Y ENTIDADES ───────────────
+
+PersonaDonanteService --> PersonasValidator
+PersonaDonanteService --> PersonaDonanteMapper
+NotaBorrados .. PersonaDonanteService
+NotaBorrados .. EntidadesBeneficiariasService
+
+EntidadesBeneficiariasService --> EntidadesBeneficiariasValidator
+EntidadesBeneficiariasService --> EntidadBeneficiariaMapper
+EntidadBeneficiariaMapper --> DireccionMapper
+EntidadBeneficiariaMapper --> ContactoMapper
+EntidadBeneficiariaMapper --> RepresentanteMapper
+PersonaDonanteMapper --> DireccionMapper
+PersonaDonanteMapper --> ContactoMapper
+PersonaDonanteMapper --> RepresentanteMapper
+RepresentanteMapper --> ContactoMapper
+
+CsvImportService --> DonanteCsvRowParser
+CsvImportService --> DonanteFactory
+CsvImportService ..> ImportReport : <<crea>>
+NotaCsv .. CsvImportService
+NotaParser .. DonanteCsvRowParser
+ImportReport --> "0..*" ImportFilaCSV
+ImportFilaCSV --> EstadoImport
+DonanteCsvRowParser ..> DonanteImportDto : <<crea>>
+
+DonacionesValidator --> RepositorioDonaciones
+EntidadesBeneficiariasValidator --> RepositorioEntidadesBeneficiarias
+PersonasValidator --> RepositorioPersonasDonantes
+
+' ─────────────── PAGINACIÓN ───────────────
+
+RepositorioDonaciones ..> FiltroDonaciones
+RepositorioDonaciones ..> Pagina
+RepositorioDonaciones ..> SolicitudPagina
+RepositorioPersonasDonantes ..> Pagina
+RepositorioEntidadesBeneficiarias ..> Pagina
+PaginaResponseDTO ..> Pagina : desde()
+
+' ─────────────── PERSISTENCIA ───────────────
+
+DonacionesRepository --> DonacionJpaRepository
+DonacionesRepository --> RecepcionDiariaJpaRepository
+EntidadesBeneficiariasRepository --> EntidadBeneficiariaJpaRepository
+PersonaDonanteRepository --> PersonaDonanteJpaRepository
+CandidatosAsignacionRepository --> RankingPrecalculadoJpaRepository
+RecepcionesEntidadRepository --> RecepcionDiariaJpaRepository
+RecepcionDiariaJpaRepository +-- TotalPorEntidad
+NotaRepositorios .. DonacionesRepository
+
+NotaPropiedades .. DonacionesProperties
 
 @enduml

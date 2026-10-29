@@ -23,14 +23,23 @@ import org.springframework.stereotype.Component;
  *   - El tiempo de respuesta de registrar una donación deja de depender de
  *     cuánto tarde notificaciones.
  *
- * Se mantiene el try/catch: si lo que está caído es el broker, el flujo de
- * negocio tampoco debe cortarse. Es el mismo criterio que ya se usaba con HTTP.
+ * CONFIRMACIONES (Entrega 5): publica con publisher confirms y espera a que el
+ * broker confirme que recibió el mensaje. Antes, si la publicación fallaba se
+ * registraba en el log y el aviso se perdía. Ahora, si el broker no confirma (o
+ * está caído), la excepción sale hacia RelayDeMensajes, que reintenta el aviso
+ * guardado en la bandeja de salida. El flujo de negocio no se entera.
+ *
+ * Usa el RabbitTemplate que autoconfigura Spring Boot (con el conversor JSON de
+ * RabbitMQConfig) en lugar de uno armado a mano.
  */
 @Component
 @ConditionalOnProperty(name = "notificaciones.transporte", havingValue = "amqp")
 public class NotificacionTransportAmqp implements NotificacionTransport {
 
     private static final Logger log = LoggerFactory.getLogger(NotificacionTransportAmqp.class);
+
+    /** Cuánto se espera la confirmación del broker antes de dar el envío por fallido. */
+    public static final long TIEMPO_CONFIRMACION_MS = 5000;
 
     private final RabbitTemplate rabbitTemplate;
 
@@ -39,19 +48,13 @@ public class NotificacionTransportAmqp implements NotificacionTransport {
     }
 
     public void enviar(SolicitudNotificacionMensaje solicitud) {
-        try {
-            rabbitTemplate.convertAndSend(
-                    RabbitMQConfig.EXCHANGE,
-                    RabbitMQConfig.ROUTING_KEY,
-                    solicitud);
-
-            log.debug("[Notificaciones/AMQP] Encolada notificación para {} por {}",
-                    solicitud.destinatario(), solicitud.medio());
-
-        } catch (Exception e) {
-            log.error("[Notificaciones/AMQP] No se pudo encolar la notificación para {}: {}",
-                    solicitud.destinatario(), e.getMessage());
-        }
+        rabbitTemplate.invoke(operaciones -> {
+            operaciones.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KEY, solicitud);
+            operaciones.waitForConfirmsOrDie(TIEMPO_CONFIRMACION_MS);
+            return null;
+        });
+        log.debug("[Notificaciones/AMQP] Encolada notificación para {} por {}",
+                solicitud.destinatario(), solicitud.medio());
     }
 
     public String nombre() {

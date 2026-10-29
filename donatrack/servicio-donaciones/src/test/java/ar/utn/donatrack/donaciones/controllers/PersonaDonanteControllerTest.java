@@ -1,5 +1,10 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.services.PersonaDonanteService;
+import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DireccionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EmailRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.LocalidadRequestDTO;
@@ -8,14 +13,13 @@ import ar.utn.donatrack.donaciones.dtos.request.ProvinciaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaHumanaResponseDTO;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailInvalidoException;
 import ar.utn.donatrack.donaciones.exceptions.mediosContactoExceptions.EmailYaRegistradoException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.CambioEstadoPersonaIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.personasExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConMismoEstadoException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.TipoPersonaIlegalException;
 import ar.utn.donatrack.donaciones.importacion.ImportFilaCSV;
 import ar.utn.donatrack.donaciones.importacion.ImportReport;
-import ar.utn.donatrack.donaciones.interfaces.services.PersonaDonanteServiceInterface;
 import ar.utn.donatrack.donaciones.models.donante.Genero;
 import ar.utn.donatrack.donaciones.services.CsvImportService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,12 +28,14 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +82,7 @@ class PersonaDonanteControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private PersonaDonanteServiceInterface personaDonanteService;
+    private PersonaDonanteService personaDonanteService;
 
     @MockitoBean
     private CsvImportService csvImportService;
@@ -133,25 +139,37 @@ class PersonaDonanteControllerTest {
     class Consulta {
 
         @Test
-        @DisplayName("Devuelve 200 con la lista de donantes")
+        @DisplayName("Devuelve 200 con la página de donantes y sus totales")
         void listaDonantes() throws Exception {
-            when(personaDonanteService.obtenerDonantes(isNull())).thenReturn(List.of(respuestaHumana()));
+            when(personaDonanteService.obtenerDonantes(isNull(), any()))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(respuestaHumana()), 0, 20, 1)));
 
             mockMvc.perform(get("/donantes"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
-                    .andExpect(jsonPath("$[0].estado").value("ACTIVO"));
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$.contenido[0].estado").value("ACTIVO"))
+                    .andExpect(jsonPath("$.totalElementos").value(1));
+
+            verify(personaDonanteService).obtenerDonantes(null, new SolicitudPagina(0, 20));
         }
 
         @Test
-        @DisplayName("Pasa el filtro de estado al service")
+        @DisplayName("Pasa el filtro de estado y la página al service")
         void filtraPorEstado() throws Exception {
-            when(personaDonanteService.obtenerDonantes("BLOQUEADO")).thenReturn(List.of());
+            when(personaDonanteService.obtenerDonantes(any(), any()))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 1, 10, 0)));
 
-            mockMvc.perform(get("/donantes").param("estado", "BLOQUEADO"))
+            mockMvc.perform(get("/donantes").param("estado", "BLOQUEADO").param("page", "1").param("size", "10"))
                     .andExpect(status().isOk());
 
-            verify(personaDonanteService).obtenerDonantes("BLOQUEADO");
+            verify(personaDonanteService).obtenerDonantes("BLOQUEADO", new SolicitudPagina(1, 10));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el tamaño de página es 0")
+        void tamanioCero() throws Exception {
+            mockMvc.perform(get("/donantes").param("size", "0"))
+                    .andExpect(status().isBadRequest());
         }
 
         @Test
@@ -220,6 +238,34 @@ class PersonaDonanteControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(cuerpoAltaHumana("juan@example.com")))
                     .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("Devuelve 409 si el UNIQUE de la base rechaza el email (alta simultánea)")
+        void emailDuplicadoEnLaBase() throws Exception {
+            // Dos altas simultáneas pasan la validación previa: la segunda la
+            // frena el UNIQUE de la columna, con el estado SQL de clave duplicada.
+            when(personaDonanteService.registrar(any()))
+                    .thenThrow(new DataIntegrityViolationException("duplicado",
+                            new SQLException("unique violation", "23505")));
+
+            mockMvc.perform(post("/donantes")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpoAltaHumana("juan@example.com")))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("Otra violación de integridad (no de unicidad) sigue siendo un 500")
+        void otraViolacionDeIntegridad() throws Exception {
+            when(personaDonanteService.registrar(any()))
+                    .thenThrow(new DataIntegrityViolationException("not null",
+                            new SQLException("null value", "23502")));
+
+            mockMvc.perform(post("/donantes")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpoAltaHumana("juan@example.com")))
+                    .andExpect(status().isInternalServerError());
         }
 
         @Test
@@ -313,7 +359,7 @@ class PersonaDonanteControllerTest {
         @Test
         @DisplayName("Devuelve 422 si la transición no está permitida")
         void transicionIlegal() throws Exception {
-            doThrow(new CambioEstadoPersonaIlegalException("INACTIVO", "BLOQUEADO"))
+            doThrow(new TransicionDeEstadoIlegalException("INACTIVO", "BLOQUEADO"))
                     .when(personaDonanteService).cambiarEstado(eq(idDonante), any());
 
             mockMvc.perform(patch("/donantes/{id}/estado", idDonante)
@@ -434,12 +480,12 @@ class PersonaDonanteControllerTest {
     class Importacion {
 
         @Test
-        @DisplayName("Devuelve 200 con el reporte de la importación")
+        @DisplayName("Devuelve 200 con el resumen de la importación, sin una entrada por fila")
         void importacionOk() throws Exception {
             ImportReport reporte = new ImportReport();
             reporte.agregar(ImportFilaCSV.creado(2, "juan@example.com"));
             reporte.agregar(ImportFilaCSV.actualizado(3, "ana@example.com"));
-            when(csvImportService.importar(any())).thenReturn(reporte);
+            when(csvImportService.importarYResumir(any())).thenReturn(ImportacionResumenResponseDTO.desde(reporte, 100));
 
             MockMultipartFile archivo = new MockMultipartFile(
                     "file", "donantes.csv", "text/csv",
@@ -448,7 +494,12 @@ class PersonaDonanteControllerTest {
 
             mockMvc.perform(multipart("/donantes/import").file(archivo))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.resultados", org.hamcrest.Matchers.hasSize(2)));
+                    .andExpect(jsonPath("$.totalProcesadas").value(2))
+                    .andExpect(jsonPath("$.creadas").value(1))
+                    .andExpect(jsonPath("$.actualizadas").value(1))
+                    .andExpect(jsonPath("$.conError").value(0))
+                    .andExpect(jsonPath("$.errores", org.hamcrest.Matchers.hasSize(0)))
+                    .andExpect(jsonPath("$.resultados").doesNotExist());
         }
 
         @Test
@@ -459,15 +510,18 @@ class PersonaDonanteControllerTest {
             ImportReport reporte = new ImportReport();
             reporte.agregar(ImportFilaCSV.creado(2, "juan@example.com"));
             reporte.agregar(ImportFilaCSV.error(3, "", "Tipo de persona inválido"));
-            when(csvImportService.importar(any())).thenReturn(reporte);
+            when(csvImportService.importarYResumir(any())).thenReturn(ImportacionResumenResponseDTO.desde(reporte, 100));
 
             MockMultipartFile archivo = new MockMultipartFile(
                     "file", "donantes.csv", "text/csv", "contenido".getBytes(StandardCharsets.UTF_8));
 
             mockMvc.perform(multipart("/donantes/import").file(archivo))
                     .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.conError").value(1))
                     .andExpect(jsonPath("$.errores", org.hamcrest.Matchers.hasSize(1)))
-                    .andExpect(jsonPath("$.errores[0].numeroLinea").value(3));
+                    .andExpect(jsonPath("$.errores[0].numeroLinea").value(3))
+                    .andExpect(jsonPath("$.errores[0].detalle").value("Tipo de persona inválido"))
+                    .andExpect(jsonPath("$.erroresOmitidos").value(0));
         }
     }
 }

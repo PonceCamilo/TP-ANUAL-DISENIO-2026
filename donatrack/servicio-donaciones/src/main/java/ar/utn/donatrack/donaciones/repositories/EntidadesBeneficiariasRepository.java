@@ -1,13 +1,19 @@
 package ar.utn.donatrack.donaciones.repositories;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.stereotype.Repository;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.repositories.jpa.EntidadBeneficiariaJpaRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -20,35 +26,34 @@ import java.util.UUID;
  */
 @Repository
 @RequiredArgsConstructor
-public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasRepositoryInterface {
+public class EntidadesBeneficiariasRepository implements RepositorioEntidadesBeneficiarias {
+
+    private static final Sort ORDEN_LISTADO = Sort.by(Sort.Order.asc("razonSocial"), Sort.Order.asc("id"));
 
     private final EntidadBeneficiariaJpaRepository jpa;
 
-    @Transactional
     public void guardar(EntidadBeneficiaria entidad) {
-        if (entidad.getId() == null) {
-            entidad.setId(UUID.randomUUID());
-        }
         jpa.save(entidad);
     }
 
-    @Transactional(readOnly = true)
     public List<EntidadBeneficiaria> buscarTodas() {
         return jpa.findAll();
     }
 
-    @Transactional(readOnly = true)
-    public EntidadBeneficiaria obtenerPorId(UUID id) {
-        return jpa.findById(id).orElse(null);
+    public Pagina<EntidadBeneficiaria> buscar(SolicitudPagina pagina) {
+        Page<EntidadBeneficiaria> resultado = jpa.findAll(PageRequest.of(pagina.numero(), pagina.tamanio(), ORDEN_LISTADO));
+        return new Pagina<>(resultado.getContent(), pagina.numero(), pagina.tamanio(), resultado.getTotalElements());
     }
 
-    @Transactional(readOnly = true)
-    public boolean existePorId(UUID id) {
-        return jpa.existsById(id);
+    public Optional<EntidadBeneficiaria> buscarPorId(UUID id) {
+        return jpa.findById(id);
     }
 
-    @Transactional
-    public void eliminar(UUID id) {
-        jpa.deleteById(id);
+    public List<EntidadBeneficiaria> obtenerPorIds(Collection<UUID> ids) {
+        return jpa.findAllById(ids);
+    }
+
+    public void eliminar(EntidadBeneficiaria entidad) {
+        jpa.delete(entidad);
     }
 }

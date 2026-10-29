@@ -37,7 +37,7 @@ class DonanteFactoryTest {
     }
 
     private DonanteImportDto dto(String tipoPersona, String tipoDoc, String documento, String nombre, String email) {
-        return new DonanteImportDto(tipoPersona, tipoDoc, documento, nombre, email, null);
+        return new DonanteImportDto(2, tipoPersona, tipoDoc, documento, nombre, email, null);
     }
 
     @Nested
@@ -108,19 +108,19 @@ class DonanteFactoryTest {
         @DisplayName("Crea una PersonaJuridica usando el nombre del CSV como razón social")
         void creaPersonaJuridica() {
             PersonaDonante persona = factory.crearPersona(
-                    dto("JURIDICA", "CUIT", "30-11122233-4", "Fundación Ejemplo", "contacto@fundacion.org"));
+                    dto("JURIDICA", "CUIT", "30-11122233-5", "Fundación Ejemplo", "contacto@fundacion.org"));
 
             assertThat(persona).isInstanceOf(PersonaJuridica.class);
             assertThat(((PersonaJuridica) persona).getRazonSocial()).isEqualTo("Fundación Ejemplo");
             assertThat(persona.getTipoDocumento()).isEqualTo("CUIT");
-            assertThat(persona.getNumeroDocumento()).isEqualTo("30-11122233-4");
+            assertThat(persona.getNumeroDocumento()).isEqualTo("30111222335");
         }
 
         @Test
         @DisplayName("La razón social NO se parte por espacios, a diferencia del nombre de una persona humana")
         void razonSocialNoSeParte() {
             PersonaJuridica persona = (PersonaJuridica) factory.crearPersona(
-                    dto("JURIDICA", "CUIT", "30-11122233-4", "Asociación Civil Manos Unidas", "info@manos.org"));
+                    dto("JURIDICA", "CUIT", "30-11122233-5", "Asociación Civil Manos Unidas", "info@manos.org"));
 
             assertThat(persona.getRazonSocial()).isEqualTo("Asociación Civil Manos Unidas");
         }
@@ -129,7 +129,7 @@ class DonanteFactoryTest {
         @DisplayName("Arranca sin representantes cargados (lista vacía, no null)")
         void arrancaSinRepresentantes() {
             PersonaJuridica persona = (PersonaJuridica) factory.crearPersona(
-                    dto("JURIDICA", "CUIT", "30-11122233-4", "Fundación Ejemplo", "contacto@fundacion.org"));
+                    dto("JURIDICA", "CUIT", "30-11122233-5", "Fundación Ejemplo", "contacto@fundacion.org"));
 
             assertThat(persona.getRepresentantes()).isNotNull().isEmpty();
         }
@@ -154,7 +154,7 @@ class DonanteFactoryTest {
             // Sin esto, la tarea diaria de inactividad los detectaría como
             // inactivos apenas se importan y les mandaría un recordatorio absurdo.
             PersonaDonante persona = factory.crearPersona(
-                    dto("JURIDICA", "CUIT", "30-11122233-4", "Fundación Ejemplo", "contacto@fundacion.org"));
+                    dto("JURIDICA", "CUIT", "30-11122233-5", "Fundación Ejemplo", "contacto@fundacion.org"));
 
             assertThat(persona.getUltimaInteraccion()).isNotNull();
         }

@@ -1,9 +1,13 @@
 package ar.utn.donatrack.donaciones.models.donacion;
 
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.CambioEstadoDonacionIlegalException;
-import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionDonacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionReservadaException;
+import ar.utn.donatrack.donaciones.models.donacion.bien.Bien;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoModificableException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienNoEncontradoException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.BienIncompatibleConDonacionException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
-import ar.utn.donatrack.donaciones.models.donacion.bien.BienConEstado;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
 import ar.utn.donatrack.donaciones.models.donacion.bien.BienPerecible;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -14,7 +18,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,8 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * Tras el refactor de Entrega 3, la Donación dejó de ser un contenedor de datos:
  * ahora sabe cambiar su propio estado, registrar el historial de esos cambios,
- * asignarse a una entidad y responder preguntas sobre sí misma (si es perecedera,
- * si requiere estado nuevo/usado, si pertenece a una subcategoría, etc.).
+ * asignarse a una entidad, corregir sus bienes y atender los avisos de logística.
  *
  * Estas pruebas cubren esos métodos. La lógica de qué transiciones son válidas
  * está probada aparte en EstadoDonacionBaseTest; acá se verifica cómo la
@@ -43,6 +45,145 @@ class DonacionTest {
         donacion.setIdDonante(UUID.randomUUID());
         donacion.setDescripcion("Donación de prueba");
         donacion.setSubcategoria(new Subcategoria("arroz"));
+    }
+
+    @Nested
+    @DisplayName("reemplazarBien(): corregir un bien sin romper la segmentación")
+    class ReemplazarBien {
+
+        private Bien generico(String subcategoria) {
+            return BienGenerico.builder().subcategoria(new Subcategoria(subcategoria))
+                    .descripcion("bien").cantidad(1).unidad("kg").build();
+        }
+
+        private Bien perecedero(String subcategoria, LocalDate vence) {
+            return BienPerecible.builder().subcategoria(new Subcategoria(subcategoria))
+                    .descripcion("bien").cantidad(1).unidad("kg").fechaVencimiento(vence).build();
+        }
+
+        @Test
+        @DisplayName("Reemplaza el bien indicado; el nuevo conserva su propio id")
+        void reemplaza() {
+            Bien original = generico("arroz");
+            donacion.agregarBien(original);
+            Bien corregido = generico("arroz");
+
+            donacion.reemplazarBien(original.getId(), corregido);
+
+            assertThat(donacion.getBienes()).containsExactly(corregido);
+        }
+
+        @Test
+        @DisplayName("Un id que no es de la donación es un 404")
+        void bienInexistente() {
+            donacion.agregarBien(generico("arroz"));
+
+            assertThatThrownBy(() -> donacion.reemplazarBien(UUID.randomUUID(), generico("arroz")))
+                    .isInstanceOf(BienNoEncontradoException.class);
+        }
+
+        @Test
+        @DisplayName("El bien no puede cambiar de subcategoría: la donación tiene una sola")
+        void otraSubcategoria() {
+            Bien original = generico("arroz");
+            donacion.agregarBien(original);
+
+            assertThatThrownBy(() -> donacion.reemplazarBien(original.getId(), generico("fideos")))
+                    .isInstanceOf(BienIncompatibleConDonacionException.class);
+        }
+
+        @Test
+        @DisplayName("Con otros bienes, el corregido tiene que compartir su vencimiento")
+        void rompeLaSegmentacion() {
+            Bien uno = perecedero("arroz", LocalDate.of(2027, 1, 1));
+            Bien otro = perecedero("arroz", LocalDate.of(2027, 1, 1));
+            donacion.agregarBien(uno);
+            donacion.agregarBien(otro);
+
+            assertThatThrownBy(() -> donacion.reemplazarBien(uno.getId(), perecedero("arroz", LocalDate.of(2028, 1, 1))))
+                    .isInstanceOf(BienIncompatibleConDonacionException.class);
+        }
+
+        @Test
+        @DisplayName("Fuera del depósito los bienes ya no se modifican")
+        void fueraDelDeposito() {
+            Bien original = generico("arroz");
+            donacion.agregarBien(original);
+            donacion.cambiarEstado("VENCIDA", "vencida", null);
+
+            assertThatThrownBy(() -> donacion.reemplazarBien(original.getId(), generico("arroz")))
+                    .isInstanceOf(DonacionNoModificableException.class);
+        }
+
+        @Test
+        @DisplayName("Los bienes y el historial se leen pero no se modifican desde afuera")
+        void listasDeSoloLectura() {
+            donacion.agregarBien(generico("arroz"));
+
+            assertThatThrownBy(() -> donacion.getBienes().add(generico("arroz")))
+                    .isInstanceOf(UnsupportedOperationException.class);
+            assertThatThrownBy(() -> donacion.getHistorialEstados().clear())
+                    .isInstanceOf(UnsupportedOperationException.class);
+            assertThat(donacion.getBienes()).hasSize(1);
+        }
+    }
+
+    @Nested
+    @DisplayName("tieneBienesVencidosAl(): perecederos vencidos")
+    class BienesVencidos {
+
+        @Test
+        @DisplayName("Detecta un perecedero vencido antes de la fecha; vencer ese mismo día no cuenta")
+        void detectaVencidos() {
+            donacion.agregarBien(BienPerecible.builder().subcategoria(new Subcategoria("arroz"))
+                    .descripcion("arroz").cantidad(1).unidad("kg").fechaVencimiento(LocalDate.of(2026, 5, 10)).build());
+
+            assertThat(donacion.tieneBienesVencidosAl(LocalDate.of(2026, 5, 11))).isTrue();
+            assertThat(donacion.tieneBienesVencidosAl(LocalDate.of(2026, 5, 10))).isFalse();
+        }
+
+        @Test
+        @DisplayName("Los bienes que no vencen nunca cuentan como vencidos")
+        void noPerecederos() {
+            donacion.agregarBien(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
+                    .descripcion("arroz").cantidad(1).unidad("kg").build());
+
+            assertThat(donacion.tieneBienesVencidosAl(LocalDate.of(2099, 1, 1))).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("cambiarEstadoManualmente(): lo que puede hacer la persona administradora")
+    class CambioManual {
+
+        @Test
+        @DisplayName("No puede pasar a ASIGNACION_REALIZADA: eso se hace asignando")
+        void noAsignaAMano() {
+            assertThatThrownBy(() -> donacion.cambiarEstadoManualmente("ASIGNACION_REALIZADA", null))
+                    .isInstanceOf(TransicionReservadaException.class)
+                    .hasMessageContaining("/asignar");
+            assertThat(donacion.estaEnEstado("EN_DEPOSITO")).isTrue();
+            assertThat(donacion.getHistorialEstados()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Sí puede marcarla VENCIDA, como pide el enunciado")
+        void marcaVencida() {
+            donacion.cambiarEstadoManualmente("VENCIDA", "Se pasó la fecha");
+
+            assertThat(donacion.estaEnEstado("VENCIDA")).isTrue();
+        }
+
+        @Test
+        @DisplayName("El nombre de la transición manual se deriva del origen y el destino")
+        void nombreDerivado() {
+            donacion.cambiarEstadoManualmente("VENCIDA", "Se pasó la fecha");
+
+            CambioEstado registro = donacion.getHistorialEstados().getLast();
+            assertThat(registro.getNombreTransicion()).isEqualTo("Cambio manual de EN_DEPOSITO a VENCIDA");
+            assertThat(registro.getEstadoPrevio().nombre()).isEqualTo("EN_DEPOSITO");
+            assertThat(registro.getJustificacion()).isEqualTo("Se pasó la fecha");
+        }
     }
 
     @Nested
@@ -123,7 +264,7 @@ class DonacionTest {
             // Verificación importante: como el State lanza la excepción ANTES de que
             // se agregue el registro, la donación no queda en un estado inconsistente.
             assertThatThrownBy(() -> donacion.cambiarEstado("ENTREGADA", "entregar", null))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
 
             assertThat(donacion.estaEnEstado("EN_DEPOSITO")).isTrue();
             assertThat(donacion.getHistorialEstados()).isEmpty();
@@ -137,7 +278,7 @@ class DonacionTest {
             donacion.cambiarEstado("EN_TRASLADO", "iniciar ruta", null);
 
             assertThatThrownBy(() -> donacion.cambiarEstado("ENTREGA_FALLIDA", "fallar", null))
-                    .isInstanceOf(FaltaJustificacionDonacionException.class);
+                    .isInstanceOf(FaltaJustificacionException.class);
 
             assertThat(donacion.estaEnEstado("EN_TRASLADO")).isTrue();
             assertThat(donacion.getHistorialEstados()).hasSize(3);
@@ -187,108 +328,63 @@ class DonacionTest {
             donacion.asignarA(entidad);
 
             assertThatThrownBy(() -> donacion.asignarA(entidad))
-                    .isInstanceOf(CambioEstadoDonacionIlegalException.class);
+                    .isInstanceOf(TransicionDeEstadoIlegalException.class);
         }
     }
 
     @Nested
-    @DisplayName("Consultas sobre el tipo de bienes que contiene")
-    class ConsultasSobreBienes {
+    @DisplayName("Avisos de logística: idempotentes")
+    class AvisosDeLogistica {
 
-        @Test
-        @DisplayName("esPerecible() es true cuando la donación contiene bienes perecederos")
-        void esPerecible() {
-            donacion.setBienes(List.of(BienPerecible.builder()
-                    .subcategoria(new Subcategoria("arroz"))
-                    .descripcion("Arroz")
-                    .cantidad(10)
-                    .unidad("kg")
-                    .fechaVencimiento(LocalDate.of(2027, 1, 1))
-                    .build()));
-
-            assertThat(donacion.esPerecible()).isTrue();
-            assertThat(donacion.requiereEstado()).isFalse();
-        }
-
-        @Test
-        @DisplayName("requiereEstado() es true cuando la donación contiene bienes con estado nuevo/usado")
-        void requiereEstado() {
-            donacion.setBienes(List.of(BienConEstado.builder()
-                    .subcategoria(new Subcategoria("sillas"))
-                    .descripcion("Sillas")
-                    .cantidad(6)
-                    .unidad("unidades")
-                    .esNuevo(false)
-                    .build()));
-
-            assertThat(donacion.requiereEstado()).isTrue();
-            assertThat(donacion.esPerecible()).isFalse();
-        }
-
-        @Test
-        @DisplayName("Una donación de bienes genéricos no es perecedera ni requiere estado")
-        void bienGenerico() {
-            donacion.setBienes(List.of(BienGenerico.builder()
-                    .subcategoria(new Subcategoria("ropa"))
-                    .descripcion("Camperas")
-                    .cantidad(3)
-                    .unidad("unidades")
-                    .build()));
-
-            assertThat(donacion.esPerecible()).isFalse();
-            assertThat(donacion.requiereEstado()).isFalse();
-        }
-
-        @Test
-        @DisplayName("Una donación sin bienes responde false a ambas preguntas (sin romper)")
-        void sinBienesNoRompe() {
-            // Caso borde: las implementaciones miran el primer bien de la lista,
-            // por lo que deben contemplar la lista vacía.
-            assertThat(donacion.esPerecible()).isFalse();
-            assertThat(donacion.requiereEstado()).isFalse();
-        }
-    }
-
-    @Nested
-    @DisplayName("Consultas de estado y subcategoría")
-    class ConsultasVarias {
-
-        @Test
-        @DisplayName("esDeSubcategoria() ignora mayúsculas y minúsculas")
-        void esDeSubcategoriaIgnoraCase() {
-            // El algoritmo de asignación compara la subcategoría de la donación
-            // contra el texto de las necesidades, y ahí el case no debe importar.
-            assertThat(donacion.esDeSubcategoria("arroz")).isTrue();
-            assertThat(donacion.esDeSubcategoria("ARROZ")).isTrue();
-            assertThat(donacion.esDeSubcategoria("Arroz")).isTrue();
-        }
-
-        @Test
-        @DisplayName("esDeSubcategoria() es false para otra subcategoría")
-        void esDeSubcategoriaOtra() {
-            assertThat(donacion.esDeSubcategoria("ropa")).isFalse();
-        }
-
-        @Test
-        @DisplayName("esDeSubcategoria() no rompe cuando la donación aún no tiene subcategoría")
-        void esDeSubcategoriaSinSubcategoria() {
-            Donacion sinSubcategoria = new Donacion();
-
-            assertThat(sinSubcategoria.esDeSubcategoria("arroz")).isFalse();
-        }
-
-        @Test
-        @DisplayName("fueEntregada() solo es true al final del circuito")
-        void fueEntregada() {
-            assertThat(donacion.fueEntregada()).isFalse();
-
+        private void hastaListaParaEntregar() {
             donacion.cambiarEstado("ASIGNACION_REALIZADA", "asignar", null);
-            donacion.cambiarEstado("LISTA_PARA_ENTREGAR", "planificar", null);
-            donacion.cambiarEstado("EN_TRASLADO", "iniciar ruta", null);
-            assertThat(donacion.fueEntregada()).isFalse();
+            donacion.despacharA(ProveedorLogistica.DONATRACK, "SEG-1");
+        }
 
-            donacion.cambiarEstado("ENTREGADA", "entregar", null);
-            assertThat(donacion.fueEntregada()).isTrue();
+        @Test
+        @DisplayName("Inicio de ruta: la primera vez pasa a EN_TRASLADO, la repetida no hace nada")
+        void inicioDeRuta() {
+            hastaListaParaEntregar();
+
+            assertThat(donacion.iniciarTraslado("ruta 1")).isTrue();
+            assertThat(donacion.iniciarTraslado("ruta 1")).isFalse();
+            assertThat(donacion.estaEnEstado("EN_TRASLADO")).isTrue();
+            assertThat(donacion.getHistorialEstados()).filteredOn(c -> c.getEstado().es("EN_TRASLADO")).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("Un inicio de ruta que llega después de la entrega se ignora")
+        void inicioAtrasado() {
+            hastaListaParaEntregar();
+            donacion.iniciarTraslado("ruta 1");
+            donacion.registrarEntrega(java.time.LocalDateTime.of(2026, 3, 15, 14, 30), "entregada");
+
+            assertThat(donacion.iniciarTraslado("ruta 1")).isFalse();
+            assertThat(donacion.estaEnEstado("ENTREGADA")).isTrue();
+        }
+
+        @Test
+        @DisplayName("Después de una entrega fallida, un nuevo inicio de ruta es un reintento válido")
+        void reintentoDespuesDeFallar() {
+            hastaListaParaEntregar();
+            donacion.iniciarTraslado("ruta 1");
+            assertThat(donacion.registrarEntregaFallida("nadie en el domicilio")).isTrue();
+            assertThat(donacion.registrarEntregaFallida("nadie en el domicilio")).isFalse();
+
+            assertThat(donacion.iniciarTraslado("ruta 2")).isTrue();
+        }
+
+        @Test
+        @DisplayName("Entrega exitosa repetida: no se registra dos veces ni deja dos eventos")
+        void entregaRepetida() {
+            hastaListaParaEntregar();
+            donacion.iniciarTraslado("ruta 1");
+
+            assertThat(donacion.registrarEntrega(java.time.LocalDateTime.of(2026, 3, 15, 14, 30), "ok")).isTrue();
+            assertThat(donacion.registrarEntrega(java.time.LocalDateTime.of(2026, 3, 15, 14, 30), "ok")).isFalse();
+            assertThat(donacion.eventosPendientes())
+                    .filteredOn(ar.utn.donatrack.donaciones.models.donacion.eventos.DonacionEntregada.class::isInstance)
+                    .hasSize(1);
         }
     }
 }
