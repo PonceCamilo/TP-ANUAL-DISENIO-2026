@@ -38,6 +38,7 @@ public class NotificacionService implements NotificacionServiceInterface {
                 .id(UUID.randomUUID())
                 .destinatario(solicitud.destinatario())
                 .mensaje(solicitud.mensaje())
+                .evento(solicitud.evento())
                 .medio(notificador.getMedio())
                 .estado(EstadoNotificacion.PENDIENTE)
                 .fechaCreacion(LocalDateTime.now())

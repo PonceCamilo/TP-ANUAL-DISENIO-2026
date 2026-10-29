@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
@@ -33,7 +34,14 @@ import java.util.UUID;
  * se guarda el nombre y no la posición, para que sobreviva a reordenamientos.
  */
 @Entity
-@Table(name = "notificacion")
+@Table(name = "notificacion", indexes = {
+        // Optimizan las consultas de lectura (Entrega 5): filtrar por estado
+        // (ej. reintentar las FALLIDA), por destinatario (historial de una
+        // persona) y ordenar por fecha sin recorrer toda la tabla.
+        @Index(name = "idx_notificacion_estado", columnList = "estado"),
+        @Index(name = "idx_notificacion_destinatario", columnList = "destinatario"),
+        @Index(name = "idx_notificacion_fecha_creacion", columnList = "fecha_creacion")
+})
 @Builder
 @Getter
 @Setter
@@ -69,6 +77,18 @@ public class Notificacion {
     @Column(name = "fecha_envio")
     private LocalDateTime fechaEnvio;
 
+    /**
+     * Qué disparó la notificación (ej. MISION_CUMPLIDA). Opcional: donaciones
+     * no lo manda. Se guarda como texto, sin tabla catálogo (desnormalizado a
+     * propósito: se lee siempre junto con la notificación y evitamos un join).
+     */
+    @Column(name = "evento", length = 100)
+    private String evento;
+
+    /** Por qué falló el envío (mensaje de la excepción). Solo si estado = FALLIDA. */
+    @Column(name = "motivo_fallo", length = 500)
+    private String motivoFallo;
+
     /** Reconstruye el objeto de medio después de cargar la fila. */
     @PostLoad
     private void rehidratarMedio() {
@@ -93,6 +113,13 @@ public class Notificacion {
     /** Marca la notificación como fallida (no se pudo entregar por el medio elegido). */
     public void marcarFallida() {
         this.estado = EstadoNotificacion.FALLIDA;
+    }
+
+    /** Igual que marcarFallida() pero deja registrado el motivo para poder auditarlo. */
+    public void marcarFallida(String motivo) {
+        marcarFallida();
+        this.motivoFallo = motivo == null ? null
+                : motivo.substring(0, Math.min(motivo.length(), 500));
     }
 
     /**

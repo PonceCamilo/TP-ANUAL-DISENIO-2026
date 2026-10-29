@@ -19,7 +19,9 @@ public record NotificacionResponse(
         String medio,
         EstadoNotificacion estado,
         LocalDateTime fechaCreacion,
-        LocalDateTime fechaEnvio
+        LocalDateTime fechaEnvio,
+        String evento,
+        String motivoFallo
 ) {
     public static NotificacionResponse desde(Notificacion n) {
         return new NotificacionResponse(
@@ -29,7 +31,9 @@ public record NotificacionResponse(
                 n.getMedio() != null ? n.getMedio().getNombre() : null,
                 n.getEstado(),
                 n.getFechaCreacion(),
-                n.getFechaEnvio()
+                n.getFechaEnvio(),
+                n.getEvento(),
+                n.getMotivoFallo()
         );
     }
 }

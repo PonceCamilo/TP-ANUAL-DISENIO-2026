@@ -238,6 +238,21 @@ class NotificacionRepositoryTest {
         }
 
         @Test
+        @DisplayName("El motivo del fallo y el evento (Entrega 5) sobreviven a guardar y releer")
+        void motivoYEventoPersisten() {
+            Notificacion original = notificacion(new Email());
+            original.setEvento("MISION_CUMPLIDA");
+            original.marcarFallida("535 credenciales SMTP inválidas");
+            repositorio.guardar(original);
+            vaciarCache();
+
+            Notificacion recuperada = repositorio.buscarPorId(original.getId());
+
+            assertThat(recuperada.getEvento()).isEqualTo("MISION_CUMPLIDA");
+            assertThat(recuperada.getMotivoFallo()).isEqualTo("535 credenciales SMTP inválidas");
+        }
+
+        @Test
         @DisplayName("El estado se guarda por nombre y no por posición en el enum")
         void estadoComoTexto() {
             // @Enumerated(STRING): si fuera ORDINAL, agregar un valor al enum
