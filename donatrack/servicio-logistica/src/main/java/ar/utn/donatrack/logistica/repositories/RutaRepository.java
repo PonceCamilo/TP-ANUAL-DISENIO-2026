@@ -3,6 +3,7 @@ package ar.utn.donatrack.logistica.repositories;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.RutaRepositoryInterface;
 import ar.utn.donatrack.logistica.models.flota.Camion;
+import ar.utn.donatrack.logistica.models.planificacion.EstadoRuta;
 import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -46,6 +47,12 @@ public class RutaRepository implements RutaRepositoryInterface {
     public List<Ruta> buscarPorCamionId(UUID camionId) {
         List<Ruta> rutas = mongo.find(
                 Query.query(Criteria.where("camionId").is(camionId)), Ruta.class);
+        return preparar(rutas);
+    }
+
+    @Override
+    public List<Ruta> buscarPorEstado(EstadoRuta estado) {
+        List<Ruta> rutas = mongo.find(Query.query(Criteria.where("estado").is(estado)), Ruta.class);
         return preparar(rutas);
     }
 

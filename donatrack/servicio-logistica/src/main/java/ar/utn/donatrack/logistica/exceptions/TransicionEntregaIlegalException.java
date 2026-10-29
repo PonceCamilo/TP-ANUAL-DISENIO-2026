@@ -6,4 +6,8 @@ public class TransicionEntregaIlegalException extends RuntimeException {
     public TransicionEntregaIlegalException(EstadoEntrega estadoActual, EstadoEntrega estadoNuevo) {
         super("Transición inválida: " + estadoActual + " → " + estadoNuevo);
     }
+
+    public TransicionEntregaIlegalException(String mensaje) {
+        super(mensaje);
+    }
 }

@@ -41,8 +41,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -52,6 +54,9 @@ import java.util.UUID;
  * proveedor externo por lote, con todas las donaciones y todos los camiones)
  * y la traducción de su respuesta (Strategy: EstrategiaRuteoPort) en
  * Ruta/Parada/Entrega. Quién lleva cada donación lo decide el proveedor.
+ *
+ * replanificarPendientes() usa el mismo camino, pero no recibe un pedido de
+ * Donaciones: las donaciones ya están en una ruta terminada y volvieron al depósito.
  */
 @Service
 @Transactional
@@ -94,6 +99,114 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .map(batch -> crearYPlanificarLote(batch, camiones))
                 .map(resultado -> LoteResponseDTO.desde(resultado.lote(), resultado.rutas()))
                 .toList();
+    }
+
+    /**
+     * Segunda salida de las donaciones que el administrador ya devolvió al depósito.
+     * Donaciones no manda este pedido: la donación sigue en ENTREGA_FALLIDA hasta
+     * que el chofer inicie la ruta nueva y salga el aviso de siempre.
+     *
+     * El lote que devolvemos es nuevo. 
+     * El lote anterior y la ruta del intento fallido quedan sin cambios.
+     */
+    @Override
+    public List<LoteResponseDTO> replanificarPendientes() {
+        List<Pendiente> pendientes = pendientesDeReplanificar();
+        if (pendientes.isEmpty()) {
+            return List.of();
+        }
+
+        // Misma flota que un planificar sin camionesIds: los que están DISPONIBLE.
+        List<Camion> camiones = resolverCamiones(null);
+        // Si la misma donación quedó dos veces en el depósito, al proveedor va una sola.
+        List<DonacionLote> donaciones = pendientes.stream()
+                .filter(Pendiente::esLaQueSeEnvia)
+                .map(this::aDonacionLote)
+                .toList();
+
+        List<ResultadoLote> resultados = particionar(donaciones, maxDonacionesPorLote).stream()
+                .map(batch -> crearYPlanificarLote(batch, camiones))
+                .toList();
+
+        // Para anotar en la entrega vieja en qué ruta nueva quedó su donación
+        Map<UUID, UUID> rutaNuevaPorDonacion = new HashMap<>();
+        for (ResultadoLote resultado : resultados) {
+            for (Ruta ruta : resultado.rutas()) {
+                for (Entrega entrega : ruta.obtenerEntregas()) {
+                    rutaNuevaPorDonacion.put(entrega.getIdDonacion(), ruta.getId());
+                }
+            }
+        }
+
+        // La entrega vieja vuelve a NO_RECIBIDA. Si siguiera LISTO_PARA_ENTREGAR,
+        // habría dos entregas "en curso" de la misma donación.
+        // Varias entregas pueden vivir en la misma ruta: se guarda una vez por ruta.
+        Set<Ruta> rutasViejas = new HashSet<>();
+        for (Pendiente pendiente : pendientes) {
+            UUID rutaNueva = rutaNuevaPorDonacion.get(pendiente.entrega().getIdDonacion());
+            if (rutaNueva == null) {
+                throw new IllegalStateException(
+                        "La donación " + pendiente.entrega().getIdDonacion() + " no quedó en una ruta nueva.");
+            }
+            pendiente.entrega().cerrarPorReplanificacion(rutaNueva);
+            rutasViejas.add(pendiente.ruta());
+        }
+        rutasViejas.forEach(rutaRepositorio::guardar);
+
+        return resultados.stream()
+                .map(resultado -> LoteResponseDTO.desde(resultado.lote(), resultado.rutas()))
+                .toList();
+    }
+
+    /**
+     * Quién puede salir de nuevo: 
+     * 1. está LISTO_PARA_ENTREGAR,    
+     * 2. su ruta ya terminó,
+     * 3. el motivo admite otra ruta y
+     * 4. esa donación no está en una ruta que todavía
+     *           no finalizó (planificada o en camino).
+     */
+    private List<Pendiente> pendientesDeReplanificar() {
+        Set<UUID> enRutaAbierta = new HashSet<>();
+        for (Ruta ruta : rutaRepositorio.buscarPorEstado(EstadoRuta.PLANIFICADA)) {
+            ruta.obtenerEntregas().forEach(entrega -> enRutaAbierta.add(entrega.getIdDonacion()));
+        }
+        for (Ruta ruta : rutaRepositorio.buscarPorEstado(EstadoRuta.INICIADA)) {
+            ruta.obtenerEntregas().forEach(entrega -> enRutaAbierta.add(entrega.getIdDonacion()));
+        }
+
+        List<Pendiente> pendientes = new ArrayList<>();
+        Set<UUID> yaEnviadas = new HashSet<>();
+        for (Ruta ruta : rutaRepositorio.buscarPorEstado(EstadoRuta.FINALIZADA)) {
+            for (Entrega entrega : ruta.obtenerEntregas()) {
+                if (!entrega.listaParaReplanificar() || enRutaAbierta.contains(entrega.getIdDonacion())) {
+                    continue;
+                }
+                // add devuelve false si esa donación ya estaba: esa copia no se le manda
+                // al proveedor, pero igual se cierra cuando exista la ruta nueva.
+                boolean esLaQueSeEnvia = yaEnviadas.add(entrega.getIdDonacion());
+                pendientes.add(new Pendiente(ruta, entrega, esLaQueSeEnvia));
+            }
+        }
+        return pendientes;
+    }
+
+    /** La dirección ya está en la parada del intento anterior: no se le vuelve a pedir a Donaciones. */
+    private DonacionLote aDonacionLote(Pendiente pendiente) {
+        Parada parada = pendiente.entrega().getParada();
+        if (parada == null || parada.getDireccion() == null || parada.getIdEntidadBeneficiaria() == null) {
+            throw new IllegalStateException(
+                    "La entrega " + pendiente.entrega().getId() + " no tiene dirección para replanificar.");
+        }
+        return DonacionLote.builder()
+                .idDonacion(pendiente.entrega().getIdDonacion())
+                .idEntidadBeneficiaria(parada.getIdEntidadBeneficiaria())
+                .direccionEntrega(parada.getDireccion())
+                .build();
+    }
+
+    /** El intento viejo (ruta + entrega) y si esta copia es la que viaja al proveedor. */
+    private record Pendiente(Ruta ruta, Entrega entrega, boolean esLaQueSeEnvia) {
     }
 
     @Override

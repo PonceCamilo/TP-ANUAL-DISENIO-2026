@@ -64,4 +64,45 @@ public class Entrega {
                 .observacion(observacion)
                 .build());
     }
+
+    /**
+     * Volvió al depósito y el último fallo admite otra ruta. 
+     * Una entrega ya replanificada no vuelve a entrar: su intento quedó cerrado.
+     */
+    public boolean listaParaReplanificar() {
+        return estado == EstadoEntrega.LISTO_PARA_ENTREGAR && admiteOtraRuta();
+    }
+
+    /** El administrador puede devolverla al depósito solo si el fallo admite otra ruta. */
+    public boolean admiteOtraRuta() {
+        MotivoFalloEntrega motivo = ultimoMotivoDeFallo();
+        return motivo != null && motivo.esReplanificable() && !fueReplanificada();
+    }
+
+    public boolean fueReplanificada() {
+        if (historial == null) {
+            return false;
+        }
+        return historial.stream().anyMatch(cambio -> cambio.getObservacion() != null
+                && cambio.getObservacion().startsWith("Replanificada en la ruta "));
+    }
+
+    /** Cierra este intento. La entrega vigente pasa a ser la de la ruta nueva. */
+    public void cerrarPorReplanificacion(UUID rutaNuevaId) {
+        registrarCambio(EstadoEntrega.NO_RECIBIDA, ultimoMotivoDeFallo(),
+                "Replanificada en la ruta " + rutaNuevaId);
+    }
+
+    private MotivoFalloEntrega ultimoMotivoDeFallo() {
+        if (historial == null) {
+            return null;
+        }
+        MotivoFalloEntrega motivo = null;
+        for (CambioEstadoEntrega cambio : historial) {
+            if (cambio.getMotivoFallo() != null) {
+                motivo = cambio.getMotivoFallo();
+            }
+        }
+        return motivo;
+    }
 }

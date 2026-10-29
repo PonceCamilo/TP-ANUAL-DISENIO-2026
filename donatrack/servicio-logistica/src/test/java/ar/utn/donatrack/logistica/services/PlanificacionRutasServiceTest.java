@@ -22,8 +22,10 @@ import ar.utn.donatrack.logistica.interfaces.integracion.EstrategiaRuteoPort;
 import ar.utn.donatrack.logistica.interfaces.repositories.CamionRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.LotePlanificacionRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.RutaRepositoryInterface;
+import ar.utn.donatrack.logistica.models.comun.Direccion;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
+import ar.utn.donatrack.logistica.models.entrega.MotivoFalloEntrega;
 import ar.utn.donatrack.logistica.models.flota.Camion;
 import ar.utn.donatrack.logistica.models.flota.EstadoCamion;
 import ar.utn.donatrack.logistica.models.planificacion.DonacionLote;
@@ -611,6 +613,105 @@ class PlanificacionRutasServiceTest {
             RutaResponseDTO resultado = servicio.obtenerRutaVigentePorCamion(camionId);
 
             assertThat(resultado.getId()).isEqualTo(vigente.getId());
+        }
+    }
+
+    @Nested
+    @DisplayName("Replanificación de entregas devueltas al depósito")
+    class Replanificacion {
+
+        @Test
+        @DisplayName("Una ausente en ruta finalizada genera una ruta nueva y cierra el intento anterior")
+        void replanificaLaAusente() {
+            UUID idDonacion = UUID.randomUUID();
+            UUID idEntidad = UUID.randomUUID();
+            Entrega vieja = devueltaAlDeposito(idDonacion, MotivoFalloEntrega.ENTIDAD_AUSENTE);
+            Ruta rutaVieja = rutaFinalizadaCon(vieja, idEntidad);
+            Camion disponible = camion(UUID.randomUUID(), "AB123CD");
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.FINALIZADA)).thenReturn(List.of(rutaVieja));
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.PLANIFICADA)).thenReturn(List.of());
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.INICIADA)).thenReturn(List.of());
+            when(camionRepositorio.buscarTodos()).thenReturn(List.of(disponible));
+            when(estrategiaRuteo.planificar(any(), anyList(), anyList())).thenAnswer(invocacion -> {
+                List<DonacionLote> batch = invocacion.getArgument(2);
+                return List.of(rutaPlanificadaPara(disponible.getId(), idEntidad,
+                        batch.stream().map(DonacionLote::getIdDonacion).toList()));
+            });
+
+            List<LoteResponseDTO> lotes = servicio.replanificarPendientes();
+
+            assertThat(lotes).hasSize(1);
+            var nueva = lotes.getFirst().getRutas().getFirst().getParadas().getFirst().getEntregas().getFirst();
+            assertThat(nueva.getId()).isNotEqualTo(vieja.getId());
+            assertThat(nueva.getIdDonacion()).isEqualTo(idDonacion);
+            assertThat(vieja.getEstado()).isEqualTo(EstadoEntrega.NO_RECIBIDA);
+            assertThat(vieja.getObservacion()).contains(lotes.getFirst().getRutas().getFirst().getId().toString());
+            verify(rutaRepositorio).guardar(rutaVieja);
+        }
+
+        @Test
+        @DisplayName("Una mercadería rota no se replanifica")
+        void noReplanificaMercaderiaRota() {
+            Entrega rota = devueltaAlDeposito(UUID.randomUUID(), MotivoFalloEntrega.MERCADERIA_ROTA);
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.FINALIZADA))
+                    .thenReturn(List.of(rutaFinalizadaCon(rota, UUID.randomUUID())));
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.PLANIFICADA)).thenReturn(List.of());
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.INICIADA)).thenReturn(List.of());
+
+            assertThat(servicio.replanificarPendientes()).isEmpty();
+            verifyNoInteractions(estrategiaRuteo);
+            assertThat(rota.getEstado()).isEqualTo(EstadoEntrega.LISTO_PARA_ENTREGAR);
+        }
+
+        @Test
+        @DisplayName("Si la donación ya está en una ruta abierta, no se vuelve a planificar")
+        void noRepiteUnaDonacionEnRutaAbierta() {
+            UUID idDonacion = UUID.randomUUID();
+            Entrega vieja = devueltaAlDeposito(idDonacion, MotivoFalloEntrega.ENTIDAD_AUSENTE);
+            Entrega enCurso = Entrega.builder().id(UUID.randomUUID()).idDonacion(idDonacion)
+                    .estado(EstadoEntrega.EN_TRASLADO).build();
+            Ruta abierta = Ruta.builder().id(UUID.randomUUID()).estado(EstadoRuta.INICIADA)
+                    .paradas(List.of(Parada.builder().id(UUID.randomUUID()).orden(1)
+                            .entregas(List.of(enCurso)).build()))
+                    .build();
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.FINALIZADA))
+                    .thenReturn(List.of(rutaFinalizadaCon(vieja, UUID.randomUUID())));
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.PLANIFICADA)).thenReturn(List.of());
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.INICIADA)).thenReturn(List.of(abierta));
+
+            assertThat(servicio.replanificarPendientes()).isEmpty();
+            verifyNoInteractions(estrategiaRuteo);
+            assertThat(vieja.getEstado()).isEqualTo(EstadoEntrega.LISTO_PARA_ENTREGAR);
+        }
+
+        private Entrega devueltaAlDeposito(UUID idDonacion, MotivoFalloEntrega motivo) {
+            Entrega entrega = Entrega.builder()
+                    .id(UUID.randomUUID())
+                    .idDonacion(idDonacion)
+                    .estado(EstadoEntrega.EN_TRASLADO)
+                    .build();
+            entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, motivo, null);
+            entrega.registrarCambio(EstadoEntrega.LISTO_PARA_ENTREGAR, "Regreso a depósito");
+            return entrega;
+        }
+
+        private Ruta rutaFinalizadaCon(Entrega entrega, UUID idEntidad) {
+            Parada parada = Parada.builder()
+                    .id(UUID.randomUUID())
+                    .orden(1)
+                    .idEntidadBeneficiaria(idEntidad)
+                    .direccion(Direccion.builder()
+                            .calle("Av. Siempre Viva").numero(742)
+                            .localidad("Springfield").provincia("Buenos Aires").codigoPostal("1900")
+                            .build())
+                    .entregas(new ArrayList<>(List.of(entrega)))
+                    .build();
+            entrega.setParada(parada);
+            return Ruta.builder()
+                    .id(UUID.randomUUID())
+                    .estado(EstadoRuta.FINALIZADA)
+                    .paradas(new ArrayList<>(List.of(parada)))
+                    .build();
         }
     }
 }

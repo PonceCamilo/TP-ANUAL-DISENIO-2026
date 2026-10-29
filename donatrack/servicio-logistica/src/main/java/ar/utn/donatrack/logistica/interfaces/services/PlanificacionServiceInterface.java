@@ -10,6 +10,12 @@ import java.util.UUID;
 
 public interface PlanificacionServiceInterface {
     List<LoteResponseDTO> planificar(PlanificacionRequestDTO dto);
+
+    /**
+     * Arma rutas nuevas para las entregas que volvieron al depósito y admiten
+     * otra salida. No recibe un pedido de Donaciones.
+     */
+    List<LoteResponseDTO> replanificarPendientes();
     LoteResponseDTO obtenerLote(UUID loteId);
     void registrarCallback(CallbackRutaRequestDTO dto, String tokenCorrelacion);
     RutaResponseDTO obtenerRuta(UUID rutaId);

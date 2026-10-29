@@ -375,6 +375,7 @@ class EntregaServiceTest {
         @DisplayName("Una entrega NO_RECIBIDA vuelve a LISTO_PARA_ENTREGAR sin publicar eventos")
         void vuelveAListoParaEntregar() {
             Entrega entrega = entregaEnEstado(EstadoEntrega.NO_RECIBIDA);
+            entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, MotivoFalloEntrega.ENTIDAD_AUSENTE, null);
             Ruta ruta = rutaQueContiene(entrega, camion());
             when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
 
@@ -385,6 +386,35 @@ class EntregaServiceTest {
             verify(rutaRepositorio).guardar(ruta);
             verifyNoInteractions(eventPublisher);
             verifyNoInteractions(planificacionService);
+        }
+
+        @Test
+        @DisplayName("Una mercadería rota no vuelve al depósito")
+        void mercaderiaRotaNoVuelve() {
+            Entrega entrega = entregaEnEstado(EstadoEntrega.NO_RECIBIDA);
+            entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, MotivoFalloEntrega.MERCADERIA_ROTA, null);
+            Ruta ruta = rutaQueContiene(entrega, camion());
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
+
+            assertThatThrownBy(() -> servicio.regresarADeposito(entrega.getId()))
+                    .isInstanceOf(TransicionEntregaIlegalException.class);
+            assertThat(entrega.getEstado()).isEqualTo(EstadoEntrega.NO_RECIBIDA);
+            verify(rutaRepositorio, never()).guardar(any());
+        }
+
+        @Test
+        @DisplayName("Una entrega ya replanificada no vuelve a salir del depósito")
+        void yaReplanificadaNoVuelve() {
+            Entrega entrega = entregaEnEstado(EstadoEntrega.NO_RECIBIDA);
+            entrega.registrarCambio(EstadoEntrega.NO_RECIBIDA, MotivoFalloEntrega.ENTIDAD_AUSENTE, null);
+            entrega.registrarCambio(EstadoEntrega.LISTO_PARA_ENTREGAR, "Regreso a depósito");
+            entrega.cerrarPorReplanificacion(UUID.randomUUID());
+            Ruta ruta = rutaQueContiene(entrega, camion());
+            when(rutaRepositorio.buscarPorEntregaId(entrega.getId())).thenReturn(Optional.of(ruta));
+
+            assertThatThrownBy(() -> servicio.regresarADeposito(entrega.getId()))
+                    .isInstanceOf(TransicionEntregaIlegalException.class);
+            verify(rutaRepositorio, never()).guardar(any());
         }
     }
 }

@@ -55,6 +55,23 @@ public class PlanificacionController {
     }
 
     @Operation(
+            summary = "Replanificar entregas devueltas al depósito",
+            description = "Sin body. Toma las entregas LISTO_PARA_ENTREGAR de rutas FINALIZADA cuyo fallo "
+                    + "admite otra ruta y que no están en una ruta abierta. Crea un lote y rutas nuevas con el "
+                    + "mismo proveedor de ruteo. La entrega del intento anterior queda NO_RECIBIDA. "
+                    + "Si no hay ninguna, responde 200 con una lista vacía.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Lotes nuevos, o lista vacía si no había pendientes",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = LoteResponseDTO.class)))),
+                    @ApiResponse(responseCode = "503", description = "No hay camiones disponibles o el proveedor de ruteo falló")
+            }
+    )
+    @PostMapping("/reintentos")
+    public ResponseEntity<List<LoteResponseDTO>> replanificarPendientes() {
+        return ResponseEntity.ok(planificacionService.replanificarPendientes());
+    }
+
+    @Operation(
             summary = "Obtener lote de planificación",
             description = "Devuelve el estado de un lote de planificación por su ID.",
             responses = {

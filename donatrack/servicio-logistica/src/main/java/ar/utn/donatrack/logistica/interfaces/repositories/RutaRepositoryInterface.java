@@ -1,5 +1,6 @@
 package ar.utn.donatrack.logistica.interfaces.repositories;
 
+import ar.utn.donatrack.logistica.models.planificacion.EstadoRuta;
 import ar.utn.donatrack.logistica.models.planificacion.Ruta;
 
 import java.util.List;
@@ -15,4 +16,6 @@ public interface RutaRepositoryInterface {
      * Busca la ruta cuyo documento embebe la entrega indicada.
      */
     Optional<Ruta> buscarPorEntregaId(UUID entregaId);
+
+    List<Ruta> buscarPorEstado(EstadoRuta estado);
 }

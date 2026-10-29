@@ -110,10 +110,11 @@ public class EntregaController {
 
     @Operation(
             summary = "Regresar la donación al depósito",
-            description = "La donación regresa al depósito tras una entrega no recibida. La entrega vuelve a LISTO_PARA_ENTREGAR.",
+            description = "Tras la revisión del administrador, la donación vuelve al depósito. Solo si el motivo "
+                    + "admite otra ruta. La entrega pasa a LISTO_PARA_ENTREGAR.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Entrega regresada a depósito"),
-                    @ApiResponse(responseCode = "409", description = "Transición de estado inválida")
+                    @ApiResponse(responseCode = "409", description = "El motivo no admite otra ruta, ya fue replanificada o la transición es inválida")
             }
     )
     @PostMapping("/{id}/regreso-deposito")

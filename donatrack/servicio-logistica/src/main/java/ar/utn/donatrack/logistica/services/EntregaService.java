@@ -6,6 +6,7 @@ import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
 import ar.utn.donatrack.logistica.eventos.EntregaEvento;
 import ar.utn.donatrack.logistica.eventos.TipoEventoLogistica;
 import ar.utn.donatrack.logistica.exceptions.EntregaNoEncontradaException;
+import ar.utn.donatrack.logistica.exceptions.TransicionEntregaIlegalException;
 import ar.utn.donatrack.logistica.integracion.EntregaEventPublisher;
 import ar.utn.donatrack.logistica.interfaces.repositories.EntregaRepositoryInterface;
 import ar.utn.donatrack.logistica.interfaces.repositories.RutaRepositoryInterface;
@@ -127,6 +128,14 @@ public class EntregaService implements EntregaServiceInterface {
     public void regresarADeposito(UUID id) {
         Ruta ruta = buscarRutaDeEntregaOFallar(id);
         Entrega entrega = entregaDe(ruta, id);
+        if (entrega.fueReplanificada()) {
+            throw new TransicionEntregaIlegalException(
+                    "La entrega ya fue replanificada y no vuelve a salir del depósito.");
+        }
+        if (!entrega.admiteOtraRuta()) {
+            throw new TransicionEntregaIlegalException(
+                    "La entrega no puede volver al depósito: el motivo no admite otra ruta.");
+        }
         validador.validarTransicion(entrega.getEstado(), EstadoEntrega.LISTO_PARA_ENTREGAR);
         entrega.registrarCambio(EstadoEntrega.LISTO_PARA_ENTREGAR, "Regreso a depósito");
         rutaRepositorio.guardar(ruta);
