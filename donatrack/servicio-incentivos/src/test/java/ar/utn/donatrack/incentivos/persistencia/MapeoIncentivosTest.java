@@ -248,6 +248,7 @@ class MapeoIncentivosTest {
         @DisplayName("El perfil se guarda con su id asignado a mano (no hay @GeneratedValue)")
         void elIdLoAsignaElLlamador() {
             // El id del donante es el MISMO que usa servicio-donaciones: no se genera acá, llega en el request.
+            UUID id = UUID.randomUUID();
             Donante donante = new Donante();
             donante.setId(id);
             donante.setCategoria(new Colaborador());

@@ -5,9 +5,11 @@ import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.bind.annotation.RequestBody;
 import ar.utn.donatrack.donaciones.config.ClientesHttp;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -26,8 +28,7 @@ import java.util.UUID;
  * donación): si el envío no salió, Donaciones TIENE que saberlo para no marcar la
  * donación como lista para entregar. Por eso las excepciones se propagan.
  *
- * Con timeouts (spring.http.client.*): un broker colgado ya no deja colgado al
- * despacho.
+ * La lectura espera 20 segundos (más que los 10 s que el broker le da a Logística).
  */
 @Component
 public class BrokerLogisticaClient {
@@ -44,7 +45,10 @@ public class BrokerLogisticaClient {
 
     public BrokerLogisticaClient(RestClient.Builder builder,
             @Value("${servicios.broker-logistica.url:http://localhost:8087}") String baseUrl) {
-        this.api = ClientesHttp.crear(builder, baseUrl, Api.class);
+        SimpleClientHttpRequestFactory fabrica = new SimpleClientHttpRequestFactory();
+        fabrica.setConnectTimeout(Duration.ofSeconds(2));
+        fabrica.setReadTimeout(Duration.ofSeconds(20));
+        this.api = ClientesHttp.crear(builder.requestFactory(fabrica), baseUrl, Api.class);
     }
 
     /**
