@@ -13,21 +13,15 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Topología de la cola de notificaciones para servicio-incentivos.
- * Mismo exchange y cola que usa servicio-donaciones — los mensajes
- * de ambos servicios convergen en la misma cola que consume
- * servicio-notificaciones.
- */
 @Configuration
-@ConditionalOnProperty(name = "notificaciones.transporte", havingValue = "amqp")
+@ConditionalOnProperty(name = "notificaciones.transporte", havingValue = "amqp") // esta config es solo para cuando se usa AMQP como transporte de notificaciones
 public class RabbitMQConfig {
 
     public static final String EXCHANGE = "donatrack.notificaciones";
     public static final String ROUTING_KEY = "notificacion.enviar";
     public static final String QUEUE = "notificaciones.queue";
 
-    @Bean
+    @Bean // ejecuta el metodo y lo registra como un bean en el contexto de Spring que guarda el objeto que devuelve
     public TopicExchange notificacionesExchange() {
         return new TopicExchange(EXCHANGE, true, false);
     }

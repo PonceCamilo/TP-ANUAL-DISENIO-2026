@@ -36,7 +36,7 @@ public class PosicionRanking {
 
     public UUID getDonanteId() {
         if(donante == null) {
-            return null;     // aca podria haber algo mejor
+            return null;     
         }
         return donante.getId();
     }

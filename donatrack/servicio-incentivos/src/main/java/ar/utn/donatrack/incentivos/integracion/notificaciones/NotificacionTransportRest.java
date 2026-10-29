@@ -9,8 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 /**
- * Transporte sincrónico (comportamiento histórico): hace un POST HTTP
- * directo a servicio-notificaciones y espera respuesta.
+ * Transporte sincrónico: hace un POST HTTP directo a servicio-notificaciones y espera respuesta.
  * Se activa cuando notificaciones.transporte=rest (o si no está configurado).
  */
 @Component

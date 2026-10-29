@@ -13,10 +13,10 @@ public interface IncentivosServiceInterface {
 
     Donante obtenerPerfil(UUID donanteId);
 
-    /** Lista los progresos de misiones disponibles para el donante. */
+    // Lista los progresos de misiones disponibles para el donante.
     List<Mision> obtenerMisiones(UUID donanteId);
 
-    /** Lista las insignias obtenidas por el donante. */
+    // Lista las insignias obtenidas por el donante.
     List<InsigniaObtenida> obtenerInsignias(UUID donanteId);
 
     RankingMensual obtenerRankingMensualActual();
@@ -27,8 +27,6 @@ public interface IncentivosServiceInterface {
 
     void procesarDonacion(UUID donanteId, DonacionRegistrada donacion, String destinatario, String medio);
 
-    /**
-     * Llamado por servicio-donaciones cuando una donación es entregada exitosamente.
-     */
+    // Llamado por servicio-donaciones cuando una donación es entregada exitosamente.
     void procesarDonacionExitosa(UUID donanteId, DonacionRegistrada donacion, String destinatario, String medio);
 }

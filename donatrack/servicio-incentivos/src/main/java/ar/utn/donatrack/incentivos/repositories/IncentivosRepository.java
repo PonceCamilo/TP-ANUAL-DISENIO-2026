@@ -23,24 +23,13 @@ public class IncentivosRepository {
     private final Map<UUID, Donante> perfilesFallback = new ConcurrentHashMap<>();
 
     /**
-     * Constructor sin repositorios: activa el modo en memoria.
-     *
-     * Existe únicamente para IncentivosServiceTest, que prueba las reglas de
+     * Constructor sin repositorios: Existe únicamente para IncentivosServiceTest, que prueba las reglas de
      * negocio sin levantar una base. NO lo usa la aplicación.
      */
     public IncentivosRepository() {
     }
 
-    /**
-     * Constructor real, el que usa la aplicación.
-     *
-     * EL @Autowired NO ES OPCIONAL ACÁ. Cuando una clase tiene varios
-     * constructores y ninguno está anotado, Spring elige el que no recibe
-     * argumentos. Sin esta anotación, la aplicación arrancaba con los tres
-     * repositorios en null, caía en el modo en memoria y NO PERSISTÍA NADA:
-     * los endpoints devolvían 201, las tablas existían vacías y nada fallaba
-     * a la vista. Lo detectó MapeoIncentivosTest.
-     */
+    //Constructor real, el que usa la aplicación.
     @Autowired
     public IncentivosRepository(MisionJpaRepository misionRepository, DonanteJpaRepository donanteRepository, CategoriaDonanteJpaRepository categoriaRepository) {
         this.misionRepository = misionRepository;

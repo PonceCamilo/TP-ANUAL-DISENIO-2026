@@ -31,7 +31,7 @@ public abstract class Mision {
     private String descripcion;
 
     @ManyToOne
-    private CategoriaDonante categoriaRequerida; // falto agregar esto al diagrama.
+    private CategoriaDonante categoriaRequerida;
 
     protected int objetivo;
     private int orden;  // esto se podria sacar.
@@ -55,7 +55,7 @@ public abstract class Mision {
         this.insignia = insignia;
     }
 
-    public InsigniaObtenida otorgarInsignia() {           // esto falto en el diagrama 
+    public InsigniaObtenida otorgarInsignia() {
         return new InsigniaObtenida(insignia, true);
     }
 

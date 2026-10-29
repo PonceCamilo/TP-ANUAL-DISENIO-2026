@@ -40,8 +40,6 @@ public class N8nWebhookClient {
             ObjectMapper objectMapper) {
         this.webhookUrl = webhookUrl;
         this.objectMapper = objectMapper;
-        // HTTP/1.1 explícito: el default (HTTP/2) intenta un upgrade h2c que el
-        // servidor de n8n (Node.js) no maneja y deja la conexión colgada.
         this.httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(3))

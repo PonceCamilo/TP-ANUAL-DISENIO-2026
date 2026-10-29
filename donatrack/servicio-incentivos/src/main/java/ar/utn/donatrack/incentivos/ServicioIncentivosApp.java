@@ -6,15 +6,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Sin @EnableScheduling, Spring ignora silenciosamente las anotaciones
- * @Scheduled: el código compila, el servicio arranca sin un solo warning y los
- * procesos nunca corren.
- *
- * Los dos de IncentivosJob estaban en esa situación:
- *   - revisarRachasCadaTreintaDias(), que implementa la pérdida de misiones
- *     ("racha" se pierde si no se dona durante un mes completo). Es el ítem 6
- *     del checklist que marcó la cátedra para revisar en la Entrega 3.
- *   - calcularRankingMensual(), que cierra el ranking el último día del mes.
+ *@EnableScheduling activa la ejecucion de tareas programadas.
  */
 @EnableScheduling
 @SpringBootApplication
