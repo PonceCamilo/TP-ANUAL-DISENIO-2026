@@ -20,7 +20,7 @@ services:
       - datos-postgres:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U donatrack"]
+      test: ["CMD-SHELL", "pg_isready -U donatrack -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 10

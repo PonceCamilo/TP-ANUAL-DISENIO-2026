@@ -13,7 +13,13 @@ import java.util.List;
 public class ProgresoRacha {
 
     public int mesesConsecutivosDonando(Donante donante, LocalDate fechaReferencia) {
-        YearMonth cursor = YearMonth.from(fechaReferencia);
+        YearMonth cursor = donante.getDonaciones().stream()
+                .map(donacion -> YearMonth.from(donacion.getFecha()))
+                .max(Comparator.naturalOrder())
+                .orElse(YearMonth.from(fechaReferencia));
+        if (cursor.isBefore(YearMonth.from(fechaReferencia).minusMonths(1))) {
+            return 0;
+        }
         int meses = 0;
 
         while (donacionesEnPeriodo(donante, cursor) > 0) {
@@ -26,7 +32,6 @@ public class ProgresoRacha {
 
     public boolean pasoUnMesCompletoSinDonaciones(Donante donante, LocalDate fechaReferencia) {
         List<DonacionRegistrada> donaciones = donante.getDonaciones().stream()
-                .filter(donacion -> !donacion.isExitosa())
                 .toList();
 
         if (donaciones.isEmpty()) {
@@ -44,7 +49,6 @@ public class ProgresoRacha {
 
     private int donacionesEnPeriodo(Donante donante, YearMonth periodo) {
         return (int) donante.getDonaciones().stream()
-                .filter(donacion -> !donacion.isExitosa())
                 .filter(donacion -> YearMonth.from(donacion.getFecha()).equals(periodo))
                 .count();
     }
