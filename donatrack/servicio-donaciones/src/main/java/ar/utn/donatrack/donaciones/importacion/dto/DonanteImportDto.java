@@ -6,6 +6,7 @@ package ar.utn.donatrack.donaciones.importacion.dto;
  * y contactar a una persona donante (humana o jurídica).
  */
 public record DonanteImportDto(
+    int linea,                 // línea del archivo donde empieza el registro
     String tipoPersona,        // "HUMANA" | "JURIDICA"
     String tipoDoc,            // "DNI" | "CUIT"
     String documento,

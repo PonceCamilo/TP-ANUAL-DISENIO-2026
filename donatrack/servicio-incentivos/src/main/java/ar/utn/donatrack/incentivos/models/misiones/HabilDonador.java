@@ -1,21 +1,34 @@
 package ar.utn.donatrack.incentivos.models.misiones;
 
 import ar.utn.donatrack.incentivos.models.Donante;
+import ar.utn.donatrack.incentivos.models.MetricasDonante;
+import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
+import ar.utn.donatrack.incentivos.models.insignias.Insignia;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@Entity
+@Table(name = "habil_donador")
 public class HabilDonador extends Mision {
     private int cantidadBienesRequerida;
 
-    @Override
-    public boolean estaCompletada(Donante donante) {     
-        return progresoActual(donante) >= cantidadBienesRequerida;
+    protected HabilDonador() {
     }
 
-    @Override
+    public HabilDonador(String nombre, String descripcion, CategoriaDonante categoriaRequerida, int cantidadBienesRequerida, Insignia insignia) {
+        super(nombre, descripcion, categoriaRequerida, cantidadBienesRequerida, insignia);
+        this.cantidadBienesRequerida = cantidadBienesRequerida;
+    }
+
+    public boolean estaCompletada(Donante donante) {     
+        return progresoActual(donante) >= objetivo;
+    }
+
     public int progresoActual(Donante donante) {     
-        return donante.getRecordBienesUnicaDonacion();
+        return new MetricasDonante().recordBienesUnicaDonacion(donante);
     }
 }

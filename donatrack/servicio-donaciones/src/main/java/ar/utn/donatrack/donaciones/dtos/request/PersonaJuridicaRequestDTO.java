@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -21,17 +22,17 @@ import java.util.List;
 @AllArgsConstructor
 public class PersonaJuridicaRequestDTO extends PersonaDonanteRequestDTO {
 
-  @NotBlank
-  private String razonSocial;
+    @NotBlank
+    private String razonSocial;
 
-  @NotBlank
-  private String rubro;
+    @NotBlank
+    private String rubro;
 
-  @NotNull
-  private TipoPersonaJuridica tipoOrganizacion;
+    @NotNull
+    private TipoPersonaJuridica tipoOrganizacion;
 
-  @Valid
-  @NotEmpty
-  @lombok.Builder.Default
-  private List<RepresentanteRequestDTO> representantes = new ArrayList<>();
+    @Valid
+    @NotEmpty
+    @Builder.Default
+    private List<RepresentanteRequestDTO> representantes = new ArrayList<>();
 }

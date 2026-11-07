@@ -7,13 +7,13 @@ import lombok.experimental.SuperBuilder;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "tipo")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = EmailResponseDTO.class,    name = "EMAIL"),
-    @JsonSubTypes.Type(value = TelefonoResponseDTO.class, name = "TELEFONO"),
-    @JsonSubTypes.Type(value = WhatsappResponseDTO.class, name = "WHATSAPP")
+        @JsonSubTypes.Type(value = EmailResponseDTO.class,    name = "EMAIL"),
+        @JsonSubTypes.Type(value = TelefonoResponseDTO.class, name = "TELEFONO"),
+        @JsonSubTypes.Type(value = WhatsappResponseDTO.class, name = "WHATSAPP")
 })
 @Getter
 @SuperBuilder
 public abstract class MedioDeContactoResponseDTO {
 
-  protected String valor;
+    protected String valor;
 }

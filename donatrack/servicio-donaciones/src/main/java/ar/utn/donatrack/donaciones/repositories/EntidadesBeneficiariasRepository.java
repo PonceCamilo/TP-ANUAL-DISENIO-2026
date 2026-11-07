@@ -1,44 +1,59 @@
 package ar.utn.donatrack.donaciones.repositories;
 
-import ar.utn.donatrack.donaciones.interfaces.repositories.EntidadesBeneficiariasRepositoryInterface;
-import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Repository;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.repositories.jpa.EntidadBeneficiariaJpaRepository;
+import lombok.RequiredArgsConstructor;
 
+import java.util.Collection;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Persistencia de entidades beneficiarias en base relacional (Entrega 4).
+ *
+ * Guardar la entidad arrastra por cascada sus campañas y, a través de ellas, sus
+ * necesidades. Por eso los services que agregan una necesidad terminan llamando
+ * a guardar(entidad): la entidad es la raíz de la agregación y el único punto de
+ * entrada para modificar cualquier cosa de su interior.
+ */
 @Repository
-public class EntidadesBeneficiariasRepository implements EntidadesBeneficiariasRepositoryInterface {
+@RequiredArgsConstructor
+public class EntidadesBeneficiariasRepository implements RepositorioEntidadesBeneficiarias {
 
-    private final Map<UUID, EntidadBeneficiaria> almacenamiento = new ConcurrentHashMap<>();
+    private static final Sort ORDEN_LISTADO = Sort.by(Sort.Order.asc("razonSocial"), Sort.Order.asc("id"));
 
-    @Override
+    private final EntidadBeneficiariaJpaRepository jpa;
+
     public void guardar(EntidadBeneficiaria entidad) {
-        if (entidad.getId() == null) {
-            entidad.setId(UUID.randomUUID());
-        }
-        almacenamiento.put(entidad.getId(), entidad);
+        jpa.save(entidad);
     }
 
-    @Override
     public List<EntidadBeneficiaria> buscarTodas() {
-        return almacenamiento.values().stream().toList();
+        return jpa.findAll();
     }
 
-    @Override
-    public EntidadBeneficiaria obtenerPorId(UUID id) {
-        return almacenamiento.get(id);
+    public Pagina<EntidadBeneficiaria> buscar(SolicitudPagina pagina) {
+        Page<EntidadBeneficiaria> resultado = jpa.findAll(PageRequest.of(pagina.numero(), pagina.tamanio(), ORDEN_LISTADO));
+        return new Pagina<>(resultado.getContent(), pagina.numero(), pagina.tamanio(), resultado.getTotalElements());
     }
 
-    @Override
-    public boolean existePorId(UUID id) {
-        return almacenamiento.containsKey(id);
+    public Optional<EntidadBeneficiaria> buscarPorId(UUID id) {
+        return jpa.findById(id);
     }
 
-    @Override
-    public void eliminar(UUID id) {
-        almacenamiento.remove(id);
+    public List<EntidadBeneficiaria> obtenerPorIds(Collection<UUID> ids) {
+        return jpa.findAllById(ids);
+    }
+
+    public void eliminar(EntidadBeneficiaria entidad) {
+        jpa.delete(entidad);
     }
 }

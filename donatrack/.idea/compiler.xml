@@ -14,10 +14,13 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
         </processorPath>
-        <module name="servicio-logistica" />
-        <module name="servicio-donaciones" />
         <module name="servicio-notificaciones" />
+        <module name="servicio-donaciones" />
+        <module name="servicio-broker-logistica" />
+        <module name="servicio-logistica-externa" />
+        <module name="servicio-logistica" />
         <module name="servicio-incentivos" />
         <module name="servicio-autenticacion" />
       </profile>
@@ -27,9 +30,11 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="donatrack" options="-parameters" />
       <module name="servicio-autenticacion" options="-parameters" />
+      <module name="servicio-broker-logistica" options="-parameters" />
       <module name="servicio-donaciones" options="-parameters" />
       <module name="servicio-incentivos" options="-parameters" />
       <module name="servicio-logistica" options="-parameters" />
+      <module name="servicio-logistica-externa" options="-parameters" />
       <module name="servicio-notificaciones" options="-parameters" />
     </option>
   </component>

@@ -1,0 +1,1683 @@
+{
+  "info": {
+    "name": "DonaTrack - Entrega 5: Donaciones → Logística (flujo completo con replanificación)",
+    "description": "Recorre el flujo completo desde que Donaciones despacha a Logística (vía broker) hasta que Logística resuelve cada entrega, incluida la replanificación de una entrega fallida.\n\nUsar con **Run collection** (en orden) o ejecutando las requests una por una de arriba hacia abajo: cada paso guarda en variables de la colección los ids que necesita el siguiente.\n\nRequisitos: `docker compose up` (o levantados servicio-donaciones 8081, servicio-logistica 8085 con Mongo, servicio-broker-logistica 8087 y, para que salgan los avisos, servicio-notificaciones 8084 + RabbitMQ). Logística carga solos los camiones demo AC456EF y AD789GH en DISPONIBLE.\n\nSe crean 3 donaciones:\n- D1 (entidad A): se entrega al primer intento → ENTREGADA\n- D2 (entidad A): falla por ENTIDAD_AUSENTE, el admin la devuelve al depósito, Logística la replanifica en una ruta nueva y se entrega al segundo intento → ENTREGADA\n- D3 (entidad B): falla por MERCADERIA_ROTA, no se puede replanificar → queda ENTREGA_FALLIDA\n\nLos eventos de Logística llegan a Donaciones de forma asíncrona; si algún chequeo de estado falla por llegar antes que el evento, subir la variable `esperaEventosMs`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrlDonaciones",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "baseUrlLogistica",
+      "value": "http://localhost:8085"
+    },
+    {
+      "key": "baseUrlBroker",
+      "value": "http://localhost:8087"
+    },
+    {
+      "key": "esperaEventosMs",
+      "value": "2000"
+    },
+    {
+      "key": "camionesDisponibles",
+      "value": ""
+    },
+    {
+      "key": "dniDonante",
+      "value": ""
+    },
+    {
+      "key": "donanteId",
+      "value": ""
+    },
+    {
+      "key": "entidadAId",
+      "value": ""
+    },
+    {
+      "key": "entidadBId",
+      "value": ""
+    },
+    {
+      "key": "donacionD1",
+      "value": ""
+    },
+    {
+      "key": "donacionD2",
+      "value": ""
+    },
+    {
+      "key": "donacionD3",
+      "value": ""
+    },
+    {
+      "key": "entregaD1",
+      "value": ""
+    },
+    {
+      "key": "entregaD2",
+      "value": ""
+    },
+    {
+      "key": "entregaD3",
+      "value": ""
+    },
+    {
+      "key": "rutaD1",
+      "value": ""
+    },
+    {
+      "key": "rutaD2",
+      "value": ""
+    },
+    {
+      "key": "rutaD3",
+      "value": ""
+    },
+    {
+      "key": "camionD1",
+      "value": ""
+    },
+    {
+      "key": "camionD2",
+      "value": ""
+    },
+    {
+      "key": "camionD3",
+      "value": ""
+    },
+    {
+      "key": "loteReintento",
+      "value": ""
+    },
+    {
+      "key": "rutaReintentoD2",
+      "value": ""
+    },
+    {
+      "key": "entregaReintentoD2",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Chequeos previos",
+      "item": [
+        {
+          "name": "0.1 Donaciones vivo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/actuator/health",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.2 Broker vivo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlBroker}}/actuator/health",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.3 Logística vivo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/actuator/health",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.4 Proveedores del broker (prioridad + disponibilidad)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlBroker}}/api/broker/proveedores",
+            "description": "Lo que ve el broker: DONATRACK tiene que aparecer disponible (su health responde UP)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "console.log(pm.response.json().map(p => p.prioridad + '. ' + p.nombre + ' disponible=' + p.disponible).join(' | '));",
+                  "const donatrack = pm.response.json().find(p => p.nombre === 'DONATRACK');",
+                  "pm.test('DONATRACK disponible', () => pm.expect(donatrack && donatrack.disponible).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "0.5 Camiones de logística",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/camiones",
+            "description": "Logística planifica con los camiones DISPONIBLE (sin camiones el despacho da 503).\nCon 2 o más DISPONIBLE, la entidad A (D1 y D2) va en un camión y la entidad B (D3) en otro. Con uno solo, las tres donaciones van en la misma ruta y el flujo funciona igual."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const disponibles = pm.response.json().filter(c => c.estado === 'DISPONIBLE');",
+                  "console.log('Camiones DISPONIBLE:', disponibles.map(c => c.patente));",
+                  "pm.collectionVariables.set('camionesDisponibles', disponibles.length);",
+                  "pm.test('Hay al menos un camión DISPONIBLE', () => pm.expect(disponibles.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Preparación en Donaciones (3 donaciones en ASIGNACION_REALIZADA)",
+      "item": [
+        {
+          "name": "1.1 Crear donante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/donantes",
+            "description": "El DNI se genera en el pre-request (7 u 8 dígitos) y el email lleva timestamp: el email es único.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"HUMANA\",\n  \"tipoDocumento\": \"DNI\",\n  \"numeroDocumento\": \"{{dniDonante}}\",\n  \"email\": \"donante{{$timestamp}}@donatrack.com\",\n  \"direccion\": {\n    \"calle\": \"Av Siempre Viva\",\n    \"numero\": 742,\n    \"codigoPostal\": \"1405\",\n    \"localidad\": {\n      \"nombre\": \"CABA\",\n      \"provincia\": {\n        \"nombre\": \"Buenos Aires\"\n      }\n    }\n  },\n  \"medioContactoPredeterminado\": {\n    \"tipo\": \"EMAIL\",\n    \"valor\": \"donante{{$timestamp}}@donatrack.com\"\n  },\n  \"nombre\": \"Demo\",\n  \"apellido\": \"Donante\",\n  \"fechaNacimiento\": \"1999-01-01\",\n  \"genero\": \"FEMENINO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('dniDonante', String(Math.floor(10000000 + Math.random() * 89999999)));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "pm.collectionVariables.set('donanteId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Crear entidad A (recibe D1 y D2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/entidades",
+            "description": "Sin dirección la donación no se puede despachar: el broker necesita calle, localidad y provincia.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razonSocial\": \"Comedor Los Pibes\",\n  \"direccion\": {\n    \"calle\": \"Medrano\",\n    \"numero\": 951,\n    \"codigoPostal\": \"C1179\",\n    \"localidad\": {\n      \"nombre\": \"CABA\",\n      \"provincia\": {\n        \"nombre\": \"Buenos Aires\"\n      }\n    }\n  },\n  \"contactos\": [\n    {\n      \"tipo\": \"EMAIL\",\n      \"valor\": \"comedor@donatrack.com\"\n    }\n  ],\n  \"representantes\": [\n    {\n      \"nombre\": \"Ana\",\n      \"apellido\": \"Perez\",\n      \"email\": \"ana.perez@donatrack.com\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "pm.collectionVariables.set('entidadAId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Crear entidad B (recibe D3)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/entidades",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"razonSocial\": \"Hogar Santa Ana\",\n  \"direccion\": {\n    \"calle\": \"Mozart\",\n    \"numero\": 2300,\n    \"codigoPostal\": \"C1407\",\n    \"localidad\": {\n      \"nombre\": \"CABA\",\n      \"provincia\": {\n        \"nombre\": \"Buenos Aires\"\n      }\n    }\n  },\n  \"contactos\": [\n    {\n      \"tipo\": \"EMAIL\",\n      \"valor\": \"hogar@donatrack.com\"\n    }\n  ],\n  \"representantes\": [\n    {\n      \"nombre\": \"Luis\",\n      \"apellido\": \"Gomez\",\n      \"email\": \"luis.gomez@donatrack.com\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "pm.collectionVariables.set('entidadBId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Registrar donación D1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/donaciones",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idDonante\": \"{{donanteId}}\",\n  \"descripcion\": \"D1: se entrega al primer intento\",\n  \"bienes\": [\n    {\n      \"subcategoria\": \"Alimentos\",\n      \"descripcion\": \"Fideos secos\",\n      \"foto\": \"foto.png\",\n      \"cantidad\": 10,\n      \"unidad\": \"paquete\",\n      \"esNuevo\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "const json = pm.response.json();",
+                  "const item = Array.isArray(json) ? json[0] : json;",
+                  "pm.collectionVariables.set('donacionD1', item.id);",
+                  "console.log('donacionD1 =', item.id, '| estado:', item.estado);",
+                  "pm.test('D1 en EN_DEPOSITO', () => pm.expect(item.estado).to.eql('EN_DEPOSITO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 Registrar donación D2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/donaciones",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idDonante\": \"{{donanteId}}\",\n  \"descripcion\": \"D2: falla (entidad ausente), se replanifica y se entrega\",\n  \"bienes\": [\n    {\n      \"subcategoria\": \"Ropa\",\n      \"descripcion\": \"Camperas de abrigo\",\n      \"foto\": \"foto.png\",\n      \"cantidad\": 5,\n      \"unidad\": \"unidad\",\n      \"esNuevo\": false\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "const json = pm.response.json();",
+                  "const item = Array.isArray(json) ? json[0] : json;",
+                  "pm.collectionVariables.set('donacionD2', item.id);",
+                  "console.log('donacionD2 =', item.id, '| estado:', item.estado);",
+                  "pm.test('D2 en EN_DEPOSITO', () => pm.expect(item.estado).to.eql('EN_DEPOSITO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.6 Registrar donación D3",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/donaciones",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idDonante\": \"{{donanteId}}\",\n  \"descripcion\": \"D3: falla (mercadería rota) y no se replanifica\",\n  \"bienes\": [\n    {\n      \"subcategoria\": \"Vajilla\",\n      \"descripcion\": \"Platos de loza\",\n      \"foto\": \"foto.png\",\n      \"cantidad\": 12,\n      \"unidad\": \"unidad\",\n      \"esNuevo\": true\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "const json = pm.response.json();",
+                  "const item = Array.isArray(json) ? json[0] : json;",
+                  "pm.collectionVariables.set('donacionD3', item.id);",
+                  "console.log('donacionD3 =', item.id, '| estado:', item.estado);",
+                  "pm.test('D3 en EN_DEPOSITO', () => pm.expect(item.estado).to.eql('EN_DEPOSITO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.7 Asignar D1 a la entidad A",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD1}}/asignar",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idEntidadBeneficiaria\": \"{{entidadAId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.expect(pm.response.code).to.be.oneOf([204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.8 Asignar D2 a la entidad A",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD2}}/asignar",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idEntidadBeneficiaria\": \"{{entidadAId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.expect(pm.response.code).to.be.oneOf([204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.9 Asignar D3 a la entidad B",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD3}}/asignar",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idEntidadBeneficiaria\": \"{{entidadBId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.expect(pm.response.code).to.be.oneOf([204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.10 Ver las 3 → ASIGNACION_REALIZADA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones?idDonante={{donanteId}}&size=100",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const lista = pm.response.json().contenido || [];",
+                  "const d = { D1: lista.find(x => x.id === pm.collectionVariables.get('donacionD1')),",
+                  "            D2: lista.find(x => x.id === pm.collectionVariables.get('donacionD2')),",
+                  "            D3: lista.find(x => x.id === pm.collectionVariables.get('donacionD3')) };",
+                  "Object.entries(d).forEach(([k, x]) => console.log(k + ':', x && x.estado, '| proveedor:', x && x.proveedorLogistica, '| seguimiento:', x && x.idSeguimientoLogistica));",
+                  "pm.test('Las 3 en ASIGNACION_REALIZADA', () => Object.values(d).forEach(x => pm.expect(x && x.estado).to.eql('ASIGNACION_REALIZADA')));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Despacho: Donaciones → Broker → Logística",
+      "item": [
+        {
+          "name": "2.1 Despachar D1, D2 y D3 forzando DONATRACK",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlDonaciones}}/donaciones/envios",
+            "description": "Adentro pasa todo esto:\n1. Donaciones valida (ASIGNACION_REALIZADA + dirección de la entidad) y llama POST :8087/api/broker/envios\n2. El broker usa DONATRACK (forzado) y chequea GET :8085/actuator/health\n3. DonatrackLogisticaAdapter llama POST :8085/api/logistica/planificaciones (sin camionesIds: usa los DISPONIBLE)\n4. Logística arma el lote y llama al proveedor de ruteo (mock /ruteo/planificar): agrupa por entidad y cada grupo va al camión con menos donaciones\n5. Logística crea rutas PLANIFICADA con sus paradas y entregas LISTO_PARA_ENTREGAR\n6. El broker devuelve como idSeguimiento el id de la ENTREGA de cada donación\n7. Donaciones pasa cada donación a LISTA_PARA_ENTREGAR y guarda proveedor + idSeguimiento",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idsDonaciones\": [\n    \"{{donacionD1}}\",\n    \"{{donacionD2}}\",\n    \"{{donacionD3}}\"\n  ],\n  \"proveedor\": \"DONATRACK\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.expect(pm.response.code).to.be.oneOf([201]));",
+                  "const r = pm.response.json();",
+                  "console.log('Respuesta:', JSON.stringify(r));",
+                  "pm.test('Lo tomó DONATRACK', () => pm.expect(r.proveedor).to.eql('DONATRACK'));",
+                  "pm.test('Hay un envío por donación', () => pm.expect((r.envios || []).length).to.eql(3));",
+                  "['D1', 'D2', 'D3'].forEach(k => {",
+                  "  const envio = (r.envios || []).find(e => e.idDonacion === pm.collectionVariables.get('donacion' + k));",
+                  "  if (envio) pm.collectionVariables.set('entrega' + k, envio.idSeguimiento);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 Ver las 3 → LISTA_PARA_ENTREGAR (idSeguimiento = id de entrega)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones?idDonante={{donanteId}}&size=100",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const lista = pm.response.json().contenido || [];",
+                  "const d = { D1: lista.find(x => x.id === pm.collectionVariables.get('donacionD1')),",
+                  "            D2: lista.find(x => x.id === pm.collectionVariables.get('donacionD2')),",
+                  "            D3: lista.find(x => x.id === pm.collectionVariables.get('donacionD3')) };",
+                  "Object.entries(d).forEach(([k, x]) => console.log(k + ':', x && x.estado, '| proveedor:', x && x.proveedorLogistica, '| seguimiento:', x && x.idSeguimientoLogistica));",
+                  "pm.test('Las 3 en LISTA_PARA_ENTREGAR con DONATRACK', () => Object.values(d).forEach(x => {",
+                  "  pm.expect(x.estado).to.eql('LISTA_PARA_ENTREGAR');",
+                  "  pm.expect(x.proveedorLogistica).to.eql('DONATRACK');",
+                  "}));",
+                  "pm.test('idSeguimientoLogistica = id de la entrega en logística', () => {",
+                  "  pm.expect(d.D1.idSeguimientoLogistica).to.eql(pm.collectionVariables.get('entregaD1'));",
+                  "  pm.expect(d.D2.idSeguimientoLogistica).to.eql(pm.collectionVariables.get('entregaD2'));",
+                  "  pm.expect(d.D3.idSeguimientoLogistica).to.eql(pm.collectionVariables.get('entregaD3'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 Broker: qué proveedor tomó D1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlBroker}}/api/broker/envios/{{donacionD1}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const e = pm.response.json();",
+                  "pm.test('Registrado con DONATRACK', () => pm.expect(e.proveedor).to.eql('DONATRACK'));",
+                  "pm.test('idSeguimiento = entrega de D1', () => pm.expect(e.idSeguimiento).to.eql(pm.collectionVariables.get('entregaD1')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 Logística: entregas creadas (rutas y camiones)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas?estado=LISTO_PARA_ENTREGAR",
+            "description": "El chofer trabaja con ids de ENTREGA y RUTA. Se buscan por el idSeguimiento que guardó Donaciones."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const entregas = pm.response.json();",
+                  "['D1', 'D2', 'D3'].forEach(k => {",
+                  "  const e = entregas.find(x => x.id === pm.collectionVariables.get('entrega' + k));",
+                  "  pm.test('Entrega de ' + k + ' existe y apunta a su donación', () => {",
+                  "    pm.expect(e).to.exist;",
+                  "    pm.expect(e.idDonacion).to.eql(pm.collectionVariables.get('donacion' + k));",
+                  "  });",
+                  "  if (!e) return;",
+                  "  pm.collectionVariables.set('ruta' + k, e.rutaId);",
+                  "  pm.collectionVariables.set('camion' + k, e.camionId);",
+                  "  console.log(k + ' → entrega', e.id, '| ruta', e.rutaId, '| camión', e.camionId);",
+                  "});",
+                  "pm.test('D1 y D2 van en la misma ruta (misma entidad)', () =>",
+                  "  pm.expect(pm.collectionVariables.get('rutaD1')).to.eql(pm.collectionVariables.get('rutaD2')));",
+                  "if (Number(pm.collectionVariables.get('camionesDisponibles')) >= 2) {",
+                  "  pm.test('D3 va en otra ruta (otra entidad, otro camión)', () =>",
+                  "    pm.expect(pm.collectionVariables.get('rutaD3')).to.not.eql(pm.collectionVariables.get('rutaD1')));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 Logística: ruta de la entidad A (D1 + D2)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaD1}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const ruta = pm.response.json();",
+                  "pm.test('Ruta PLANIFICADA', () => pm.expect(ruta.estado).to.eql('PLANIFICADA'));",
+                  "const parada = ruta.paradas.find(p => p.idEntidadBeneficiaria === pm.collectionVariables.get('entidadAId'));",
+                  "pm.test('Una parada de la entidad A con D1 y D2', () => {",
+                  "  pm.expect(parada).to.exist;",
+                  "  const ids = parada.entregas.map(e => e.idDonacion);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('donacionD1'));",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('donacionD2'));",
+                  "});",
+                  "console.log(ruta.paradas.map(p => p.orden + '. ' + p.direccion.calle + ' ' + p.direccion.numero + ' (' + p.entregas.length + ' entregas)').join(' | '));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 Logística: ruta de la entidad B (D3)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaD3}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const ruta = pm.response.json();",
+                  "pm.test('Ruta PLANIFICADA', () => pm.expect(ruta.estado).to.eql('PLANIFICADA'));",
+                  "console.log(ruta.paradas.map(p => p.orden + '. ' + p.direccion.calle + ' ' + p.direccion.numero + ' (' + p.entregas.length + ' entregas)').join(' | '));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Inicio de ruta: Logística → Broker → Donaciones",
+      "item": [
+        {
+          "name": "3.1 Chofer inicia la ruta de la entidad A",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaD1}}/iniciar",
+            "description": "Logística pasa la ruta a INICIADA, el camión a EN_RUTA y las entregas a EN_TRASLADO.\nPublica UN evento INICIO_RUTA con todas las donaciones de la ruta →\nPOST :8087/api/broker/eventos/donatrack → POST :8081/logistica/eventos/inicio-ruta\nDonaciones avisa a donantes y entidades con el link al mapa."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 Chofer inicia la ruta de la entidad B (si es otra)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaD3}}/iniciar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('rutaD3') === pm.collectionVariables.get('rutaD1')) {",
+                  "  console.log('D3 está en la misma ruta que D1: ya se inició en 3.1, se saltea.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 Ver las 3 → EN_TRASLADO",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones?idDonante={{donanteId}}&size=100",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Los eventos viajan async (logística → broker → donaciones): esperamos un poco.",
+                  "setTimeout(() => {}, Number(pm.collectionVariables.get('esperaEventosMs')) || 2000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const lista = pm.response.json().contenido || [];",
+                  "const d = { D1: lista.find(x => x.id === pm.collectionVariables.get('donacionD1')),",
+                  "            D2: lista.find(x => x.id === pm.collectionVariables.get('donacionD2')),",
+                  "            D3: lista.find(x => x.id === pm.collectionVariables.get('donacionD3')) };",
+                  "Object.entries(d).forEach(([k, x]) => console.log(k + ':', x && x.estado, '| proveedor:', x && x.proveedorLogistica, '| seguimiento:', x && x.idSeguimientoLogistica));",
+                  "pm.test('Las 3 en EN_TRASLADO', () => Object.values(d).forEach(x => pm.expect(x.estado).to.eql('EN_TRASLADO')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 Logística: ruta de la entidad A → INICIADA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaD1}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const ruta = pm.response.json();",
+                  "pm.test('Ruta INICIADA', () => pm.expect(ruta.estado).to.eql('INICIADA'));",
+                  "pm.test('Tiene fecha de inicio', () => pm.expect(ruta.fechaInicio).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.5 Logística: camión de D1 → EN_RUTA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/camiones/{{camionD1}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const c = pm.response.json();",
+                  "console.log('Camión de D1:', c.patente, c.estado);",
+                  "pm.test('Camión EN_RUTA', () => pm.expect(c.estado).to.eql('EN_RUTA'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Resolución de las entregas",
+      "item": [
+        {
+          "name": "4.1 Confirmar entrega de D1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaD1}}/confirmar",
+            "description": "La entrega pasa a ENTREGADA y se publica ENTREGA_CONFIRMADA →\nbroker → POST :8081/logistica/eventos/entrega-exitosa\nDonaciones imputa lo entregado a la entidad y avisa a entidad, donante e incentivos.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fotosComprobante\": [\n    \"https://example.com/comprobante-d1.jpg\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 Ver D1 → ENTREGADA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD1}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Los eventos viajan async (logística → broker → donaciones): esperamos un poco.",
+                  "setTimeout(() => {}, Number(pm.collectionVariables.get('esperaEventosMs')) || 2000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const d = pm.response.json();",
+                  "console.log('D1:', d.estado, '| seguimiento:', d.idSeguimientoLogistica);",
+                  "const ultimo = (d.historialEstados || []).slice(-1)[0];",
+                  "if (ultimo) console.log('Último cambio:', ultimo.estadoPrevio, '→', ultimo.estado, '|', ultimo.justificacion);",
+                  "pm.test('D1 en ENTREGADA', () => pm.expect(d.estado).to.eql('ENTREGADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 D2 no recibida: ENTIDAD_AUSENTE (replanificable)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaD2}}/no-recibida",
+            "description": "El chofer solo informa el motivo; Logística deriva si es replanificable.\nReplanificables: ENTIDAD_AUSENTE, DIRECCION_INCORRECTA, RECHAZADA_POR_ENTIDAD.\nNo replanificables: MERCADERIA_ROTA, MERCADERIA_PERDIDA, ROBO.\nPublica ENTREGA_NO_RECIBIDA (replanificable=true) → broker → POST :8081/logistica/eventos/entrega-fallida",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"ENTIDAD_AUSENTE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 Ver D2 → ENTREGA_FALLIDA (puede replanificarse)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD2}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Los eventos viajan async (logística → broker → donaciones): esperamos un poco.",
+                  "setTimeout(() => {}, Number(pm.collectionVariables.get('esperaEventosMs')) || 2000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const d = pm.response.json();",
+                  "console.log('D2:', d.estado, '| seguimiento:', d.idSeguimientoLogistica);",
+                  "const ultimo = (d.historialEstados || []).slice(-1)[0];",
+                  "if (ultimo) console.log('Último cambio:', ultimo.estadoPrevio, '→', ultimo.estado, '|', ultimo.justificacion);",
+                  "pm.test('D2 en ENTREGA_FALLIDA', () => pm.expect(d.estado).to.eql('ENTREGA_FALLIDA'));",
+                  "pm.test('Justificación: puede ser replanificada', () => pm.expect(ultimo.justificacion).to.include('Puede ser replanificada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.5 D3 no recibida: MERCADERIA_ROTA (no replanificable)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaD3}}/no-recibida",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"MERCADERIA_ROTA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.6 Ver D3 → ENTREGA_FALLIDA (no puede replanificarse)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD3}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Los eventos viajan async (logística → broker → donaciones): esperamos un poco.",
+                  "setTimeout(() => {}, Number(pm.collectionVariables.get('esperaEventosMs')) || 2000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const d = pm.response.json();",
+                  "console.log('D3:', d.estado, '| seguimiento:', d.idSeguimientoLogistica);",
+                  "const ultimo = (d.historialEstados || []).slice(-1)[0];",
+                  "if (ultimo) console.log('Último cambio:', ultimo.estadoPrevio, '→', ultimo.estado, '|', ultimo.justificacion);",
+                  "pm.test('D3 en ENTREGA_FALLIDA', () => pm.expect(d.estado).to.eql('ENTREGA_FALLIDA'));",
+                  "pm.test('Justificación: no puede ser replanificada', () => pm.expect(ultimo.justificacion).to.include('No puede ser replanificada'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.7 Bandeja del administrador: entregas NO_RECIBIDA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas?estado=NO_RECIBIDA",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const entregas = pm.response.json();",
+                  "const motivo = e => (e.historial || []).map(h => h.motivoFallo).filter(Boolean).slice(-1)[0];",
+                  "const e2 = entregas.find(e => e.id === pm.collectionVariables.get('entregaD2'));",
+                  "const e3 = entregas.find(e => e.id === pm.collectionVariables.get('entregaD3'));",
+                  "pm.test('D2 NO_RECIBIDA por ENTIDAD_AUSENTE', () => pm.expect(e2 && motivo(e2)).to.eql('ENTIDAD_AUSENTE'));",
+                  "pm.test('D3 NO_RECIBIDA por MERCADERIA_ROTA', () => pm.expect(e3 && motivo(e3)).to.eql('MERCADERIA_ROTA'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Cierre de rutas",
+      "item": [
+        {
+          "name": "5.1 Ruta de la entidad A → FINALIZADA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaD1}}",
+            "description": "La ruta se cierra sola cuando no le queda ninguna entrega EN_TRASLADO; su camión vuelve a DISPONIBLE."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "pm.test('Ruta FINALIZADA', () => pm.expect(pm.response.json().estado).to.eql('FINALIZADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 Ruta de la entidad B → FINALIZADA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaD3}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "pm.test('Ruta FINALIZADA', () => pm.expect(pm.response.json().estado).to.eql('FINALIZADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 Camiones de nuevo DISPONIBLE",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/camiones",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const camiones = pm.response.json();",
+                  "console.log(camiones.map(c => c.patente + ': ' + c.estado).join(' | '));",
+                  "['D1', 'D3'].forEach(k => {",
+                  "  const c = camiones.find(x => x.id === pm.collectionVariables.get('camion' + k));",
+                  "  pm.test('Camión de ' + k + ' DISPONIBLE', () => pm.expect(c && c.estado).to.eql('DISPONIBLE'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Replanificación de la entrega fallida",
+      "item": [
+        {
+          "name": "6.1 Admin devuelve D2 al depósito",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaD2}}/regreso-deposito",
+            "description": "Solo si el motivo admite otra ruta. La entrega pasa de NO_RECIBIDA a LISTO_PARA_ENTREGAR."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.2 Admin intenta devolver D3 → 409 (el motivo no admite otra ruta)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaD3}}/regreso-deposito",
+            "description": "MERCADERIA_ROTA no es replanificable: Logística rechaza el regreso al depósito."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.expect(pm.response.code).to.be.oneOf([409]));",
+                  "console.log('Mensaje:', pm.response.json().message);",
+                  "pm.test('Mensaje: el motivo no admite otra ruta', () => pm.expect(pm.response.json().message).to.include('no admite otra ruta'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.3 Logística: entrega de D2 → LISTO_PARA_ENTREGAR",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaD2}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const e = pm.response.json();",
+                  "pm.test('Entrega LISTO_PARA_ENTREGAR', () => pm.expect(e.estado).to.eql('LISTO_PARA_ENTREGAR'));",
+                  "pm.test('Observación: regreso a depósito', () => pm.expect(e.observacion).to.eql('Regreso a depósito'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.4 Replanificar entregas devueltas al depósito",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/planificaciones/reintentos",
+            "description": "Sin body. Toma las entregas LISTO_PARA_ENTREGAR de rutas FINALIZADA cuyo fallo admite otra ruta y arma un lote y rutas nuevas con el mismo proveedor de ruteo. Donaciones NO participa: la donación sigue en ENTREGA_FALLIDA hasta que el chofer inicie la ruta nueva.\nSi en la base quedaron otras entregas devueltas al depósito, también salen en este lote."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const lotes = pm.response.json();",
+                  "let encontrada = null;",
+                  "let d3EnReintento = false;",
+                  "lotes.forEach(lote => (lote.rutas || []).forEach(ruta => (ruta.paradas || []).forEach(p => (p.entregas || []).forEach(e => {",
+                  "  if (e.idDonacion === pm.collectionVariables.get('donacionD2')) encontrada = { lote, ruta, e };",
+                  "  if (e.idDonacion === pm.collectionVariables.get('donacionD3')) d3EnReintento = true;",
+                  "}))));",
+                  "pm.test('D3 no se replanifica (MERCADERIA_ROTA)', () => pm.expect(d3EnReintento).to.eql(false));",
+                  "pm.test('D2 quedó en una ruta nueva', () => pm.expect(encontrada).to.not.eql(null));",
+                  "if (encontrada) {",
+                  "  pm.collectionVariables.set('loteReintento', encontrada.lote.id);",
+                  "  pm.collectionVariables.set('rutaReintentoD2', encontrada.ruta.id);",
+                  "  pm.collectionVariables.set('entregaReintentoD2', encontrada.e.id);",
+                  "  console.log('Reintento D2 → lote', encontrada.lote.id, '| ruta', encontrada.ruta.id, '| entrega', encontrada.e.id);",
+                  "  pm.test('Es una entrega nueva (otro id)', () => pm.expect(encontrada.e.id).to.not.eql(pm.collectionVariables.get('entregaD2')));",
+                  "  pm.test('Es una ruta nueva', () => pm.expect(encontrada.ruta.id).to.not.eql(pm.collectionVariables.get('rutaD1')));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.5 Logística: lote del reintento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/planificaciones/{{loteReintento}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "pm.test('Lote COMPLETADO', () => pm.expect(pm.response.json().estado).to.eql('COMPLETADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.6 Logística: la entrega vieja de D2 queda cerrada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaD2}}",
+            "description": "El intento anterior vuelve a NO_RECIBIDA y anota en qué ruta nueva quedó la donación."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const e = pm.response.json();",
+                  "pm.test('Entrega vieja NO_RECIBIDA', () => pm.expect(e.estado).to.eql('NO_RECIBIDA'));",
+                  "pm.test('Observación apunta a la ruta nueva', () => pm.expect(e.observacion).to.eql('Replanificada en la ruta ' + pm.collectionVariables.get('rutaReintentoD2')));",
+                  "console.log((e.historial || []).map(h => h.estado + (h.motivoFallo ? ' (' + h.motivoFallo + ')' : '') + (h.observacion ? ' - ' + h.observacion : '')).join('\\n'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.7 Logística: entrega vigente de D2 (por donación)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/por-donacion/{{donacionD2}}",
+            "description": "Con varias entregas para la misma donación, devuelve la que está en curso."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const e = pm.response.json();",
+                  "pm.test('Es la entrega del reintento', () => pm.expect(e.id).to.eql(pm.collectionVariables.get('entregaReintentoD2')));",
+                  "pm.test('Entrega LISTO_PARA_ENTREGAR', () => pm.expect(e.estado).to.eql('LISTO_PARA_ENTREGAR'));",
+                  "pm.test('En la ruta nueva', () => pm.expect(e.rutaId).to.eql(pm.collectionVariables.get('rutaReintentoD2')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.8 Donaciones: D2 sigue en ENTREGA_FALLIDA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD2}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const d = pm.response.json();",
+                  "console.log('D2:', d.estado, '| seguimiento:', d.idSeguimientoLogistica);",
+                  "const ultimo = (d.historialEstados || []).slice(-1)[0];",
+                  "if (ultimo) console.log('Último cambio:', ultimo.estadoPrevio, '→', ultimo.estado, '|', ultimo.justificacion);",
+                  "pm.test('D2 en ENTREGA_FALLIDA', () => pm.expect(d.estado).to.eql('ENTREGA_FALLIDA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.9 Admin intenta devolver otra vez la entrega vieja → 409",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaD2}}/regreso-deposito",
+            "description": "Una entrega ya replanificada no vuelve a salir del depósito."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.expect(pm.response.code).to.be.oneOf([409]));",
+                  "console.log('Mensaje:', pm.response.json().message);",
+                  "pm.test('Mensaje: ya fue replanificada', () => pm.expect(pm.response.json().message).to.include('ya fue replanificada'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7. Segundo intento de D2",
+      "item": [
+        {
+          "name": "7.1 Chofer inicia la ruta nueva",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaReintentoD2}}/iniciar",
+            "description": "Mismo evento INICIO_RUTA de siempre. Donaciones acepta ENTREGA_FALLIDA → EN_TRASLADO (reintento directo)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.2 Ver D2 → EN_TRASLADO otra vez",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD2}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Los eventos viajan async (logística → broker → donaciones): esperamos un poco.",
+                  "setTimeout(() => {}, Number(pm.collectionVariables.get('esperaEventosMs')) || 2000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const d = pm.response.json();",
+                  "console.log('D2:', d.estado, '| seguimiento:', d.idSeguimientoLogistica);",
+                  "const ultimo = (d.historialEstados || []).slice(-1)[0];",
+                  "if (ultimo) console.log('Último cambio:', ultimo.estadoPrevio, '→', ultimo.estado, '|', ultimo.justificacion);",
+                  "pm.test('D2 en EN_TRASLADO', () => pm.expect(d.estado).to.eql('EN_TRASLADO'));",
+                  "pm.test('Viene de ENTREGA_FALLIDA', () => pm.expect(ultimo.estadoPrevio).to.eql('ENTREGA_FALLIDA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.3 Confirmar la entrega nueva de D2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrlLogistica}}/api/logistica/entregas/{{entregaReintentoD2}}/confirmar",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fotosComprobante\": [\n    \"https://example.com/comprobante-d2.jpg\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200/204', () => pm.expect(pm.response.code).to.be.oneOf([200, 204]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.4 Ver D2 → ENTREGADA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD2}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Los eventos viajan async (logística → broker → donaciones): esperamos un poco.",
+                  "setTimeout(() => {}, Number(pm.collectionVariables.get('esperaEventosMs')) || 2000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const d = pm.response.json();",
+                  "console.log('D2:', d.estado, '| seguimiento:', d.idSeguimientoLogistica);",
+                  "const ultimo = (d.historialEstados || []).slice(-1)[0];",
+                  "if (ultimo) console.log('Último cambio:', ultimo.estadoPrevio, '→', ultimo.estado, '|', ultimo.justificacion);",
+                  "pm.test('D2 en ENTREGADA', () => pm.expect(d.estado).to.eql('ENTREGADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7.5 Ruta nueva → FINALIZADA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/rutas/{{rutaReintentoD2}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "pm.test('Ruta FINALIZADA', () => pm.expect(pm.response.json().estado).to.eql('FINALIZADA'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Resumen final",
+      "item": [
+        {
+          "name": "8.1 Estado final de las 3 donaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones?idDonante={{donanteId}}&size=100",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const lista = pm.response.json().contenido || [];",
+                  "const d = { D1: lista.find(x => x.id === pm.collectionVariables.get('donacionD1')),",
+                  "            D2: lista.find(x => x.id === pm.collectionVariables.get('donacionD2')),",
+                  "            D3: lista.find(x => x.id === pm.collectionVariables.get('donacionD3')) };",
+                  "Object.entries(d).forEach(([k, x]) => console.log(k + ':', x && x.estado, '| proveedor:', x && x.proveedorLogistica, '| seguimiento:', x && x.idSeguimientoLogistica));",
+                  "pm.test('D1 ENTREGADA', () => pm.expect(d.D1.estado).to.eql('ENTREGADA'));",
+                  "pm.test('D2 ENTREGADA (al segundo intento)', () => pm.expect(d.D2.estado).to.eql('ENTREGADA'));",
+                  "pm.test('D3 ENTREGA_FALLIDA (sin reintento)', () => pm.expect(d.D3.estado).to.eql('ENTREGA_FALLIDA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.2 Historial completo de D2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlDonaciones}}/donaciones/{{donacionD2}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "const h = pm.response.json().historialEstados || [];",
+                  "console.log(h.map(x => x.estadoPrevio + ' → ' + x.estado + ' | ' + x.nombreTransicion + ' | ' + (x.justificacion || '')).join('\\n'));",
+                  "pm.test('Recorrido completo con reintento', () => pm.expect(h.map(x => x.estado).slice(-6)).to.eql([",
+                  "  'ASIGNACION_REALIZADA', 'LISTA_PARA_ENTREGAR', 'EN_TRASLADO', 'ENTREGA_FALLIDA', 'EN_TRASLADO', 'ENTREGADA'",
+                  "]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8.3 Camiones al terminar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrlLogistica}}/api/logistica/camiones",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "console.log(pm.response.json().map(c => c.patente + ': ' + c.estado).join(' | '));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

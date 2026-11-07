@@ -1,0 +1,789 @@
+package ar.utn.donatrack.donaciones.controllers;
+
+import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
+import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
+import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
+import ar.utn.donatrack.donaciones.services.DonacionComandosService;
+import ar.utn.donatrack.donaciones.services.DonacionConsultasService;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DonanteBloqueadoException;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.util.FiltroDonaciones;
+import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
+import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.FaltaJustificacionException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionSinBienesException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaDonanteNoEncontradaException;
+import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
+import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
+import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.donacion.bien.BienGenerico;
+import ar.utn.donatrack.donaciones.models.donacion.bien.TipoBien;
+import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
+import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.DonacionNoDespachableException;
+import ar.utn.donatrack.donaciones.exceptions.logisticaExceptions.LogisticaNoDisponibleException;
+import ar.utn.donatrack.donaciones.services.PlanificacionEntregasService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * Tests de la capa REST de donaciones.
+ *
+ * Levantan SOLO la capa web (@WebMvcTest): los services se mockean, así que lo
+ * que se prueba acá es el contrato HTTP, no la lógica de negocio (que ya está
+ * cubierta en DonacionServiceTest).
+ *
+ * Se verifican tres cosas por endpoint:
+ *   - Ruta, verbo y código de estado correctos (201 al crear, 204 sin contenido).
+ *   - Que el cuerpo y los parámetros lleguen bien al service.
+ *   - Que cada excepción de dominio se traduzca al HTTP correcto vía el
+ *     GlobalExceptionHandler: 404 no encontrado, 409 conflicto, 422 transición
+ *     ilegal, 400 datos inválidos.
+ */
+@WebMvcTest(DonacionesController.class)
+@Import(DonacionMapper.class)
+@DisplayName("DonacionesController - contrato HTTP de /donaciones")
+class DonacionesControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private DonacionConsultasService consultas;
+
+    @MockitoBean
+    private DonacionComandosService comandos;
+
+    @MockitoBean
+    private SegmentadorDonacionesService segmentadorService;
+
+    @MockitoBean
+    private PlanificacionEntregasService planificacionEntregasService;
+
+    private final UUID idDonacion = UUID.randomUUID();
+    private final UUID idDonante = UUID.randomUUID();
+
+    /** DTO de respuesta mínimo, suficiente para verificar el JSON devuelto. */
+    private DonacionResponseDTO respuesta(String estado, String subcategoria) {
+        return DonacionResponseDTO.builder()
+                .id(idDonacion)
+                .idDonante(idDonante)
+                .descripcion("Donación de prueba")
+                .subcategoria(subcategoria)
+                .estado(estado)
+                .bienes(List.of())
+                .historialEstados(List.of())
+                .build();
+    }
+
+    /** Cuerpo válido para registrar una donación de un bien genérico. */
+    private DonacionRequestDTO requestValido() {
+        BienRequestDTO bien = new BienRequestDTO();
+        bien.setSubcategoria("arroz");
+        bien.setDescripcion("Arroz largo fino");
+        bien.setCantidad(10);
+        bien.setUnidad("kg");
+        return new DonacionRequestDTO(idDonante, "Colecta de alimentos", List.of(bien));
+    }
+
+    private Donacion donacionSegmentada() {
+        Donacion donacion = new Donacion();
+        donacion.setIdDonante(idDonante);
+        donacion.setDescripcion("Colecta de alimentos");
+        donacion.setSubcategoria(new Subcategoria("arroz"));
+        donacion.agregarBien(BienGenerico.builder()
+                .subcategoria(new Subcategoria("arroz"))
+                .descripcion("Arroz largo fino")
+                .cantidad(10)
+                .unidad("kg")
+                .build());
+        return donacion;
+    }
+
+    @Nested
+    @DisplayName("GET /donaciones - listado paginado")
+    class Listado {
+
+        private PaginaResponseDTO<DonacionResponseDTO> pagina(List<DonacionResponseDTO> contenido) {
+            return PaginaResponseDTO.desde(new Pagina<>(contenido, 0, 20, contenido.size()));
+        }
+
+        @Test
+        @DisplayName("Devuelve 200 con la página de donaciones y sus totales")
+        void listaDonaciones() throws Exception {
+            when(consultas.obtenerDonaciones(any(), any()))
+                    .thenReturn(pagina(List.of(respuesta("EN_DEPOSITO", "arroz"))));
+
+            mockMvc.perform(get("/donaciones"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$.contenido[0].estado").value("EN_DEPOSITO"))
+                    .andExpect(jsonPath("$.contenido[0].subcategoria").value("arroz"))
+                    .andExpect(jsonPath("$.pagina").value(0))
+                    .andExpect(jsonPath("$.tamanio").value(20))
+                    .andExpect(jsonPath("$.totalElementos").value(1))
+                    .andExpect(jsonPath("$.totalPaginas").value(1));
+        }
+
+        @Test
+        @DisplayName("Pasa los cuatro filtros y la página al service tal como llegan")
+        void pasaLosFiltros() throws Exception {
+            UUID idEntidad = UUID.randomUUID();
+            when(consultas.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
+
+            mockMvc.perform(get("/donaciones")
+                            .param("estado", "EN_DEPOSITO")
+                            .param("idDonante", idDonante.toString())
+                            .param("subcategoria", "arroz")
+                            .param("idEntidad", idEntidad.toString())
+                            .param("page", "2")
+                            .param("size", "50"))
+                    .andExpect(status().isOk());
+
+            verify(consultas).obtenerDonaciones(
+                    new FiltroDonaciones("EN_DEPOSITO", idDonante, "arroz", idEntidad, false),
+                    new SolicitudPagina(2, 50));
+        }
+
+        @Test
+        @DisplayName("Sin parámetros pide la primera página de 20 sin filtros")
+        void valoresPorDefecto() throws Exception {
+            when(consultas.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
+
+            mockMvc.perform(get("/donaciones"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(0)));
+
+            verify(consultas).obtenerDonaciones(new FiltroDonaciones(null, null, null, null, false), new SolicitudPagina(0, 20));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el tamaño de página supera el máximo de 100")
+        void tamanioFueraDeRango() throws Exception {
+            mockMvc.perform(get("/donaciones").param("size", "101"))
+                    .andExpect(status().isBadRequest());
+
+            verify(consultas, never()).obtenerDonaciones(any(), any());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el número de página es negativo")
+        void paginaNegativa() throws Exception {
+            mockMvc.perform(get("/donaciones").param("page", "-1"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si un parámetro no tiene el tipo esperado")
+        void parametroConTipoInvalido() throws Exception {
+            mockMvc.perform(get("/donaciones").param("page", "abc"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /donaciones/{id} - detalle")
+    class Detalle {
+
+        @Test
+        @DisplayName("Devuelve 200 con el detalle de la donación")
+        void detalleOk() throws Exception {
+            when(consultas.obtenerPorId(idDonacion)).thenReturn(respuesta("EN_DEPOSITO", "arroz"));
+
+            mockMvc.perform(get("/donaciones/{id}", idDonacion))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(idDonacion.toString()));
+        }
+
+        @Test
+        @DisplayName("Devuelve 404 si la donación no existe")
+        void detalle404() throws Exception {
+            when(consultas.obtenerPorId(idDonacion)).thenThrow(new DonacionNoEncontradaException(idDonacion));
+
+            mockMvc.perform(get("/donaciones/{id}", idDonacion))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.status").value(404));
+        }
+
+        @Test
+        @DisplayName("Un id que no es UUID devuelve 400")
+        void idMalFormado() throws Exception {
+            // Spring lanza MethodArgumentTypeMismatchException. Antes caía en el
+            // catch-all y respondía 500; desde la Entrega 5 GlobalExceptionHandler
+            // lo maneja como un error de quien llama.
+            mockMvc.perform(get("/donaciones/{id}", "no-es-un-uuid"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /donaciones - registro y segmentación")
+    class Registro {
+
+        @Test
+        @DisplayName("Devuelve 201 con las donaciones ya segmentadas")
+        void registroOk() throws Exception {
+            // El POST devuelve el cuerpo con las donaciones creadas para que el
+            // cliente conozca los ids generados por la segmentación.
+            when(segmentadorService.registrar(any()))
+                    .thenReturn(new DonacionMapper().toDTOList(List.of(donacionSegmentada())));
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestValido())))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$[0].id").exists())
+                    .andExpect(jsonPath("$[0].estado").value("EN_DEPOSITO"))
+                    .andExpect(jsonPath("$[0].subcategoria").value("arroz"));
+        }
+
+        @Test
+        @DisplayName("Devuelve 404 si el donante indicado no existe, sin segmentar nada")
+        void donanteInexistente() throws Exception {
+            when(segmentadorService.registrar(any())).thenThrow(new PersonaDonanteNoEncontradaException(idDonante));
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestValido())))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Devuelve 422 si la persona donante está bloqueada")
+        void donanteBloqueado() throws Exception {
+            when(segmentadorService.registrar(any())).thenThrow(new DonanteBloqueadoException(idDonante));
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestValido())))
+                    .andExpect(status().isUnprocessableEntity());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si falta el donante en el cuerpo")
+        void faltaElDonante() throws Exception {
+            // Lo rechaza @Valid (@NotNull en el DTO) antes de llegar al service.
+            DonacionRequestDTO sinDonante = requestValido();
+            sinDonante.setIdDonante(null);
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(sinDonante)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si la lista de bienes viene vacía")
+        void sinBienes() throws Exception {
+            DonacionRequestDTO sinBienes = requestValido();
+            sinBienes.setBienes(List.of());
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(sinBienes)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si un bien trae fechaVencimiento y esNuevo sin indicar el tipo")
+        void bienAmbiguo() throws Exception {
+            DonacionRequestDTO ambiguo = requestValido();
+            ambiguo.getBienes().getFirst().setEsNuevo(true);
+            ambiguo.getBienes().getFirst().setFechaVencimiento(java.time.LocalDate.of(2027, 1, 31));
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(ambiguo)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("tipo de bien")));
+
+            verify(segmentadorService, never()).registrar(any());
+        }
+
+        @Test
+        @DisplayName("Acepta el tipo explícito cuando trae solo el dato que le corresponde")
+        void tipoExplicito() throws Exception {
+            when(segmentadorService.registrar(any()))
+                    .thenReturn(new DonacionMapper().toDTOList(List.of(donacionSegmentada())));
+            DonacionRequestDTO conTipo = requestValido();
+            conTipo.getBienes().getFirst().setTipo(TipoBien.CON_ESTADO);
+            conTipo.getBienes().getFirst().setEsNuevo(false);
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(conTipo)))
+                    .andExpect(status().isCreated());
+        }
+
+        @Test
+        @DisplayName("Cada bien de la respuesta informa su id y su tipo")
+        void respuestaConIdYTipoDelBien() throws Exception {
+            when(segmentadorService.registrar(any()))
+                    .thenReturn(new DonacionMapper().toDTOList(List.of(donacionSegmentada())));
+
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(requestValido())))
+                    .andExpect(jsonPath("$[0].bienes[0].id").exists())
+                    .andExpect(jsonPath("$[0].bienes[0].tipo").value("GENERICO"));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el JSON está mal formado")
+        void jsonInvalido() throws Exception {
+            mockMvc.perform(post("/donaciones")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{ esto no es json valido"))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("PATCH /donaciones/{id}/estado - cambio de estado")
+    class CambioDeEstado {
+
+        private String cuerpo(String estado, String justificacion) throws Exception {
+            CambioEstadoRequestDTO dto = new CambioEstadoRequestDTO();
+            dto.setEstado(estado);
+            dto.setJustificacion(justificacion);
+            return objectMapper.writeValueAsString(dto);
+        }
+
+        @Test
+        @DisplayName("Devuelve 204 cuando el cambio es válido")
+        void cambioOk() throws Exception {
+            mockMvc.perform(patch("/donaciones/{id}/estado", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("ASIGNACION_REALIZADA", null)))
+                    .andExpect(status().isNoContent());
+
+            verify(comandos).cambiarEstado(eq(idDonacion), any());
+        }
+
+        @Test
+        @DisplayName("Devuelve 422 si la transición no está permitida")
+        void transicionIlegal() throws Exception {
+            // 422 (Unprocessable Entity) distingue el "entiendo el pedido pero
+            // el estado actual no lo permite" de un simple 400 por datos mal formados.
+            doThrow(new TransicionDeEstadoIlegalException("EN_DEPOSITO", "ENTREGADA"))
+                    .when(comandos).cambiarEstado(eq(idDonacion), any());
+
+            mockMvc.perform(patch("/donaciones/{id}/estado", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("ENTREGADA", null)))
+                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(jsonPath("$.status").value(422));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si falta la justificación obligatoria")
+        void faltaJustificacion() throws Exception {
+            doThrow(new FaltaJustificacionException("Es necesaria una justificación para registrar una entrega fallida."))
+                    .when(comandos).cambiarEstado(eq(idDonacion), any());
+
+            mockMvc.perform(patch("/donaciones/{id}/estado", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("ENTREGA_FALLIDA", null)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Devuelve 404 si la donación no existe")
+        void donacionInexistente() throws Exception {
+            doThrow(new DonacionNoEncontradaException(idDonacion))
+                    .when(comandos).cambiarEstado(eq(idDonacion), any());
+
+            mockMvc.perform(patch("/donaciones/{id}/estado", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("ASIGNACION_REALIZADA", null)))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el estado destino viene en blanco")
+        void estadoEnBlanco() throws Exception {
+            mockMvc.perform(patch("/donaciones/{id}/estado", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("", null)))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("PATCH /donaciones/{id}/asignar - asignación")
+    class Asignacion {
+
+        private String cuerpo(UUID idEntidad) throws Exception {
+            AsignacionRequestDTO dto = new AsignacionRequestDTO();
+            dto.setIdEntidadBeneficiaria(idEntidad);
+            return objectMapper.writeValueAsString(dto);
+        }
+
+        @Test
+        @DisplayName("Devuelve 204 cuando la asignación se concreta")
+        void asignacionOk() throws Exception {
+            mockMvc.perform(patch("/donaciones/{id}/asignar", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(UUID.randomUUID())))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("Devuelve 404 si la entidad beneficiaria no existe")
+        void entidadInexistente() throws Exception {
+            UUID idEntidad = UUID.randomUUID();
+            doThrow(new EntidadBeneficiariaNoEncontradaException(idEntidad))
+                    .when(comandos).asignar(eq(idDonacion), any());
+
+            mockMvc.perform(patch("/donaciones/{id}/asignar", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(idEntidad)))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si no se indica la entidad destino")
+        void faltaLaEntidad() throws Exception {
+            mockMvc.perform(patch("/donaciones/{id}/asignar", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of())))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    @DisplayName("PATCH /donaciones/{id}/bien - modificación del bien")
+    class ModificacionDeBien {
+
+        private String cuerpo(String subcategoria, int cantidad) throws Exception {
+            BienRequestDTO dto = new BienRequestDTO();
+            dto.setSubcategoria(subcategoria);
+            dto.setDescripcion("Bien corregido");
+            dto.setCantidad(cantidad);
+            dto.setUnidad("kg");
+            return objectMapper.writeValueAsString(dto);
+        }
+
+        @Test
+        @DisplayName("Devuelve 204 cuando el bien se reemplaza")
+        void modificacionOk() throws Exception {
+            mockMvc.perform(patch("/donaciones/{id}/bien", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("arroz", 10)))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("PUT /donaciones/{id}/bienes/{idBien} devuelve 200 con la donación actualizada")
+        void modificacionPorIdOk() throws Exception {
+            UUID idBien = UUID.randomUUID();
+            when(comandos.modificarBien(eq(idDonacion), eq(idBien), any()))
+                    .thenReturn(respuesta("EN_DEPOSITO", "arroz"));
+
+            mockMvc.perform(put("/donaciones/{id}/bienes/{idBien}", idDonacion, idBien)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("arroz", 10)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(idDonacion.toString()));
+        }
+
+        @Test
+        @DisplayName("Devuelve 409 si la donación no tiene bienes que modificar")
+        void sinBienes409() throws Exception {
+            doThrow(new DonacionSinBienesException(idDonacion))
+                    .when(comandos).modificarUnicoBien(eq(idDonacion), any());
+
+            mockMvc.perform(patch("/donaciones/{id}/bien", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("arroz", 10)))
+                    .andExpect(status().isConflict());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si la cantidad no es positiva")
+        void cantidadInvalida() throws Exception {
+            mockMvc.perform(patch("/donaciones/{id}/bien", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("arroz", 0)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si falta la cantidad, informada como faltante y no como cero")
+        void cantidadFaltante() throws Exception {
+            String sinCantidad = """
+                    {"subcategoria":"arroz","descripcion":"Bien corregido","unidad":"kg"}
+                    """;
+
+            mockMvc.perform(patch("/donaciones/{id}/bien", idDonacion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(sinCantidad))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("cantidad: La cantidad es obligatoria"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /donaciones/{id}/candidatos y DELETE /donaciones/{id}")
+    class CandidatosYBaja {
+
+        @Test
+        @DisplayName("GET candidatos devuelve 200 con un ranking por algoritmo y las coincidencias")
+        void candidatosOk() throws Exception {
+            when(consultas.obtenerCandidatos(idDonacion)).thenReturn(
+                    ar.utn.donatrack.donaciones.dtos.response.CandidatosAsignacionResponseDTO.builder()
+                            .idDonacion(idDonacion)
+                            .rankings(List.of(
+                                    new RankingAlgoritmoResponseDTO("COMPATIBILIDAD_SEMANTICA", List.of()),
+                                    new RankingAlgoritmoResponseDTO("PRIORIDAD_SUBATENDIDOS", List.of())))
+                            .coincidencias(List.of())
+                            .build());
+
+            mockMvc.perform(get("/donaciones/{id}/candidatos", idDonacion))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.idDonacion").value(idDonacion.toString()))
+                    .andExpect(jsonPath("$.rankings[0].algoritmo").value("COMPATIBILIDAD_SEMANTICA"))
+                    .andExpect(jsonPath("$.rankings[1].algoritmo").value("PRIORIDAD_SUBATENDIDOS"))
+                    .andExpect(jsonPath("$.rankings[0].entidades").isArray())
+                    .andExpect(jsonPath("$.coincidencias").isArray());
+        }
+
+        @Test
+        @DisplayName("GET candidatos devuelve 404 si la donación no existe")
+        void candidatos404() throws Exception {
+            when(consultas.obtenerCandidatos(idDonacion))
+                    .thenThrow(new DonacionNoEncontradaException(idDonacion));
+
+            mockMvc.perform(get("/donaciones/{id}/candidatos", idDonacion))
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("DELETE devuelve 204 cuando la donación se elimina")
+        void bajaOk() throws Exception {
+            mockMvc.perform(delete("/donaciones/{id}", idDonacion))
+                    .andExpect(status().isNoContent());
+
+            verify(comandos).eliminar(idDonacion);
+        }
+
+        @Test
+        @DisplayName("DELETE devuelve 404 si la donación no existe")
+        void baja404() throws Exception {
+            doThrow(new DonacionNoEncontradaException(idDonacion)).when(comandos).eliminar(idDonacion);
+
+            mockMvc.perform(delete("/donaciones/{id}", idDonacion))
+                    .andExpect(status().isNotFound());
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /donaciones/candidatos - bandeja del matchmaking nocturno")
+    class CandidatosPendientes {
+
+        @Test
+        @DisplayName("Devuelve 200 con las donaciones pendientes de confirmar destino")
+        void bandejaOk() throws Exception {
+            when(consultas.obtenerCandidatosPendientes()).thenReturn(List.of(
+                    CandidatosPendientesResponseDTO.builder()
+                            .idDonacion(idDonacion)
+                            .fechaCalculo(LocalDateTime.of(2026, 3, 15, 3, 30))
+                            .huboCoincidencias(true)
+                            .coincidencias(List.of())
+                            .rankings(List.of(new RankingAlgoritmoResponseDTO("COMPATIBILIDAD_SEMANTICA", List.of())))
+                            .build()));
+
+            mockMvc.perform(get("/donaciones/candidatos"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$[0].idDonacion").value(idDonacion.toString()))
+                    .andExpect(jsonPath("$[0].huboCoincidencias").value(true))
+                    .andExpect(jsonPath("$[0].fechaCalculo").exists())
+                    .andExpect(jsonPath("$[0].rankings[0].algoritmo").value("COMPATIBILIDAD_SEMANTICA"));
+        }
+
+        @Test
+        @DisplayName("Devuelve 200 con lista vacía si el proceso nocturno todavía no corrió")
+        void bandejaVacia() throws Exception {
+            when(consultas.obtenerCandidatosPendientes()).thenReturn(List.of());
+
+            mockMvc.perform(get("/donaciones/candidatos"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(0)));
+        }
+
+        @Test
+        @DisplayName("La ruta /candidatos NO colisiona con /donaciones/{id}")
+        void noColisionaConElDetalle() throws Exception {
+            // Riesgo real: "candidatos" podría interpretarse como un {id} mal
+            // formado y caer en obtenerDonacion(). Spring prioriza el patrón
+            // literal sobre el de plantilla, y este test lo deja fijado: si
+            // alguien reordena los mappings, falla acá.
+            when(consultas.obtenerCandidatosPendientes()).thenReturn(List.of());
+
+            mockMvc.perform(get("/donaciones/candidatos"))
+                    .andExpect(status().isOk());
+
+            verify(consultas).obtenerCandidatosPendientes();
+            verify(consultas, never()).obtenerPorId(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /donaciones/envios - despacho al broker de logística")
+    class DespachoALogistica {
+
+        private String cuerpo(String proveedor) throws Exception {
+            return proveedor == null
+                    ? objectMapper.writeValueAsString(Map.of("idsDonaciones", List.of(idDonacion)))
+                    : objectMapper.writeValueAsString(Map.of(
+                            "idsDonaciones", List.of(idDonacion), "proveedor", proveedor));
+        }
+
+        private EnvioLogisticaResponseDTO respuestaDespacho(String proveedor, List<String> descartados) {
+            return EnvioLogisticaResponseDTO.builder()
+                    .proveedor(proveedor)
+                    .proveedoresDescartados(descartados)
+                    .envios(List.of(EnvioLogisticaResponseDTO.EnvioDonacionDTO.builder()
+                            .idDonacion(idDonacion)
+                            .proveedor(proveedor)
+                            .idSeguimiento("SEG-ABC123")
+                            .fechaAsignacion(LocalDateTime.of(2026, 10, 7, 11, 26))
+                            .build()))
+                    .build();
+        }
+
+        @Test
+        @DisplayName("Devuelve 201 con el proveedor y el id de seguimiento de cada envío")
+        void despachoOk() throws Exception {
+            when(planificacionEntregasService.despachar(any(), isNull()))
+                    .thenReturn(respuestaDespacho("DONATRACK", List.of()));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(null)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.proveedor").value("DONATRACK"))
+                    .andExpect(jsonPath("$.envios[0].idDonacion").value(idDonacion.toString()))
+                    .andExpect(jsonPath("$.envios[0].idSeguimiento").value("SEG-ABC123"));
+        }
+
+        @Test
+        @DisplayName("Expone los proveedores descartados, que es el fallback en acción")
+        void muestraElFallback() throws Exception {
+            when(planificacionEntregasService.despachar(any(), isNull()))
+                    .thenReturn(respuestaDespacho("EXTERNA", List.of("DONATRACK")));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(null)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.proveedor").value("EXTERNA"))
+                    .andExpect(jsonPath("$.proveedoresDescartados[0]").value("DONATRACK"));
+        }
+
+        @Test
+        @DisplayName("Permite forzar un proveedor puntual")
+        void proveedorForzado() throws Exception {
+            when(planificacionEntregasService.despachar(any(), eq(ProveedorLogistica.EXTERNA)))
+                    .thenReturn(respuestaDespacho("EXTERNA", List.of()));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("EXTERNA")))
+                    .andExpect(status().isCreated());
+
+            verify(planificacionEntregasService).despachar(any(), eq(ProveedorLogistica.EXTERNA));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si la donación no está en condiciones de despacharse")
+        void donacionNoDespachable() throws Exception {
+            when(planificacionEntregasService.despachar(any(), isNull()))
+                    .thenThrow(new DonacionNoDespachableException("La donación está en EN_DEPOSITO"));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(null)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.status").value(400));
+        }
+
+        @Test
+        @DisplayName("Devuelve 503 cuando no hay proveedores disponibles, para que se reintente")
+        void sinProveedores() throws Exception {
+            // 503 y no 500: el pedido era válido, el problema es transitorio y
+            // las donaciones quedaron intactas en ASIGNACION_REALIZADA.
+            when(planificacionEntregasService.despachar(any(), isNull()))
+                    .thenThrow(new LogisticaNoDisponibleException("Ningún proveedor disponible"));
+
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo(null)))
+                    .andExpect(status().isServiceUnavailable())
+                    .andExpect(jsonPath("$.status").value(503));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si no se indica ninguna donación")
+        void sinDonaciones() throws Exception {
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of("idsDonaciones", List.of()))))
+                    .andExpect(status().isBadRequest());
+
+            verify(planificacionEntregasService, never()).despachar(any(), any());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si el proveedor no es DONATRACK ni EXTERNA")
+        void proveedorInvalido() throws Exception {
+            mockMvc.perform(post("/donaciones/envios")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(cuerpo("CORREO_ARGENTINO")))
+                    .andExpect(status().isBadRequest());
+
+            verify(planificacionEntregasService, never()).despachar(any(), any());
+        }
+    }
+}

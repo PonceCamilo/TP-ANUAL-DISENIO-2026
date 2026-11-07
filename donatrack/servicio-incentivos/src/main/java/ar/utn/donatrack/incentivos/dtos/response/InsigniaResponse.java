@@ -3,10 +3,9 @@ package ar.utn.donatrack.incentivos.dtos.response;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 public record InsigniaResponse(
-        UUID id,
+        Long id,
         String nombre,
         String imagen,
         LocalDate otorgadaEn,

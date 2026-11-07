@@ -14,6 +14,6 @@ import lombok.Setter;
 @Builder
 public class ProvinciaRequestDTO {
 
-  @NotBlank
-  private String nombre;
+    @NotBlank
+    private String nombre;
 }

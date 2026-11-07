@@ -4,10 +4,9 @@ import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 public record MisionResponse(
-        UUID misionId,
+        Long misionId,
         String nombre,
         String descripcion,
         String tipo,
@@ -16,8 +15,7 @@ public record MisionResponse(
         int progresoActual,
         int distanciaRestante,
         boolean completada,
-        LocalDateTime fechaCompletada,
-        int orden
+        LocalDateTime fechaCompletada
 ) {
     public static MisionResponse desde(Mision m, Donante d) {
         return new MisionResponse(
@@ -30,8 +28,7 @@ public record MisionResponse(
                 m.progresoActual(d),
                 m.restante(d),
                 m.estaCompletada(d),
-                null, 
-                m.getOrden()
+                null
         );
     }
 }

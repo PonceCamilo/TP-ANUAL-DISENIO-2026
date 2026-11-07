@@ -1,0 +1,108 @@
+package ar.utn.donatrack.logistica.models.entrega;
+
+import ar.utn.donatrack.logistica.models.planificacion.Parada;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Entrega embebida en una parada. El id se conserva: es el seguimiento que
+ * el broker le pasa a Donaciones. La donación se referencia solo por id.
+ * La parada no se guarda adentro de la entrega (sería un ciclo); se vuelve
+ * a enlazar al leer la ruta.
+ */
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+public class Entrega {
+    @Field("id")
+    private UUID id;
+
+    private UUID idDonacion;
+
+    @Transient
+    private Parada parada;
+
+    @Builder.Default
+    private EstadoEntrega estado = EstadoEntrega.LISTO_PARA_ENTREGAR;
+
+    @Builder.Default
+    private List<CambioEstadoEntrega> historial = new ArrayList<>();
+
+    @Builder.Default
+    private List<String> fotosComprobante = new ArrayList<>();
+
+    private String observacion;
+
+    private LocalDateTime fechaEntrega;
+
+    public void registrarCambio(EstadoEntrega nuevoEstado, String observacion) {
+        registrarCambio(nuevoEstado, null, observacion);
+    }
+
+    public void registrarCambio(EstadoEntrega nuevoEstado, MotivoFalloEntrega motivoFallo, String observacion) {
+        this.estado = nuevoEstado;
+        this.observacion = observacion;
+        if (historial == null) {
+            historial = new ArrayList<>();
+        }
+        this.historial.add(CambioEstadoEntrega.builder()
+                .estado(nuevoEstado)
+                .motivoFallo(motivoFallo)
+                .observacion(observacion)
+                .build());
+    }
+
+    /**
+     * Volvió al depósito y el último fallo admite otra ruta. 
+     * Una entrega ya replanificada no vuelve a entrar: su intento quedó cerrado.
+     */
+    public boolean listaParaReplanificar() {
+        return estado == EstadoEntrega.LISTO_PARA_ENTREGAR && admiteOtraRuta();
+    }
+
+    /** El administrador puede devolverla al depósito solo si el fallo admite otra ruta. */
+    public boolean admiteOtraRuta() {
+        MotivoFalloEntrega motivo = ultimoMotivoDeFallo();
+        return motivo != null && motivo.esReplanificable() && !fueReplanificada();
+    }
+
+    public boolean fueReplanificada() {
+        if (historial == null) {
+            return false;
+        }
+        return historial.stream().anyMatch(cambio -> cambio.getObservacion() != null
+                && cambio.getObservacion().startsWith("Replanificada en la ruta "));
+    }
+
+    /** Cierra este intento. La entrega vigente pasa a ser la de la ruta nueva. */
+    public void cerrarPorReplanificacion(UUID rutaNuevaId) {
+        registrarCambio(EstadoEntrega.NO_RECIBIDA, ultimoMotivoDeFallo(),
+                "Replanificada en la ruta " + rutaNuevaId);
+    }
+
+    private MotivoFalloEntrega ultimoMotivoDeFallo() {
+        if (historial == null) {
+            return null;
+        }
+        MotivoFalloEntrega motivo = null;
+        for (CambioEstadoEntrega cambio : historial) {
+            if (cambio.getMotivoFallo() != null) {
+                motivo = cambio.getMotivoFallo();
+            }
+        }
+        return motivo;
+    }
+}

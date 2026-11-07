@@ -1,0 +1,227 @@
+services:
+
+  # ══ INFRAESTRUCTURA ════════════════════════════════════════════════════════
+
+  # Un único servidor PostgreSQL con una base por servicio.
+  # Las bases las crea db/init/01-crear-bases.sql, que la imagen ejecuta solo
+  # cuando el volumen está vacío. Ver ese archivo para la justificación.
+  postgres:
+    image: postgres:16-alpine
+    container_name: donatrack-postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: donatrack
+      POSTGRES_PASSWORD: donatrack
+    ports:
+      # 5433 en el host: el 5432 suele estar tomado por un PostgreSQL instalado
+      # localmente. Dentro de la red de Docker sigue siendo 5432.
+      - "5433:5432"
+    volumes:
+      - datos-postgres:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U donatrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - donatrack-net
+
+  # Cola de mensajes para la integración asincrónica con notificaciones.
+  # La imagen -management trae el panel web en el 15672 (guest/guest), que sirve
+  # para mostrar en la defensa cómo se acumulan los mensajes si el consumidor
+  # está caído.
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: donatrack-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - datos-rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      # check_port_connectivity y no "ping": ping responde en cuanto arranca el
+      # nodo Erlang, que es ANTES de que el puerto 5672 acepte conexiones. Con
+      # ping, los servicios arrancaban contra un broker que todavía no escuchaba
+      # y el log se llenaba de "Connection refused" (se recuperaban solos a los
+      # 5 segundos, pero el stack trace hacía pensar que algo estaba roto).
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - donatrack-net
+
+  # ══ SERVICIOS DE DOMINIO ═══════════════════════════════════════════════════
+
+  servicio-donaciones:
+    build:
+      # El contexto es la raíz del reactor para que Maven encuentre el POM padre.
+      context: .
+      dockerfile: servicio-donaciones/Dockerfile
+    container_name: donatrack-donaciones
+    ports:
+      - "8081:8081"
+    environment:
+      - notificaciones.url=http://servicio-notificaciones:8084
+      - servicios.incentivos.url=http://servicio-incentivos:8083
+      - servicios.broker-logistica.url=http://servicio-broker-logistica:8087
+      - spring.datasource.url=jdbc:postgresql://postgres:5432/donaciones_db
+      - spring.datasource.username=donatrack
+      - spring.datasource.password=donatrack
+      - notificaciones.transporte=amqp
+      - spring.rabbitmq.host=rabbitmq
+      - spring.docker.compose.enabled=false
+    depends_on:
+      # service_healthy y no solo depends_on: el servicio arranca recién cuando
+      # la base acepta conexiones, si no Hibernate falla al generar el esquema.
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      servicio-broker-logistica:
+        condition: service_started
+    networks:
+      - donatrack-net
+
+  servicio-notificaciones:
+    build:
+      context: .
+      dockerfile: servicio-notificaciones/Dockerfile
+    container_name: donatrack-notificaciones
+    ports:
+      - "8084:8084"
+    environment:
+      - spring.datasource.url=jdbc:postgresql://postgres:5432/notificaciones_db
+      - spring.datasource.username=donatrack
+      - spring.datasource.password=donatrack
+      - spring.rabbitmq.host=rabbitmq
+      - spring.docker.compose.enabled=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - donatrack-net
+
+  servicio-incentivos:
+    build:
+      context: .
+      dockerfile: servicio-incentivos/Dockerfile
+    container_name: donatrack-servicio-incentivos
+    ports:
+      - "8083:8083"
+    environment:
+      SERVER_PORT: 8083
+      SERVICIOS_NOTIFICACIONES_URL: http://servicio-notificaciones:8084
+      INTEGRACIONES_N8N_WEBHOOK_URL: http://host.docker.internal:5678/webhook/insignia-obtenida
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/incentivos_db
+      SPRING_DATASOURCE_USERNAME: donatrack
+      SPRING_DATASOURCE_PASSWORD: donatrack
+      NOTIFICACIONES_TRANSPORTE: amqp
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - donatrack-net
+
+  servicio-logistica:
+    build:
+      context: .
+      dockerfile: servicio-logistica/Dockerfile
+    container_name: donatrack-servicio-logistica
+    ports:
+      - "8085:8085"
+    environment:
+      SERVER_PORT: 8085
+      INTEGRACIONES_PROVEEDOR_RUTEO_URL: http://localhost:8085/ruteo/planificar
+      INTEGRACIONES_BROKER_EVENTOS_URL: http://servicio-broker-logistica:8087/api/broker/eventos/donatrack
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/logistica?replicaSet=rs0&directConnection=true
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - donatrack-net
+
+  # Base documental de logística: colecciones camiones, lotes y rutas.
+  # Replica set de un solo nodo: no suma copias, habilita transacciones
+  # para cuando una operación escriba ruta y camión juntos.
+  # El miembro se anuncia como 127.0.0.1; las aplicaciones usan directConnection
+  # para no tener que resolver ese nombre.
+  # Con directConnection el driver no espera la elección: por eso el healthcheck
+  # recién da OK cuando el nodo ya es primario y acepta escrituras.
+  mongo:
+    image: mongo:7
+    container_name: donatrack-mongo
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - datos-mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { rs.status(); } catch (e) { rs.initiate({_id:'rs0', members:[{_id:0, host:'127.0.0.1:27017'}]}); quit(1); } quit(db.hello().isWritablePrimary ? 0 : 1);"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+    networks:
+      - donatrack-net
+
+  # Segundo proveedor de logistica (de terceros), independiente de
+  # servicio-logistica: el broker elige entre ambos. No tiene base propia porque
+  # solo simula a un operador externo.
+  servicio-logistica-externa:
+    build:
+      context: .
+      dockerfile: servicio-logistica-externa/Dockerfile
+    container_name: donatrack-servicio-logistica-externa
+    ports:
+      - "8086:8086"
+    environment:
+      SERVER_PORT: 8086
+      LOGISTICA_EXTERNA_WEBHOOK_URL: http://servicio-broker-logistica:8087/api/broker/eventos/externa
+      LOGISTICA_EXTERNA_TRACKING_BASE_URL: http://localhost:8086/api/v1/envios/
+    networks:
+      - donatrack-net
+
+  # Broker de integracion Donaciones <-> logistica: elige el proveedor para
+  # cada pedido y reenvia a Donaciones los eventos de ambos (reemplaza al
+  # relay de n8n de logistica).
+  servicio-broker-logistica:
+    build:
+      context: .
+      dockerfile: servicio-broker-logistica/Dockerfile
+    container_name: donatrack-servicio-broker-logistica
+    ports:
+      - "8087:8087"
+    environment:
+      SERVER_PORT: 8087
+      BROKER_DONACIONES_URL: http://servicio-donaciones:8081
+      BROKER_PROVEEDORES_DONATRACK_URL: http://servicio-logistica:8085
+      BROKER_PROVEEDORES_EXTERNA_URL: http://servicio-logistica-externa:8086
+      BROKER_PROVEEDORES_PRIORIDAD: DONATRACK,EXTERNA
+    networks:
+      - donatrack-net
+
+networks:
+  donatrack-net:
+    driver: bridge
+
+volumes:
+  # Los datos sobreviven a docker compose down. Para arrancar de cero:
+  # docker compose down -v
+  #
+  # OJO: el script que crea las bases solo corre con el volumen vacío. Si se
+  # agrega una base nueva a db/init, hay que hacer down -v para que se aplique.
+  datos-postgres:
+  datos-rabbitmq:
+  datos-mongo:

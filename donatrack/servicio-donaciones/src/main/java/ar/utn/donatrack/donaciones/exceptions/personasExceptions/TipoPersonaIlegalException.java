@@ -1,7 +1,11 @@
 package ar.utn.donatrack.donaciones.exceptions.personasExceptions;
 
-public class TipoPersonaIlegalException extends RuntimeException {
-  public TipoPersonaIlegalException() {
-    super("La persona no es juridica");
-  }
+import ar.utn.donatrack.donaciones.exceptions.SolicitudInvalidaException;
+
+import java.util.UUID;
+
+public class TipoPersonaIlegalException extends SolicitudInvalidaException {
+    public TipoPersonaIlegalException(UUID id) {
+        super("La persona donante con id " + id + " no es jurídica");
+    }
 }

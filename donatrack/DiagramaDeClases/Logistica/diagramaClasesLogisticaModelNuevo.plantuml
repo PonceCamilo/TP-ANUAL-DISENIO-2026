@@ -1,0 +1,136 @@
+@startuml diagramaClasesLogisticaModel
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+' ============================ CLASES EXTERNAS ============================
+class Donacion <<External>>
+class EntidadBeneficiaria <<External>>
+
+' ============================ DOMINIO LOGÍSTICA ============================
+class Direccion {
+    - calle : String
+    - numero : int
+    - localidad : String
+    - provincia : String
+    - codigoPostal : String
+}
+
+class Camion {
+    - patente : String
+    - capacidadVolumenM3 : double
+    - alturaM : double
+    - capacidadCargaKg : double
+    - estado : EstadoCamion
+}
+
+enum EstadoCamion {
+    DISPONIBLE
+    EN_RUTA
+    MANTENIMIENTO
+}
+
+class LotePlanificacion {
+    - camiones : List<Camion>
+    - donaciones : List<DonacionLote>
+    - estado : EstadoLote
+    - tokenCorrelacion : String
+    - fechaEnvio : LocalDateTime
+    - fechaRespuesta : LocalDateTime
+}
+
+enum EstadoLote {
+    ENVIADO
+    EN_PROCESO
+    COMPLETADO
+    ERROR
+}
+
+class DonacionLote {
+    - direccionEntrega : Direccion
+}
+
+class Ruta {
+    - lote : LotePlanificacion
+    - camion : Camion
+    - paradas : List<Parada>
+    - estado : EstadoRuta
+    - fechaInicio : LocalDateTime
+    + obtenerEntregas() : List<Entrega>
+    + buscarParadaPorEntregaId(entregaId : UUID) : Optional<Parada>
+}
+
+enum EstadoRuta {
+    PLANIFICADA
+    INICIADA
+    FINALIZADA
+}
+
+class Parada {
+    - orden : int
+    - direccion : Direccion
+    - entregas : List<Entrega>
+}
+
+class Entrega {
+    - parada : Parada
+    - estado : EstadoEntrega
+    - historial : List<CambioEstadoEntrega>
+    - fotosComprobante : List<String>
+    - observacion : String
+    - fechaEntrega : LocalDateTime
+    + registrarCambio(nuevoEstado : EstadoEntrega, observacion : String) : void
+}
+
+enum EstadoEntrega {
+    LISTO_PARA_ENTREGAR
+    EN_TRASLADO
+    ENTREGADA
+    NO_RECIBIDA
+}
+
+class CambioEstadoEntrega {
+    - estado : EstadoEntrega
+    - observacion : String
+    - fechaHora : LocalDateTime
+}
+
+enum MotivoFalloEntrega {
+    ENTIDAD_AUSENTE
+    DIRECCION_INCORRECTA
+    RECHAZADA_POR_ENTIDAD
+    MERCADERIA_ROTA
+    MERCADERIA_PERDIDA
+    ROBO
+    - replanificable : boolean
+    + esReplanificable() : boolean
+}
+
+' ============================ RELACIONES ============================
+Camion -- EstadoCamion
+
+Entrega -- EstadoEntrega
+Entrega --> "*" CambioEstadoEntrega
+Entrega --> Donacion
+Entrega --> Parada
+
+CambioEstadoEntrega -- EstadoEntrega
+CambioEstadoEntrega -up- MotivoFalloEntrega
+Parada --> Direccion
+Parada --> "*" Entrega
+Parada --> EntidadBeneficiaria
+
+Ruta -- EstadoRuta
+Ruta --> Camion
+Ruta "1" -- "*" Parada
+Ruta --> LotePlanificacion
+
+LotePlanificacion -- EstadoLote
+LotePlanificacion --> "*" Camion
+LotePlanificacion --> "*" DonacionLote
+
+DonacionLote --> Direccion
+DonacionLote --> Donacion
+DonacionLote --> EntidadBeneficiaria
+
+@enduml

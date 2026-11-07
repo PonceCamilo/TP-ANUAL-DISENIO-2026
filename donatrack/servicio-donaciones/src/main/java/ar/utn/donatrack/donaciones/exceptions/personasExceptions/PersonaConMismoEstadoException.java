@@ -1,9 +1,9 @@
 package ar.utn.donatrack.donaciones.exceptions.personasExceptions;
 
-import ar.utn.donatrack.donaciones.models.donante.EstadoDonante;
+import ar.utn.donatrack.donaciones.exceptions.ConflictoException;
 
-public class PersonaConMismoEstadoException extends RuntimeException {
-  public PersonaConMismoEstadoException(EstadoDonante estado) {
-    super("La persona donante ya se encuentra con el estado: " + estado);
-  }
+public class PersonaConMismoEstadoException extends ConflictoException {
+    public PersonaConMismoEstadoException(String estado) {
+        super("La persona donante ya se encuentra con el estado: " + estado);
+    }
 }

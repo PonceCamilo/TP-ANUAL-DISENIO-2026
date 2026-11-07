@@ -15,6 +15,6 @@ import java.util.UUID;
 @NoArgsConstructor
 public class AsignacionRequestDTO {
 
-  @NotNull
-  private UUID idEntidadBeneficiaria;
+    @NotNull
+    private UUID idEntidadBeneficiaria;
 }

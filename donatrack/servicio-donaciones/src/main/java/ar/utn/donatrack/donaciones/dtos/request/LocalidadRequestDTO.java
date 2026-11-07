@@ -16,10 +16,10 @@ import lombok.Setter;
 @Builder
 public class LocalidadRequestDTO {
 
-  @NotBlank
-  private String nombre;
+    @NotBlank
+    private String nombre;
 
-  @Valid
-  @NotNull
-  private ProvinciaRequestDTO provincia;
+    @Valid
+    @NotNull
+    private ProvinciaRequestDTO provincia;
 }

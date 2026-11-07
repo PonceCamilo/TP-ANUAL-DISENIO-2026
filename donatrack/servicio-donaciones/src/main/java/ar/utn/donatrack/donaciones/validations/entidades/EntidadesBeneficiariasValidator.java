@@ -1,0 +1,47 @@
+package ar.utn.donatrack.donaciones.validations.entidades;
+
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.CampaniaNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.EntidadBeneficiariaNoEncontradaException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.FechasCampaniaInvalidasException;
+import ar.utn.donatrack.donaciones.exceptions.entidadesExceptions.NecesidadNoEncontradaException;
+import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
+import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
+import ar.utn.donatrack.donaciones.models.entidad.necesidad.Necesidad;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDate;
+import java.util.UUID;
+
+@Component
+@RequiredArgsConstructor
+public class EntidadesBeneficiariasValidator {
+
+    private final RepositorioEntidadesBeneficiarias repositorio;
+
+    /** Recupera la entidad o lanza la excepción de dominio si no existe (404). */
+    public EntidadBeneficiaria validarYObtenerEntidad(UUID id) {
+        return repositorio.buscarPorId(id).orElseThrow(() -> new EntidadBeneficiariaNoEncontradaException(id));
+    }
+
+    public Campania validarYObtenerCampania(EntidadBeneficiaria entidad, UUID campaniaId) {
+        return entidad.getCampanias().stream()
+                .filter(c -> c.getIdCampania().equals(campaniaId))
+                .findFirst()
+                .orElseThrow(() -> new CampaniaNoEncontradaException(campaniaId, entidad.getId()));
+    }
+
+    /** Recupera la necesidad dentro de la campaña o lanza la excepción de dominio si no existe. */
+    public Necesidad validarYObtenerNecesidad(Campania campania, UUID necesidadId) {
+        return campania.buscarNecesidad(necesidadId)
+                .orElseThrow(() -> new NecesidadNoEncontradaException(necesidadId, campania.getIdCampania()));
+    }
+
+    public void validarFechasCampania(LocalDate inicio, LocalDate fin) {
+        if (inicio != null && fin != null && inicio.isAfter(fin)) {
+            throw new FechasCampaniaInvalidasException(
+                    "La fecha de inicio no puede ser posterior a la fecha de fin");
+        }
+    }
+}

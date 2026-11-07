@@ -3,8 +3,6 @@
 class Notificacion {
     - destinatario : String
     - mensaje : String
-    - medio : TipoMedioNotificacion
-    - evento : TipoEvento
     - estado : EstadoNotificacion
     - fechaCreacion : LocalDateTime
     - fechaEnvio : LocalDateTime
@@ -12,20 +10,17 @@ class Notificacion {
     + marcarFallida() : void
 }
 
-enum TipoEvento {
-    INACTIVIDAD_DONANTE
-    ASIGNACION_DONACION_ENTIDAD
-    ASIGNACION_DONACION_DONANTE
-    MISION_CUMPLIDA
-    CAMBIO_CATEGORIA
+abstract class MedioNotificacion {
 }
 
-enum TipoMedioNotificacion {
-    EMAIL
-    SMS
-    WHATSAPP
+class Email {
 }
 
+class Sms{
+}
+
+class WhatsApp {
+}
 enum EstadoNotificacion {
     PENDIENTE
     ENVIADA
@@ -41,10 +36,12 @@ class NotificacionService {
 }
 
 
-Notificacion --> TipoMedioNotificacion
-Notificacion --> TipoEvento
+Email --> MedioNotificacion
+Sms --> MedioNotificacion
+WhatsApp --> MedioNotificacion
 Notificacion --> EstadoNotificacion
+Notificacion --> MedioNotificacion
 
-NotificacionService ..> Notificacion
+NotificacionService --> Notificacion
 
 @enduml

@@ -1,11 +1,17 @@
 package ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions;
 
-public class FaltaJustificacionException extends RuntimeException {
-  public FaltaJustificacionException() {
-    super("Es necesaria una justificacion para cambiar el estado de la donacion.");
-  }
+import ar.utn.donatrack.donaciones.exceptions.SolicitudInvalidaException;
 
-  public FaltaJustificacionException(String mensaje) {
-    super(mensaje);
-  }
+/**
+ * Una transición de estado que exige justificación llegó sin ella: bloquear a
+ * una persona donante o registrar una entrega fallida.
+ *
+ * Antes había una por jerarquía de estados (donantes y donaciones) con el mismo
+ * significado y el mismo código HTTP.
+ */
+public class FaltaJustificacionException extends SolicitudInvalidaException {
+
+    public FaltaJustificacionException(String mensaje) {
+        super(mensaje);
+    }
 }

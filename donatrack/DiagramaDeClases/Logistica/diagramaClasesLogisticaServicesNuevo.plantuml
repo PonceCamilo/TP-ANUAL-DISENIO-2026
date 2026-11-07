@@ -1,0 +1,149 @@
+@startuml diagramaClasesLogisticaServices
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+' ============================ VALIDACIONES ============================
+class EntregaValidator {
+    + validarTransicion(estadoActual : EstadoEntrega, estadoNuevo : EstadoEntrega) : void
+}
+
+' ============================ REPOSITORIOS (Interfaces) ============================
+interface RutaRepositoryInterface {
+    + guardar(ruta : Ruta) : void
+    + buscarPorId(id : UUID) : Ruta
+    + buscarPorCamionId(camionId : UUID) : List<Ruta>
+    + buscarPorEntregaId(entregaId : UUID) : Optional<Ruta>
+}
+
+interface EntregaRepositoryInterface {
+    + guardar(entrega : Entrega) : void
+    + buscarPorId(id : UUID) : Entrega
+    + buscarPorEstado(estado : EstadoEntrega) : List<Entrega>
+}
+
+interface CamionRepositoryInterface {
+    + guardar(camion : Camion) : void
+    + buscarTodos() : List<Camion>
+    + buscarPorId(id : UUID) : Camion
+    + buscarPorIds(ids : List<UUID>) : List<Camion>
+}
+
+interface LotePlanificacionRepositoryInterface {
+    + guardar(lote : LotePlanificacion) : void
+    + buscarPorId(id : UUID) : LotePlanificacion
+}
+
+' ============================ SERVICIOS ============================
+interface CamionServiceInterface {
+    + registrar(dto : CamionRequestDTO) : CamionResponseDTO
+    + obtenerTodos() : List<CamionResponseDTO>
+    + obtenerPorId(id : UUID) : CamionResponseDTO
+}
+
+class CamionService implements CamionServiceInterface {
+    - repositorio : CamionRepositoryInterface
+    + registrar(dto : CamionRequestDTO) : CamionResponseDTO
+    + obtenerTodos() : List<CamionResponseDTO>
+    + obtenerPorId(id : UUID) : CamionResponseDTO
+}
+
+interface EntregaServiceInterface {
+    + obtenerPorId(id : UUID) : EntregaResponseDTO
+    + obtenerPorEstado(estado : EstadoEntrega) : List<EntregaResponseDTO>
+    + confirmar(id : UUID, dto : ConfirmarEntregaRequestDTO) : void
+    + marcarNoRecibida(id : UUID, dto : NoRecibidaRequestDTO) : void
+    + regresarADeposito(id : UUID) : void
+}
+
+class EntregaService implements EntregaServiceInterface {
+    - repositorio : EntregaRepositoryInterface
+    - rutaRepositorio : RutaRepositoryInterface
+    - validador : EntregaValidator
+    - eventPublisher : EntregaEventPublisher
+    - planificacionService : PlanificacionServiceInterface
+    + obtenerPorId(id : UUID) : EntregaResponseDTO
+    + obtenerPorEstado(estado : EstadoEntrega) : List<EntregaResponseDTO>
+    + confirmar(id : UUID, dto : ConfirmarEntregaRequestDTO) : void
+    + marcarNoRecibida(id : UUID, dto : NoRecibidaRequestDTO) : void
+    + regresarADeposito(id : UUID) : void
+}
+
+interface PlanificacionServiceInterface {
+    + planificar(dto : PlanificacionRequestDTO) : List<LoteResponseDTO>
+    + obtenerLote(loteId : UUID) : LoteResponseDTO
+    + registrarCallback(dto : CallbackRutaRequestDTO) : void
+    + obtenerRuta(rutaId : UUID) : RutaResponseDTO
+    + obtenerRutaVigentePorCamion(camionId : UUID) : RutaResponseDTO
+    + iniciarRuta(rutaId : UUID) : void
+    + finalizarRutaSiCorresponde(rutaId : UUID) : void
+}
+
+class PlanificacionRutasService implements PlanificacionServiceInterface {
+    - loteRepositorio : LotePlanificacionRepositoryInterface
+    - rutaRepositorio : RutaRepositoryInterface
+    - entregaRepositorio : EntregaRepositoryInterface
+    - camionRepositorio : CamionRepositoryInterface
+    - estrategiaRuteo : EstrategiaRuteoPort
+    - eventPublisher : EntregaEventPublisher
+    - entregaValidator : EntregaValidator
+    - maxDonacionesPorLote : int
+    + planificar(dto : PlanificacionRequestDTO) : List<LoteResponseDTO>
+    + obtenerLote(loteId : UUID) : LoteResponseDTO
+    + registrarCallback(dto : CallbackRutaRequestDTO) : void
+    + obtenerRuta(rutaId : UUID) : RutaResponseDTO
+    + obtenerRutaVigentePorCamion(camionId : UUID) : RutaResponseDTO
+    + iniciarRuta(rutaId : UUID) : void
+    + finalizarRutaSiCorresponde(rutaId : UUID) : void
+}
+
+' ============================ INTEGRACION / EVENTOS ============================
+interface EstrategiaRuteoPort {
+    + solicitarPlanificacion(lote : LotePlanificacion, camiones : List<Camion>) : void
+}
+
+class ProveedorRuteoExternoAdapter implements EstrategiaRuteoPort {
+    - httpClient : HttpClient
+    - objectMapper : ObjectMapper
+    - proveedorUrl : String
+    - callbackUrl : String
+    + solicitarPlanificacion(lote : LotePlanificacion, camiones : List<Camion>) : void
+}
+
+interface EntregaEventListener {
+    + onEvento(evento : EntregaEvento) : void
+}
+
+class EntregaEventPublisher {
+    - listeners : List<EntregaEventListener>
+    + publicar(evento : EntregaEvento) : void
+}
+
+class BrokerEventosListener implements EntregaEventListener {
+    - httpClient : HttpClient
+    - objectMapper : ObjectMapper
+    - webhookUrl : String
+    + onEvento(evento : EntregaEvento) : void
+}
+
+' ============================ RELACIONES DE SERVICIOS ============================
+EntregaService --> EntregaValidator
+EntregaService --> EntregaEventPublisher
+EntregaService --> RutaRepositoryInterface
+
+EntregaService --> PlanificacionServiceInterface
+EntregaService --> EntregaRepositoryInterface
+
+PlanificacionRutasService --> EstrategiaRuteoPort
+PlanificacionRutasService --> EntregaEventPublisher
+PlanificacionRutasService --> EntregaValidator
+PlanificacionRutasService --> LotePlanificacionRepositoryInterface
+PlanificacionRutasService --> RutaRepositoryInterface
+PlanificacionRutasService --> EntregaRepositoryInterface
+PlanificacionRutasService --> CamionRepositoryInterface
+
+CamionService --> CamionRepositoryInterface
+
+EntregaEventPublisher --> "*" EntregaEventListener
+
+@enduml
