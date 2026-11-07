@@ -5,6 +5,7 @@ import ar.utn.donatrack.logistica.models.flota.EstadoCamion;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter
@@ -16,6 +17,9 @@ public class CamionResponseDTO {
     private double alturaM;
     private double capacidadCargaKg;
     private EstadoCamion estado;
+    private Double latitud;
+    private Double longitud;
+    private LocalDateTime ubicacionActualizadaEn;
 
     public static CamionResponseDTO desde(Camion camion) {
         return CamionResponseDTO.builder()
@@ -25,6 +29,9 @@ public class CamionResponseDTO {
                 .alturaM(camion.getAlturaM())
                 .capacidadCargaKg(camion.getCapacidadCargaKg())
                 .estado(camion.getEstado())
+                .latitud(camion.getLatitud())
+                .longitud(camion.getLongitud())
+                .ubicacionActualizadaEn(camion.getUbicacionActualizadaEn())
                 .build();
     }
 }

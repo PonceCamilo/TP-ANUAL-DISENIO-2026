@@ -14,6 +14,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
 import org.springframework.test.context.TestPropertySource;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -119,5 +120,21 @@ class CamionRepositoryTest {
 
         assertThatThrownBy(() -> camiones.guardar(repetido)).isInstanceOf(DuplicateKeyException.class);
         assertThat(camiones.buscarTodos()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("persiste latitud, longitud y la hora de la última actualización")
+    void persisteUltimaUbicacion() {
+        Camion camion = camion("FF666FF");
+        LocalDateTime marca = LocalDateTime.of(2026, 11, 7, 16, 30);
+        camion.setLatitud(-34.6);
+        camion.setLongitud(-58.4);
+        camion.setUbicacionActualizadaEn(marca);
+        camiones.guardar(camion);
+
+        Camion leido = camiones.buscarPorId(camion.getId());
+        assertThat(leido.getLatitud()).isEqualTo(-34.6);
+        assertThat(leido.getLongitud()).isEqualTo(-58.4);
+        assertThat(leido.getUbicacionActualizadaEn()).isEqualTo(marca);
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -38,4 +39,13 @@ public class Camion {
 
     @Builder.Default
     private EstadoCamion estado = EstadoCamion.DISPONIBLE;
+
+    /**
+     * Último punto que informó el chofer durante el viaje en curso.
+     * No se guarda el recorrido: alcanzan este punto y la hora en que llegó.
+     * Quedan en null hasta el primer reporte, y se borran al iniciar otra ruta.
+     */
+    private Double latitud;
+    private Double longitud;
+    private LocalDateTime ubicacionActualizadaEn;
 }

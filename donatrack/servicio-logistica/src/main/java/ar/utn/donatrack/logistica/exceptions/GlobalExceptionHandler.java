@@ -41,6 +41,11 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
     }
 
+    @ExceptionHandler(OperacionCamionIlegalException.class)
+    public ResponseEntity<Map<String, Object>> manejarOperacionCamionIlegal(OperacionCamionIlegalException ex) {
+        return construir(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
+    }
+
     @ExceptionHandler(LoteCallbackInvalidoException.class)
     public ResponseEntity<Map<String, Object>> manejarCallbackInvalido(LoteCallbackInvalidoException ex) {
         return construir(HttpStatus.CONFLICT, "Conflict", ex.getMessage());

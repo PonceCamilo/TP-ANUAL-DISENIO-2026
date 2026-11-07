@@ -14,8 +14,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * La entrega no tiene colección: vive embebida en la ruta. Este repositorio
- * solo la busca dentro de las rutas; un cambio se guarda guardando la ruta.
+ * Solo lee. La entrega no tiene colección propia: vive embebida en la ruta,
+ * adentro de sus paradas. Buscar una entrega es buscar esa ruta.
+ * Un cambio de estado, fotos o historial no se guarda acá: se guarda la ruta
+ * completa con {@code RutaRepository.guardar}.
  */
 @Repository
 public class EntregaRepository implements EntregaRepositoryInterface {

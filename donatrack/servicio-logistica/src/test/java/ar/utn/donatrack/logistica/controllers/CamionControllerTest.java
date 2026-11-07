@@ -2,6 +2,7 @@ package ar.utn.donatrack.logistica.controllers;
 
 import ar.utn.donatrack.logistica.dtos.response.CamionResponseDTO;
 import ar.utn.donatrack.logistica.dtos.response.RutaResponseDTO;
+import ar.utn.donatrack.logistica.exceptions.OperacionCamionIlegalException;
 import ar.utn.donatrack.logistica.interfaces.services.CamionServiceInterface;
 import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
 import ar.utn.donatrack.logistica.models.flota.EstadoCamion;
@@ -16,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -125,6 +127,76 @@ class CamionControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.camionId").value(idCamion.toString()))
                     .andExpect(jsonPath("$.estado").value("INICIADA"));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/logistica/camiones/{id}/mantenimiento")
+    class Mantenimiento {
+
+        @Test
+        @DisplayName("Devuelve 200 con el camión en MANTENIMIENTO")
+        void ok() throws Exception {
+            when(camionService.pasarAMantenimiento(idCamion)).thenReturn(CamionResponseDTO.builder()
+                    .id(idCamion)
+                    .patente("AB123CD")
+                    .estado(EstadoCamion.MANTENIMIENTO)
+                    .build());
+
+            mockMvc.perform(post("/api/logistica/camiones/{id}/mantenimiento", idCamion))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("MANTENIMIENTO"));
+        }
+
+        @Test
+        @DisplayName("Devuelve 409 si el camión no puede salir de servicio")
+        void conflicto() throws Exception {
+            when(camionService.pasarAMantenimiento(idCamion))
+                    .thenThrow(new OperacionCamionIlegalException("en ruta"));
+
+            mockMvc.perform(post("/api/logistica/camiones/{id}/mantenimiento", idCamion))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.status").value(409));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/logistica/camiones/{id}/ubicacion")
+    class Ubicacion {
+
+        @Test
+        @DisplayName("Devuelve 200 con el punto y la hora que guardó el servicio")
+        void ok() throws Exception {
+            when(camionService.registrarUbicacion(any(), any())).thenReturn(CamionResponseDTO.builder()
+                    .id(idCamion)
+                    .latitud(-34.6)
+                    .longitud(-58.4)
+                    .ubicacionActualizadaEn(LocalDateTime.of(2026, 11, 7, 16, 0))
+                    .estado(EstadoCamion.EN_RUTA)
+                    .build());
+
+            mockMvc.perform(post("/api/logistica/camiones/{id}/ubicacion", idCamion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of(
+                                    "latitud", -34.6,
+                                    "longitud", -58.4))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.latitud").value(-34.6))
+                    .andExpect(jsonPath("$.longitud").value(-58.4))
+                    .andExpect(jsonPath("$.ubicacionActualizadaEn").value("2026-11-07T16:00:00"));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si la latitud está fuera de rango y no llama al servicio")
+        void latitudInvalida() throws Exception {
+            mockMvc.perform(post("/api/logistica/camiones/{id}/ubicacion", idCamion)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of(
+                                    "latitud", 91,
+                                    "longitud", -58.4))))
+                    .andExpect(status().isBadRequest());
+
+            verify(camionService, never()).registrarUbicacion(any(), any());
         }
     }
 }

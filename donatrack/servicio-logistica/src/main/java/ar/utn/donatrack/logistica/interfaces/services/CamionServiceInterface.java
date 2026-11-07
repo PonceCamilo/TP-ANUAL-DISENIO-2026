@@ -1,6 +1,7 @@
 package ar.utn.donatrack.logistica.interfaces.services;
 
 import ar.utn.donatrack.logistica.dtos.request.CamionRequestDTO;
+import ar.utn.donatrack.logistica.dtos.request.UbicacionRequestDTO;
 import ar.utn.donatrack.logistica.dtos.response.CamionResponseDTO;
 
 import java.util.List;
@@ -10,4 +11,7 @@ public interface CamionServiceInterface {
     CamionResponseDTO registrar(CamionRequestDTO dto);
     List<CamionResponseDTO> obtenerTodos();
     CamionResponseDTO obtenerPorId(UUID id);
+    CamionResponseDTO pasarAMantenimiento(UUID id);
+    CamionResponseDTO volverADisponible(UUID id);
+    CamionResponseDTO registrarUbicacion(UUID id, UbicacionRequestDTO dto);
 }

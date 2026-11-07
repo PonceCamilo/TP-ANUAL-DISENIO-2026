@@ -266,6 +266,11 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
         Camion camion = ruta.getCamion();
         if (camion != null) {
             camion.setEstado(EstadoCamion.EN_RUTA);
+            // El punto del viaje anterior no sirve para este. Hasta que el chofer
+            // informe la posición, el mapa no tiene última actualización.
+            camion.setLatitud(null);
+            camion.setLongitud(null);
+            camion.setUbicacionActualizadaEn(null);
             camionRepositorio.guardar(camion);
         }
 

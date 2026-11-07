@@ -467,6 +467,32 @@ class PlanificacionRutasServiceTest {
         }
 
         @Test
+        @DisplayName("Al iniciar olvida la ubicación del viaje anterior")
+        void olvidaUbicacionAnterior() {
+            UUID rutaId = UUID.randomUUID();
+            Camion camionDelViaje = Camion.builder()
+                    .id(UUID.randomUUID())
+                    .estado(EstadoCamion.DISPONIBLE)
+                    .latitud(-34.6)
+                    .longitud(-58.4)
+                    .ubicacionActualizadaEn(java.time.LocalDateTime.now().minusDays(1))
+                    .build();
+            Entrega entrega = Entrega.builder()
+                    .id(UUID.randomUUID())
+                    .idDonacion(UUID.randomUUID())
+                    .estado(EstadoEntrega.LISTO_PARA_ENTREGAR)
+                    .build();
+            when(rutaRepositorio.buscarPorId(rutaId))
+                    .thenReturn(rutaPlanificadaConEntrega(rutaId, camionDelViaje, entrega));
+
+            servicio.iniciarRuta(rutaId);
+
+            assertThat(camionDelViaje.getLatitud()).isNull();
+            assertThat(camionDelViaje.getLongitud()).isNull();
+            assertThat(camionDelViaje.getUbicacionActualizadaEn()).isNull();
+        }
+
+        @Test
         @DisplayName("Publica un solo INICIO_RUTA con las donaciones de la ruta y el link al mapa")
         void publicaInicioRuta() {
             UUID rutaId = UUID.randomUUID();
