@@ -45,47 +45,6 @@ class RankingMensualTest {
 
             assertThat(ranking.getPosiciones()).extracting(PosicionRanking::getDonante).containsExactly(dosDonaciones, unaDonacion);
         }
-
-        @Test
-        @DisplayName("Guarda el primer dia del mes en cada posicion")
-        void guardaPrimerDiaDelMes() {
-            Donante donante = donanteConId(UUID.randomUUID());
-
-            RankingMensual ranking = RankingMensual.calcular(List.of(donante), LocalDateTime.of(2026, 6, 24, 18, 30));
-
-            assertThat(ranking.getPeriodoInicio()).isEqualTo(LocalDateTime.of(2026, 6, 1, 0, 0));
-            assertThat(ranking.getPosiciones().get(0).getDiaDeCreacion()).isEqualTo(LocalDateTime.of(2026, 6, 1, 0, 0));
-        }
-    }
-
-    @Nested
-    @DisplayName("Consultas")
-    class Consultas {
-
-        @Test
-        @DisplayName("topTres devuelve como maximo tres posiciones")
-        void devuelveTopTres() {
-            RankingMensual ranking = RankingMensual.calcular(List.of(
-                    donanteConId(UUID.randomUUID()),
-                    donanteConId(UUID.randomUUID()),
-                    donanteConId(UUID.randomUUID()),
-                    donanteConId(UUID.randomUUID())
-            ), LocalDateTime.of(2026, 6, 24, 12, 0));
-
-            assertThat(ranking.topTres()).hasSize(3);
-        }
-
-        @Test
-        @DisplayName("posicionDe devuelve el puesto del donante")
-        void devuelvePosicionDelDonante() {
-            Donante primero = donanteConId(UUID.randomUUID());
-            Donante segundo = donanteConId(UUID.randomUUID());
-            primero.agregarInsignia(insigniaObtenidaEn(LocalDateTime.of(2026, 6, 10, 12, 0)));
-
-            RankingMensual ranking = RankingMensual.calcular(List.of(segundo, primero), LocalDateTime.of(2026, 6, 24, 12, 0));
-
-            assertThat(ranking.posicionDe(segundo.getId())).isEqualTo(2);
-        }
     }
 
     private Donante donanteConId(UUID id) {

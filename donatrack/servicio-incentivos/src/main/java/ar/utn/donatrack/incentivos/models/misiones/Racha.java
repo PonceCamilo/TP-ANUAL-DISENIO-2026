@@ -1,5 +1,6 @@
 package ar.utn.donatrack.incentivos.models.misiones;
 
+import ar.utn.donatrack.incentivos.models.DonacionRegistrada;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.insignias.Insignia;
@@ -11,6 +12,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 
 @Getter
 @Setter
@@ -36,6 +38,11 @@ public class Racha extends Mision {
         if (this.progresoRacha == null) {
             this.progresoRacha = new ProgresoRacha();
         }
+    }
+
+    @Override
+    public void registrarActividad(ProgresoMision progreso, DonacionRegistrada donacion) {
+        progreso.registrarMes(YearMonth.from(donacion.getFecha()));
     }
 
     public boolean estaCompletada(Donante donante) {

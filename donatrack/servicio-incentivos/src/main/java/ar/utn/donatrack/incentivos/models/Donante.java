@@ -64,6 +64,15 @@ public class Donante {
         agregarInsignia(mision.otorgarInsignia());
     }
 
+    public boolean completoMision(Mision mision) {
+        var insigniaDeMision = mision.getInsignia();
+        return insigniaDeMision != null && insigniasObtenidas.stream()
+                .map(InsigniaObtenida::getInsignia)
+                .anyMatch(insignia -> insignia == insigniaDeMision
+                        || insignia != null && insigniaDeMision.getId() != null
+                        && insigniaDeMision.getId().equals(insignia.getId()));
+    }
+
     public boolean subirCategoria() {
         CategoriaDonante siguiente = this.categoriaActual.siguienteCategoria();
         if (siguiente != null) {

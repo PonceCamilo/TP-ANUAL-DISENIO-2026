@@ -2,6 +2,7 @@ package ar.utn.donatrack.incentivos.services;
 
 import ar.utn.donatrack.incentivos.client.N8nWebhookClient;
 import ar.utn.donatrack.incentivos.client.NotificacionClient;
+import ar.utn.donatrack.incentivos.dtos.response.MisionResponse;
 import ar.utn.donatrack.incentivos.models.DonacionRegistrada;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.Colaborador;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.Set;
@@ -102,7 +104,7 @@ class IncentivosServiceTest {
 
             Donante perfil = service.obtenerPerfil(donanteId);
             assertThat(perfil.getDonaciones()).hasSize(1);
-            assertThat(perfil.getProgresoMision().progresoActual(perfil)).isZero();
+            assertThat(perfil.getProgresoMision().progresoActual(LocalDate.now())).isZero();
             verifyNoInteractions(notificacionClient, n8nWebhookClient);
         }
 
@@ -115,6 +117,33 @@ class IncentivosServiceTest {
             org.assertj.core.api.Assertions.assertThatThrownBy(() ->
                     service.procesarDonacion(donanteId, donacionRegistradaSinCategorias(), DESTINATARIO, MEDIO)
             ).isInstanceOf(RuntimeException.class);
+        }
+
+        @Test
+        void laDonacionQueCompletaUnaMisionNoAvanzaLaSiguiente() {
+            UUID id = UUID.randomUUID();
+            Mision primera = new Completitud("Dos categorías", "", new Colaborador(), 2,
+                    Insignia.builder().nombre("Variedad").build());
+            Mision siguiente = new HabilDonador("Diez bienes", "", new Colaborador(), 10,
+                    Insignia.builder().nombre("Gran aporte").build());
+            repositorio.guardarMision(primera);
+            repositorio.guardarMision(siguiente);
+
+            service.procesarDonacion(id, donacionRegistrada(12, "ALIMENTOS"), null, null);
+            Donante perfil = service.obtenerPerfil(id);
+            assertThat(MisionResponse.desde(siguiente, perfil).activa()).isFalse();
+            assertThat(MisionResponse.desde(siguiente, perfil).progresoActual()).isZero();
+
+            service.procesarDonacion(id, donacionRegistrada(12, "ABRIGO"), null, null);
+            perfil = service.obtenerPerfil(id);
+            assertThat(MisionResponse.desde(primera, perfil).completada()).isTrue();
+            assertThat(MisionResponse.desde(siguiente, perfil).activa()).isTrue();
+            assertThat(MisionResponse.desde(siguiente, perfil).progresoActual()).isZero();
+
+            service.procesarDonacion(id, donacionRegistrada(4, "ALIMENTOS"), null, null);
+            perfil = service.obtenerPerfil(id);
+            assertThat(MisionResponse.desde(siguiente, perfil).progresoActual()).isEqualTo(4);
+            assertThat(perfil.getInsigniasObtenidas()).hasSize(1);
         }
     }
 
@@ -129,6 +158,7 @@ class IncentivosServiceTest {
             repositorio.guardarMision(misionPrimeraDonacion());
             repositorio.guardarMision(misionRacha());
 
+            service.procesarDonacion(donanteId, donacionRegistrada(1, "ALIMENTOS"), DESTINATARIO, MEDIO);
             service.procesarDonacionExitosa(donanteId, donacionExitosa("Comedor Norte"), DESTINATARIO, MEDIO);
 
             Donante perfil = service.obtenerPerfil(donanteId);
@@ -146,6 +176,7 @@ class IncentivosServiceTest {
             repositorio.guardarMision(misionPrimeraDonacion());
             repositorio.guardarMision(misionSostenedor);
 
+            service.procesarDonacion(donanteId, donacionRegistrada(1, "ALIMENTOS"), DESTINATARIO, MEDIO);
             service.procesarDonacionExitosa(donanteId, donacionExitosa("Comedor Norte"), DESTINATARIO, MEDIO);
 
             Donante perfil = service.obtenerPerfil(donanteId);
@@ -161,6 +192,7 @@ class IncentivosServiceTest {
             repositorio.guardarMision(misionPrimeraDonacion());
             repositorio.guardarMision(misionGranDonacion());
 
+            service.procesarDonacion(donanteId, donacionRegistrada(1, "ALIMENTOS"), null, null);
             service.procesarDonacionExitosa(donanteId, donacionExitosa("Comedor Norte"), null, null);
 
             Donante perfil = service.obtenerPerfil(donanteId);
@@ -183,7 +215,7 @@ class IncentivosServiceTest {
 
             service.procesarDonacion(donanteId, donacionRegistrada(1, "ALIMENTOS", "ABRIGO", "HIGIENE"), DESTINATARIO, MEDIO);
 
-            Donante perfil = repositorio.buscarPerfil(donanteId).orElseThrow();
+            Donante perfil = service.obtenerPerfil(donanteId);
             assertThat(perfil.getInsigniasObtenidas()).hasSize(1);
             assertThat(perfil.getCategoria()).isInstanceOf(Transformador.class);
             assertThat(perfil.getProgresoMision().getMisionActual()).isNull();
@@ -196,7 +228,7 @@ class IncentivosServiceTest {
 
         @Test
         @DisplayName("Reinicia la mision si el donante pasa un mes completo sin donar")
-        void reiniciaMisionPorRachaPerdida() {
+        void reiniciaSoloLaRachaActiva() {
             DonacionesExitosas primera = misionPrimeraDonacion();
             Racha racha = misionRacha();
             repositorio.guardarMision(primera);
@@ -206,12 +238,16 @@ class IncentivosServiceTest {
             donante.setId(donanteId);
             donante.setCategoria(new Colaborador());
             donante.cambiarMisionActual(racha);
-            donante.registrarDonacion(donacionRegistradaEn(YearMonth.now().minusMonths(2).atDay(5).atTime(12, 0)));
+            donante.completarMision(primera);
+            donante.getProgresoMision().registrarActividad(
+                    donacionRegistradaEn(YearMonth.now().minusMonths(2).atDay(5).atTime(12, 0)));
             repositorio.guardarPerfil(donante);
 
             Donante perfil = service.obtenerPerfil(donanteId);
 
-            assertThat(perfil.getProgresoMision().getMisionActual()).isSameAs(primera);
+            assertThat(perfil.getProgresoMision().getMisionActual()).isSameAs(racha);
+            assertThat(perfil.getProgresoMision().progresoActual(LocalDate.now())).isZero();
+            assertThat(perfil.getInsigniasObtenidas()).hasSize(1);
         }
     }
 
