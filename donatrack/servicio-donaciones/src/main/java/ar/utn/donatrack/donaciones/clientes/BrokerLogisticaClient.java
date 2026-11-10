@@ -28,7 +28,8 @@ import java.util.UUID;
  * donación): si el envío no salió, Donaciones TIENE que saberlo para no marcar la
  * donación como lista para entregar. Por eso las excepciones se propagan.
  *
- * La lectura espera 20 segundos (más que los 10 s que el broker le da a Logística).
+ * La lectura espera 20 segundos por defecto (más que los 10 s que el broker le da
+ * a Logística); se cambia con servicios.broker-logistica.read-timeout.
  */
 @Component
 public class BrokerLogisticaClient {
@@ -44,10 +45,11 @@ public class BrokerLogisticaClient {
     private final Api api;
 
     public BrokerLogisticaClient(RestClient.Builder builder,
-            @Value("${servicios.broker-logistica.url:http://localhost:8087}") String baseUrl) {
+            @Value("${servicios.broker-logistica.url:http://localhost:8087}") String baseUrl,
+            @Value("${servicios.broker-logistica.read-timeout:20s}") Duration timeoutDeLectura) {
         SimpleClientHttpRequestFactory fabrica = new SimpleClientHttpRequestFactory();
         fabrica.setConnectTimeout(Duration.ofSeconds(2));
-        fabrica.setReadTimeout(Duration.ofSeconds(20));
+        fabrica.setReadTimeout(timeoutDeLectura);
         this.api = ClientesHttp.crear(builder.requestFactory(fabrica), baseUrl, Api.class);
     }
 

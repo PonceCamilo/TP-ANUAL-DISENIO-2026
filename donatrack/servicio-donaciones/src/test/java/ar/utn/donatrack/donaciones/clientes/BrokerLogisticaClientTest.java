@@ -40,7 +40,8 @@ class BrokerLogisticaClientTest {
             intercambio.close();
         });
         servidor.start();
-        cliente = new BrokerLogisticaClient(RestClient.builder(), "http://localhost:" + servidor.getAddress().getPort());
+        cliente = new BrokerLogisticaClient(RestClient.builder(), "http://localhost:" + servidor.getAddress().getPort(),
+                java.time.Duration.ofSeconds(20));
     }
 
     @AfterEach
