@@ -47,8 +47,12 @@ public class EntidadesBeneficiariasService {
     }
 
     @Transactional(readOnly = true)
-    public PaginaResponseDTO<EntidadBeneficiariaResponseDTO> obtenerEntidades(SolicitudPagina pagina) {
-        return PaginaResponseDTO.desde(repositorio.buscar(pagina).map(mapper::toDTO));
+    public PaginaResponseDTO<EntidadBeneficiariaResponseDTO> obtenerEntidades(String email, SolicitudPagina pagina) {
+        // Con email: solo las entidades que lo tienen como contacto o representante
+        // (Entrega 6: el front ubica así a la entidad de quien inició sesión).
+        boolean porEmail = email != null && !email.isBlank();
+        return PaginaResponseDTO.desde(
+                (porEmail ? repositorio.buscarPorEmail(email, pagina) : repositorio.buscar(pagina)).map(mapper::toDTO));
     }
 
     @Transactional(readOnly = true)

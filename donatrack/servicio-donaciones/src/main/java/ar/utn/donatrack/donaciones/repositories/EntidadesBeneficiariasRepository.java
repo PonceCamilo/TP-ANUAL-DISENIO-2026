@@ -5,6 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Repository;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
+import ar.utn.donatrack.donaciones.util.NormalizadorEmail;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioEntidadesBeneficiarias;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
@@ -42,6 +43,12 @@ public class EntidadesBeneficiariasRepository implements RepositorioEntidadesBen
 
     public Pagina<EntidadBeneficiaria> buscar(SolicitudPagina pagina) {
         Page<EntidadBeneficiaria> resultado = jpa.findAll(PageRequest.of(pagina.numero(), pagina.tamanio(), ORDEN_LISTADO));
+        return new Pagina<>(resultado.getContent(), pagina.numero(), pagina.tamanio(), resultado.getTotalElements());
+    }
+
+    public Pagina<EntidadBeneficiaria> buscarPorEmail(String email, SolicitudPagina pagina) {
+        Page<EntidadBeneficiaria> resultado = jpa.buscarPorEmail(
+                NormalizadorEmail.normalizar(email), PageRequest.of(pagina.numero(), pagina.tamanio(), ORDEN_LISTADO));
         return new Pagina<>(resultado.getContent(), pagina.numero(), pagina.tamanio(), resultado.getTotalElements());
     }
 

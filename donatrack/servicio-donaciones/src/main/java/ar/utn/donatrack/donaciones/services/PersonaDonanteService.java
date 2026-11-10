@@ -18,12 +18,14 @@ import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
 import ar.utn.donatrack.donaciones.models.donante.PersonaDonante;
 import ar.utn.donatrack.donaciones.models.donante.PersonaHumana;
 import ar.utn.donatrack.donaciones.models.donante.PersonaJuridica;
+import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.validations.personas.PersonasValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Transactional
@@ -54,9 +56,25 @@ public class PersonaDonanteService {
         return mapper.toDTO(validador.validarYObtenerPersona(id));
     }
 
+    /**
+     * Con email devuelve la página con esa única persona (o vacía): el email es
+     * único, así que no hace falta recorrer el listado para encontrar a alguien
+     * (Entrega 6: el front ubica así a quien inició sesión). Se respeta la misma
+     * forma de respuesta que el listado, y el filtro de estado si también viene.
+     */
     @Transactional(readOnly = true)
-    public PaginaResponseDTO<PersonaDonanteResponseDTO> obtenerDonantes(String estado, SolicitudPagina pagina) {
-        return PaginaResponseDTO.desde(repositorio.buscar(estado, pagina).map(mapper::toDTO));
+    public PaginaResponseDTO<PersonaDonanteResponseDTO> obtenerDonantes(String estado, String email,
+                                                                        SolicitudPagina pagina) {
+        if (email == null || email.isBlank()) {
+            return PaginaResponseDTO.desde(repositorio.buscar(estado, pagina).map(mapper::toDTO));
+        }
+        List<PersonaDonante> encontradas = repositorio.buscarPorEmail(email)
+                .filter(persona -> estado == null || estado.isBlank() || estado.equals(persona.getEstadoNombre()))
+                .map(List::of)
+                .orElse(List.of());
+        List<PersonaDonante> contenido = pagina.numero() == 0 ? encontradas : List.of();
+        return PaginaResponseDTO.desde(
+                new Pagina<>(contenido, pagina.numero(), pagina.tamanio(), encontradas.size()).map(mapper::toDTO));
     }
 
     public void cambiarEstado(UUID id, EstadoDonanteRequestDTO dto) {

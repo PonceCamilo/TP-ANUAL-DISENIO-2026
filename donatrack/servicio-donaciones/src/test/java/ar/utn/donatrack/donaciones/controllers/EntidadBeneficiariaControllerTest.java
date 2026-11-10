@@ -195,7 +195,7 @@ class EntidadBeneficiariaControllerTest {
         @Test
         @DisplayName("GET devuelve 200 con la primera página de entidades por defecto")
         void listadoOk() throws Exception {
-            when(entidadesService.obtenerEntidades(new SolicitudPagina(0, 20)))
+            when(entidadesService.obtenerEntidades(null, new SolicitudPagina(0, 20)))
                     .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(respuestaEntidad()), 0, 20, 1)));
 
             mockMvc.perform(get("/entidades"))
@@ -207,7 +207,7 @@ class EntidadBeneficiariaControllerTest {
         @Test
         @DisplayName("GET pasa la página pedida y rechaza un tamaño fuera de rango (400)")
         void listadoPaginado() throws Exception {
-            when(entidadesService.obtenerEntidades(new SolicitudPagina(2, 5)))
+            when(entidadesService.obtenerEntidades(null, new SolicitudPagina(2, 5)))
                     .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 2, 5, 3)));
 
             mockMvc.perform(get("/entidades").param("page", "2").param("size", "5"))
@@ -215,6 +215,17 @@ class EntidadBeneficiariaControllerTest {
                     .andExpect(jsonPath("$.pagina").value(2));
             mockMvc.perform(get("/entidades").param("size", "500"))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("GET pasa el filtro de email al service")
+        void listadoPorEmail() throws Exception {
+            when(entidadesService.obtenerEntidades("contacto@comedor.org", new SolicitudPagina(0, 20)))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(respuestaEntidad()), 0, 20, 1)));
+
+            mockMvc.perform(get("/entidades").param("email", "contacto@comedor.org"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(1)));
         }
 
         @Test

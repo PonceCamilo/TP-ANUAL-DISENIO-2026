@@ -289,11 +289,79 @@ class PersonaDonanteServiceTest {
             when(repositorio.buscar("BLOQUEADO", pagina)).thenReturn(new Pagina<>(
                     List.of(humanaGuardada(UUID.randomUUID()), juridicaGuardada(UUID.randomUUID())), 0, 20, 2));
 
-            PaginaResponseDTO<PersonaDonanteResponseDTO> resultado = servicio.obtenerDonantes("BLOQUEADO", pagina);
+            PaginaResponseDTO<PersonaDonanteResponseDTO> resultado = servicio.obtenerDonantes("BLOQUEADO", null, pagina);
 
             assertThat(resultado.getContenido()).hasSize(2);
             assertThat(resultado.getTotalElementos()).isEqualTo(2);
             assertThat(resultado.getTotalPaginas()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Con email devuelve la página con esa única persona, sin recorrer el listado")
+        void buscaPorEmail() {
+            // Es como el front ubica a quien inició sesión (Entrega 6). Antes
+            // tenía que recorrer el listado, que con paginación solo le mostraba
+            // las primeras 20 personas.
+            UUID id = UUID.randomUUID();
+            when(repositorio.buscarPorEmail("Juan@Example.com")).thenReturn(Optional.of(humanaGuardada(id)));
+
+            PaginaResponseDTO<PersonaDonanteResponseDTO> resultado =
+                    servicio.obtenerDonantes(null, "Juan@Example.com", new SolicitudPagina(0, 20));
+
+            assertThat(resultado.getContenido()).extracting(PersonaDonanteResponseDTO::getId).containsExactly(id);
+            assertThat(resultado.getTotalElementos()).isEqualTo(1);
+            verify(repositorio, never()).buscar(any(), any());
+        }
+
+        @Test
+        @DisplayName("Con un email que nadie tiene devuelve una página vacía, no un 404")
+        void emailInexistenteDaPaginaVacia() {
+            // Es un filtro de un listado: "no hay resultados" es una respuesta
+            // válida. El front la usa para saber que la persona todavía no se registró.
+            when(repositorio.buscarPorEmail("nadie@example.com")).thenReturn(Optional.empty());
+
+            PaginaResponseDTO<PersonaDonanteResponseDTO> resultado =
+                    servicio.obtenerDonantes(null, "nadie@example.com", new SolicitudPagina(0, 20));
+
+            assertThat(resultado.getContenido()).isEmpty();
+            assertThat(resultado.getTotalElementos()).isZero();
+        }
+
+        @Test
+        @DisplayName("El filtro de estado también se aplica cuando se busca por email")
+        void emailYEstadoSeCombinan() {
+            when(repositorio.buscarPorEmail("juan@example.com"))
+                    .thenReturn(Optional.of(humanaGuardada(UUID.randomUUID())));
+
+            assertThat(servicio.obtenerDonantes("ACTIVO", "juan@example.com", new SolicitudPagina(0, 20))
+                    .getContenido()).hasSize(1);
+            assertThat(servicio.obtenerDonantes("BLOQUEADO", "juan@example.com", new SolicitudPagina(0, 20))
+                    .getContenido()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("Buscando por email, una página posterior a la primera viene vacía pero con el total")
+        void emailEnPaginaPosterior() {
+            when(repositorio.buscarPorEmail("juan@example.com"))
+                    .thenReturn(Optional.of(humanaGuardada(UUID.randomUUID())));
+
+            PaginaResponseDTO<PersonaDonanteResponseDTO> resultado =
+                    servicio.obtenerDonantes(null, "juan@example.com", new SolicitudPagina(1, 20));
+
+            assertThat(resultado.getContenido()).isEmpty();
+            assertThat(resultado.getTotalElementos()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Un email en blanco se ignora y devuelve el listado común")
+        void emailEnBlancoSeIgnora() {
+            SolicitudPagina pagina = new SolicitudPagina(0, 20);
+            when(repositorio.buscar(null, pagina)).thenReturn(new Pagina<>(List.of(), 0, 20, 0));
+
+            servicio.obtenerDonantes(null, "   ", pagina);
+
+            verify(repositorio).buscar(null, pagina);
+            verify(repositorio, never()).buscarPorEmail(any());
         }
     }
 
