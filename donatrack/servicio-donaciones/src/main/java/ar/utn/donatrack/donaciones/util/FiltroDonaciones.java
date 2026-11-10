@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.util;
 
+import ar.utn.donatrack.donaciones.exceptions.comunes.RangoDeFechasInvalidoException;
+
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -14,13 +17,26 @@ import java.util.UUID;
  * @param idEntidad    donaciones asignadas a una entidad beneficiaria
  * @param soloConBienesVencidos donaciones con algún perecedero ya vencido (las
  *                     que la persona administradora tiene que pasar a VENCIDA)
+ * @param desde        donaciones hechas ese día o después (Entrega 6: la landing
+ *                     muestra las del último mes)
+ * @param hasta        donaciones hechas ese día o antes; los dos extremos se incluyen
  */
 public record FiltroDonaciones(String estado, UUID idDonante, String subcategoria, UUID idEntidad,
-                               boolean soloConBienesVencidos) {
+                               boolean soloConBienesVencidos, LocalDate desde, LocalDate hasta) {
 
     public FiltroDonaciones {
         estado = textoONulo(estado);
         subcategoria = textoONulo(subcategoria);
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new RangoDeFechasInvalidoException(
+                    "La fecha 'desde' (" + desde + ") no puede ser posterior a 'hasta' (" + hasta + ")");
+        }
+    }
+
+    /** Sin rango de fechas. */
+    public FiltroDonaciones(String estado, UUID idDonante, String subcategoria, UUID idEntidad,
+                            boolean soloConBienesVencidos) {
+        this(estado, idDonante, subcategoria, idEntidad, soloConBienesVencidos, null, null);
     }
 
     private static String textoONulo(String texto) {

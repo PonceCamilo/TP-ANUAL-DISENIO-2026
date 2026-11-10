@@ -125,7 +125,21 @@ public class DonacionesRepository implements RepositorioDonaciones {
                 igual("idDonante", filtro.idDonante()),
                 igual("idEntidadBeneficiaria", filtro.idEntidad()),
                 deSubcategoria(filtro.subcategoria()),
-                filtro.soloConBienesVencidos() ? conBienesVencidosAl(FechaHoraArgentina.hoy()) : null);
+                filtro.soloConBienesVencidos() ? conBienesVencidosAl(FechaHoraArgentina.hoy()) : null,
+                hechaDesde(filtro.desde()),
+                hechaHasta(filtro.hasta()));
+    }
+
+    /** fechaDonacion es fecha y hora: desde el comienzo de ese día. */
+    private static Specification<Donacion> hechaDesde(LocalDate desde) {
+        return desde == null ? null
+                : (raiz, consulta, cb) -> cb.greaterThanOrEqualTo(raiz.get("fechaDonacion"), desde.atStartOfDay());
+    }
+
+    /** Hasta el final de ese día: antes del comienzo del siguiente. */
+    private static Specification<Donacion> hechaHasta(LocalDate hasta) {
+        return hasta == null ? null
+                : (raiz, consulta, cb) -> cb.lessThan(raiz.get("fechaDonacion"), hasta.plusDays(1).atStartOfDay());
     }
 
     /** El atributo es igual al valor, o ninguna condición (null) si el filtro no vino. */

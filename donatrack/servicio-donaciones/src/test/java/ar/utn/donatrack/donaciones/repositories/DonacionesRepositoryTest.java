@@ -206,6 +206,43 @@ class DonacionesRepositoryTest {
         }
 
         @Test
+        @DisplayName("Filtra por rango de fechas incluyendo los dos días de los extremos")
+        void porRangoDeFechas() {
+            Donacion delDiaAnterior = donacion(ana, "Fideos", LocalDateTime.of(2026, 9, 30, 23, 59));
+            Donacion ultimoMinutoDelDia = donacion(ana, "Fideos", LocalDateTime.of(2026, 10, 2, 23, 59));
+            Donacion delDiaSiguiente = donacion(ana, "Fideos", LocalDateTime.of(2026, 10, 3, 0, 0));
+            persistirYLimpiar(List.of(delDiaAnterior, ultimoMinutoDelDia, delDiaSiguiente));
+
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, null, null, null, false,
+                    LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 2)), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactly(ultimoMinutoDelDia.getId(),
+                    arrozDeBetoAsignado.getId(), ropaDeAna.getId(), arrozDeAna.getId());
+        }
+
+        @Test
+        @DisplayName("Con solo 'desde' trae las de ese día en adelante (las del último mes)")
+        void soloDesde() {
+            Donacion vieja = donacion(ana, "Fideos", base.minusMonths(2));
+            persistirYLimpiar(List.of(vieja));
+
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, null, null, null, false,
+                    base.toLocalDate().minusMonths(1), null), primeraPagina);
+
+            assertThat(pagina.totalElementos()).isEqualTo(3);
+            assertThat(ids(pagina)).doesNotContain(vieja.getId());
+        }
+
+        @Test
+        @DisplayName("El rango se combina con los demás filtros")
+        void rangoConOtrosFiltros() {
+            Pagina<Donacion> pagina = repositorio.buscar(new FiltroDonaciones(null, ana, null, null, false,
+                    null, base.toLocalDate()), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactly(ropaDeAna.getId(), arrozDeAna.getId());
+        }
+
+        @Test
         @DisplayName("Las donaciones leídas traen sus bienes y su estado")
         void traeBienesYEstado() {
             Donacion leida = repositorio.buscar(new FiltroDonaciones(null, beto, null, null, false), primeraPagina)

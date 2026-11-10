@@ -25,6 +25,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -57,7 +59,8 @@ public class DonacionesController {
     @Operation(
             summary = "Listar donaciones (paginado)",
             description = "Devuelve una página de donaciones, de la más nueva a la más vieja, con filtros opcionales "
-                    + "por estado, persona donante, subcategoría, entidad beneficiaria y bienes vencidos. Las páginas empiezan en 0; "
+                    + "por estado, persona donante, subcategoría, entidad beneficiaria, bienes vencidos y rango de fechas "
+                    + "(desde/hasta, ambos incluidos). Las páginas empiezan en 0; "
                     + "el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
                     + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
             responses = {
@@ -77,13 +80,17 @@ public class DonacionesController {
             @RequestParam(required = false) UUID idEntidad,
             @Parameter(description = "true: solo las que tienen algún perecedero ya vencido (para pasarlas a VENCIDA)")
             @RequestParam(required = false) Boolean vencidas,
+            @Parameter(description = "Solo las hechas ese día o después (AAAA-MM-DD)", example = "2026-10-10")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @Parameter(description = "Solo las hechas ese día o antes (AAAA-MM-DD)", example = "2026-11-10")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @Parameter(description = "Número de página, desde 0", example = "0")
             @RequestParam(required = false) Integer page,
             @Parameter(description = "Elementos por página (1 a 100)", example = "20")
             @RequestParam(required = false) Integer size
     ) {
         FiltroDonaciones filtro = new FiltroDonaciones(estado, idDonante, subcategoria, idEntidad,
-                Boolean.TRUE.equals(vencidas));
+                Boolean.TRUE.equals(vencidas), desde, hasta);
         return ResponseEntity.ok(consultas.obtenerDonaciones(filtro, SolicitudPagina.de(page, size)));
     }
 

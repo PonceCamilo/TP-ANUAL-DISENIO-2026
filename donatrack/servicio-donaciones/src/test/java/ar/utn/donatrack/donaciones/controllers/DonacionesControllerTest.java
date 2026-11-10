@@ -218,6 +218,38 @@ class DonacionesControllerTest {
             mockMvc.perform(get("/donaciones").param("page", "abc"))
                     .andExpect(status().isBadRequest());
         }
+
+        @Test
+        @DisplayName("Pasa el rango de fechas al service (la landing pide las del último mes)")
+        void pasaElRangoDeFechas() throws Exception {
+            when(consultas.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
+
+            mockMvc.perform(get("/donaciones").param("desde", "2026-10-10").param("hasta", "2026-11-10"))
+                    .andExpect(status().isOk());
+
+            verify(consultas).obtenerDonaciones(
+                    new FiltroDonaciones(null, null, null, null, false,
+                            java.time.LocalDate.of(2026, 10, 10), java.time.LocalDate.of(2026, 11, 10)),
+                    new SolicitudPagina(0, 20));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si 'desde' es posterior a 'hasta'")
+        void rangoInvertido() throws Exception {
+            mockMvc.perform(get("/donaciones").param("desde", "2026-11-10").param("hasta", "2026-10-10"))
+                    .andExpect(status().isBadRequest());
+
+            verify(consultas, never()).obtenerDonaciones(any(), any());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si una fecha no tiene el formato AAAA-MM-DD")
+        void fechaMalFormada() throws Exception {
+            mockMvc.perform(get("/donaciones").param("desde", "10/10/2026"))
+                    .andExpect(status().isBadRequest());
+
+            verify(consultas, never()).obtenerDonaciones(any(), any());
+        }
     }
 
     @Nested
