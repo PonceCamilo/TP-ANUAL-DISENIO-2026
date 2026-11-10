@@ -167,7 +167,6 @@ class EntidadesBeneficiariasServiceTest {
         @Test
         @DisplayName("obtenerEntidades() con email busca solo las entidades que lo tienen como contacto o representante")
         void obtenerEntidadesPorEmail() {
-            // Es como el front ubica a la entidad de quien inició sesión (Entrega 6).
             SolicitudPagina pagina = new SolicitudPagina(0, 20);
             when(repositorio.buscarPorEmail("contacto@comedor.org", pagina))
                     .thenReturn(new Pagina<>(List.of(entidad), 0, 20, 1));

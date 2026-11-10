@@ -299,9 +299,6 @@ class PersonaDonanteServiceTest {
         @Test
         @DisplayName("Con email devuelve la página con esa única persona, sin recorrer el listado")
         void buscaPorEmail() {
-            // Es como el front ubica a quien inició sesión (Entrega 6). Antes
-            // tenía que recorrer el listado, que con paginación solo le mostraba
-            // las primeras 20 personas.
             UUID id = UUID.randomUUID();
             when(repositorio.buscarPorEmail("Juan@Example.com")).thenReturn(Optional.of(humanaGuardada(id)));
 
