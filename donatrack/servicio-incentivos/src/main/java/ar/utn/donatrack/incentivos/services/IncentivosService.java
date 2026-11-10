@@ -14,10 +14,13 @@ import ar.utn.donatrack.incentivos.repositories.IncentivosRepository;
 import ar.utn.donatrack.incentivos.validations.IncentivosValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -56,6 +59,21 @@ public class IncentivosService implements IncentivosServiceInterface {
 
     public List<InsigniaObtenida> obtenerInsignias(UUID donanteId) {
         return obtenerPerfil(donanteId).getInsigniasObtenidas();
+    }
+
+    @Transactional
+    public void cambiarVisibilidadInsignia(UUID donanteId, Long insigniaId, boolean visible) {
+        InsigniaObtenida insignia = repositorio.buscarPerfil(donanteId)
+                .flatMap(perfil -> perfil.getInsigniasObtenidas().stream()
+                        .filter(obtenida -> insigniaId.equals(obtenida.getId()))
+                        .findFirst())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa insignia."));
+        insignia.setVisibilidad(visible);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Donante> buscarPerfilParaMostrar(UUID donanteId) {
+        return repositorio.buscarPerfil(donanteId);
     }
 
     public RankingMensual obtenerRankingMensualActual() {

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MetricasDonante {
 
@@ -16,7 +17,17 @@ public class MetricasDonante {
     }
 
     public int organizacionesAyudadas(Donante donante) {
-        return (int) donante.getDonaciones().stream()
+        return contarOrganizacionesAyudadas(donante.getDonaciones().stream());
+    }
+
+    public int organizacionesAyudadasEnPeriodo(Donante donante, YearMonth periodo) {
+        return contarOrganizacionesAyudadas(donante.getDonaciones().stream()
+                .filter(donacion -> donacion.getFecha() != null
+                        && YearMonth.from(donacion.getFecha()).equals(periodo)));
+    }
+
+    private int contarOrganizacionesAyudadas(Stream<DonacionRegistrada> donaciones) {
+        return (int) donaciones
                 .filter(DonacionRegistrada::isExitosa)
                 .map(DonacionRegistrada::getEntidadBeneficiaria)
                 .filter(entidad -> entidad != null && !entidad.isBlank())
