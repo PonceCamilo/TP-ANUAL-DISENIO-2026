@@ -42,4 +42,9 @@ public class NotificacionRepository implements NotificacionRepositoryInterface {
     public Notificacion buscarPorId(UUID id) {
         return jpa.findById(id).orElse(null);
     }
+
+    @Transactional(readOnly = true)
+    public List<Notificacion> buscarPorDestinatarios(List<String> destinatarios) {
+        return jpa.findByDestinatarioIgnoreCaseIn(destinatarios);
+    }
 }

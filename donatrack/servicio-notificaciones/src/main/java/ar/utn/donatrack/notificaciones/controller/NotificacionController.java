@@ -1,5 +1,6 @@
 package ar.utn.donatrack.notificaciones.controller;
 
+import ar.utn.donatrack.notificaciones.dto.MarcarLeidasDto;
 import ar.utn.donatrack.notificaciones.dto.SolicitudNotificacionDto;
 import ar.utn.donatrack.notificaciones.dto.response.NotificacionResponse;
 import ar.utn.donatrack.notificaciones.interfaces.services.NotificacionServiceInterface;
@@ -7,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -47,5 +49,23 @@ public class NotificacionController {
     @GetMapping("/{id}")
     public ResponseEntity<NotificacionResponse> obtenerPorId(@PathVariable UUID id) {
         return ResponseEntity.ok(NotificacionResponse.desde(notificacionService.obtenerPorId(id)));
+    }
+
+    /** Marca una notificación puntual como leída. */
+    @PatchMapping("/{id}/leida")
+    public ResponseEntity<Void> marcarLeida(@PathVariable UUID id) {
+        notificacionService.marcarLeida(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Marca como leídas todas las notificaciones pendientes de los
+     * destinatarios recibidos (el frontend lo llama al abrir la pantalla de
+     * notificaciones, para que desaparezca el contador de la campanita).
+     */
+    @PatchMapping("/leidas")
+    public ResponseEntity<Void> marcarLeidas(@RequestBody MarcarLeidasDto solicitud) {
+        notificacionService.marcarLeidas(solicitud.destinatarios());
+        return ResponseEntity.ok().build();
     }
 }

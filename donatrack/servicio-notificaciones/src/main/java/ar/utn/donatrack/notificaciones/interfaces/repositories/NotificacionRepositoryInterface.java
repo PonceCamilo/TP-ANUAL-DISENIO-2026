@@ -9,4 +9,5 @@ public interface NotificacionRepositoryInterface {
     void guardar(Notificacion notificacion);
     List<Notificacion> buscarTodas();
     Notificacion buscarPorId(UUID id);
+    List<Notificacion> buscarPorDestinatarios(List<String> destinatarios);
 }

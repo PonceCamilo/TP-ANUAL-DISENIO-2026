@@ -19,4 +19,6 @@ public interface NotificacionJpaRepository extends JpaRepository<Notificacion, U
     List<Notificacion> findByEstado(EstadoNotificacion estado);
 
     List<Notificacion> findByDestinatarioIgnoreCase(String destinatario);
+
+    List<Notificacion> findByDestinatarioIgnoreCaseIn(List<String> destinatarios);
 }

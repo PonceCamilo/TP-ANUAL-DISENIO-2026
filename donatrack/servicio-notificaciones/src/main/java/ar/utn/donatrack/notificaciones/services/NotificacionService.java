@@ -64,4 +64,26 @@ public class NotificacionService implements NotificacionServiceInterface {
         }
         return notificacion;
     }
+
+    /** Marca una notificación puntual como leída (ej. la abrieron desde un link directo). */
+    public void marcarLeida(UUID id) {
+        Notificacion notificacion = obtenerPorId(id);
+        notificacion.marcarLeida();
+        repositorio.guardar(notificacion);
+    }
+
+    /**
+     * Marca como leídas todas las notificaciones pendientes de un conjunto de
+     * destinatarios (ej. el usuario abrió la pantalla de notificaciones: todo
+     * lo que tenía sin leer pasa a leído de una vez).
+     */
+    public void marcarLeidas(List<String> destinatarios) {
+        List<Notificacion> notificaciones = repositorio.buscarPorDestinatarios(destinatarios);
+        for (Notificacion notificacion : notificaciones) {
+            if (!notificacion.isLeida()) {
+                notificacion.marcarLeida();
+                repositorio.guardar(notificacion);
+            }
+        }
+    }
 }
