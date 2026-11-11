@@ -53,16 +53,21 @@ class MetricasDonanteTest {
     class ProgresoMisiones {
 
         @Test
-        @DisplayName("Cuenta organizaciones ayudadas con donaciones exitosas")
+        @DisplayName("Cuenta organizaciones distintas en el histórico y en el mes de entrega")
         void cuentaOrganizacionesAyudadas() {
             Donante donante = new Donante();
-            donante.registrarDonacion(donacionExitosa("Comedor Norte"));
-            donante.registrarDonacion(donacionExitosa("Comedor Norte"));
-            donante.registrarDonacion(donacionExitosa("Fundacion Sur"));
+            YearMonth mes = YearMonth.of(2026, 11);
+            LocalDateTime entrega = mes.atDay(5).atStartOfDay();
+            donante.registrarDonacion(donacionExitosa("Comedor Norte", entrega));
+            donante.registrarDonacion(donacionExitosa("Comedor Norte", entrega.plusDays(1)));
+            donante.registrarDonacion(donacionExitosa("Fundacion Sur", entrega.minusMonths(1)));
+            donante.registrarDonacion(DonacionRegistrada.builder()
+                    .fecha(entrega).entidadBeneficiaria("Organización sin entrega").build());
 
             int organizaciones = metricas.organizacionesAyudadas(donante);
 
             assertThat(organizaciones).isEqualTo(2);
+            assertThat(metricas.organizacionesAyudadasEnPeriodo(donante, mes)).isEqualTo(1);
         }
 
         @Test
@@ -121,8 +126,12 @@ class MetricasDonanteTest {
     }
 
     private DonacionRegistrada donacionExitosa(String entidadBeneficiaria) {
+        return donacionExitosa(entidadBeneficiaria, LocalDateTime.now());
+    }
+
+    private DonacionRegistrada donacionExitosa(String entidadBeneficiaria, LocalDateTime fecha) {
         return DonacionRegistrada.builder()
-                .fecha(LocalDateTime.now())
+                .fecha(fecha)
                 .cantidadBienes(1)
                 .categorias(Set.of("ALIMENTOS"))
                 .entidadBeneficiaria(entidadBeneficiaria)

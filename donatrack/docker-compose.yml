@@ -1,5 +1,44 @@
 services:
 
+  # Servicio de autenticación: maneja cuentas, login y JWT. Se comunica con el frontend para el login con Google. Se levanta en el puerto 8088
+  postgres-autenticacion:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: autenticacion_db
+      POSTGRES_USER: donatrack
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-donatrack}
+    volumes:
+      - datos-autenticacion:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U donatrack -d autenticacion_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - donatrack-net
+
+  servicio-autenticacion:
+    build:
+      context: .
+      dockerfile: servicio-autenticacion/Dockerfile
+    ports:
+      - "8088:8088"
+    environment:
+      AUTH_DB_URL: jdbc:postgresql://postgres-autenticacion:5432/autenticacion_db
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-donatrack}
+      AUTH_KEY_FILE: /claves/jwt.pkcs8
+      AUTH_FRONTEND_KEY: ${AUTH_FRONTEND_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      AUTH_ADMINISTRADOR_EMAIL: ${AUTH_ADMINISTRADOR_EMAIL:-}
+      AUTH_ADMINISTRADOR_PASSWORD: ${AUTH_ADMINISTRADOR_PASSWORD:-}
+    volumes:
+      - claves-autenticacion:/claves
+    depends_on:
+      postgres-autenticacion:
+        condition: service_healthy
+    networks:
+      - donatrack-net
+
   # ══ INFRAESTRUCTURA ════════════════════════════════════════════════════════
 
   # Un único servidor PostgreSQL con una base por servicio.
@@ -20,7 +59,7 @@ services:
       - datos-postgres:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U donatrack"]
+      test: ["CMD-SHELL", "pg_isready -U donatrack -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -217,6 +256,8 @@ networks:
     driver: bridge
 
 volumes:
+  datos-autenticacion:
+  claves-autenticacion:
   # Los datos sobreviven a docker compose down. Para arrancar de cero:
   # docker compose down -v
   #

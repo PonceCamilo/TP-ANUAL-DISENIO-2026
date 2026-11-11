@@ -1,5 +1,6 @@
 package ar.utn.donatrack.incentivos.models.misiones;
 
+import ar.utn.donatrack.incentivos.models.DonacionRegistrada;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.insignias.Insignia;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
@@ -60,6 +61,8 @@ public abstract class Mision {
     }
 
     public abstract int progresoActual(Donante donante);
+
+    public abstract void registrarActividad(ProgresoMision progreso, DonacionRegistrada donacion);
 
     public int restante(Donante donante) {
         return Math.max(0, this.objetivo - progresoActual(donante));

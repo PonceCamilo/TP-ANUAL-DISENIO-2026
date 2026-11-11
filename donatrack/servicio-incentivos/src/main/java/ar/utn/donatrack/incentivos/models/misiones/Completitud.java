@@ -1,5 +1,6 @@
 package ar.utn.donatrack.incentivos.models.misiones;
 
+import ar.utn.donatrack.incentivos.models.DonacionRegistrada;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.MetricasDonante;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
@@ -22,6 +23,13 @@ public class Completitud extends Mision {
     public Completitud(String nombre, String descripcion, CategoriaDonante categoriaRequerida, int categoriasRequeridas, Insignia insignia) {
         super(nombre, descripcion, categoriaRequerida, categoriasRequeridas, insignia);
         this.categoriasRequeridas = categoriasRequeridas;
+    }
+
+    @Override
+    public void registrarActividad(ProgresoMision progreso, DonacionRegistrada donacion) {
+        if (!donacion.isExitosa()) {
+            progreso.registrarCategorias(donacion.getCategorias());
+        }
     }
 
     public boolean estaCompletada(Donante donante) {
