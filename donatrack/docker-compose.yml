@@ -162,6 +162,7 @@ services:
       SPRING_DATASOURCE_USERNAME: donatrack
       SPRING_DATASOURCE_PASSWORD: donatrack
       NOTIFICACIONES_TRANSPORTE: amqp
+      SERVICIOS_AUTENTICACION_JWK_SET_URI: http://servicio-autenticacion:8088/api/autenticacion/claves-publicas
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
     depends_on:
