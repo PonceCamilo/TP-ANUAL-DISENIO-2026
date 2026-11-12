@@ -35,4 +35,18 @@ public class Direccion {
 
     @Column(name = "direccion_codigo_postal")
     private String codigoPostal;
+
+    /**
+     * Coordenadas para el mapa de donaciones entregadas (Entrega 6, requisito 2).
+     * Opcionales: van las dos o ninguna, y las direcciones cargadas antes no las tienen.
+     */
+    @Column(name = "direccion_latitud")
+    private Double latitud;
+
+    @Column(name = "direccion_longitud")
+    private Double longitud;
+
+    public boolean tieneCoordenadas() {
+        return latitud != null && longitud != null;
+    }
 }

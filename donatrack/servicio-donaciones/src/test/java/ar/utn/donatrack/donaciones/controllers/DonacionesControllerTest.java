@@ -215,6 +215,19 @@ class DonacionesControllerTest {
         }
 
         @Test
+        @DisplayName("Acepta varias subcategorías repitiendo el parámetro (Entrega 6, requisito 5)")
+        void variasSubcategorias() throws Exception {
+            when(consultas.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
+
+            mockMvc.perform(get("/donaciones").param("subcategoria", "Arroz").param("subcategoria", "Fideos secos"))
+                    .andExpect(status().isOk());
+
+            verify(consultas).obtenerDonaciones(
+                    new FiltroDonaciones(null, null, List.of("Arroz", "Fideos secos"), null, false, null, null),
+                    new SolicitudPagina(0, 20));
+        }
+
+        @Test
         @DisplayName("Devuelve 400 si pide la página 0: las páginas empiezan en 1")
         void paginaCero() throws Exception {
             mockMvc.perform(get("/donaciones").param("page", "0"))

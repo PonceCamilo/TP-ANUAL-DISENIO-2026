@@ -5,6 +5,7 @@ import ar.utn.donatrack.donaciones.controllers.DonacionesController;
 import ar.utn.donatrack.donaciones.controllers.EntidadBeneficiariaController;
 import ar.utn.donatrack.donaciones.controllers.LogisticaEventosController;
 import ar.utn.donatrack.donaciones.controllers.PersonaDonanteController;
+import ar.utn.donatrack.donaciones.controllers.PublicoController;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DireccionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.DonacionRequestDTO;
@@ -17,6 +18,7 @@ import ar.utn.donatrack.donaciones.dtos.response.EntidadBeneficiariaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaHumanaResponseDTO;
 import ar.utn.donatrack.donaciones.models.donante.Genero;
+import ar.utn.donatrack.donaciones.services.ConsultasPublicasService;
 import ar.utn.donatrack.donaciones.services.CsvImportService;
 import ar.utn.donatrack.donaciones.services.DonacionComandosService;
 import ar.utn.donatrack.donaciones.services.DonacionConsultasService;
@@ -74,7 +76,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * mockeados: lo que se prueba es si el pedido llega o no a ellos.
  */
 @WebMvcTest({DonacionesController.class, PersonaDonanteController.class,
-        EntidadBeneficiariaController.class, LogisticaEventosController.class})
+        EntidadBeneficiariaController.class, LogisticaEventosController.class, PublicoController.class})
 @Import({SeguridadConfig.class, ControlDeAcceso.class})
 @DisplayName("Seguridad: permisos por rol y control de dueño")
 class SeguridadHttpTest {
@@ -95,6 +97,7 @@ class SeguridadHttpTest {
     @MockitoBean private ManejadorInicioDeRuta inicioDeRuta;
     @MockitoBean private ManejadorEntregaExitosa entregaExitosa;
     @MockitoBean private ManejadorEntregaFallida entregaFallida;
+    @MockitoBean private ConsultasPublicasService publico;
 
     private static final String EMAIL_DONANTE = "juan@example.com";
     private static final String EMAIL_ENTIDAD = "comedor@example.org";
@@ -190,6 +193,18 @@ class SeguridadHttpTest {
                     .andExpect(jsonPath("$.message").value(containsString("token")));
 
             verify(consultas, never()).obtenerDonaciones(any(), any());
+        }
+
+        @Test
+        @DisplayName("Los datos públicos de la landing no piden token, pero solo se leen")
+        void datosPublicos() throws Exception {
+            when(publico.entregadas(any(), any(), any()))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 0, 20, 0)));
+            when(publico.subcategorias()).thenReturn(List.of("Arroz"));
+
+            mockMvc.perform(get("/publico/donaciones-entregadas").with(anonymous())).andExpect(status().isOk());
+            mockMvc.perform(get("/publico/subcategorias").with(anonymous())).andExpect(status().isOk());
+            mockMvc.perform(post("/publico/subcategorias").with(anonymous())).andExpect(status().isUnauthorized());
         }
 
         @Test

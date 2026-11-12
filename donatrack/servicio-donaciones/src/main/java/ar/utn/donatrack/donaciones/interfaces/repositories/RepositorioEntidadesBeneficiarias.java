@@ -28,4 +28,10 @@ public interface RepositorioEntidadesBeneficiarias {
     List<EntidadBeneficiaria> obtenerPorIds(Collection<UUID> ids);
 
     void eliminar(EntidadBeneficiaria entidad);
+
+    /**
+     * Las subcategorías que piden las necesidades, una vez cada una, con la forma
+     * en que se escribieron (Entrega 6: catálogo para filtros y formularios).
+     */
+    List<String> subcategoriasDeNecesidades();
 }

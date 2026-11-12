@@ -63,8 +63,8 @@ public class DonacionesController {
     @Operation(
             summary = "Listar donaciones (paginado)",
             description = "Devuelve una página de donaciones, de la más nueva a la más vieja, con filtros opcionales "
-                    + "por estado, persona donante, subcategoría, entidad beneficiaria, bienes vencidos y rango de fechas "
-                    + "(desde/hasta, ambos incluidos). Las páginas empiezan en 1; "
+                    + "por estado, persona donante, una o más subcategorías, entidad beneficiaria, bienes vencidos y "
+                    + "rango de fechas de donación (desde/hasta, ambos incluidos). Las páginas empiezan en 1; "
                     + "el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
                     + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
             responses = {
@@ -78,8 +78,9 @@ public class DonacionesController {
             @RequestParam(required = false) String estado,
             @Parameter(description = "ID de la persona donante")
             @RequestParam(required = false) UUID idDonante,
-            @Parameter(description = "Subcategoría de los bienes", example = "Fideos secos")
-            @RequestParam(required = false) String subcategoria,
+            @Parameter(description = "Subcategoría de los bienes. Se puede repetir para traer las de varias "
+                    + "(subcategoria=Arroz&subcategoria=Fideos secos)", example = "Fideos secos")
+            @RequestParam(required = false) List<String> subcategoria,
             @Parameter(description = "ID de la entidad beneficiaria a la que fueron asignadas")
             @RequestParam(required = false) UUID idEntidad,
             @Parameter(description = "true: solo las que tienen algún perecedero ya vencido (para pasarlas a VENCIDA)")

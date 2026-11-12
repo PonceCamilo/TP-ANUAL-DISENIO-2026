@@ -12,6 +12,7 @@ import ar.utn.donatrack.donaciones.util.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.models.asignacion.RecepcionDiariaEntidad;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
+import ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion;
 import ar.utn.donatrack.donaciones.repositories.jpa.DonacionJpaRepository;
 import ar.utn.donatrack.donaciones.repositories.jpa.RecepcionDiariaJpaRepository;
 import ar.utn.donatrack.donaciones.util.Pagina;
@@ -100,6 +101,21 @@ public class DonacionesRepository implements RepositorioDonaciones {
         return jpa.existsByIdEntidadBeneficiaria(idEntidad);
     }
 
+    /** Entrega más reciente primero; el id desempata para que las páginas sean estables. */
+    public Pagina<Donacion> buscarEntregadas(LocalDate desde, LocalDate hasta, SolicitudPagina pagina) {
+        Specification<Donacion> entregadas = Specification.allOf(
+                igual("estadoNombre", EstadosDonacion.ENTREGADA),
+                (raiz, consulta, cb) -> cb.greaterThanOrEqualTo(raiz.get("fechaEntrega"), desde.atStartOfDay()),
+                (raiz, consulta, cb) -> cb.lessThan(raiz.get("fechaEntrega"), hasta.plusDays(1).atStartOfDay()));
+        Page<Donacion> resultado = jpa.findAll(entregadas, PageRequest.of(pagina.numero(), pagina.tamanio(),
+                Sort.by(Sort.Order.desc("fechaEntrega"), Sort.Order.asc("id"))));
+        return new Pagina<>(resultado.getContent(), pagina.numero(), pagina.tamanio(), resultado.getTotalElements());
+    }
+
+    public List<String> subcategoriasUsadas() {
+        return jpa.subcategoriasUsadas();
+    }
+
 
     /**
      * Suma o resta una recepción. Si la fila del día todavía no existe y hay que
@@ -124,7 +140,7 @@ public class DonacionesRepository implements RepositorioDonaciones {
                 igual("estadoNombre", filtro.estado()),
                 igual("idDonante", filtro.idDonante()),
                 igual("idEntidadBeneficiaria", filtro.idEntidad()),
-                deSubcategoria(filtro.subcategoria()),
+                deSubcategorias(filtro.subcategorias()),
                 filtro.soloConBienesVencidos() ? conBienesVencidosAl(FechaHoraArgentina.hoy()) : null,
                 hechaDesde(filtro.desde()),
                 hechaHasta(filtro.hasta()));
@@ -149,14 +165,18 @@ public class DonacionesRepository implements RepositorioDonaciones {
 
     /**
      * Se compara contra la columna normalizada con la misma normalización que
-     * Subcategoria, así "Arroz" y " arroz " son la misma.
+     * Subcategoria, así "Arroz" y " arroz " son la misma. Con varias (Entrega 6),
+     * trae las de cualquiera de ellas.
      */
-    private static Specification<Donacion> deSubcategoria(String subcategoria) {
-        if (subcategoria == null) {
+    private static Specification<Donacion> deSubcategorias(List<String> subcategorias) {
+        if (subcategorias.isEmpty()) {
             return null;
         }
-        String normalizada = new Subcategoria(subcategoria).getTipoNormalizado();
-        return (raiz, consulta, cb) -> cb.equal(raiz.get("subcategoria").get("tipoNormalizado"), normalizada);
+        List<String> normalizadas = subcategorias.stream()
+                .map(subcategoria -> new Subcategoria(subcategoria).getTipoNormalizado())
+                .distinct()
+                .toList();
+        return (raiz, consulta, cb) -> raiz.get("subcategoria").get("tipoNormalizado").in(normalizadas);
     }
 
     /** Donaciones con algún bien perecedero vencido a la fecha. */

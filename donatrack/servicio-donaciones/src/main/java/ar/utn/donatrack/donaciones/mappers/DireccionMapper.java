@@ -25,6 +25,8 @@ public class DireccionMapper {
                 .numero(dto.getNumero())
                 .codigoPostal(dto.getCodigoPostal())
                 .localidad(toLocalidad(dto.getLocalidad()))
+                .latitud(dto.getLatitud())
+                .longitud(dto.getLongitud())
                 .build();
     }
 
@@ -45,6 +47,8 @@ public class DireccionMapper {
                 .numero(direccion.getNumero())
                 .codigoPostal(direccion.getCodigoPostal())
                 .localidad(toLocalidadDTO(direccion.getLocalidad()))
+                .latitud(direccion.getLatitud())
+                .longitud(direccion.getLongitud())
                 .build();
     }
 

@@ -4,6 +4,7 @@ import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,4 +29,13 @@ public interface DonacionJpaRepository extends JpaRepository<Donacion, UUID>, Jp
     boolean existsByIdDonante(UUID idDonante);
 
     boolean existsByIdEntidadBeneficiaria(UUID idEntidadBeneficiaria);
+
+    /**
+     * Una forma escrita por cada subcategoría normalizada (la menor, para que el
+     * resultado no dependa del orden de las filas), ordenadas alfabéticamente.
+     */
+    @Query("select min(d.subcategoria.tipo) from Donacion d "
+            + "where d.subcategoria.tipoNormalizado is not null and d.subcategoria.tipoNormalizado <> '' "
+            + "group by d.subcategoria.tipoNormalizado order by min(d.subcategoria.tipo)")
+    List<String> subcategoriasUsadas();
 }

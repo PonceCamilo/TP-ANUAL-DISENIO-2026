@@ -44,6 +44,8 @@ public class ManejadorEntregaExitosa {
             log.info("[LOGISTICA] Entrega exitosa repetida para la donación {}: sin cambios.", donacion.getId());
             return;
         }
+        // Entrega 6: las fotos de la recepción (si el proveedor las manda) para la landing y el detalle.
+        donacion.registrarFotosDeEntrega(dto.fotos());
         donaciones.guardar(donacion);
 
         notificador.entregaExitosa(participantes.donanteDe(donacion), participantes.entidadDe(donacion),

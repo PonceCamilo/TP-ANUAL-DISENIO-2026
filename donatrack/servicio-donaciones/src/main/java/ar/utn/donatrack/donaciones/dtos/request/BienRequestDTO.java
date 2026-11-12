@@ -6,7 +6,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -31,6 +33,12 @@ public class BienRequestDTO {
     @NotBlank
     private String subcategoria;
     private String descripcion;
+    /**
+     * Opcional. URL pública de una foto del bien (Entrega 6): la imagen vive en
+     * otro lado y Donaciones guarda solo la dirección. La landing la muestra.
+     */
+    @Size(max = 2048, message = "La URL de la foto no puede superar los 2048 caracteres")
+    @Pattern(regexp = "https?://\\S+", message = "La foto tiene que ser una URL que empiece con http:// o https://")
     private String foto;
     @NotNull(message = "La cantidad es obligatoria")
     @Positive

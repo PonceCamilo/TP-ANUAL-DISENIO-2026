@@ -61,8 +61,8 @@ public abstract class Bien {
     @Column(name = "descripcion")
     protected String descripcion;
 
-    /** URL o path a la foto. */
-    @Column(name = "foto")
+    /** URL de la foto (Entrega 6: hasta 2048 caracteres, migración V5). */
+    @Column(name = "foto", length = 2048)
     protected String foto;
 
     /** ej: 15 sillas → cantidad = 15, unidad = "unidades". */

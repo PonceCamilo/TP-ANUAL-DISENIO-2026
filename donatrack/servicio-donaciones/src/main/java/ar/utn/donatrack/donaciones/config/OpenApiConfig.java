@@ -25,7 +25,7 @@ public class OpenApiConfig {
     private static final String ESQUEMA_TOKEN = "token";
 
     /** Rutas que no piden token (SeguridadConfig): no llevan candado ni los 401 y 403. */
-    private static final List<String> RUTAS_PUBLICAS = List.of("/logistica/eventos");
+    private static final List<String> RUTAS_PUBLICAS = List.of("/logistica/eventos", "/publico");
 
     /**
      * Entrega 6: el botón Authorize de Swagger acepta el JWT del Servicio de

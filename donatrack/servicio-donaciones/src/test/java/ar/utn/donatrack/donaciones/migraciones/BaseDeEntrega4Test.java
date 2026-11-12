@@ -137,7 +137,7 @@ class BaseDeEntrega4Test {
         Flyway flyway = comoLaApp();
         flyway.migrate();
 
-        assertThat(ultimaVersion(flyway)).isEqualTo("4");
+        assertThat(ultimaVersion(flyway)).isEqualTo("5");
         assertThat(contar("select count(*) from persona_donante where id = ?", persona)).isOne();
         assertThat(contar("select count(*) from persona_humana where id = ? and nombre = 'Juan'", persona)).isOne();
         assertThat(contar("select count(*) from campania where id_campania = ? and entidad_id = ?", campania, entidad))
@@ -194,7 +194,7 @@ class BaseDeEntrega4Test {
         Flyway flyway = comoLaApp();
         flyway.migrate();
 
-        assertThat(ultimaVersion(flyway)).isEqualTo("4");
+        assertThat(ultimaVersion(flyway)).isEqualTo("5");
         assertThat(contar("select count(*) from persona_donante where id = ?", persona)).isOne();
     }
 

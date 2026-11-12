@@ -182,6 +182,41 @@ class EntidadBeneficiariaControllerTest {
         }
 
         @Test
+        @DisplayName("POST acepta la ubicación para el mapa, y rechaza (400) una latitud sin longitud o fuera de rango")
+        void altaConCoordenadas() throws Exception {
+            when(entidadesService.guardar(any())).thenReturn(respuestaEntidad());
+            java.util.function.BiFunction<Object, Object, String> conCoordenadas = (latitud, longitud) -> {
+                Map<String, Object> direccion = new LinkedHashMap<>();
+                direccion.put("calle", "Medrano");
+                direccion.put("numero", 951);
+                direccion.put("codigoPostal", "C1179");
+                direccion.put("localidad", Map.of("nombre", "CABA", "provincia", Map.of("nombre", "Buenos Aires")));
+                if (latitud != null) {
+                    direccion.put("latitud", latitud);
+                }
+                if (longitud != null) {
+                    direccion.put("longitud", longitud);
+                }
+                try {
+                    return objectMapper.writeValueAsString(Map.of("razonSocial", "Comedor", "direccion", direccion));
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+
+            mockMvc.perform(post("/entidades").contentType(MediaType.APPLICATION_JSON)
+                            .content(conCoordenadas.apply(-34.6, -58.4)))
+                    .andExpect(status().isCreated());
+            mockMvc.perform(post("/entidades").contentType(MediaType.APPLICATION_JSON)
+                            .content(conCoordenadas.apply(-34.6, null)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("van juntas")));
+            mockMvc.perform(post("/entidades").contentType(MediaType.APPLICATION_JSON)
+                            .content(conCoordenadas.apply(-95, -58.4)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
         @DisplayName("POST devuelve 400 si falta la razón social")
         void altaSinRazonSocial() throws Exception {
             String cuerpo = objectMapper.writeValueAsString(Map.of(

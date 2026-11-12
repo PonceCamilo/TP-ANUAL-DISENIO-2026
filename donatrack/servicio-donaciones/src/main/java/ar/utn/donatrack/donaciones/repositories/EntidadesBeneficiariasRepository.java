@@ -63,4 +63,8 @@ public class EntidadesBeneficiariasRepository implements RepositorioEntidadesBen
     public void eliminar(EntidadBeneficiaria entidad) {
         jpa.delete(entidad);
     }
+
+    public List<String> subcategoriasDeNecesidades() {
+        return jpa.subcategoriasDeNecesidades();
+    }
 }

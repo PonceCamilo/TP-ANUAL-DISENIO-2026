@@ -502,4 +502,93 @@ class DonacionesRepositoryTest {
                     .containsExactlyInAnyOrderElementsOf(enDeposito.stream().map(Donacion::getId).toList());
         }
     }
+
+    @Nested
+    @DisplayName("Datos para la interfaz (Entrega 6)")
+    class DatosParaLaInterfaz {
+
+        private final LocalDateTime octubre = LocalDateTime.of(2026, 10, 15, 12, 0);
+
+        /** Recorre el camino real hasta ENTREGADA, con la fecha de entrega que informa logística. */
+        private Donacion entregadaEl(UUID idDonante, String subcategoria, LocalDateTime cuando) {
+            Donacion donacion = donacion(idDonante, subcategoria, cuando.minusDays(3));
+            donacion.asignarA(entidad(comedor));
+            donacion.cambiarEstado("LISTA_PARA_ENTREGAR", "despachar", null);
+            donacion.cambiarEstado("EN_TRASLADO", "inicio de ruta", null);
+            donacion.registrarEntrega(cuando, "Entrega confirmada");
+            return donacion;
+        }
+
+        private List<UUID> ids(Pagina<Donacion> pagina) {
+            return pagina.contenido().stream().map(Donacion::getId).toList();
+        }
+
+        @Test
+        @DisplayName("Entregadas en el rango, por fecha de entrega y la más reciente primero")
+        void entregadasEnElRango() {
+            Donacion vieja = entregadaEl(ana, "Arroz", octubre.minusMonths(2));
+            Donacion primera = entregadaEl(ana, "Arroz", octubre);
+            Donacion segunda = entregadaEl(beto, "Ropa", octubre.plusDays(5));
+            Donacion enDeposito = donacion(ana, "Arroz", octubre);
+            persistirYLimpiar(List.of(vieja, primera, segunda, enDeposito));
+
+            Pagina<Donacion> pagina = repositorio.buscarEntregadas(
+                    LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactly(segunda.getId(), primera.getId());
+            assertThat(pagina.totalElementos()).isEqualTo(2);
+            assertThat(pagina.contenido().getFirst().getFechaEntrega()).isEqualTo(octubre.plusDays(5));
+        }
+
+        @Test
+        @DisplayName("El último día del rango cuenta entero")
+        void ultimoDiaEntero() {
+            Donacion alFinalDelDia = entregadaEl(ana, "Arroz", LocalDateTime.of(2026, 10, 31, 23, 59));
+            persistirYLimpiar(List.of(alFinalDelDia));
+
+            assertThat(ids(repositorio.buscarEntregadas(LocalDate.of(2026, 10, 31), LocalDate.of(2026, 10, 31),
+                    primeraPagina))).containsExactly(alFinalDelDia.getId());
+        }
+
+        @Test
+        @DisplayName("Las fotos de la entrega se guardan en orden y se leen con la donación")
+        void fotosDeEntrega() {
+            Donacion entregada = entregadaEl(ana, "Arroz", octubre);
+            entregada.registrarFotosDeEntrega(List.of("https://fotos.org/1.jpg", "https://fotos.org/2.jpg"));
+            persistirYLimpiar(List.of(entregada));
+
+            Donacion leida = repositorio.buscarPorId(entregada.getId()).orElseThrow();
+
+            assertThat(leida.getFotosEntrega()).containsExactly("https://fotos.org/1.jpg", "https://fotos.org/2.jpg");
+            assertThat(leida.fotoParaMostrar()).contains("https://fotos.org/1.jpg");
+        }
+
+        @Test
+        @DisplayName("Cada subcategoría aparece una vez en el catálogo, aunque cambien mayúsculas o acentos")
+        void subcategoriasUsadas() {
+            persistirYLimpiar(List.of(
+                    donacion(ana, "Arroz", octubre),
+                    donacion(beto, "arroz", octubre),
+                    donacion(ana, "Útiles escolares", octubre),
+                    donacion(beto, "utiles escolares", octubre)));
+
+            List<String> catalogo = repositorio.subcategoriasUsadas();
+
+            assertThat(catalogo).hasSize(2).contains("Arroz");
+        }
+
+        @Test
+        @DisplayName("Filtra por varias subcategorías a la vez")
+        void variasSubcategorias() {
+            Donacion arroz = donacion(ana, "Arroz", octubre);
+            Donacion ropa = donacion(ana, "Ropa", octubre.plusHours(1));
+            Donacion leche = donacion(ana, "Leche", octubre.plusHours(2));
+            persistirYLimpiar(List.of(arroz, ropa, leche));
+
+            Pagina<Donacion> pagina = repositorio.buscar(
+                    new FiltroDonaciones(null, null, List.of("arroz", "ROPA"), null, false, null, null), primeraPagina);
+
+            assertThat(ids(pagina)).containsExactly(ropa.getId(), arroz.getId());
+        }
+    }
 }

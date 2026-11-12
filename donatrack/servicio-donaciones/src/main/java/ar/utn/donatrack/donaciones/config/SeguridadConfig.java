@@ -46,9 +46,10 @@ import java.util.List;
  *
  * Qué puede hacer cada rol, por ruta (lo que no figura es solo de la administración):
  *
- *   Sin token        health e info de Actuator, Swagger y los avisos del broker de
- *                    logística (/logistica/eventos/**): el broker todavía no manda
- *                    token, eso queda para la Entrega 7.
+ *   Sin token        health e info de Actuator, Swagger, los datos públicos de la
+ *                    landing (GET /publico/**, sin datos personales) y los avisos
+ *                    del broker de logística (/logistica/eventos/**): el broker
+ *                    todavía no manda token, eso queda para la Entrega 7.
  *   DONANTE          registrar su perfil, verlo y modificarlo; registrar donaciones
  *                    y ver las suyas.
  *   ENTIDAD_BENEF.   registrar su entidad, verla y modificarla, con sus campañas y
@@ -151,6 +152,7 @@ public class SeguridadConfig {
                 .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
                 .requestMatchers("/logistica/eventos/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/publico/**").permitAll()
                 .requestMatchers("/error").permitAll()
 
                 // ── Personas donantes ───────────────────────────────────────────
