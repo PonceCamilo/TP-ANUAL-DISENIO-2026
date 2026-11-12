@@ -6,6 +6,8 @@ public final class Destinos {
     public static final String NOTIFICACION = "NOTIFICACION";
     public static final String INCENTIVOS_DONACION_REGISTRADA = "INCENTIVOS_DONACION_REGISTRADA";
     public static final String INCENTIVOS_DONACION_EXITOSA = "INCENTIVOS_DONACION_EXITOSA";
+    /** Entrega 6: personas importadas por CSV a las que Autenticación tiene que darles una cuenta. */
+    public static final String AUTENTICACION_CUENTAS_IMPORTADAS = "AUTENTICACION_CUENTAS_IMPORTADAS";
 
     private Destinos() {
     }

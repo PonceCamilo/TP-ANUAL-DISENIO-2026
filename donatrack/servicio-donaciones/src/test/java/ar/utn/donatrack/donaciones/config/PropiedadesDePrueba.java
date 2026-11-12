@@ -24,6 +24,15 @@ public final class PropiedadesDePrueba {
                 new DonacionesProperties.Matchmaking(10),
                 new DonacionesProperties.Salida(true, 5000, 50, 10, 7, "0 30 4 * * *"),
                 new DonacionesProperties.Seguridad("http://localhost:8088/api/autenticacion/claves-publicas",
-                        "urn:donatrack:autenticacion", "donatrack-api"));
+                        "urn:donatrack:autenticacion", "donatrack-api"),
+                new DonacionesProperties.Cuentas(false, "http://localhost:8088", "", 50));
+    }
+
+    /** Los valores por defecto, con el aviso de cuentas de los importados encendido. */
+    public static DonacionesProperties conAvisoDeCuentas(int personasPorAviso) {
+        DonacionesProperties base = porDefecto();
+        return new DonacionesProperties(base.inactividad(), base.procesos(), base.importacion(),
+                base.notificaciones(), base.matchmaking(), base.salida(), base.seguridad(),
+                new DonacionesProperties.Cuentas(true, "http://localhost:8088", "", personasPorAviso));
     }
 }
