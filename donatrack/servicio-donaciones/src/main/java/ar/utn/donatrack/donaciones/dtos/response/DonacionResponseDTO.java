@@ -23,6 +23,11 @@ public class DonacionResponseDTO {
     private final ProveedorLogistica proveedorLogistica;
     private final String idSeguimientoLogistica;
 
+    /** Cuándo se entregó; null si todavía no llegó a ENTREGADA (Entrega 6). */
+    private final LocalDateTime fechaEntrega;
+    /** URLs de las fotos que cargó la entidad al recibirla; vacía si no hay (Entrega 6). */
+    private final List<String> fotosEntrega;
+
     private final List<BienResponseDTO> bienes;
     private final List<CambioEstadoResponseDTO> historialEstados;
 }

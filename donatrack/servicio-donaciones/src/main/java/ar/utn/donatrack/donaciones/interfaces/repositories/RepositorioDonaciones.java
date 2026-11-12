@@ -5,6 +5,7 @@ import ar.utn.donatrack.donaciones.models.donacion.Donacion;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -51,4 +52,16 @@ public interface RepositorioDonaciones {
 
     boolean existenAsignadasA(UUID idEntidad);
 
+    /**
+     * Donaciones entregadas entre esas fechas (las dos incluidas), de la entrega
+     * más reciente a la más vieja (Entrega 6: la landing muestra las del último mes).
+     */
+    Pagina<Donacion> buscarEntregadas(LocalDate desde, LocalDate hasta, SolicitudPagina pagina);
+
+    /**
+     * Las subcategorías que tienen donaciones, una vez cada una (las que solo
+     * difieren en mayúsculas o acentos cuentan como la misma), con la forma en que
+     * se escribieron. Sirven de catálogo para los filtros y formularios (Entrega 6).
+     */
+    List<String> subcategoriasUsadas();
 }

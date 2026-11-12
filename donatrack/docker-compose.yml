@@ -114,6 +114,14 @@ services:
       - notificaciones.transporte=amqp
       - spring.rabbitmq.host=rabbitmq
       - spring.docker.compose.enabled=false
+      # Entrega 6: claves públicas para validar el JWT del Servicio de
+      # Autenticación. Se piden con el primer token, así que Donaciones no
+      # necesita esperar a que ese servicio arranque.
+      - donaciones.seguridad.claves-publicas-url=http://servicio-autenticacion:8088/api/autenticacion/claves-publicas
+      # Aviso de cuentas para los importados por CSV: apagado hasta que
+      # Autenticación tenga POST /api/autenticacion/cuentas/importadas.
+      - donaciones.cuentas.url=http://servicio-autenticacion:8088
+      - donaciones.cuentas.avisar-importados=false
     depends_on:
       # service_healthy y no solo depends_on: el servicio arranca recién cuando
       # la base acepta conexiones, si no Hibernate falla al generar el esquema.

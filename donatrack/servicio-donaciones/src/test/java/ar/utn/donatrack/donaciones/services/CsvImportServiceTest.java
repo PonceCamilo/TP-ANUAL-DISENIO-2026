@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.clientes.AutenticacionClient;
 import ar.utn.donatrack.donaciones.config.PropiedadesDePrueba;
 import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.models.contacto.Telefono;
@@ -36,6 +37,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -70,6 +72,13 @@ class CsvImportServiceTest {
     @Captor
     private ArgumentCaptor<Collection<PersonaDonante>> loteCaptor;
 
+    /** Entrega 6: a quién se le avisa para que tenga una cuenta. */
+    @Mock
+    private AutenticacionClient cuentas;
+
+    @Captor
+    private ArgumentCaptor<List<AutenticacionClient.DonanteImportado>> avisoCaptor;
+
     private CsvImportService servicio;
 
     @BeforeEach
@@ -77,7 +86,43 @@ class CsvImportServiceTest {
         // Sin transacción real: el repositorio está mockeado. La transacción por
         // lote se prueba contra la base en MedicionConsultasTest.
         servicio = new CsvImportService(donanteRepository, new DonanteCsvRowParser(), new DonanteFactory(),
-                PropiedadesDePrueba.porDefecto(), TransactionOperations.withoutTransaction());
+                PropiedadesDePrueba.porDefecto(), TransactionOperations.withoutTransaction(), cuentas);
+    }
+
+    @Nested
+    @DisplayName("Aviso de cuentas a Autenticación (Entrega 6, requisito 20)")
+    class AvisoDeCuentas {
+
+        @Test
+        @DisplayName("Avisa por las personas creadas y actualizadas, con su id, email normalizado, nombre y tipo")
+        void avisaCreadasYActualizadas() throws IOException {
+            PersonaHumana existente = donanteExistente("ana@example.com");
+            when(donanteRepository.obtenerPorEmails(anyCollection()))
+                    .thenReturn(Map.of("ana@example.com", existente));
+            String contenido = ENCABEZADO
+                    + "HUMANA,DNI,30111222,Ana Gómez,ANA@example.com,\n"
+                    + "JURIDICA,CUIT,30-11122233-5,Fundación Ejemplo,contacto@fundacion.org,\n";
+
+            servicio.importar(csv(contenido));
+
+            verify(cuentas).notificarImportados(avisoCaptor.capture());
+            List<AutenticacionClient.DonanteImportado> aviso = avisoCaptor.getValue();
+            assertThat(aviso).hasSize(2);
+            assertThat(aviso.get(0)).isEqualTo(new AutenticacionClient.DonanteImportado(
+                    existente.getId(), "ana@example.com", "Ana Gómez", "HUMANA"));
+            assertThat(aviso.get(1).email()).isEqualTo("contacto@fundacion.org");
+            assertThat(aviso.get(1).tipoDonante()).isEqualTo("JURIDICA");
+        }
+
+        @Test
+        @DisplayName("Las filas con error no se avisan")
+        void sinFilasConError() throws IOException {
+            String contenido = ENCABEZADO + "HUMANA,DNI,30111222,Juan Pérez,no-es-un-email,\n";
+
+            servicio.importar(csv(contenido));
+
+            verify(cuentas, never()).notificarImportados(anyList());
+        }
     }
 
     /** Convierte el contenido de un CSV en el stream que recibe el servicio. */

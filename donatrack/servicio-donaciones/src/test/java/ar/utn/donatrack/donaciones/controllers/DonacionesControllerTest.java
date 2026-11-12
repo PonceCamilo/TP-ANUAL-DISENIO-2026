@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+
 import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
 import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
 import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
@@ -77,7 +79,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *     ilegal, 400 datos inválidos.
  */
 @WebMvcTest(DonacionesController.class)
-@Import(DonacionMapper.class)
+@Import({DonacionMapper.class, SeguridadDePrueba.class})
 @DisplayName("DonacionesController - contrato HTTP de /donaciones")
 class DonacionesControllerTest {
 
@@ -158,14 +160,14 @@ class DonacionesControllerTest {
                     .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(1)))
                     .andExpect(jsonPath("$.contenido[0].estado").value("EN_DEPOSITO"))
                     .andExpect(jsonPath("$.contenido[0].subcategoria").value("arroz"))
-                    .andExpect(jsonPath("$.pagina").value(0))
+                    .andExpect(jsonPath("$.pagina").value(1))
                     .andExpect(jsonPath("$.tamanio").value(20))
                     .andExpect(jsonPath("$.totalElementos").value(1))
                     .andExpect(jsonPath("$.totalPaginas").value(1));
         }
 
         @Test
-        @DisplayName("Pasa los cuatro filtros y la página al service tal como llegan")
+        @DisplayName("Pasa los cuatro filtros al service y la página 2 de la API como índice 1")
         void pasaLosFiltros() throws Exception {
             UUID idEntidad = UUID.randomUUID();
             when(consultas.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
@@ -181,7 +183,7 @@ class DonacionesControllerTest {
 
             verify(consultas).obtenerDonaciones(
                     new FiltroDonaciones("EN_DEPOSITO", idDonante, "arroz", idEntidad, false),
-                    new SolicitudPagina(2, 50));
+                    new SolicitudPagina(1, 50));
         }
 
         @Test
@@ -213,10 +215,77 @@ class DonacionesControllerTest {
         }
 
         @Test
+        @DisplayName("Acepta varias subcategorías repitiendo el parámetro (Entrega 6, requisito 5)")
+        void variasSubcategorias() throws Exception {
+            when(consultas.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
+
+            mockMvc.perform(get("/donaciones").param("subcategoria", "Arroz").param("subcategoria", "Fideos secos"))
+                    .andExpect(status().isOk());
+
+            verify(consultas).obtenerDonaciones(
+                    new FiltroDonaciones(null, null, List.of("Arroz", "Fideos secos"), null, false, null, null),
+                    new SolicitudPagina(0, 20));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si pide la página 0: las páginas empiezan en 1")
+        void paginaCero() throws Exception {
+            mockMvc.perform(get("/donaciones").param("page", "0"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("empiezan en 1")));
+
+            verify(consultas, never()).obtenerDonaciones(any(), any());
+        }
+
+        @Test
+        @DisplayName("La página 1 de la API es la primera (índice 0)")
+        void paginaUno() throws Exception {
+            when(consultas.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
+
+            mockMvc.perform(get("/donaciones").param("page", "1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.pagina").value(1));
+
+            verify(consultas).obtenerDonaciones(new FiltroDonaciones(null, null, null, null, false), new SolicitudPagina(0, 20));
+        }
+
+        @Test
         @DisplayName("Devuelve 400 si un parámetro no tiene el tipo esperado")
         void parametroConTipoInvalido() throws Exception {
             mockMvc.perform(get("/donaciones").param("page", "abc"))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Pasa el rango de fechas al service (la landing pide las del último mes)")
+        void pasaElRangoDeFechas() throws Exception {
+            when(consultas.obtenerDonaciones(any(), any())).thenReturn(pagina(List.of()));
+
+            mockMvc.perform(get("/donaciones").param("desde", "2026-10-10").param("hasta", "2026-11-10"))
+                    .andExpect(status().isOk());
+
+            verify(consultas).obtenerDonaciones(
+                    new FiltroDonaciones(null, null, null, null, false,
+                            java.time.LocalDate.of(2026, 10, 10), java.time.LocalDate.of(2026, 11, 10)),
+                    new SolicitudPagina(0, 20));
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si 'desde' es posterior a 'hasta'")
+        void rangoInvertido() throws Exception {
+            mockMvc.perform(get("/donaciones").param("desde", "2026-11-10").param("hasta", "2026-10-10"))
+                    .andExpect(status().isBadRequest());
+
+            verify(consultas, never()).obtenerDonaciones(any(), any());
+        }
+
+        @Test
+        @DisplayName("Devuelve 400 si una fecha no tiene el formato AAAA-MM-DD")
+        void fechaMalFormada() throws Exception {
+            mockMvc.perform(get("/donaciones").param("desde", "10/10/2026"))
+                    .andExpect(status().isBadRequest());
+
+            verify(consultas, never()).obtenerDonaciones(any(), any());
         }
     }
 

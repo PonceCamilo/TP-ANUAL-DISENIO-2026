@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.medicion;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
@@ -83,6 +86,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "logging.level.org.hibernate.engine.internal.StatisticalLoggingSessionEventListener=WARN"
 })
 @AutoConfigureMockMvc
+@Import(SeguridadDePrueba.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @DisplayName("Medición - sentencias SQL por operación")

@@ -156,11 +156,27 @@ class EntidadesBeneficiariasServiceTest {
             SolicitudPagina pagina = new SolicitudPagina(0, 20);
             when(repositorio.buscar(pagina)).thenReturn(new Pagina<>(List.of(entidad), 0, 20, 1));
 
-            PaginaResponseDTO<EntidadBeneficiariaResponseDTO> respuesta = servicio.obtenerEntidades(pagina);
+            PaginaResponseDTO<EntidadBeneficiariaResponseDTO> respuesta = servicio.obtenerEntidades(null, pagina);
 
             assertThat(respuesta.getContenido()).extracting(EntidadBeneficiariaResponseDTO::getId)
                     .containsExactly(entidad.getId());
             assertThat(respuesta.getTotalElementos()).isEqualTo(1);
+            verify(repositorio, never()).buscarPorEmail(any(), any());
+        }
+
+        @Test
+        @DisplayName("obtenerEntidades() con email busca solo las entidades que lo tienen como contacto o representante")
+        void obtenerEntidadesPorEmail() {
+            SolicitudPagina pagina = new SolicitudPagina(0, 20);
+            when(repositorio.buscarPorEmail("contacto@comedor.org", pagina))
+                    .thenReturn(new Pagina<>(List.of(entidad), 0, 20, 1));
+
+            PaginaResponseDTO<EntidadBeneficiariaResponseDTO> respuesta =
+                    servicio.obtenerEntidades("contacto@comedor.org", pagina);
+
+            assertThat(respuesta.getContenido()).extracting(EntidadBeneficiariaResponseDTO::getId)
+                    .containsExactly(entidad.getId());
+            verify(repositorio, never()).buscar(any());
         }
 
         @Test

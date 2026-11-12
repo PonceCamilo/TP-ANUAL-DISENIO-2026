@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.clientes.AutenticacionClient;
 import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.models.contacto.Canal;
 import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
@@ -66,6 +67,13 @@ public class CsvImportService {
      * importado queda confirmado aunque la lectura se corte después.
      */
     private final TransactionOperations transaccion;
+
+    /**
+     * Entrega 6 (requisito 20): avisa a Autenticación qué personas se crearon o
+     * actualizaron, para que les dé un usuario. El aviso va en la transacción del
+     * lote: si el lote no se guarda, no se avisa. Apagado por defecto.
+     */
+    private final AutenticacionClient cuentas;
 
     /**
      * Importa y devuelve el resumen que expone la API: las filas correctas se
@@ -183,6 +191,7 @@ public class CsvImportService {
         Map<String, PersonaDonante> porEmail = new HashMap<>(donanteRepository.obtenerPorEmails(
                 lote.stream().map(DonanteImportDto::email).toList()));
         Map<String, PersonaDonante> aGuardar = new LinkedHashMap<>();
+        Map<String, AutenticacionClient.DonanteImportado> aAvisar = new LinkedHashMap<>();
         List<ImportFilaCSV> resultados = new ArrayList<>(lote.size());
 
         for (DonanteImportDto dto : lote) {
@@ -195,19 +204,29 @@ public class CsvImportService {
             } else if (existente != null) {
                 actualizar(existente, dto);
                 aGuardar.put(clave, existente);
+                aAvisar.put(clave, importado(existente, clave, dto));
                 resultados.add(ImportFilaCSV.actualizado(linea, dto.email()));
             } else {
                 PersonaDonante nueva = factory.crearPersona(dto);
                 porEmail.put(clave, nueva);
                 aGuardar.put(clave, nueva);
+                aAvisar.put(clave, importado(nueva, clave, dto));
                 resultados.add(ImportFilaCSV.creado(linea, dto.email()));
             }
         }
 
         if (!aGuardar.isEmpty()) {
             donanteRepository.guardarTodos(aGuardar.values());
+            cuentas.notificarImportados(List.copyOf(aAvisar.values()));
         }
         return resultados;
+    }
+
+    /** Lo que necesita Autenticación para darle un usuario: el id de la persona es el perfilId de su cuenta. */
+    private static AutenticacionClient.DonanteImportado importado(PersonaDonante persona, String email,
+                                                                  DonanteImportDto dto) {
+        return new AutenticacionClient.DonanteImportado(persona.getId(), email, dto.nombreORazonSocial(),
+                dto.tipoPersona());
     }
 
     /** Camino de respaldo: una fila con su propia búsqueda y su propio guardado. */
@@ -219,12 +238,16 @@ public class CsvImportService {
             if (conflicto != null) {
                 return ImportFilaCSV.error(linea, dto.email(), conflicto);
             }
+            String clave = NormalizadorEmail.normalizar(dto.email());
             if (existente != null) {
                 actualizar(existente, dto);
                 donanteRepository.guardar(existente);
+                cuentas.notificarImportados(List.of(importado(existente, clave, dto)));
                 return ImportFilaCSV.actualizado(linea, dto.email());
             }
-            donanteRepository.guardar(factory.crearPersona(dto));
+            PersonaDonante nueva = factory.crearPersona(dto);
+            donanteRepository.guardar(nueva);
+            cuentas.notificarImportados(List.of(importado(nueva, clave, dto)));
             return ImportFilaCSV.creado(linea, dto.email());
         } catch (Exception e) {
             return ImportFilaCSV.error(linea, dto.email(), "Error inesperado: " + e.getMessage());

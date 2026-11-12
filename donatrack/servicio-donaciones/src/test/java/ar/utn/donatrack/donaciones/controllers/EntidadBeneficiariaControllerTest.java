@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
@@ -60,6 +63,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * devolver, y que el tipo NO se pueda cambiar en un PUT.
  */
 @WebMvcTest(EntidadBeneficiariaController.class)
+@Import(SeguridadDePrueba.class)
 @DisplayName("EntidadBeneficiariaController - contrato HTTP de /entidades")
 class EntidadBeneficiariaControllerTest {
 
@@ -178,6 +182,41 @@ class EntidadBeneficiariaControllerTest {
         }
 
         @Test
+        @DisplayName("POST acepta la ubicación para el mapa, y rechaza (400) una latitud sin longitud o fuera de rango")
+        void altaConCoordenadas() throws Exception {
+            when(entidadesService.guardar(any())).thenReturn(respuestaEntidad());
+            java.util.function.BiFunction<Object, Object, String> conCoordenadas = (latitud, longitud) -> {
+                Map<String, Object> direccion = new LinkedHashMap<>();
+                direccion.put("calle", "Medrano");
+                direccion.put("numero", 951);
+                direccion.put("codigoPostal", "C1179");
+                direccion.put("localidad", Map.of("nombre", "CABA", "provincia", Map.of("nombre", "Buenos Aires")));
+                if (latitud != null) {
+                    direccion.put("latitud", latitud);
+                }
+                if (longitud != null) {
+                    direccion.put("longitud", longitud);
+                }
+                try {
+                    return objectMapper.writeValueAsString(Map.of("razonSocial", "Comedor", "direccion", direccion));
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+
+            mockMvc.perform(post("/entidades").contentType(MediaType.APPLICATION_JSON)
+                            .content(conCoordenadas.apply(-34.6, -58.4)))
+                    .andExpect(status().isCreated());
+            mockMvc.perform(post("/entidades").contentType(MediaType.APPLICATION_JSON)
+                            .content(conCoordenadas.apply(-34.6, null)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("van juntas")));
+            mockMvc.perform(post("/entidades").contentType(MediaType.APPLICATION_JSON)
+                            .content(conCoordenadas.apply(-95, -58.4)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
         @DisplayName("POST devuelve 400 si falta la razón social")
         void altaSinRazonSocial() throws Exception {
             String cuerpo = objectMapper.writeValueAsString(Map.of(
@@ -195,7 +234,7 @@ class EntidadBeneficiariaControllerTest {
         @Test
         @DisplayName("GET devuelve 200 con la primera página de entidades por defecto")
         void listadoOk() throws Exception {
-            when(entidadesService.obtenerEntidades(new SolicitudPagina(0, 20)))
+            when(entidadesService.obtenerEntidades(null, new SolicitudPagina(0, 20)))
                     .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(respuestaEntidad()), 0, 20, 1)));
 
             mockMvc.perform(get("/entidades"))
@@ -207,14 +246,26 @@ class EntidadBeneficiariaControllerTest {
         @Test
         @DisplayName("GET pasa la página pedida y rechaza un tamaño fuera de rango (400)")
         void listadoPaginado() throws Exception {
-            when(entidadesService.obtenerEntidades(new SolicitudPagina(2, 5)))
-                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 2, 5, 3)));
+            // La página 2 de la API es el índice 1, y la respuesta vuelve a numerarla como 2.
+            when(entidadesService.obtenerEntidades(null, new SolicitudPagina(1, 5)))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 1, 5, 3)));
 
             mockMvc.perform(get("/entidades").param("page", "2").param("size", "5"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.pagina").value(2));
             mockMvc.perform(get("/entidades").param("size", "500"))
                     .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("GET pasa el filtro de email al service")
+        void listadoPorEmail() throws Exception {
+            when(entidadesService.obtenerEntidades("contacto@comedor.org", new SolicitudPagina(0, 20)))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(respuestaEntidad()), 0, 20, 1)));
+
+            mockMvc.perform(get("/entidades").param("email", "contacto@comedor.org"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(1)));
         }
 
         @Test

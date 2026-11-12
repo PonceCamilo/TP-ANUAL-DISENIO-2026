@@ -23,13 +23,16 @@ import ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
@@ -88,7 +91,9 @@ import static ar.utn.donatrack.donaciones.models.donacion.estado.EstadosDonacion
         @Index(name = "idx_donacion_entidad_fecha", columnList = "id_entidad_beneficiaria, fecha_asignacion"),
         @Index(name = "idx_donacion_subcategoria", columnList = "subcategoria_tipo_normalizado"),
         // Orden de la paginación: más nuevas primero, el id desempata.
-        @Index(name = "idx_donacion_fecha", columnList = "fecha_donacion DESC, id")
+        @Index(name = "idx_donacion_fecha", columnList = "fecha_donacion DESC, id"),
+        // Landing: entregadas en el último mes (Entrega 6).
+        @Index(name = "idx_donacion_entrega", columnList = "fecha_entrega DESC")
 })
 @Getter
 public class Donacion extends EntidadPersistible {
@@ -148,6 +153,21 @@ public class Donacion extends EntidadPersistible {
     /** Cuándo se dio de baja; null mientras está vigente (ver BAJA LÓGICA). */
     @Column(name = "fecha_baja")
     protected LocalDateTime fechaBaja;
+
+    /**
+     * Cuándo se entregó; null hasta que llega a ENTREGADA. Es el mismo dato que el
+     * cambio de estado del historial, desnormalizado (Entrega 6): la landing pide
+     * las entregadas del último mes y así no hay que unir el historial.
+     */
+    @Column(name = "fecha_entrega")
+    protected LocalDateTime fechaEntrega;
+
+    /** URLs de las fotos de la recepción, en el orden en que llegaron (Entrega 6). */
+    @ElementCollection
+    @CollectionTable(name = "donacion_foto_entrega", joinColumns = @JoinColumn(name = "donacion_id"))
+    @OrderColumn(name = "posicion")
+    @Column(name = "url", length = 2048, nullable = false)
+    protected List<String> fotosEntrega = new ArrayList<>();
 
     /**
      * La asignación que ya está en la base: la que se leyó o la del último
@@ -244,9 +264,31 @@ public class Donacion extends EntidadPersistible {
         historialEstados.add(CambioEstado.de(previo, nuevo, nombreTransicion, justificacion));
         registrarEvento(new DonacionCambioDeEstado(id, previo.nombre(), nuevo.nombre()));
         if (nuevo.es(ENTREGADA)) {
+            this.fechaEntrega = cuando;
             registrarEvento(new DonacionEntregada(id, idDonante, idEntidadBeneficiaria, subcategoria, cantidadTotal(),
                     cuando));
         }
+    }
+
+    /**
+     * Las fotos que cargó la entidad al confirmar la recepción (requisito 12). Las
+     * informa logística en el aviso de entrega exitosa; se guardan solo las URLs y
+     * reemplazan a las anteriores. Sin fotos no cambia nada.
+     */
+    public void registrarFotosDeEntrega(List<String> urls) {
+        if (urls == null || urls.isEmpty()) {
+            return;
+        }
+        fotosEntrega.clear();
+        urls.stream().filter(url -> url != null && !url.isBlank()).map(String::strip).forEach(fotosEntrega::add);
+    }
+
+    /** La foto para mostrar: la primera de la entrega o, si no hay, la de algún bien. */
+    public Optional<String> fotoParaMostrar() {
+        if (!fotosEntrega.isEmpty()) {
+            return Optional.of(fotosEntrega.getFirst());
+        }
+        return bienes.stream().map(Bien::getFoto).filter(foto -> foto != null && !foto.isBlank()).findFirst();
     }
 
     /**

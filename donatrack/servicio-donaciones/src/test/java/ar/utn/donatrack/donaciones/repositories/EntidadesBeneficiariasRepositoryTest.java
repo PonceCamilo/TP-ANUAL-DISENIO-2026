@@ -3,6 +3,9 @@ package ar.utn.donatrack.donaciones.repositories;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
 import ar.utn.donatrack.donaciones.models.categoria.Subcategoria;
+import ar.utn.donatrack.donaciones.models.contacto.Email;
+import ar.utn.donatrack.donaciones.models.contacto.MedioDeContacto;
+import ar.utn.donatrack.donaciones.models.donante.Representante;
 import ar.utn.donatrack.donaciones.models.entidad.EntidadBeneficiaria;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.Campania;
 import ar.utn.donatrack.donaciones.models.entidad.necesidad.NecesidadExtraordinaria;
@@ -149,5 +152,102 @@ class EntidadesBeneficiariasRepositoryTest {
         assertThat(segunda.contenido()).extracting(EntidadBeneficiaria::getRazonSocial).containsExactly("Hogar San José");
         assertThat(primera.totalElementos()).isEqualTo(3);
         assertThat(primera.totalPaginas()).isEqualTo(2);
+    }
+
+    // ── Búsqueda por email (Entrega 6) ────────────────────────────────────────
+
+    private EntidadBeneficiaria entidad(String razonSocial, String emailContacto, String emailRepresentante) {
+        List<MedioDeContacto> contactos = new ArrayList<>();
+        if (emailContacto != null) {
+            contactos.add(Email.builder().valor(emailContacto).build());
+        }
+        List<Representante> representantes = new ArrayList<>();
+        if (emailRepresentante != null) {
+            representantes.add(Representante.builder()
+                    .id(UUID.randomUUID()).nombre("Ana").apellido("Gómez").email(emailRepresentante)
+                    .contactos(new ArrayList<>()).build());
+        }
+        return EntidadBeneficiaria.builder()
+                .razonSocial(razonSocial).contactos(contactos).representantes(representantes).build();
+    }
+
+    private void guardarYLimpiar(EntidadBeneficiaria... entidades) {
+        for (EntidadBeneficiaria entidad : entidades) {
+            repositorio.guardar(entidad);
+        }
+        jpa.flush();
+        em.clear();
+    }
+
+    @Test
+    @DisplayName("Encuentra a la entidad por el email de un contacto y por el de un representante")
+    void buscaPorEmailDeContactoODeRepresentante() {
+        // El front ubica así a la entidad de quien inició sesión: esa persona
+        // puede ser el contacto de la entidad o uno de sus representantes.
+        guardarYLimpiar(
+                entidad("Comedor Los Pibes", "comedor@example.com", null),
+                entidad("Escuela 12", null, "directora@example.com"),
+                entidad("Hogar San José", "hogar@example.com", "otro@example.com"));
+
+        SolicitudPagina pagina = new SolicitudPagina(0, 20);
+
+        assertThat(repositorio.buscarPorEmail("comedor@example.com", pagina).contenido())
+                .extracting(EntidadBeneficiaria::getRazonSocial).containsExactly("Comedor Los Pibes");
+        assertThat(repositorio.buscarPorEmail("directora@example.com", pagina).contenido())
+                .extracting(EntidadBeneficiaria::getRazonSocial).containsExactly("Escuela 12");
+    }
+
+    @Test
+    @DisplayName("No distingue mayúsculas ni espacios, de ninguno de los dos lados")
+    void buscaPorEmailSinDistinguirMayusculas() {
+        // Los contactos se guardan como los escribió la persona, así que la
+        // comparación normaliza los dos lados.
+        guardarYLimpiar(entidad("Comedor Los Pibes", "Comedor@Example.COM", null));
+
+        Pagina<EntidadBeneficiaria> encontrada =
+                repositorio.buscarPorEmail("  COMEDOR@example.com ", new SolicitudPagina(0, 20));
+
+        assertThat(encontrada.contenido()).hasSize(1);
+        assertThat(encontrada.totalElementos()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Una entidad con el mismo email como contacto y como representante aparece una sola vez")
+    void buscaPorEmailSinDuplicar() {
+        guardarYLimpiar(entidad("Comedor Los Pibes", "ana@example.com", "ana@example.com"));
+
+        Pagina<EntidadBeneficiaria> encontrada =
+                repositorio.buscarPorEmail("ana@example.com", new SolicitudPagina(0, 20));
+
+        assertThat(encontrada.contenido()).hasSize(1);
+        assertThat(encontrada.totalElementos()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Si una persona representa a varias entidades, las devuelve todas ordenadas")
+    void buscaPorEmailVariasEntidades() {
+        guardarYLimpiar(
+                entidad("Hogar San José", null, "ana@example.com"),
+                entidad("Comedor Los Pibes", null, "ana@example.com"),
+                entidad("Escuela 12", null, "otra@example.com"));
+
+        Pagina<EntidadBeneficiaria> encontradas =
+                repositorio.buscarPorEmail("ana@example.com", new SolicitudPagina(0, 20));
+
+        assertThat(encontradas.contenido()).extracting(EntidadBeneficiaria::getRazonSocial)
+                .containsExactly("Comedor Los Pibes", "Hogar San José");
+        assertThat(encontradas.totalElementos()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Un email que no tiene ninguna entidad devuelve una página vacía")
+    void buscaPorEmailInexistente() {
+        guardarYLimpiar(entidad("Comedor Los Pibes", "comedor@example.com", null));
+
+        Pagina<EntidadBeneficiaria> encontrada =
+                repositorio.buscarPorEmail("nadie@example.com", new SolicitudPagina(0, 20));
+
+        assertThat(encontrada.contenido()).isEmpty();
+        assertThat(encontrada.totalElementos()).isZero();
     }
 }

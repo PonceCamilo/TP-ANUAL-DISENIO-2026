@@ -2,8 +2,11 @@ package ar.utn.donatrack.donaciones.controllers;
 
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.seguridad.ControlDeAcceso;
 import ar.utn.donatrack.donaciones.services.EntidadesBeneficiariasService;
 import ar.utn.donatrack.donaciones.dtos.request.CampaniaRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.EmailRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.MedioDeContactoRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntidadBeneficiariaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.NecesidadRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.CampaniaResponseDTO;
@@ -23,30 +26,40 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/entidades")
 @Validated
-@Tag(name = "Entidades Beneficiarias", description = "Gestión de entidades beneficiarias, sus campañas y necesidades materiales")
+@Tag(name = "Entidades Beneficiarias", description = "Gestión de entidades beneficiarias, sus campañas y necesidades "
+        + "materiales. El listado, la búsqueda por email y las bajas son de la administración; una cuenta de entidad "
+        + "solo gestiona su propia entidad.")
 public class EntidadBeneficiariaController {
 
     private final EntidadesBeneficiariasService entidadesBeneficiariasService;
+    private final ControlDeAcceso acceso;
 
     @Operation(
         summary = "Crear una entidad beneficiaria",
+        description = "La administración puede dar de alta cualquier entidad. Una cuenta de entidad registra la suya "
+            + "una sola vez, y la entidad tiene que tener el email de la cuenta como contacto o como representante.",
         responses = {
             @ApiResponse(responseCode = "201", description = "Entidad creada",
                 content = @Content(schema = @Schema(implementation = EntidadBeneficiariaResponseDTO.class))),
-            @ApiResponse(responseCode = "400", description = "Datos inválidos")
+            @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+            @ApiResponse(responseCode = "403", description = "La entidad no tiene el email de la cuenta"),
+            @ApiResponse(responseCode = "409", description = "La cuenta ya tiene una entidad registrada")
         }
     )
     @PostMapping
     public ResponseEntity<EntidadBeneficiariaResponseDTO> crearEntidad(
             @RequestBody @Valid EntidadBeneficiariaRequestDTO dto
     ) {
+        acceso.exigirAltaDeEntidad(emailsDe(dto));
         EntidadBeneficiariaResponseDTO entidadCreada = entidadesBeneficiariasService.guardar(dto);
         URI location = URI.create("/entidades/" + entidadCreada.getId());
         return ResponseEntity.created(location).body(entidadCreada);
@@ -55,7 +68,8 @@ public class EntidadBeneficiariaController {
     @Operation(
         summary = "Listar entidades beneficiarias (paginado)",
         description = "Ordenadas por razón social, como página igual que donaciones y donantes (antes devolvía todas "
-            + "juntas). Las páginas empiezan en 0; el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
+            + "juntas). Con email devuelve solo las entidades que lo tienen como contacto o como representante. "
+            + "Las páginas empiezan en 1; el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
             + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
         responses = {
             @ApiResponse(responseCode = "200", description = "Página de entidades con el total de resultados"),
@@ -64,12 +78,15 @@ public class EntidadBeneficiariaController {
     )
     @GetMapping
     public ResponseEntity<PaginaResponseDTO<EntidadBeneficiariaResponseDTO>> obtenerEntidades(
-        @Parameter(description = "Número de página, desde 0", example = "0")
+        @Parameter(description = "Email de un contacto o de un representante de la entidad (no distingue mayúsculas)",
+            example = "contacto@comedor.org")
+        @RequestParam(required = false) String email,
+        @Parameter(description = "Número de página, desde 1", example = "1")
         @RequestParam(required = false) Integer page,
         @Parameter(description = "Elementos por página (1 a 100)", example = "20")
         @RequestParam(required = false) Integer size
     ) {
-        return ResponseEntity.ok(entidadesBeneficiariasService.obtenerEntidades(SolicitudPagina.de(page, size)));
+        return ResponseEntity.ok(entidadesBeneficiariasService.obtenerEntidades(email, SolicitudPagina.de(page, size)));
     }
 
     @Operation(
@@ -84,6 +101,7 @@ public class EntidadBeneficiariaController {
     public ResponseEntity<EntidadBeneficiariaResponseDTO> obtenerPorId(
             @Parameter(description = "ID de la entidad beneficiaria") @PathVariable UUID id
     ) {
+        acceso.exigirEntidad(id);
         return ResponseEntity.ok(entidadesBeneficiariasService.obtenerPorId(id));
     }
 
@@ -99,6 +117,7 @@ public class EntidadBeneficiariaController {
             @Parameter(description = "ID de la entidad beneficiaria") @PathVariable UUID id,
             @RequestBody @Valid EntidadBeneficiariaRequestDTO dto
     ) {
+        acceso.exigirEntidad(id);
         entidadesBeneficiariasService.actualizar(id, dto);
         return ResponseEntity.noContent().build();
     }
@@ -135,6 +154,7 @@ public class EntidadBeneficiariaController {
             @Parameter(description = "ID de la entidad beneficiaria") @PathVariable UUID id,
             @RequestBody @Valid CampaniaRequestDTO dto
     ) {
+        acceso.exigirEntidad(id);
         CampaniaResponseDTO campaniaCreada = entidadesBeneficiariasService.agregarCampaniaAEntidad(id, dto);
         URI location = URI.create("/entidades/" + id + "/campanias/" + campaniaCreada.getIdCampania());
         return ResponseEntity.created(location).body(campaniaCreada);
@@ -156,6 +176,7 @@ public class EntidadBeneficiariaController {
             @Parameter(description = "ID de la campaña") @PathVariable UUID campaniaId,
             @RequestBody @Valid NecesidadRequestDTO dto
     ) {
+        acceso.exigirEntidad(entidadId);
         NecesidadResponseDTO necesidadCreada =
                 entidadesBeneficiariasService.agregarNecesidadACampania(entidadId, campaniaId, dto);
         URI location = URI.create(
@@ -176,6 +197,7 @@ public class EntidadBeneficiariaController {
             @Parameter(description = "ID de la entidad beneficiaria") @PathVariable UUID entidadId,
             @Parameter(description = "ID de la campaña") @PathVariable UUID campaniaId
     ) {
+        acceso.exigirEntidad(entidadId);
         return ResponseEntity.ok(
                 entidadesBeneficiariasService.obtenerNecesidadesDeCampania(entidadId, campaniaId));
     }
@@ -194,6 +216,7 @@ public class EntidadBeneficiariaController {
             @Parameter(description = "ID de la campaña") @PathVariable UUID campaniaId,
             @Parameter(description = "ID de la necesidad") @PathVariable UUID necesidadId
     ) {
+        acceso.exigirEntidad(entidadId);
         return ResponseEntity.ok(
                 entidadesBeneficiariasService.obtenerNecesidad(entidadId, campaniaId, necesidadId));
     }
@@ -217,6 +240,7 @@ public class EntidadBeneficiariaController {
             @Parameter(description = "ID de la necesidad") @PathVariable UUID necesidadId,
             @RequestBody @Valid NecesidadRequestDTO dto
     ) {
+        acceso.exigirEntidad(entidadId);
         return ResponseEntity.ok(
                 entidadesBeneficiariasService.actualizarNecesidad(entidadId, campaniaId, necesidadId, dto));
     }
@@ -234,7 +258,25 @@ public class EntidadBeneficiariaController {
             @Parameter(description = "ID de la campaña") @PathVariable UUID campaniaId,
             @Parameter(description = "ID de la necesidad") @PathVariable UUID necesidadId
     ) {
+        acceso.exigirEntidad(entidadId);
         entidadesBeneficiariasService.eliminarNecesidad(entidadId, campaniaId, necesidadId);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Los emails de contacto y de los representantes: uno tiene que ser el de la cuenta que la registra. */
+    private static List<String> emailsDe(EntidadBeneficiariaRequestDTO dto) {
+        List<String> emails = new ArrayList<>();
+        if (dto.getContactos() != null) {
+            dto.getContactos().stream()
+                    .filter(EmailRequestDTO.class::isInstance)
+                    .map(MedioDeContactoRequestDTO::getValor)
+                    .forEach(emails::add);
+        }
+        if (dto.getRepresentantes() != null) {
+            dto.getRepresentantes().stream()
+                    .flatMap(representante -> Stream.ofNullable(representante.getEmail()))
+                    .forEach(emails::add);
+        }
+        return emails;
     }
 }

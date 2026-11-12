@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -21,12 +21,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Los clientes hacia otros servicios usan el RestClient.Builder de Spring Boot y,
- * con él, el timeout de lectura configurado: un servicio que no contesta corta la
- * llamada en lugar de dejar el hilo colgado.
+ * Un servicio que no contesta corta la llamada por timeout en lugar de dejar el
+ * hilo colgado. El broker tiene su propio timeout de lectura (más largo que el
+ * general, porque él a su vez espera a Logística), configurable con
+ * servicios.broker-logistica.read-timeout.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
-        properties = "spring.http.client.read-timeout=300ms")
+        properties = "servicios.broker-logistica.read-timeout=300ms")
 @DisplayName("Clientes HTTP: el timeout configurado se aplica")
 class ClientesHttpTimeoutTest {
 
@@ -70,7 +71,12 @@ class ClientesHttpTimeoutTest {
     void cortaPorTimeout() {
         long inicio = System.nanoTime();
 
-        assertThatThrownBy(() -> broker.solicitarEnvio(null, List.of())).isInstanceOf(ResourceAccessException.class);
+        // Con HttpURLConnection (la fábrica del broker) el timeout puede saltar al
+        // leer la respuesta, y Spring lo informa como RestClientException en lugar
+        // de ResourceAccessException. PlanificacionEntregasService atrapa los dos.
+        assertThatThrownBy(() -> broker.solicitarEnvio(null, List.of()))
+                .isInstanceOf(RestClientException.class)
+                .hasRootCauseInstanceOf(java.net.SocketTimeoutException.class);
 
         assertThat(Duration.ofNanos(System.nanoTime() - inicio)).isLessThan(Duration.ofSeconds(2));
     }

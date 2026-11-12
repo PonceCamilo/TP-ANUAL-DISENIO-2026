@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import ar.utn.donatrack.donaciones.exceptions.cambioEstadosExceptions.TransicionDeEstadoIlegalException;
 import ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DonacionNoEncontradaException;
 import ar.utn.donatrack.donaciones.services.logistica.ManejadorEntregaExitosa;
@@ -38,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 400 en vez de procesarse a medias.
  */
 @WebMvcTest(LogisticaEventosController.class)
+@Import(SeguridadDePrueba.class)
 @DisplayName("LogisticaEventosController - contrato HTTP de /logistica/eventos")
 class LogisticaEventosControllerTest {
 

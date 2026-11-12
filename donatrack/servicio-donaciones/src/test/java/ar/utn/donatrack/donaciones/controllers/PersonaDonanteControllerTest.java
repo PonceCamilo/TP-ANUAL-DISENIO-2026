@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import ar.utn.donatrack.donaciones.services.PersonaDonanteService;
 import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
@@ -72,6 +75,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   - La importación masiva se expone como multipart/form-data.
  */
 @WebMvcTest(PersonaDonanteController.class)
+@Import(SeguridadDePrueba.class)
 @DisplayName("PersonaDonanteController - contrato HTTP de /donantes")
 class PersonaDonanteControllerTest {
 
@@ -141,7 +145,7 @@ class PersonaDonanteControllerTest {
         @Test
         @DisplayName("Devuelve 200 con la página de donantes y sus totales")
         void listaDonantes() throws Exception {
-            when(personaDonanteService.obtenerDonantes(isNull(), any()))
+            when(personaDonanteService.obtenerDonantes(isNull(), isNull(), any()))
                     .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(respuestaHumana()), 0, 20, 1)));
 
             mockMvc.perform(get("/donantes"))
@@ -150,19 +154,34 @@ class PersonaDonanteControllerTest {
                     .andExpect(jsonPath("$.contenido[0].estado").value("ACTIVO"))
                     .andExpect(jsonPath("$.totalElementos").value(1));
 
-            verify(personaDonanteService).obtenerDonantes(null, new SolicitudPagina(0, 20));
+            verify(personaDonanteService).obtenerDonantes(null, null, new SolicitudPagina(0, 20));
         }
 
         @Test
         @DisplayName("Pasa el filtro de estado y la página al service")
         void filtraPorEstado() throws Exception {
-            when(personaDonanteService.obtenerDonantes(any(), any()))
+            when(personaDonanteService.obtenerDonantes(any(), any(), any()))
                     .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 1, 10, 0)));
 
-            mockMvc.perform(get("/donantes").param("estado", "BLOQUEADO").param("page", "1").param("size", "10"))
+            mockMvc.perform(get("/donantes").param("estado", "BLOQUEADO").param("page", "2").param("size", "10"))
                     .andExpect(status().isOk());
 
-            verify(personaDonanteService).obtenerDonantes("BLOQUEADO", new SolicitudPagina(1, 10));
+            // La página 2 de la API llega al service como índice 1.
+            verify(personaDonanteService).obtenerDonantes("BLOQUEADO", null, new SolicitudPagina(1, 10));
+        }
+
+        @Test
+        @DisplayName("Pasa el filtro de email al service y responde con la misma forma de página")
+        void filtraPorEmail() throws Exception {
+            when(personaDonanteService.obtenerDonantes(any(), any(), any()))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(respuestaHumana()), 0, 20, 1)));
+
+            mockMvc.perform(get("/donantes").param("email", "juan@example.com"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$.totalElementos").value(1));
+
+            verify(personaDonanteService).obtenerDonantes(null, "juan@example.com", new SolicitudPagina(0, 20));
         }
 
         @Test
