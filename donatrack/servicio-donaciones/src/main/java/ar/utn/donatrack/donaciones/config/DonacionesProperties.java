@@ -29,7 +29,8 @@ public record DonacionesProperties(
         @Valid @DefaultValue Importacion importacion,
         @Valid @DefaultValue Notificaciones notificaciones,
         @Valid @DefaultValue Matchmaking matchmaking,
-        @Valid @DefaultValue Salida salida) {
+        @Valid @DefaultValue Salida salida,
+        @Valid @DefaultValue Seguridad seguridad) {
 
     /**
      * Aviso a donantes inactivos. El enunciado fija el plazo en 20 días sin
@@ -90,5 +91,19 @@ public record DonacionesProperties(
             @DefaultValue("10") @Positive int maxIntentos,
             @DefaultValue("7") @Positive int diasRetencion,
             @DefaultValue("0 30 4 * * *") @NotBlank String cronLimpieza) {
+    }
+
+    /**
+     * Validación del JWT que emite el Servicio de Autenticación (Entrega 6).
+     *
+     * Las claves públicas se piden a esa URL recién con el primer token y se
+     * guardan en memoria: Donaciones arranca aunque Autenticación todavía no
+     * esté arriba. El emisor y la audiencia son los que ese servicio escribe en
+     * cada token (iss y aud); uno de otro emisor o para otra audiencia se rechaza.
+     */
+    public record Seguridad(
+            @DefaultValue("http://localhost:8088/api/autenticacion/claves-publicas") @NotBlank String clavesPublicasUrl,
+            @DefaultValue("urn:donatrack:autenticacion") @NotBlank String emisor,
+            @DefaultValue("donatrack-api") @NotBlank String audiencia) {
     }
 }

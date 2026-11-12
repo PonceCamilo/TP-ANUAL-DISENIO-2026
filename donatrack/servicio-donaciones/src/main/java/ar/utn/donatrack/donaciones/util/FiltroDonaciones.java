@@ -39,6 +39,16 @@ public record FiltroDonaciones(String estado, UUID idDonante, String subcategori
         this(estado, idDonante, subcategoria, idEntidad, soloConBienesVencidos, null, null);
     }
 
+    /** El mismo filtro, limitado a las donaciones de una persona donante (Entrega 6: ControlDeAcceso). */
+    public FiltroDonaciones conDonante(UUID id) {
+        return new FiltroDonaciones(estado, id, subcategoria, idEntidad, soloConBienesVencidos, desde, hasta);
+    }
+
+    /** El mismo filtro, limitado a las donaciones asignadas a una entidad (Entrega 6: ControlDeAcceso). */
+    public FiltroDonaciones conEntidad(UUID id) {
+        return new FiltroDonaciones(estado, idDonante, subcategoria, id, soloConBienesVencidos, desde, hasta);
+    }
+
     private static String textoONulo(String texto) {
         return texto == null || texto.isBlank() ? null : texto.strip();
     }

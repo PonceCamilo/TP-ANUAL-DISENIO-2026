@@ -13,6 +13,7 @@ import ar.utn.donatrack.donaciones.dtos.response.CandidatosPendientesResponseDTO
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.EnvioLogisticaResponseDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.seguridad.ControlDeAcceso;
 import ar.utn.donatrack.donaciones.util.FiltroDonaciones;
 import ar.utn.donatrack.donaciones.services.PlanificacionEntregasService;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
@@ -48,13 +49,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/donaciones")
 @Validated
-@Tag(name = "Donaciones", description = "Registro, consulta, cambios de estado y asignación de donaciones a entidades beneficiarias")
+@Tag(name = "Donaciones", description = "Registro, consulta, cambios de estado y asignación de donaciones a entidades "
+        + "beneficiarias. Una persona donante registra y ve solo sus donaciones; una entidad ve solo las asignadas a "
+        + "ella. Cambios de estado, asignación (requisito 17), despacho, bienes y bajas: solo la administración.")
 public class DonacionesController {
 
     private final DonacionConsultasService consultas;
     private final DonacionComandosService comandos;
     private final SegmentadorDonacionesService segmentadorDonacionesService;
     private final PlanificacionEntregasService planificacionEntregasService;
+    private final ControlDeAcceso acceso;
 
     @Operation(
             summary = "Listar donaciones (paginado)",
@@ -91,7 +95,9 @@ public class DonacionesController {
     ) {
         FiltroDonaciones filtro = new FiltroDonaciones(estado, idDonante, subcategoria, idEntidad,
                 Boolean.TRUE.equals(vencidas), desde, hasta);
-        return ResponseEntity.ok(consultas.obtenerDonaciones(filtro, SolicitudPagina.de(page, size)));
+        // Una persona donante ve solo las suyas y una entidad solo las asignadas a ella.
+        FiltroDonaciones permitido = acceso.limitarAlUsuario(filtro);
+        return ResponseEntity.ok(consultas.obtenerDonaciones(permitido, SolicitudPagina.de(page, size)));
     }
 
     @Operation(
@@ -100,6 +106,7 @@ public class DonacionesController {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Donación encontrada",
                             content = @Content(schema = @Schema(implementation = DonacionResponseDTO.class))),
+                    @ApiResponse(responseCode = "403", description = "La donación no es de quien consulta ni está asignada a su entidad"),
                     @ApiResponse(responseCode = "404", description = "Donación no encontrada")
             }
     )
@@ -107,7 +114,9 @@ public class DonacionesController {
     public ResponseEntity<DonacionResponseDTO> obtenerDonacion(
             @Parameter(description = "ID de la donación") @PathVariable UUID id
     ) {
-        return ResponseEntity.ok(consultas.obtenerPorId(id));
+        DonacionResponseDTO donacion = consultas.obtenerPorId(id);
+        acceso.exigirVerDonacion(donacion.getIdDonante(), donacion.getIdEntidadBeneficiaria());
+        return ResponseEntity.ok(donacion);
     }
 
     @Operation(
@@ -117,6 +126,7 @@ public class DonacionesController {
                     @ApiResponse(responseCode = "201", description = "Donaciones segmentadas y creadas",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = DonacionResponseDTO.class)))),
                     @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                    @ApiResponse(responseCode = "403", description = "Una persona donante quiere registrar a nombre de otra"),
                     @ApiResponse(responseCode = "404", description = "Persona donante no encontrada"),
                     @ApiResponse(responseCode = "422", description = "La persona donante está BLOQUEADA")
             }
@@ -125,6 +135,8 @@ public class DonacionesController {
     public ResponseEntity<List<DonacionResponseDTO>> registrar(
             @RequestBody @Valid DonacionRequestDTO dto
     ) {
+        // La administración registra lo recibido en el depósito a nombre de cualquier donante (requisito 15).
+        acceso.exigirDonante(dto.getIdDonante());
         return ResponseEntity.status(HttpStatus.CREATED).body(segmentadorDonacionesService.registrar(dto));
     }
 

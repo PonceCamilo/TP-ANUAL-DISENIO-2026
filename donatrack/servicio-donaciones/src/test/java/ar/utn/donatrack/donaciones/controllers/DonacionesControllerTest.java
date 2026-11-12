@@ -1,5 +1,7 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+
 import ar.utn.donatrack.donaciones.models.donacion.ProveedorLogistica;
 import ar.utn.donatrack.donaciones.dtos.response.RankingAlgoritmoResponseDTO;
 import ar.utn.donatrack.donaciones.services.SegmentadorDonacionesService;
@@ -77,7 +79,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *     ilegal, 400 datos inválidos.
  */
 @WebMvcTest(DonacionesController.class)
-@Import(DonacionMapper.class)
+@Import({DonacionMapper.class, SeguridadDePrueba.class})
 @DisplayName("DonacionesController - contrato HTTP de /donaciones")
 class DonacionesControllerTest {
 

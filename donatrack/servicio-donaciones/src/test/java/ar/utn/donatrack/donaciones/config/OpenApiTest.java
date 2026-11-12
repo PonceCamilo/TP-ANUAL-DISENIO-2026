@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.config;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -15,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /** La especificación OpenAPI que publica el servicio (/v3/api-docs). */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(SeguridadDePrueba.class)
 @DisplayName("OpenAPI: documentación completa y errores con su esquema")
 class OpenApiTest {
 

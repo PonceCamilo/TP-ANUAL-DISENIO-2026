@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.integracion;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.clientes.BrokerLogisticaClient;
 import ar.utn.donatrack.donaciones.clientes.IncentivosClient;
@@ -46,6 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:flujo_donacion;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
 @AutoConfigureMockMvc
+@Import(SeguridadDePrueba.class)
 @DisplayName("Integración: flujo de una donación por la API y contra la base")
 class FlujoDeDonacionIntegracionTest {
 

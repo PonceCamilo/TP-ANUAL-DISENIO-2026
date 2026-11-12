@@ -39,6 +39,17 @@
         </dependency>
 
         <!--
+            Entrega 6: cada pedido trae el JWT que emite el Servicio de
+            Autenticación (Authorization: Bearer). Donaciones lo valida con las
+            claves públicas de ese servicio y decide por el rol y el perfil del
+            token (SeguridadConfig y ControlDeAcceso).
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!--
             Entrega 4: integración asincrónica con el Servicio de Notificaciones
             a través de una cola de mensajes (RabbitMQ).
         -->
@@ -96,6 +107,13 @@
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Entrega 6: tokens de prueba (jwt()) para los tests de la capa web. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 

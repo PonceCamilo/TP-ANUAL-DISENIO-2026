@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.integracion;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import ar.utn.donatrack.donaciones.models.donacion.CambioEstado;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.models.donacion.Donacion;
@@ -32,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:logistica_integracion;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
 @AutoConfigureMockMvc
+@Import(SeguridadDePrueba.class)
 @DisplayName("Integración: callbacks de logística")
 class LogisticaIntegracionTest {
 

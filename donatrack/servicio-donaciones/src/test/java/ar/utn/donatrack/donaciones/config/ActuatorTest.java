@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.config;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.io.IOException;
 import java.util.Properties;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -27,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(SeguridadDePrueba.class)
 @DisplayName("Actuator: salud y métricas para operar el contenedor")
 class ActuatorTest {
 
@@ -59,6 +64,15 @@ class ActuatorTest {
         mvc.perform(get("/actuator/info")).andExpect(status().isOk());
         mvc.perform(get("/actuator/env")).andExpect(status().isNotFound());
         mvc.perform(get("/actuator/beans")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Entrega 6: la salud y la info no piden token; las métricas, sí")
+    void saludSinToken() throws Exception {
+        mvc.perform(get("/actuator/health").with(anonymous())).andExpect(status().isOk());
+        mvc.perform(get("/actuator/health/readiness").with(anonymous())).andExpect(status().isOk());
+        mvc.perform(get("/actuator/info").with(anonymous())).andExpect(status().isOk());
+        mvc.perform(get("/actuator/metrics/jvm.memory.used").with(anonymous())).andExpect(status().isUnauthorized());
     }
 
     @Test

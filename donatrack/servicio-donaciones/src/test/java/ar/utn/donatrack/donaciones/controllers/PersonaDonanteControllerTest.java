@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import ar.utn.donatrack.donaciones.services.PersonaDonanteService;
 import ar.utn.donatrack.donaciones.dtos.response.ImportacionResumenResponseDTO;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
@@ -72,6 +75,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   - La importación masiva se expone como multipart/form-data.
  */
 @WebMvcTest(PersonaDonanteController.class)
+@Import(SeguridadDePrueba.class)
 @DisplayName("PersonaDonanteController - contrato HTTP de /donantes")
 class PersonaDonanteControllerTest {
 

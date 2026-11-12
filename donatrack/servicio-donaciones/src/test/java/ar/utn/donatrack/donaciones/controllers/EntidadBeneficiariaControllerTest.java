@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.controllers;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import ar.utn.donatrack.donaciones.util.Pagina;
@@ -60,6 +63,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * devolver, y que el tipo NO se pueda cambiar en un PUT.
  */
 @WebMvcTest(EntidadBeneficiariaController.class)
+@Import(SeguridadDePrueba.class)
 @DisplayName("EntidadBeneficiariaController - contrato HTTP de /entidades")
 class EntidadBeneficiariaControllerTest {
 

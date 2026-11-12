@@ -2,7 +2,6 @@ package ar.utn.donatrack.donaciones.exceptions;
 
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import ar.utn.donatrack.donaciones.dtos.response.ErrorResponseDTO;
-import ar.utn.donatrack.donaciones.util.FechaHoraArgentina;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.NestedExceptionUtils;
@@ -10,6 +9,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -64,6 +64,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ServicioNoDisponibleException.class)
     public ResponseEntity<ErrorResponseDTO> servicioNoDisponible(ServicioNoDisponibleException ex) {
         return responder(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+    }
+
+    /**
+     * Quien llama tiene un token válido pero pide algo que no le corresponde
+     * (Entrega 6): los datos de otra persona, una donación ajena.
+     */
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<ErrorResponseDTO> accesoDenegado(AccesoDenegadoException ex) {
+        return responder(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    /**
+     * El mismo caso, cuando lo detecta Spring Security dentro del controller. Sin
+     * este manejador caería en errorInesperado y respondería 500 en vez de 403.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponseDTO> accesoDenegadoPorSpring(AccessDeniedException ex) {
+        return responder(HttpStatus.FORBIDDEN, "No tenés permiso para hacer esta operación.");
     }
 
     // ── Errores de Spring y de la base ──────────────────────────────────────
@@ -155,11 +173,6 @@ public class GlobalExceptionHandler {
     }
 
     private static ErrorResponseDTO cuerpo(HttpStatus status, String mensaje) {
-        return ErrorResponseDTO.builder()
-                .timestamp(FechaHoraArgentina.ahora())
-                .status(status.value())
-                .error(status.getReasonPhrase())
-                .message(mensaje)
-                .build();
+        return ErrorResponseDTO.de(status, mensaje);
     }
 }

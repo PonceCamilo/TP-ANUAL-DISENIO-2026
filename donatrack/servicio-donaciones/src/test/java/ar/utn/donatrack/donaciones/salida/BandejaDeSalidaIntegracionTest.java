@@ -1,5 +1,8 @@
 package ar.utn.donatrack.donaciones.salida;
 
+import ar.utn.donatrack.donaciones.seguridad.SeguridadDePrueba;
+import org.springframework.context.annotation.Import;
+
 import java.time.Duration;
 import java.time.Clock;
 import java.util.List;
@@ -44,6 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest(properties = "spring.datasource.url=jdbc:h2:mem:bandeja_salida;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
 @AutoConfigureMockMvc
+@Import(SeguridadDePrueba.class)
 @DisplayName("Integración: bandeja de salida (outbox)")
 class BandejaDeSalidaIntegracionTest {
 

@@ -22,6 +22,8 @@ public final class PropiedadesDePrueba {
                 new DonacionesProperties.Importacion(500, 100),
                 new DonacionesProperties.Notificaciones("admin@donatrack.org"),
                 new DonacionesProperties.Matchmaking(10),
-                new DonacionesProperties.Salida(true, 5000, 50, 10, 7, "0 30 4 * * *"));
+                new DonacionesProperties.Salida(true, 5000, 50, 10, 7, "0 30 4 * * *"),
+                new DonacionesProperties.Seguridad("http://localhost:8088/api/autenticacion/claves-publicas",
+                        "urn:donatrack:autenticacion", "donatrack-api"));
     }
 }

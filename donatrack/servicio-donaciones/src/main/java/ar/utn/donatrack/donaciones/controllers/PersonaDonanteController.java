@@ -12,7 +12,9 @@ import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.PersonaDonanteUpdateRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.RepresentanteRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PaginaResponseDTO;
+import ar.utn.donatrack.donaciones.dtos.request.PersonaJuridicaRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.PersonaDonanteResponseDTO;
+import ar.utn.donatrack.donaciones.seguridad.ControlDeAcceso;
 import ar.utn.donatrack.donaciones.services.CsvImportService;
 import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import jakarta.validation.Valid;
@@ -41,11 +43,13 @@ import java.util.UUID;
 @RequestMapping("/donantes")
 @Validated
 @Tag(name = "Personas donantes", description = "Alta, consulta y gestión de personas donantes (humanas y organizaciones), "
-        + "y su importación masiva por CSV")
+        + "y su importación masiva por CSV. Listados, búsqueda por email, cambios de estado, bajas e importación: "
+        + "solo la administración. Una persona donante solo ve y modifica su propio perfil.")
 public class PersonaDonanteController {
 
     private final PersonaDonanteService personaDonanteService;
     private final CsvImportService csvImportService;
+    private final ControlDeAcceso acceso;
 
     @Operation(
             summary = "Listar personas donantes (paginado)",
@@ -82,23 +86,29 @@ public class PersonaDonanteController {
     public ResponseEntity<PersonaDonanteResponseDTO> obtenerDonante(
             @Parameter(description = "ID de la persona donante") @PathVariable UUID id
     ) {
+        acceso.exigirDonante(id);
         return ResponseEntity.ok(personaDonanteService.obtenerDonante(id));
     }
 
     @Operation(
             summary = "Registrar una persona donante",
             description = "Alta de una persona humana u organización (campo tipo: HUMANA o JURIDICA). El email es su "
-                    + "identidad: se guarda normalizado y no puede repetirse. Arranca ACTIVA.",
+                    + "identidad: se guarda normalizado y no puede repetirse. Arranca ACTIVA. La administración puede "
+                    + "dar de alta a cualquiera; una cuenta de donante solo registra su propio perfil, con el email "
+                    + "y el tipo de su cuenta, y una sola vez.",
             responses = {
                     @ApiResponse(responseCode = "201", description = "Persona donante registrada"),
                     @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-                    @ApiResponse(responseCode = "409", description = "Ya existe una persona donante con ese email")
+                    @ApiResponse(responseCode = "403", description = "El email o el tipo no son los de la cuenta"),
+                    @ApiResponse(responseCode = "409", description = "Ya existe una persona donante con ese email, "
+                            + "o la cuenta ya tiene un perfil")
             }
     )
     @PostMapping
     public ResponseEntity<PersonaDonanteResponseDTO> registrarDonante(
             @RequestBody @Valid PersonaDonanteRequestDTO dto
     ) {
+        acceso.exigirAltaDeDonante(dto.getEmail(), dto instanceof PersonaJuridicaRequestDTO ? "JURIDICA" : "HUMANA");
         PersonaDonanteResponseDTO donanteCreado = personaDonanteService.registrar(dto);
         URI location = URI.create("/donantes/" + donanteCreado.getId());
         return ResponseEntity.created(location).body(donanteCreado);
@@ -120,6 +130,7 @@ public class PersonaDonanteController {
             @Parameter(description = "ID de la persona donante") @PathVariable UUID id,
             @RequestBody @Valid PersonaDonanteUpdateRequestDTO dto
     ) {
+        acceso.exigirDonante(id);
         return ResponseEntity.ok(personaDonanteService.actualizar(id, dto));
     }
 
@@ -159,6 +170,7 @@ public class PersonaDonanteController {
             @Parameter(description = "ID de la persona donante") @PathVariable UUID id,
             @RequestBody @Valid MedioDeContactoRequestDTO dto
     ) {
+        acceso.exigirDonante(id);
         personaDonanteService.modificarContacto(id, dto);
         return ResponseEntity.noContent().build();
     }
@@ -176,6 +188,7 @@ public class PersonaDonanteController {
             @Parameter(description = "ID de la persona jurídica") @PathVariable UUID id,
             @RequestBody @Valid RepresentanteRequestDTO dto
     ) {
+        acceso.exigirDonante(id);
         personaDonanteService.modificarRepresentante(id, dto);
         return ResponseEntity.noContent().build();
     }
