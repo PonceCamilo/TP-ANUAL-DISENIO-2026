@@ -125,7 +125,7 @@ public class IncentivosController {
 
     @Operation(
             summary = "Procesar donacion exitosa",
-            description = "Endpoint de integracion usado por servicio-donaciones cuando una donacion fue entregada. Puede completar misiones y disparar n8n.",
+            description = "Registra una entrega exitosa. Para contabilizar la donacion en el historico, usar primero POST /donacion.",
             responses = {
                     @ApiResponse(responseCode = "201", description = "Evento procesado",
                             content = @Content(schema = @Schema(implementation = String.class))),

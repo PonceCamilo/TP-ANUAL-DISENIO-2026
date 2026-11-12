@@ -51,6 +51,42 @@ class MisionesTest {
     @Nested
     @DisplayName("Racha")
     class RachaTest {
+        @Test
+        void cortaLaRachaEnElMesSinDonaciones() {
+            Donante donante = new Donante();
+            for (int mes : new int[]{9, 11, 12}) {
+                donante.registrarDonacion(DonacionRegistrada.builder()
+                        .fecha(LocalDateTime.of(2026, mes, 9, 10, 0)).exitosa(true).build());
+            }
+            assertThat(new ProgresoRacha().mesesConsecutivosDonando(
+                    donante, LocalDate.of(2026, 12, 20))).isEqualTo(2);
+        }
+
+        @Test
+        void cuentaDiezMesesInclusoAlCambiarDeAnio() {
+            Donante donante = new Donante();
+            LocalDate inicio = LocalDate.of(2025, 9, 9);
+            for (int i = 0; i < 10; i++) {
+                donante.registrarDonacion(DonacionRegistrada.builder()
+                        .fecha(inicio.plusMonths(i).atStartOfDay()).exitosa(i % 2 == 0).build());
+            }
+            ProgresoRacha calculador = new ProgresoRacha();
+            assertThat(calculador.mesesConsecutivosDonando(donante, LocalDate.of(2026, 6, 20))).isEqualTo(10);
+            assertThat(calculador.mesesConsecutivosDonando(donante, LocalDate.of(2026, 7, 20))).isEqualTo(10);
+            assertThat(calculador.mesesConsecutivosDonando(donante, LocalDate.of(2026, 8, 1))).isZero();
+            assertThat(calculador.pasoUnMesCompletoSinDonaciones(donante, LocalDate.of(2026, 8, 1))).isTrue();
+        }
+        @Test
+        void cuentaExitosasEnMesesConsecutivosAunqueSeanPosterioresAlServidor() {
+            Donante donante = new Donante();
+            for (int mes : new int[]{12, 10, 11, 11}) {
+                donante.registrarDonacion(DonacionRegistrada.builder()
+                        .fecha(LocalDateTime.of(2026, mes, 9, 10, 0))
+                        .exitosa(true).cantidadBienes(1).build());
+            }
+            assertThat(new ProgresoRacha().mesesConsecutivosDonando(
+                    donante, LocalDate.of(2026, 10, 29))).isEqualTo(3);
+        }
 
         @Test
         @DisplayName("Cuenta los meses consecutivos con donaciones registradas")

@@ -79,6 +79,7 @@ class IncentivosControllerTest {
                     .andExpect(jsonPath("$.totalDonacionesHistoricas").value(0))
                     .andExpect(jsonPath("$.donacionesMesActual").value(0))
                     .andExpect(jsonPath("$.organizacionesAyudadas").value(0))
+                    .andExpect(jsonPath("$.organizacionesAyudadasMesActual").value(0))
                     .andExpect(jsonPath("$.posicionRanking").value(2));
         }
 

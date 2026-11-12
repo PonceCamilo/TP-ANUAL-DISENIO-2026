@@ -1,5 +1,6 @@
 package ar.utn.donatrack.incentivos.models.misiones;
 
+import ar.utn.donatrack.incentivos.models.DonacionRegistrada;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.MetricasDonante;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
@@ -24,7 +25,14 @@ public class DonacionesExitosas extends Mision {
         this.cantidadDonacionesRequerida = objetivo;
     }
 
-    public boolean estaCompletada(Donante donante) {    
+    @Override
+    public void registrarActividad(ProgresoMision progreso, DonacionRegistrada donacion) {
+        if (donacion.isExitosa()) {
+            progreso.contarEntregaExitosa();
+        }
+    }
+
+    public boolean estaCompletada(Donante donante) {
         return progresoActual(donante) >= objetivo;
     }
 

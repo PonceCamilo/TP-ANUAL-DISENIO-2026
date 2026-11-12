@@ -3,6 +3,7 @@ package ar.utn.donatrack.incentivos.dtos.response;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.models.MetricasDonante;
 
+import java.time.YearMonth;
 import java.util.UUID;
 
 public record MetricasDonanteResponse(
@@ -11,6 +12,7 @@ public record MetricasDonanteResponse(
         int totalDonacionesHistoricas,
         int donacionesMesActual,
         int organizacionesAyudadas,
+        int organizacionesAyudadasMesActual,
         int posicionRanking
 ) {
     public static MetricasDonanteResponse desde(Donante donante, int posicionRanking) {
@@ -21,6 +23,7 @@ public record MetricasDonanteResponse(
                 metricas.totalDonacionesHistoricas(donante),
                 metricas.donacionesMesActual(donante),
                 metricas.organizacionesAyudadas(donante),
+                metricas.organizacionesAyudadasEnPeriodo(donante, YearMonth.now()),
                 posicionRanking
         );
     }

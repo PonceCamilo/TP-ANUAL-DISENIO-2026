@@ -9,15 +9,18 @@ import ar.utn.donatrack.incentivos.models.categoriasdonante.Colaborador;
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
-import ar.utn.donatrack.incentivos.models.misiones.Racha;
 import ar.utn.donatrack.incentivos.interfaces.services.IncentivosServiceInterface;
 import ar.utn.donatrack.incentivos.repositories.IncentivosRepository;
 import ar.utn.donatrack.incentivos.validations.IncentivosValidator;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -42,7 +45,7 @@ public class IncentivosService implements IncentivosServiceInterface {
         }
         sincronizarMisionesDeCategoria(perfil.getCategoria());
         if (perfil.getProgresoMision().getMisionActual() == null) {
-            asignarPrimeraMisionDeCategoria(perfil);
+            inicializarMisionPendiente(perfil);
         }
         revisarPerdidaMision(perfil);
         repositorio.guardarPerfil(perfil);
@@ -56,6 +59,21 @@ public class IncentivosService implements IncentivosServiceInterface {
 
     public List<InsigniaObtenida> obtenerInsignias(UUID donanteId) {
         return obtenerPerfil(donanteId).getInsigniasObtenidas();
+    }
+
+    @Transactional
+    public void cambiarVisibilidadInsignia(UUID donanteId, Long insigniaId, boolean visible) {
+        InsigniaObtenida insignia = repositorio.buscarPerfil(donanteId)
+                .flatMap(perfil -> perfil.getInsigniasObtenidas().stream()
+                        .filter(obtenida -> insigniaId.equals(obtenida.getId()))
+                        .findFirst())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa insignia."));
+        insignia.setVisibilidad(visible);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Donante> buscarPerfilParaMostrar(UUID donanteId) {
+        return repositorio.buscarPerfil(donanteId);
     }
 
     public RankingMensual obtenerRankingMensualActual() {
@@ -75,11 +93,13 @@ public class IncentivosService implements IncentivosServiceInterface {
         });
     }
 
+    @Transactional
     public void procesarDonacion(UUID donanteId, DonacionRegistrada donacion, String destinatario, String medio) {
         validator.validarCategoriasDonadas(donacion.getCategorias().stream().toList());
         registrarDonacionYVerificarMision(donanteId, donacion, destinatario, medio);
     }
 
+    @Transactional
     public void procesarDonacionExitosa(UUID donanteId, DonacionRegistrada donacion, String destinatario, String medio) {
         registrarDonacionYVerificarMision(donanteId, donacion, destinatario, medio);
     }
@@ -87,13 +107,14 @@ public class IncentivosService implements IncentivosServiceInterface {
     private void registrarDonacionYVerificarMision(UUID donanteId, DonacionRegistrada donacion, String destinatario, String medio) {
         Donante perfil = obtenerPerfil(donanteId);
         perfil.registrarDonacion(donacion);
+        perfil.getProgresoMision().registrarActividad(donacion);
         verificarMisionActiva(perfil, destinatario, medio);
         repositorio.guardarPerfil(perfil);
     }
 
     private void verificarMisionActiva(Donante perfil, String destinatario, String medio) {
         Mision activa = perfil.getProgresoMision().getMisionActual();
-        if (activa == null || !perfil.getProgresoMision().completadaPor(perfil)) {
+        if (activa == null || !perfil.getProgresoMision().completada(LocalDate.now())) {
             return;
         }
 
@@ -135,10 +156,16 @@ public class IncentivosService implements IncentivosServiceInterface {
     }
 
     private void revisarPerdidaMision(Donante perfil) {
-        if (perfil.getProgresoMision().getMisionActual() instanceof Racha racha
-                && racha.perdioProgreso(perfil, LocalDate.now())) {
-            asignarPrimeraMisionDeCategoria(perfil);
-        }
+        perfil.getProgresoMision().reiniciarRachaVencida(LocalDate.now());
+    }
+
+    private void inicializarMisionPendiente(Donante perfil) {
+        List<Mision> misiones = perfil.getCategoria().getMisiones();
+        validator.validarMisionesDisponibles(misiones, perfil.getCategoria());
+        misiones.stream()
+                .filter(mision -> !perfil.completoMision(mision))
+                .findFirst()
+                .ifPresent(perfil::cambiarMisionActual);
     }
 
     private void asignarCategoria(Donante perfil, CategoriaDonante categoria) {
