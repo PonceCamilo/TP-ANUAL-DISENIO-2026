@@ -1,6 +1,7 @@
 package ar.utn.donatrack.donaciones.dtos.response;
 
 import ar.utn.donatrack.donaciones.util.Pagina;
+import ar.utn.donatrack.donaciones.util.SolicitudPagina;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -19,7 +20,7 @@ public class PaginaResponseDTO<T> {
 
     private final List<T> contenido;
 
-    /** Número de la página devuelta (empieza en 0). */
+    /** Número de la página devuelta (empieza en 1, igual que el parámetro page). */
     private final int pagina;
 
     /** Tamaño de página pedido. La última página puede traer menos elementos. */
@@ -33,7 +34,8 @@ public class PaginaResponseDTO<T> {
     public static <T> PaginaResponseDTO<T> desde(Pagina<T> pagina) {
         return PaginaResponseDTO.<T>builder()
                 .contenido(pagina.contenido())
-                .pagina(pagina.numero())
+                // Pagina guarda el índice desde 0; la API numera desde 1 (SolicitudPagina).
+                .pagina(pagina.numero() + SolicitudPagina.PRIMERA_PAGINA)
                 .tamanio(pagina.tamanio())
                 .totalElementos(pagina.totalElementos())
                 .totalPaginas(pagina.totalPaginas())

@@ -56,7 +56,7 @@ public class EntidadBeneficiariaController {
         summary = "Listar entidades beneficiarias (paginado)",
         description = "Ordenadas por razón social, como página igual que donaciones y donantes (antes devolvía todas "
             + "juntas). Con email devuelve solo las entidades que lo tienen como contacto o como representante. "
-            + "Las páginas empiezan en 0; el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
+            + "Las páginas empiezan en 1; el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
             + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
         responses = {
             @ApiResponse(responseCode = "200", description = "Página de entidades con el total de resultados"),
@@ -68,7 +68,7 @@ public class EntidadBeneficiariaController {
         @Parameter(description = "Email de un contacto o de un representante de la entidad (no distingue mayúsculas)",
             example = "contacto@comedor.org")
         @RequestParam(required = false) String email,
-        @Parameter(description = "Número de página, desde 0", example = "0")
+        @Parameter(description = "Número de página, desde 1", example = "1")
         @RequestParam(required = false) Integer page,
         @Parameter(description = "Elementos por página (1 a 100)", example = "20")
         @RequestParam(required = false) Integer size

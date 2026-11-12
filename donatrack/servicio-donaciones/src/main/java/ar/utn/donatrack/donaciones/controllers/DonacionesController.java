@@ -60,7 +60,7 @@ public class DonacionesController {
             summary = "Listar donaciones (paginado)",
             description = "Devuelve una página de donaciones, de la más nueva a la más vieja, con filtros opcionales "
                     + "por estado, persona donante, subcategoría, entidad beneficiaria, bienes vencidos y rango de fechas "
-                    + "(desde/hasta, ambos incluidos). Las páginas empiezan en 0; "
+                    + "(desde/hasta, ambos incluidos). Las páginas empiezan en 1; "
                     + "el tamaño por defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO
                     + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
             responses = {
@@ -84,7 +84,7 @@ public class DonacionesController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @Parameter(description = "Solo las hechas ese día o antes (AAAA-MM-DD)", example = "2026-11-10")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
-            @Parameter(description = "Número de página, desde 0", example = "0")
+            @Parameter(description = "Número de página, desde 1", example = "1")
             @RequestParam(required = false) Integer page,
             @Parameter(description = "Elementos por página (1 a 100)", example = "20")
             @RequestParam(required = false) Integer size

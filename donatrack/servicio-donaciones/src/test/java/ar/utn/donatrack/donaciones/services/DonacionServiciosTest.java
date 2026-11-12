@@ -230,7 +230,8 @@ class DonacionServiciosTest {
 
             assertThat(resultado.getContenido()).hasSize(1);
             assertThat(resultado.getContenido().getFirst().getSubcategoria()).isEqualTo("arroz");
-            assertThat(resultado.getPagina()).isEqualTo(1);
+            // El índice 1 (segunda página) sale en la respuesta como página 2: la API numera desde 1.
+            assertThat(resultado.getPagina()).isEqualTo(2);
             assertThat(resultado.getTamanio()).isEqualTo(5);
             assertThat(resultado.getTotalElementos()).isEqualTo(6);
             assertThat(resultado.getTotalPaginas()).isEqualTo(2);

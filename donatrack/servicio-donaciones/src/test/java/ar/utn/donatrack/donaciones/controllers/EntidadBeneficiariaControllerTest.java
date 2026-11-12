@@ -207,8 +207,9 @@ class EntidadBeneficiariaControllerTest {
         @Test
         @DisplayName("GET pasa la página pedida y rechaza un tamaño fuera de rango (400)")
         void listadoPaginado() throws Exception {
-            when(entidadesService.obtenerEntidades(null, new SolicitudPagina(2, 5)))
-                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 2, 5, 3)));
+            // La página 2 de la API es el índice 1, y la respuesta vuelve a numerarla como 2.
+            when(entidadesService.obtenerEntidades(null, new SolicitudPagina(1, 5)))
+                    .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 1, 5, 3)));
 
             mockMvc.perform(get("/entidades").param("page", "2").param("size", "5"))
                     .andExpect(status().isOk())

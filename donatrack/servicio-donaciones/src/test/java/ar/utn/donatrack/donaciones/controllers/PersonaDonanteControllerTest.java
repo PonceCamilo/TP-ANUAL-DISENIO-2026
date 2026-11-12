@@ -159,9 +159,10 @@ class PersonaDonanteControllerTest {
             when(personaDonanteService.obtenerDonantes(any(), any(), any()))
                     .thenReturn(PaginaResponseDTO.desde(new Pagina<>(List.of(), 1, 10, 0)));
 
-            mockMvc.perform(get("/donantes").param("estado", "BLOQUEADO").param("page", "1").param("size", "10"))
+            mockMvc.perform(get("/donantes").param("estado", "BLOQUEADO").param("page", "2").param("size", "10"))
                     .andExpect(status().isOk());
 
+            // La página 2 de la API llega al service como índice 1.
             verify(personaDonanteService).obtenerDonantes("BLOQUEADO", null, new SolicitudPagina(1, 10));
         }
 

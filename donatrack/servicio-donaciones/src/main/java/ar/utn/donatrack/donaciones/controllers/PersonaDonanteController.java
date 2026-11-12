@@ -50,7 +50,7 @@ public class PersonaDonanteController {
     @Operation(
             summary = "Listar personas donantes (paginado)",
             description = "Ordenadas por email, con filtros opcionales por estado y por email. El email es único: "
-                    + "con ese filtro la página trae a esa persona o queda vacía. Las páginas empiezan en 0; el tamaño por "
+                    + "con ese filtro la página trae a esa persona o queda vacía. Las páginas empiezan en 1; el tamaño por "
                     + "defecto es " + SolicitudPagina.TAMANIO_POR_DEFECTO + " y el máximo " + SolicitudPagina.TAMANIO_MAXIMO + ".",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Página de personas donantes con el total de resultados"),
@@ -63,7 +63,7 @@ public class PersonaDonanteController {
             @RequestParam(required = false) String estado,
             @Parameter(description = "Email exacto de la persona (no distingue mayúsculas)", example = "juan@example.com")
             @RequestParam(required = false) String email,
-            @Parameter(description = "Número de página, desde 0", example = "0")
+            @Parameter(description = "Número de página, desde 1", example = "1")
             @RequestParam(required = false) Integer page,
             @Parameter(description = "Elementos por página (1 a 100)", example = "20")
             @RequestParam(required = false) Integer size
