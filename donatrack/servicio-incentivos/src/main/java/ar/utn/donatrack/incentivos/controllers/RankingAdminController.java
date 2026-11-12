@@ -38,7 +38,7 @@ public class RankingAdminController {
         this.acceso = acceso;
     }
 
-    @GetMapping
+    @GetMapping("/meses")
     @Operation(summary = "Listar los períodos con rankings cerrados")
     public List<Periodo> historial(@RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera) {
         acceso.exigirAdministrador(cabecera);

@@ -38,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class RankingAdminHttpTest {
     private static final String RUTA = "/api/incentivos/admin/rankings";
+    private static final String MESES = RUTA + "/meses";
     private static HttpServer servidorClaves;
     private static RSAKey clave;
 
@@ -78,10 +79,10 @@ class RankingAdminHttpTest {
         rankings.guardar(RankingMensual.calcular(List.of(primero, segundo), cerrado.atEndOfMonth().atTime(23, 59)));
 
         String admin = credencial("ADMINISTRADOR");
-        http.perform(get(RUTA)).andExpect(status().isUnauthorized());
-        http.perform(get(RUTA).header(HttpHeaders.AUTHORIZATION, credencial("DONANTE")))
+        http.perform(get(MESES)).andExpect(status().isUnauthorized());
+        http.perform(get(MESES).header(HttpHeaders.AUTHORIZATION, credencial("DONANTE")))
                 .andExpect(status().isForbidden());
-        http.perform(get(RUTA).header(HttpHeaders.AUTHORIZATION, admin))
+        http.perform(get(MESES).header(HttpHeaders.AUTHORIZATION, admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].anio").value(cerrado.getYear()))
                 .andExpect(jsonPath("$[0].mes").value(cerrado.getMonthValue()));
