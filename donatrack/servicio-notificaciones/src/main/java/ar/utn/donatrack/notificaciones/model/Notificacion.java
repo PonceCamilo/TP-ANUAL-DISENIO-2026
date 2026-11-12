@@ -71,6 +71,11 @@ public class Notificacion {
     @Column(name = "estado", nullable = false)
     private EstadoNotificacion estado;
 
+    /** Si el destinatario ya la vio en la pantalla de notificaciones. */
+    @Column(name = "leida", nullable = false)
+    @Builder.Default
+    private boolean leida = false;
+
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
@@ -120,6 +125,11 @@ public class Notificacion {
         marcarFallida();
         this.motivoFallo = motivo == null ? null
                 : motivo.substring(0, Math.min(motivo.length(), 500));
+    }
+
+    /** Marca la notificación como leída por su destinatario. */
+    public void marcarLeida() {
+        this.leida = true;
     }
 
     /**

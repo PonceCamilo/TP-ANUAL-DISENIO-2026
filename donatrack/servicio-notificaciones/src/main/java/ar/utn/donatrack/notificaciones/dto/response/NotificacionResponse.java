@@ -21,7 +21,8 @@ public record NotificacionResponse(
         LocalDateTime fechaCreacion,
         LocalDateTime fechaEnvio,
         String evento,
-        String motivoFallo
+        String motivoFallo,
+        boolean leida
 ) {
     public static NotificacionResponse desde(Notificacion n) {
         return new NotificacionResponse(
@@ -33,7 +34,8 @@ public record NotificacionResponse(
                 n.getFechaCreacion(),
                 n.getFechaEnvio(),
                 n.getEvento(),
-                n.getMotivoFallo()
+                n.getMotivoFallo(),
+                n.isLeida()
         );
     }
 }

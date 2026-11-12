@@ -10,4 +10,6 @@ public interface NotificacionServiceInterface {
     void enviar(SolicitudNotificacionDto solicitud);
     List<Notificacion> obtenerTodas();
     Notificacion obtenerPorId(UUID id);
+    void marcarLeida(UUID id);
+    void marcarLeidas(List<String> destinatarios);
 }
