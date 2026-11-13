@@ -3,6 +3,7 @@ package ar.utn.donatrack.incentivos.dtos.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,5 +30,8 @@ public record ProcesarDonacionExitosaRequest(
         LocalDateTime fecha,
 
         @Schema(description = "Entidad beneficiaria que recibio la donacion", example = "Comedor Los Pibes")
-        String entidadBeneficiaria
+        String entidadBeneficiaria,
+
+        @Schema(description = "Entrega 6: nombre con que se la muestra en el podio", example = "Ana P.")
+        @Size(max = 150) String nombreVisible
 ) {}

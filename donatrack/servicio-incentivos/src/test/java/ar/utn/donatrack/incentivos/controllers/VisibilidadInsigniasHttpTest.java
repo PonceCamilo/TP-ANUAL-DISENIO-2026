@@ -28,6 +28,8 @@ class VisibilidadInsigniasHttpTest {
     @Autowired ObjectMapper json;
     @MockitoBean NotificacionClient notificaciones;
     @MockitoBean N8nWebhookClient n8n;
+    // Entrega 6: los permisos se prueban en AccesoIncentivosHttpTest.
+    @MockitoBean ar.utn.donatrack.incentivos.seguridad.ControlDeAcceso acceso;
 
     @Test
     void ocultarUnaInsigniaLaQuitaDelPerfilPublicoYPermiteMostrarlaDeNuevo() throws Exception {

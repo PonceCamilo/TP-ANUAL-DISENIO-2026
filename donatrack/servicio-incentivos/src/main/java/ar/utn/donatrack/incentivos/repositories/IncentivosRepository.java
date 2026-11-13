@@ -106,6 +106,29 @@ public class IncentivosRepository {
         donanteRepository.save(perfil);
     }
 
+    /** Nombre visible de cada donante que lo tenga (Entrega 6, podio y ranking). */
+    public Map<UUID, String> nombresVisibles(Collection<UUID> ids) {
+        Map<UUID, String> nombres = new HashMap<>();
+        if (ids.isEmpty()) {
+            return nombres;
+        }
+        if (usaFallbackEnMemoria()) {
+            ids.forEach(id -> {
+                Donante perfil = perfilesFallback.get(id);
+                if (perfil != null && perfil.getNombreVisible() != null) {
+                    nombres.put(id, perfil.getNombreVisible());
+                }
+            });
+            return nombres;
+        }
+        for (Object[] fila : donanteRepository.nombresVisibles(ids)) {
+            if (fila[1] != null) {
+                nombres.put((UUID) fila[0], (String) fila[1]);
+            }
+        }
+        return nombres;
+    }
+
     public Optional<Donante> buscarPerfil(UUID donanteId) {
         if (usaFallbackEnMemoria()) {
             return Optional.ofNullable(perfilesFallback.get(donanteId));

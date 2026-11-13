@@ -121,6 +121,7 @@ services:
     environment:
       - notificaciones.url=http://servicio-notificaciones:8084
       - servicios.incentivos.url=http://servicio-incentivos:8083
+      - servicios.incentivos.clave=${DONATRACK_SERVICIOS_KEY:-clave-local-entre-servicios-de-donatrack}
       - servicios.broker-logistica.url=http://servicio-broker-logistica:8087
       - spring.datasource.url=jdbc:postgresql://postgres:5432/donaciones_db
       - spring.datasource.username=donatrack
@@ -187,6 +188,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: donatrack
       NOTIFICACIONES_TRANSPORTE: amqp
       SERVICIOS_AUTENTICACION_JWK_SET_URI: http://servicio-autenticacion:8088/api/autenticacion/claves-publicas
+      # Entrega 6: clave con la que Donaciones manda los avisos de donación.
+      DONATRACK_SERVICIOS_KEY: ${DONATRACK_SERVICIOS_KEY:-clave-local-entre-servicios-de-donatrack}
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
     depends_on:

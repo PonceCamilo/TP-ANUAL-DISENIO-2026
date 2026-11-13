@@ -57,6 +57,10 @@ class IncentivosControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    // Entrega 6: los permisos se prueban en AccesoIncentivosHttpTest; acá, el contrato HTTP.
+    @MockitoBean
+    private ar.utn.donatrack.incentivos.seguridad.ControlDeAcceso acceso;
+
     @MockitoBean
     private IncentivosServiceInterface service;
 

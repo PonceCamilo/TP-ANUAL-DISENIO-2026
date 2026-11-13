@@ -23,6 +23,7 @@ class EnviadorIncentivosTest {
     private HttpServer servidor;
     private final Map<String, String> recibidos = new ConcurrentHashMap<>();
     private final Map<String, String> tipos = new ConcurrentHashMap<>();
+    private final Map<String, String> claves = new ConcurrentHashMap<>();
     private EnviadorIncentivos enviador;
 
     @BeforeEach
@@ -32,6 +33,8 @@ class EnviadorIncentivosTest {
             String ruta = intercambio.getRequestURI().getPath();
             recibidos.put(ruta, new String(intercambio.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             tipos.put(ruta, intercambio.getRequestHeaders().getFirst("Content-Type"));
+            String clave = intercambio.getRequestHeaders().getFirst("X-DonaTrack-Servicio");
+            claves.put(ruta, clave == null ? "(sin clave)" : clave);
             intercambio.sendResponseHeaders(204, -1);
             intercambio.close();
         });
@@ -59,6 +62,26 @@ class EnviadorIncentivosTest {
         assertThat(tipos.get("/api/incentivos/donantes/donacion")).startsWith("application/json");
         assertThat(enviador.destinos()).containsExactlyInAnyOrder(
                 Destinos.INCENTIVOS_DONACION_REGISTRADA, Destinos.INCENTIVOS_DONACION_EXITOSA);
+    }
+
+    @Test
+    @DisplayName("Entrega 6: con la clave entre servicios configurada, la manda en cada aviso")
+    void mandaLaClaveDeServicios() {
+        EnviadorIncentivos conClave = new EnviadorIncentivos(RestClient.builder(),
+                "http://localhost:" + servidor.getAddress().getPort(), "clave-de-servicios-de-al-menos-32-caracteres");
+
+        conClave.enviar(Destinos.INCENTIVOS_DONACION_REGISTRADA, "{}");
+        conClave.enviar(Destinos.INCENTIVOS_DONACION_EXITOSA, "{}");
+
+        assertThat(claves.get("/api/incentivos/donantes/donacion")).isEqualTo("clave-de-servicios-de-al-menos-32-caracteres");
+        assertThat(claves.get("/api/incentivos/donantes/donacion-exitosa")).isEqualTo("clave-de-servicios-de-al-menos-32-caracteres");
+    }
+
+    @Test
+    @DisplayName("Sin clave configurada no manda la cabecera")
+    void sinClave() {
+        enviador.enviar(Destinos.INCENTIVOS_DONACION_REGISTRADA, "{}");
+        assertThat(claves.get("/api/incentivos/donantes/donacion")).isEqualTo("(sin clave)");
     }
 
     @Test

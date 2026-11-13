@@ -4,7 +4,7 @@ import ar.utn.donatrack.incentivos.dtos.response.PuestoRankingResponse;
 import ar.utn.donatrack.incentivos.interfaces.repositories.RankingMensualRepositoryInterface;
 import ar.utn.donatrack.incentivos.interfaces.services.IncentivosServiceInterface;
 import ar.utn.donatrack.incentivos.models.PosicionRanking;
-import ar.utn.donatrack.incentivos.seguridad.AccesoRankingAdmin;
+import ar.utn.donatrack.incentivos.seguridad.ControlDeAcceso;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -23,16 +23,18 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.YearMonth;
 import java.util.List;
+import java.util.UUID;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/incentivos/admin/rankings")
 public class RankingAdminController {
     private final RankingMensualRepositoryInterface rankings;
     private final IncentivosServiceInterface incentivos;
-    private final AccesoRankingAdmin acceso;
+    private final ControlDeAcceso acceso;
 
     public RankingAdminController(RankingMensualRepositoryInterface rankings, IncentivosServiceInterface incentivos,
-                                  AccesoRankingAdmin acceso) {
+                                  ControlDeAcceso acceso) {
         this.rankings = rankings;
         this.incentivos = incentivos;
         this.acceso = acceso;
@@ -59,12 +61,19 @@ public class RankingAdminController {
         PageRequest pagina = PageRequest.of(page, size);
         var guardado = rankings.buscarPuestosGuardados(periodo, pagina);
         if (guardado.isPresent()) {
-            return Ranking.desde(periodo, false, guardado.get());
+            return Ranking.desde(periodo, false, conNombres(guardado.get()));
         }
         if (!periodo.equals(YearMonth.now())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No hay un ranking guardado para ese mes.");
         }
-        return Ranking.desde(periodo, true, rankingProvisional(pagina));
+        return Ranking.desde(periodo, true, conNombres(rankingProvisional(pagina)));
+    }
+
+    /** Entrega 6: el nombre visible de cada persona de la página, en una sola consulta. */
+    private Page<PuestoRankingResponse> conNombres(Page<PuestoRankingResponse> puestos) {
+        Map<UUID, String> nombres = incentivos.nombresVisibles(
+                puestos.getContent().stream().map(PuestoRankingResponse::donanteId).toList());
+        return puestos.map(puesto -> puesto.conNombre(nombres.get(puesto.donanteId())));
     }
 
     private Page<PuestoRankingResponse> rankingProvisional(PageRequest pagina) {

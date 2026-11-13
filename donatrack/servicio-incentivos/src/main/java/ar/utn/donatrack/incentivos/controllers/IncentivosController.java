@@ -8,6 +8,9 @@ import ar.utn.donatrack.incentivos.dtos.response.MisionResponse;
 import ar.utn.donatrack.incentivos.models.DonacionRegistrada;
 import ar.utn.donatrack.incentivos.models.Donante;
 import ar.utn.donatrack.incentivos.interfaces.services.IncentivosServiceInterface;
+import ar.utn.donatrack.incentivos.seguridad.ControlDeAcceso;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.RequestHeader;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -37,9 +40,11 @@ import java.util.UUID;
 public class IncentivosController {
 
     private final IncentivosServiceInterface service;
+    private final ControlDeAcceso acceso;
 
-    public IncentivosController(IncentivosServiceInterface service) {
+    public IncentivosController(IncentivosServiceInterface service, ControlDeAcceso acceso) {
         this.service = service;
+        this.acceso = acceso;
     }
 
     @Operation(
@@ -53,7 +58,9 @@ public class IncentivosController {
     @GetMapping("/{id}/metricas")
     public ResponseEntity<MetricasDonanteResponse> obtenerMetricas(
             @Parameter(description = "ID del donante", example = "11111111-1111-1111-1111-111111111111")
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera) {
+        acceso.exigirDuenioOAdministracion(cabecera, id);
         Donante donante = service.obtenerPerfil(id);
         return ResponseEntity.ok(MetricasDonanteResponse.desde(donante, service.obtenerPosicionRankingActual(id)));
     }
@@ -69,7 +76,9 @@ public class IncentivosController {
     @GetMapping("/{id}/misiones")
     public ResponseEntity<List<MisionResponse>> obtenerMisiones(
             @Parameter(description = "ID del donante", example = "11111111-1111-1111-1111-111111111111")
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera) {
+        acceso.exigirDuenioOAdministracion(cabecera, id);
         Donante donante = service.obtenerPerfil(id);
         List<MisionResponse> misiones = service.obtenerMisiones(id)
                 .stream()
@@ -89,7 +98,9 @@ public class IncentivosController {
     @GetMapping("/{id}/insignias")
     public ResponseEntity<List<InsigniaResponse>> obtenerInsignias(
             @Parameter(description = "ID del donante", example = "11111111-1111-1111-1111-111111111111")
-            @PathVariable UUID id) {
+            @PathVariable UUID id,
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera) {
+        acceso.exigirDuenioOAdministracion(cabecera, id);
         List<InsigniaResponse> insignias = service.obtenerInsignias(id)
                 .stream()
                 .map(InsigniaResponse::desde)
@@ -107,7 +118,10 @@ public class IncentivosController {
             }
     )
     @PostMapping("/donacion")
-    public ResponseEntity<String> procesarDonacion(@Valid @RequestBody ProcesarDonacionRequest request) {
+    public ResponseEntity<String> procesarDonacion(
+            @RequestHeader(value = ControlDeAcceso.CABECERA_SERVICIO, defaultValue = "") String clave,
+            @Valid @RequestBody ProcesarDonacionRequest request) {
+        acceso.exigirServicio(clave);
         service.procesarDonacion(
                 request.donanteId(),
                 DonacionRegistrada.builder()
@@ -120,6 +134,7 @@ public class IncentivosController {
                 request.destinatario(),
                 request.medio()
         );
+        service.actualizarNombreVisible(request.donanteId(), request.nombreVisible());
         return ResponseEntity.status(201).body("Donacion registrada en incentivos para el donante " + request.donanteId());
     }
 
@@ -133,7 +148,10 @@ public class IncentivosController {
             }
     )
     @PostMapping("/donacion-exitosa")
-    public ResponseEntity<String> procesarDonacionExitosa(@Valid @RequestBody ProcesarDonacionExitosaRequest request) {
+    public ResponseEntity<String> procesarDonacionExitosa(
+            @RequestHeader(value = ControlDeAcceso.CABECERA_SERVICIO, defaultValue = "") String clave,
+            @Valid @RequestBody ProcesarDonacionExitosaRequest request) {
+        acceso.exigirServicio(clave);
         service.procesarDonacionExitosa(
                 request.donanteId(),
                 DonacionRegistrada.builder()
@@ -146,6 +164,7 @@ public class IncentivosController {
                 request.destinatario(),
                 request.medio()
         );
+        service.actualizarNombreVisible(request.donanteId(), request.nombreVisible());
         return ResponseEntity.status(201).body("Donacion exitosa registrada en incentivos para el donante " + request.donanteId());
     }
 }

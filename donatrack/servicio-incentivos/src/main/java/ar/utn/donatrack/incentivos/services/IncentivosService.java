@@ -19,7 +19,9 @@ import org.springframework.http.HttpStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -97,6 +99,24 @@ public class IncentivosService implements IncentivosServiceInterface {
     public void procesarDonacion(UUID donanteId, DonacionRegistrada donacion, String destinatario, String medio) {
         validator.validarCategoriasDonadas(donacion.getCategorias().stream().toList());
         registrarDonacionYVerificarMision(donanteId, donacion, destinatario, medio);
+    }
+
+    @Transactional
+    public void actualizarNombreVisible(UUID donanteId, String nombreVisible) {
+        if (nombreVisible == null || nombreVisible.isBlank()) {
+            return;
+        }
+        String nombre = nombreVisible.strip();
+        nombre = nombre.substring(0, Math.min(150, nombre.length()));
+        Donante perfil = repositorio.obtenerOCrearPerfil(donanteId);
+        if (!nombre.equals(perfil.getNombreVisible())) {
+            perfil.setNombreVisible(nombre);
+            repositorio.guardarPerfil(perfil);
+        }
+    }
+
+    public Map<UUID, String> nombresVisibles(Collection<UUID> donanteIds) {
+        return repositorio.nombresVisibles(donanteIds);
     }
 
     @Transactional

@@ -5,6 +5,10 @@ import ar.utn.donatrack.incentivos.dtos.response.InsigniaResponse;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.RankingMensual;
 import ar.utn.donatrack.incentivos.services.IncentivosService;
+import ar.utn.donatrack.incentivos.seguridad.ControlDeAcceso;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.RequestHeader;
+import java.util.Map;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
@@ -24,15 +28,20 @@ import java.util.UUID;
 public class LogrosController {
     private final IncentivosService incentivos;
     private final RankingMensualRepositoryInterface rankings;
+    private final ControlDeAcceso acceso;
 
-    public LogrosController(IncentivosService incentivos, RankingMensualRepositoryInterface rankings) {
+    public LogrosController(IncentivosService incentivos, RankingMensualRepositoryInterface rankings,
+                            ControlDeAcceso acceso) {
+        this.acceso = acceso;
         this.incentivos = incentivos;
         this.rankings = rankings;
     }
 
     @PatchMapping("/donantes/{donanteId}/insignias/{insigniaId}/visibilidad")
     public ResponseEntity<Void> cambiarVisibilidad(@PathVariable UUID donanteId, @PathVariable Long insigniaId,
+                                                   @RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera,
                                                    @Valid @RequestBody Visibilidad solicitud) {
+        acceso.exigirDuenio(cabecera, donanteId);
         incentivos.cambiarVisibilidadInsignia(donanteId, insigniaId, solicitud.visible());
         return ResponseEntity.noContent().build();
     }
@@ -42,9 +51,11 @@ public class LogrosController {
         YearMonth periodo = YearMonth.now();
         var cierre = rankings.buscarPorPeriodo(periodo.getMonthValue(), periodo.getYear());
         RankingMensual ranking = cierre.orElseGet(incentivos::obtenerRankingMensualActual);
-        List<Puesto> puestos = ranking.topTres().stream()
+        var podio = ranking.topTres();
+        Map<UUID, String> nombres = incentivos.nombresVisibles(podio.stream().map(p -> p.getDonanteId()).toList());
+        List<Puesto> puestos = podio.stream()
                 .map(posicion -> new Puesto(posicion.getPuesto(), posicion.getDonanteId(),
-                        posicion.getMisionesCompletadas()))
+                        nombres.get(posicion.getDonanteId()), posicion.getMisionesCompletadas()))
                 .toList();
         return new Podio(ranking.getMes(), ranking.getAnio(), cierre.isEmpty(), puestos);
     }
@@ -63,6 +74,7 @@ public class LogrosController {
 
     public record Visibilidad(@NotNull Boolean visible) {}
     public record Podio(int mes, int anio, boolean provisional, List<Puesto> puestos) {}
-    public record Puesto(int puesto, UUID donanteId, int misionesCompletadas) {}
+    /** Entrega 6: nombreVisible es null si Donaciones todavía no lo informó. */
+    public record Puesto(int puesto, UUID donanteId, String nombreVisible, int misionesCompletadas) {}
     public record PerfilPublico(String categoria, List<InsigniaResponse> insignias) {}
 }

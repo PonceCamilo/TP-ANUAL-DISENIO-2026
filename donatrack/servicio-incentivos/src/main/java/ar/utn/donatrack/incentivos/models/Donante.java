@@ -5,6 +5,7 @@ import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.misiones.ProgresoMision;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -40,6 +41,11 @@ public class Donante {
 
     @Embedded
     private ProgresoMision progresoMision = new ProgresoMision();
+
+    // Entrega 6: cómo se la nombra en el podio (nombre e inicial del apellido, o
+    // razón social). Lo manda Donaciones en cada aviso.
+    @Column(name = "nombre_visible", length = 150)
+    private String nombreVisible;
 
     @PostLoad
     private void rehidratarProgresoMision() {

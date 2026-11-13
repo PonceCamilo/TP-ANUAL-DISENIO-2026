@@ -6,7 +6,9 @@ import ar.utn.donatrack.incentivos.models.RankingMensual;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface IncentivosServiceInterface {
@@ -29,4 +31,10 @@ public interface IncentivosServiceInterface {
 
     // Llamado por servicio-donaciones cuando una donación es entregada exitosamente.
     void procesarDonacionExitosa(UUID donanteId, DonacionRegistrada donacion, String destinatario, String medio);
+
+    // Entrega 6: el nombre con que se muestra a la persona en el podio y el ranking.
+    // Lo manda Donaciones en cada aviso; vacío, no cambia el que ya tenía.
+    void actualizarNombreVisible(UUID donanteId, String nombreVisible);
+
+    Map<UUID, String> nombresVisibles(Collection<UUID> donanteIds);
 }
