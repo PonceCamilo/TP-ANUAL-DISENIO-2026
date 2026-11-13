@@ -26,3 +26,6 @@ donatrack-frontend/.env.development.local
 donatrack-frontend/.env.test.local
 donatrack-frontend/.env.production.local
 
+
+# --- Configuración local (claves y contraseñas): nunca al repo ---
+.env

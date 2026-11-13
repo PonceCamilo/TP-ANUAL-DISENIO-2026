@@ -22,3 +22,6 @@ DiagramaDeClases/
 **/Dockerfile*
 docker-compose*.yml
 .dockerignore
+
+# Configuración local con claves: no entra al build
+.env
