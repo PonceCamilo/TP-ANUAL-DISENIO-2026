@@ -16,6 +16,8 @@ import java.util.UUID;
 public class EntregaResponseDTO {
     private UUID id;
     private UUID idDonacion;
+    // Entrega 6: la entidad de la parada, para que solo ella vea y confirme la entrega.
+    private UUID idEntidadBeneficiaria;
     private UUID rutaId;
     private UUID camionId;
     private EstadoEntrega estado;
@@ -33,6 +35,7 @@ public class EntregaResponseDTO {
         return EntregaResponseDTO.builder()
                 .id(entrega.getId())
                 .idDonacion(entrega.getIdDonacion())
+                .idEntidadBeneficiaria(entrega.getParada() != null ? entrega.getParada().getIdEntidadBeneficiaria() : null)
                 .rutaId(ruta != null ? ruta.getId() : null)
                 .camionId(camion != null ? camion.getId() : null)
                 .estado(entrega.getEstado())

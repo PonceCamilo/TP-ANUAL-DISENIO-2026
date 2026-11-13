@@ -208,6 +208,9 @@ services:
       INTEGRACIONES_BROKER_EVENTOS_URL: http://servicio-broker-logistica:8087/api/broker/eventos/donatrack
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
       SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/logistica?replicaSet=rs0&directConnection=true
+      # Entrega 6: valida el JWT de Autenticación y acepta la clave del broker.
+      AUTH_CLAVES_PUBLICAS_URL: http://servicio-autenticacion:8088/api/autenticacion/claves-publicas
+      DONATRACK_SERVICIOS_KEY: ${DONATRACK_SERVICIOS_KEY:-clave-local-entre-servicios-de-donatrack}
     depends_on:
       mongo:
         condition: service_healthy

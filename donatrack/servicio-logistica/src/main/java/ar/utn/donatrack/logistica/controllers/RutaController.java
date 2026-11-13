@@ -2,6 +2,7 @@ package ar.utn.donatrack.logistica.controllers;
 
 import ar.utn.donatrack.logistica.dtos.response.RutaResponseDTO;
 import ar.utn.donatrack.logistica.interfaces.services.PlanificacionServiceInterface;
+import ar.utn.donatrack.logistica.seguridad.ControlDeAcceso;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class RutaController {
 
     private final PlanificacionServiceInterface planificacionService;
+    private final ControlDeAcceso acceso;
 
     @Operation(
             summary = "Obtener ruta por ID",
@@ -35,7 +37,9 @@ public class RutaController {
     public ResponseEntity<RutaResponseDTO> obtenerPorId(
             @Parameter(description = "ID de la ruta", example = "55555555-5555-5555-5555-555555555555")
             @PathVariable UUID id) {
-        return ResponseEntity.ok(planificacionService.obtenerRuta(id));
+        RutaResponseDTO ruta = planificacionService.obtenerRuta(id);
+        acceso.exigirRutaVisible(ruta);
+        return ResponseEntity.ok(ruta);
     }
 
     @Operation(

@@ -5,6 +5,7 @@ import ar.utn.donatrack.logistica.dtos.request.NoRecibidaRequestDTO;
 import ar.utn.donatrack.logistica.dtos.response.EntregaResponseDTO;
 import ar.utn.donatrack.logistica.interfaces.services.EntregaServiceInterface;
 import ar.utn.donatrack.logistica.models.entrega.EstadoEntrega;
+import ar.utn.donatrack.logistica.seguridad.ControlDeAcceso;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class EntregaController {
 
     private final EntregaServiceInterface entregaService;
+    private final ControlDeAcceso acceso;
 
     @Operation(
             summary = "Obtener la entrega de una donación",
@@ -42,7 +44,9 @@ public class EntregaController {
     public ResponseEntity<EntregaResponseDTO> obtenerPorDonacion(
             @Parameter(description = "ID de la donación", example = "22222222-2222-2222-2222-222222222222")
             @PathVariable UUID idDonacion) {
-        return ResponseEntity.ok(entregaService.obtenerPorDonacion(idDonacion));
+        EntregaResponseDTO entrega = entregaService.obtenerPorDonacion(idDonacion);
+        acceso.exigirEntregaVisible(entrega);
+        return ResponseEntity.ok(entrega);
     }
 
     @Operation(
@@ -58,7 +62,9 @@ public class EntregaController {
     public ResponseEntity<EntregaResponseDTO> obtenerPorId(
             @Parameter(description = "ID de la entrega", example = "11111111-1111-1111-1111-111111111111")
             @PathVariable UUID id) {
-        return ResponseEntity.ok(entregaService.obtenerPorId(id));
+        EntregaResponseDTO entrega = entregaService.obtenerPorId(id);
+        acceso.exigirEntregaVisible(entrega);
+        return ResponseEntity.ok(entrega);
     }
 
     @Operation(
@@ -88,6 +94,8 @@ public class EntregaController {
     public ResponseEntity<Void> confirmar(
             @Parameter(description = "ID de la entrega", example = "11111111-1111-1111-1111-111111111111")
             @PathVariable UUID id, @Valid @RequestBody ConfirmarEntregaRequestDTO dto) {
+        // Entrega 6: solo la entidad que la recibe confirma la recepción.
+        acceso.exigirEntregaVisible(entregaService.obtenerPorId(id));
         entregaService.confirmar(id, dto);
         return ResponseEntity.ok().build();
     }

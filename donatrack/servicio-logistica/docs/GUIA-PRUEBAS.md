@@ -40,6 +40,25 @@ Todos los servicios se levantan igual: `cd donatrack/servicio-<nombre>` y `mvn s
 
 También se puede levantar todo junto con `docker compose up --build` desde `donatrack/`.
 
+### Token (desde la Entrega 6)
+
+Los endpoints de `servicio-logistica` piden el JWT del Servicio de
+Autenticación (puerto 8088). Para probar con Postman:
+
+1. Ingresar con la cuenta de administración: **POST**
+   `http://localhost:8088/api/autenticacion/ingreso` con
+   `{"email": "...", "password": "...", "rol": "ADMINISTRADOR"}` (la cuenta la crean
+   `AUTH_ADMINISTRADOR_EMAIL` y `AUTH_ADMINISTRADOR_PASSWORD`).
+2. Copiar `accessToken` y mandarlo en cada pedido como
+   `Authorization: Bearer <accessToken>`.
+
+Quién puede qué: la administración maneja la flota y la planificación; el chofer
+inicia su ruta, informa la ubicación y marca entregas no recibidas; la entidad
+beneficiaria confirma **sus** entregas (con URLs de fotos) y sigue el camión. El
+broker planifica con la clave entre servicios (`X-DonaTrack-Servicio`). Sin token
+se puede usar el callback de planificación (usa su token de correlación), el
+proveedor de ruteo simulado (`/ruteo/planificar`), `/actuator/health` y Swagger.
+
 ---
 
 ## 1. Levantar el backend de logística

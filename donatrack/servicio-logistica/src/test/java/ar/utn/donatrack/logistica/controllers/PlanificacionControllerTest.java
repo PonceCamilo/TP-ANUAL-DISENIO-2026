@@ -10,7 +10,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import ar.utn.donatrack.logistica.seguridad.SeguridadDePrueba;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -38,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * responde 409. El 503 del proveedor caído también se verifica acá.
  */
 @WebMvcTest(PlanificacionController.class)
+@Import(SeguridadDePrueba.class)
 @DisplayName("PlanificacionController - contrato HTTP de /api/logistica/planificaciones")
 class PlanificacionControllerTest {
 

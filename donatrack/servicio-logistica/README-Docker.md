@@ -27,6 +27,19 @@ variables de entorno:
 - `SPRING_DOCKER_COMPOSE_ENABLED`: `false` (MongoDB se levanta como servicio del compose, no desde Spring).
 - `SPRING_DATA_MONGODB_URI`: MongoDB de logística (base `logistica`, colecciones `camiones`, `lotes` y `rutas`).
   En el compose apunta al servicio `mongo`.
+- `AUTH_CLAVES_PUBLICAS_URL`: claves públicas del Servicio de Autenticación para validar el JWT
+  (Entrega 6). Se piden con el primer token, así que Logística arranca aunque Autenticación no esté.
+- `DONATRACK_SERVICIOS_KEY`: clave entre servicios (al menos 32 caracteres). La manda el broker
+  en `X-DonaTrack-Servicio` para planificar; tiene que ser la misma en los dos.
+
+## Seguridad (Entrega 6)
+
+Cada pedido lleva `Authorization: Bearer <JWT>` del Servicio de Autenticación. Se decide por el
+claim `rol`, y una entidad beneficiaria solo ve y confirma las entregas de su entidad (claim
+`perfilId` contra la parada). El callback de planificación (`/api/logistica/planificaciones/callback`)
+y el proveedor simulado (`/ruteo/planificar`) tienen su propia cadena de seguridad, sin JWT: el
+callback lo llama un proveedor externo, que se autentica con el token de correlación del lote.
+Ver `config/SeguridadConfig.java` y `docs/GUIA-PRUEBAS.md`.
 
 ## Base de datos
 

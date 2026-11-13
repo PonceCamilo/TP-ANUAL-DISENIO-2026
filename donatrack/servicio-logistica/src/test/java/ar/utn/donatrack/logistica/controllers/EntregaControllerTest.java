@@ -10,7 +10,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import ar.utn.donatrack.logistica.seguridad.SeguridadDePrueba;
+import ar.utn.donatrack.logistica.seguridad.TokensDePrueba;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -39,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * ilegales, no 422).
  */
 @WebMvcTest(EntregaController.class)
+@Import(SeguridadDePrueba.class)
 @DisplayName("EntregaController - contrato HTTP de /api/logistica/entregas")
 class EntregaControllerTest {
 
@@ -52,11 +57,13 @@ class EntregaControllerTest {
     private EntregaServiceInterface entregaService;
 
     private final UUID idEntrega = UUID.randomUUID();
+    private final UUID idEntidad = UUID.randomUUID();
 
     private EntregaResponseDTO respuesta(EstadoEntrega estado) {
         return EntregaResponseDTO.builder()
                 .id(idEntrega)
                 .idDonacion(UUID.randomUUID())
+                .idEntidadBeneficiaria(idEntidad)
                 .estado(estado)
                 .fotosComprobante(List.of())
                 .historial(List.of())
@@ -105,12 +112,18 @@ class EntregaControllerTest {
     @DisplayName("POST /api/logistica/entregas/{id}/confirmar")
     class Confirmar {
 
+        // Entrega 6: confirma la entidad que recibe; el controller mira de quién es la entrega.
+        @BeforeEach
+        void laEntregaEsDeLaEntidad() {
+            when(entregaService.obtenerPorId(idEntrega)).thenReturn(respuesta(EstadoEntrega.EN_TRASLADO));
+        }
+
         @Test
         @DisplayName("Devuelve 200 y delega en el service")
         void confirmarOk() throws Exception {
-            mockMvc.perform(post("/api/logistica/entregas/{id}/confirmar", idEntrega)
+            mockMvc.perform(post("/api/logistica/entregas/{id}/confirmar", idEntrega).with(TokensDePrueba.entidad(idEntidad))
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(Map.of("fotosComprobante", List.of("foto1.jpg")))))
+                            .content(objectMapper.writeValueAsString(Map.of("fotosComprobante", List.of("https://fotos.example/foto1.jpg")))))
                     .andExpect(status().isOk());
 
             verify(entregaService).confirmar(eq(idEntrega), any());
@@ -119,7 +132,7 @@ class EntregaControllerTest {
         @Test
         @DisplayName("Devuelve 400 si la lista de fotos viene vacía")
         void sinFotos() throws Exception {
-            mockMvc.perform(post("/api/logistica/entregas/{id}/confirmar", idEntrega)
+            mockMvc.perform(post("/api/logistica/entregas/{id}/confirmar", idEntrega).with(TokensDePrueba.entidad(idEntidad))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(Map.of("fotosComprobante", List.of()))))
                     .andExpect(status().isBadRequest());
@@ -133,9 +146,9 @@ class EntregaControllerTest {
             doThrow(new TransicionEntregaIlegalException(EstadoEntrega.LISTO_PARA_ENTREGAR, EstadoEntrega.ENTREGADA))
                     .when(entregaService).confirmar(eq(idEntrega), any());
 
-            mockMvc.perform(post("/api/logistica/entregas/{id}/confirmar", idEntrega)
+            mockMvc.perform(post("/api/logistica/entregas/{id}/confirmar", idEntrega).with(TokensDePrueba.entidad(idEntidad))
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(Map.of("fotosComprobante", List.of("foto1.jpg")))))
+                            .content(objectMapper.writeValueAsString(Map.of("fotosComprobante", List.of("https://fotos.example/foto1.jpg")))))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.status").value(409));
         }

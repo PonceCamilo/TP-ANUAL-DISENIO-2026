@@ -5,7 +5,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import ar.utn.donatrack.logistica.seguridad.SeguridadDePrueba;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -23,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * está cubierta en PlanificacionRutasServiceTest.
  */
 @WebMvcTest(RutaController.class)
+@Import(SeguridadDePrueba.class)
 @DisplayName("RutaController - contrato HTTP de /api/logistica/rutas")
 class RutaControllerTest {
 

@@ -31,6 +31,12 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage());
     }
 
+    // Entrega 6: tiene el rol, pero la entrega o la ruta no son de su entidad.
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<Map<String, Object>> manejarAccesoDenegado(AccesoDenegadoException ex) {
+        return construir(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage());
+    }
+
     @ExceptionHandler(TransicionEntregaIlegalException.class)
     public ResponseEntity<Map<String, Object>> manejarTransicionIlegal(TransicionEntregaIlegalException ex) {
         return construir(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
