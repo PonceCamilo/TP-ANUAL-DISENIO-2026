@@ -120,6 +120,7 @@ services:
       - "8081:8081"
     environment:
       - notificaciones.url=http://servicio-notificaciones:8084
+      - notificaciones.clave=${DONATRACK_SERVICIOS_KEY:-clave-local-entre-servicios-de-donatrack}
       - servicios.incentivos.url=http://servicio-incentivos:8083
       - servicios.incentivos.clave=${DONATRACK_SERVICIOS_KEY:-clave-local-entre-servicios-de-donatrack}
       - servicios.broker-logistica.url=http://servicio-broker-logistica:8087
@@ -163,6 +164,11 @@ services:
       - spring.datasource.username=donatrack
       - spring.datasource.password=donatrack
       - spring.rabbitmq.host=rabbitmq
+      # Entrega 6: leer pide el JWT de Autenticación; la clave del front (la misma
+      # que en Autenticación y en el front) y la clave entre servicios.
+      - servicios.autenticacion.jwk-set-uri=http://servicio-autenticacion:8088/api/autenticacion/claves-publicas
+      - notificaciones.seguridad.clave-frontend=${AUTH_FRONTEND_KEY:-}
+      - notificaciones.seguridad.clave-servicios=${DONATRACK_SERVICIOS_KEY:-clave-local-entre-servicios-de-donatrack}
       - spring.docker.compose.enabled=false
     depends_on:
       postgres:

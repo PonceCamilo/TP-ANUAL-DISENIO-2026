@@ -21,4 +21,14 @@ public interface NotificacionJpaRepository extends JpaRepository<Notificacion, U
     List<Notificacion> findByDestinatarioIgnoreCase(String destinatario);
 
     List<Notificacion> findByDestinatarioIgnoreCaseIn(List<String> destinatarios);
+
+    org.springframework.data.domain.Page<Notificacion> findByDestinatarioIgnoreCaseInOrderByFechaCreacionDesc(
+            List<String> destinatarios, org.springframework.data.domain.Pageable pagina);
+
+    org.springframework.data.domain.Page<Notificacion> findAllByOrderByFechaCreacionDesc(
+            org.springframework.data.domain.Pageable pagina);
+
+    long countByDestinatarioIgnoreCaseInAndLeidaFalse(List<String> destinatarios);
+
+    long countByLeidaFalse();
 }

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 /**
  * Transporte sincrónico: POST /notificaciones contra el servicio (puerto 8084).
@@ -31,18 +32,26 @@ public class NotificacionTransportRest implements NotificacionTransport {
     public interface Api {
 
         @PostExchange("/notificaciones")
-        void enviar(@RequestBody SolicitudNotificacionMensaje solicitud);
+        void enviar(@RequestHeader(name = "X-DonaTrack-Servicio", required = false) String clave,
+                    @RequestBody SolicitudNotificacionMensaje solicitud);
     }
 
     private final Api api;
+    private final String clave;
 
+    /**
+     * Entrega 6: Notificaciones acepta envíos por HTTP solo de los servicios de
+     * DonaTrack, con la clave entre servicios (notificaciones.clave).
+     */
     public NotificacionTransportRest(RestClient.Builder builder,
-                                     @Value("${notificaciones.url:http://localhost:8084}") String baseUrl) {
+                                     @Value("${notificaciones.url:http://localhost:8084}") String baseUrl,
+                                     @Value("${notificaciones.clave:}") String clave) {
         this.api = ClientesHttp.crear(builder, baseUrl, Api.class);
+        this.clave = clave == null || clave.isBlank() ? null : clave;
     }
 
     public void enviar(SolicitudNotificacionMensaje solicitud) {
-        api.enviar(solicitud);
+        api.enviar(clave, solicitud);
     }
 
     public String nombre() {

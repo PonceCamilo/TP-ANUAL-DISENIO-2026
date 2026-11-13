@@ -77,6 +77,21 @@ public class NotificacionService implements NotificacionServiceInterface {
      * destinatarios (ej. el usuario abrió la pantalla de notificaciones: todo
      * lo que tenía sin leer pasa a leído de una vez).
      */
+    public org.springframework.data.domain.Page<Notificacion> buscar(List<String> destinatarios, int pagina, int tamanio) {
+        if (pagina < 1) {
+            throw new IllegalArgumentException("Las páginas empiezan en 1.");
+        }
+        if (tamanio < 1 || tamanio > 100) {
+            throw new IllegalArgumentException("El tamaño de página tiene que estar entre 1 y 100.");
+        }
+        return repositorio.buscarPagina(destinatarios,
+                org.springframework.data.domain.PageRequest.of(pagina - 1, tamanio));
+    }
+
+    public long contarNoLeidas(List<String> destinatarios) {
+        return repositorio.contarNoLeidas(destinatarios);
+    }
+
     public void marcarLeidas(List<String> destinatarios) {
         List<Notificacion> notificaciones = repositorio.buscarPorDestinatarios(destinatarios);
         for (Notificacion notificacion : notificaciones) {

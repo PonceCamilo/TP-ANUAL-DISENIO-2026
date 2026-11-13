@@ -72,7 +72,9 @@ public class Notificacion {
     private EstadoNotificacion estado;
 
     /** Si el destinatario ya la vio en la pantalla de notificaciones. */
-    @Column(name = "leida", nullable = false)
+    // Entrega 6: con valor por defecto, así ddl-auto=update puede agregar la
+    // columna a una tabla que ya tiene notificaciones.
+    @Column(name = "leida", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean leida = false;
 

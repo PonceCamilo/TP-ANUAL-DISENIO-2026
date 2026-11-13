@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -30,6 +31,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NotificacionNoEncontradaException.class)
     public ResponseEntity<Map<String, Object>> manejarNoEncontrada(NotificacionNoEncontradaException ex) {
         return construir(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
+    }
+
+    // Entrega 6: 401 y 403 de ControlDeAcceso, con el mismo formato que el resto.
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> manejarEstado(ResponseStatusException ex) {
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        return construir(status, status.getReasonPhrase(), ex.getReason());
     }
 
     private ResponseEntity<Map<String, Object>> construir(HttpStatus status, String error, String mensaje) {

@@ -47,4 +47,19 @@ public class NotificacionRepository implements NotificacionRepositoryInterface {
     public List<Notificacion> buscarPorDestinatarios(List<String> destinatarios) {
         return jpa.findByDestinatarioIgnoreCaseIn(destinatarios);
     }
+
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<Notificacion> buscarPagina(List<String> destinatarios,
+                                                                           org.springframework.data.domain.Pageable pagina) {
+        return destinatarios == null
+                ? jpa.findAllByOrderByFechaCreacionDesc(pagina)
+                : jpa.findByDestinatarioIgnoreCaseInOrderByFechaCreacionDesc(destinatarios, pagina);
+    }
+
+    @Transactional(readOnly = true)
+    public long contarNoLeidas(List<String> destinatarios) {
+        return destinatarios == null
+                ? jpa.countByLeidaFalse()
+                : jpa.countByDestinatarioIgnoreCaseInAndLeidaFalse(destinatarios);
+    }
 }

@@ -22,10 +22,17 @@ public class NotificacionTransportRest implements NotificacionTransport {
     private static final Logger log = LoggerFactory.getLogger(NotificacionTransportRest.class);
 
     private final RestClient restClient;
+    private final String clave;
 
+    /**
+     * Entrega 6: Notificaciones acepta envíos por HTTP solo de los servicios de
+     * DonaTrack, con la clave entre servicios (servicios.clave-servicios).
+     */
     public NotificacionTransportRest(
-            @Value("${servicios.notificaciones.url:http://localhost:8084}") String baseUrl) {
+            @Value("${servicios.notificaciones.url:http://localhost:8084}") String baseUrl,
+            @Value("${servicios.clave-servicios:}") String clave) {
         this.restClient = RestClient.create(baseUrl);
+        this.clave = clave == null ? "" : clave;
     }
 
     @Override
@@ -33,6 +40,11 @@ public class NotificacionTransportRest implements NotificacionTransport {
         try {
             restClient.post()
                     .uri("/notificaciones")
+                    .headers(cabeceras -> {
+                        if (!clave.isBlank()) {
+                            cabeceras.set("X-DonaTrack-Servicio", clave);
+                        }
+                    })
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(solicitud)
                     .retrieve()
