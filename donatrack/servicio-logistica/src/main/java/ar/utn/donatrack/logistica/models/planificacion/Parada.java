@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,4 +34,13 @@ public class Parada {
     private String nombreEntidad;
 
     private List<Entrega> entregas;
+
+    /** Suma una entrega a esta parada. La lista que viene de Mongo puede no ser modificable. */
+    public void agregarEntrega(Entrega entrega) {
+        if (entregas == null || !(entregas instanceof ArrayList)) {
+            entregas = entregas == null ? new ArrayList<>() : new ArrayList<>(entregas);
+        }
+        entregas.add(entrega);
+        entrega.setParada(this);
+    }
 }

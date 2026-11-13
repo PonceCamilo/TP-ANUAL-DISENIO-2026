@@ -85,6 +85,17 @@ public class CamionService implements CamionServiceInterface {
     }
 
     @Override
+    public void eliminar(UUID id) {
+        Camion camion = buscarOFallar(id);
+        if (camion.getEstado() == EstadoCamion.EN_RUTA) {
+            throw new OperacionCamionIlegalException(
+                    "El camión está en ruta y no se puede eliminar.");
+        }
+        exigirSinRutaAbierta(camion);
+        repositorio.eliminar(id);
+    }
+
+    @Override
     public CamionResponseDTO registrarUbicacion(UUID id, UbicacionRequestDTO dto) {
         Camion camion = buscarOFallar(id);
         if (camion.getEstado() != EstadoCamion.EN_RUTA) {

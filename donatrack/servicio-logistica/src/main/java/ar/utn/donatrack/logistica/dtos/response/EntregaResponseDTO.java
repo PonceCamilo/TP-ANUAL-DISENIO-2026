@@ -45,10 +45,11 @@ public class EntregaResponseDTO {
                 .camionId(camion != null ? camion.getId() : null)
                 .estado(entrega.getEstado())
                 // Copia: el DTO no comparte la lista mutable del documento.
-                .fotosComprobante(List.copyOf(entrega.getFotosComprobante()))
+                .fotosComprobante(entrega.getFotosComprobante() == null ? List.of() : List.copyOf(entrega.getFotosComprobante()))
                 .observacion(entrega.getObservacion())
                 .fechaEntrega(entrega.getFechaEntrega())
-                .historial(entrega.getHistorial().stream().map(CambioEstadoEntregaResponseDTO::desde).toList())
+                .historial(entrega.getHistorial() == null ? List.of()
+                        : entrega.getHistorial().stream().map(CambioEstadoEntregaResponseDTO::desde).toList())
                 .build();
     }
 }

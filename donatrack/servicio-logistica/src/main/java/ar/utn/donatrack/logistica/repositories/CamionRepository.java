@@ -41,6 +41,13 @@ public class CamionRepository implements CamionRepositoryInterface {
     }
 
     @Override
+    public void eliminar(UUID id) {
+        if (id != null) {
+            mongo.remove(Query.query(Criteria.where("_id").is(id)), Camion.class);
+        }
+    }
+
+    @Override
     public Camion buscarPorPatente(String patente) {
         return mongo.findOne(Query.query(Criteria.where("patente").is(patente)), Camion.class);
     }

@@ -1,6 +1,7 @@
 package ar.utn.donatrack.incentivos.models;
 
 import ar.utn.donatrack.incentivos.models.categoriasdonante.CategoriaDonante;
+import ar.utn.donatrack.incentivos.models.insignias.Insignia;
 import ar.utn.donatrack.incentivos.models.insignias.InsigniaObtenida;
 import ar.utn.donatrack.incentivos.models.misiones.Mision;
 import ar.utn.donatrack.incentivos.models.misiones.ProgresoMision;
@@ -18,7 +19,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -71,12 +75,15 @@ public class Donante {
     }
 
     public boolean completoMision(Mision mision) {
-        var insigniaDeMision = mision.getInsignia();
-        return insigniaDeMision != null && insigniasObtenidas.stream()
-                .map(InsigniaObtenida::getInsignia)
-                .anyMatch(insignia -> insignia == insigniaDeMision
-                        || insignia != null && insigniaDeMision.getId() != null
-                        && insigniaDeMision.getId().equals(insignia.getId()));
+        return mision != null && tieneInsignia(mision.getInsignia());
+    }
+
+    /** La misma insignia (mismo id o mismo nombre) no se otorga dos veces. */
+    public boolean tieneInsignia(Insignia insignia) {
+        if (insignia == null) {
+            return false;
+        }
+        return insigniasObtenidas.stream().anyMatch(obtenida -> mismaInsignia(obtenida.getInsignia(), insignia));
     }
 
     public boolean subirCategoria() {
@@ -90,14 +97,67 @@ public class Donante {
     }
 
     public void agregarInsignia(InsigniaObtenida insignia) {
+        if (insignia == null || tieneInsignia(insignia.getInsignia())) {
+            return;
+        }
         this.insigniasObtenidas.add(insignia);
     }
 
+    /**
+     * Una fila por nombre. Si el perfil ya tiene copias de la misma insignia,
+     * el panel y el perfil público muestran una sola.
+     */
+    public List<InsigniaObtenida> insigniasSinRepetir() {
+        Map<String, InsigniaObtenida> unicas = new LinkedHashMap<>();
+        for (InsigniaObtenida obtenida : insigniasObtenidas) {
+            String clave = claveDe(obtenida);
+            InsigniaObtenida previa = unicas.get(clave);
+            if (previa == null || (!previa.isVisibilidad() && obtenida.isVisibilidad())) {
+                unicas.put(clave, obtenida);
+            }
+        }
+        return new ArrayList<>(unicas.values());
+    }
+
     public void cambiarVisibilidadInsignia(Long idInsignia, boolean visible) {
-        insigniasObtenidas.stream()
+        String nombre = insigniasObtenidas.stream()
                 .filter(insignia -> Objects.equals(insignia.getId(), idInsignia))
+                .map(this::nombreDe)
+                .filter(Objects::nonNull)
                 .findFirst()
-                .ifPresent(insignia -> insignia.setVisibilidad(visible));
+                .orElse(null);
+        insigniasObtenidas.stream()
+                .filter(insignia -> Objects.equals(insignia.getId(), idInsignia)
+                        || (nombre != null && nombre.equalsIgnoreCase(nombreDe(insignia))))
+                .forEach(insignia -> insignia.setVisibilidad(visible));
+    }
+
+    private String claveDe(InsigniaObtenida obtenida) {
+        String nombre = nombreDe(obtenida);
+        if (nombre != null) {
+            return nombre.toLowerCase(Locale.ROOT);
+        }
+        return "id:" + obtenida.getId();
+    }
+
+    private String nombreDe(InsigniaObtenida obtenida) {
+        Insignia insignia = obtenida.getInsignia();
+        if (insignia == null || insignia.getNombre() == null || insignia.getNombre().isBlank()) {
+            return null;
+        }
+        return insignia.getNombre().strip();
+    }
+
+    private boolean mismaInsignia(Insignia guardada, Insignia otra) {
+        if (guardada == null || otra == null) {
+            return false;
+        }
+        if (guardada == otra) {
+            return true;
+        }
+        // El nombre manda: dos filas de "Semilla de Solidaridad" son la misma insignia
+        // aunque el cargador les haya dado ids distintos. Ids iguales con otro nombre no.
+        return guardada.getNombre() != null && guardada.getNombre().equalsIgnoreCase(otra.getNombre());
     }
 
     public void cambiarMisionActual(Mision mision) {
@@ -109,6 +169,8 @@ public class Donante {
                 .filter(insignia -> insignia.getFechaObtencion() != null)
                 .filter(insignia -> insignia.getFechaObtencion().getMonthValue() == mes)
                 .filter(insignia -> insignia.getFechaObtencion().getYear() == anio)
+                .map(this::claveDe)
+                .distinct()
                 .count();
     }
 }

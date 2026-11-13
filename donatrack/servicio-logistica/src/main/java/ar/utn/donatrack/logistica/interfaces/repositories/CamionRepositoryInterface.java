@@ -11,4 +11,5 @@ public interface CamionRepositoryInterface {
     Camion buscarPorId(UUID id);
     List<Camion> buscarPorIds(List<UUID> ids);
     Camion buscarPorPatente(String patente);
+    void eliminar(UUID id);
 }

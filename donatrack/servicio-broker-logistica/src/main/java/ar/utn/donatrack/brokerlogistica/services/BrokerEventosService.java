@@ -46,6 +46,7 @@ public class BrokerEventosService {
             case "INICIO_RUTA" -> DonacionesClient.INICIO_RUTA;
             case "ENTREGA_CONFIRMADA" -> DonacionesClient.ENTREGA_EXITOSA;
             case "ENTREGA_NO_RECIBIDA" -> DonacionesClient.ENTREGA_FALLIDA;
+            case "REGRESO_DEPOSITO" -> DonacionesClient.REGRESO_DEPOSITO;
             default -> throw new EventoInvalidoException("Tipo de evento de DONATRACK desconocido: " + tipo);
         };
         log.info("[Broker] Evento {} de DONATRACK", tipo);

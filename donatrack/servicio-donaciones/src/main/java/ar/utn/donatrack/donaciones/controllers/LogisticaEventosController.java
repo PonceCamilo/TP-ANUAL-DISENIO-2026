@@ -6,9 +6,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaExitosaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.EntregaFallidaCallbackDTO;
 import ar.utn.donatrack.donaciones.dtos.request.InicioRutaCallbackDTO;
+import ar.utn.donatrack.donaciones.dtos.request.RegresoDepositoCallbackDTO;
 import ar.utn.donatrack.donaciones.services.logistica.ManejadorEntregaExitosa;
 import ar.utn.donatrack.donaciones.services.logistica.ManejadorEntregaFallida;
 import ar.utn.donatrack.donaciones.services.logistica.ManejadorInicioDeRuta;
+import ar.utn.donatrack.donaciones.services.logistica.ManejadorRegresoADeposito;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +43,7 @@ public class LogisticaEventosController {
     private final ManejadorInicioDeRuta inicioDeRuta;
     private final ManejadorEntregaExitosa entregaExitosa;
     private final ManejadorEntregaFallida entregaFallida;
+    private final ManejadorRegresoADeposito regresoADeposito;
 
     @Operation(
             summary = "El chofer inició la ruta",
@@ -97,6 +100,22 @@ public class LogisticaEventosController {
             @RequestBody @Valid EntregaFallidaCallbackDTO dto
     ) {
         entregaFallida.procesar(dto);
+        return ResponseEntity.ok().build();
+    }
+
+    @Operation(
+            summary = "La administración devolvió la donación al depósito",
+            description = "La donación pasa de ENTREGA_FALLIDA a EN_DEPOSITO y vuelve a poder asignarse. "
+                    + "Un aviso repetido no cambia nada.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Aviso procesado (o repetido, sin cambios)"),
+                    @ApiResponse(responseCode = "404", description = "La donación no existe"),
+                    @ApiResponse(responseCode = "422", description = "La donación no está en entrega fallida")
+            }
+    )
+    @PostMapping("/regreso-deposito")
+    public ResponseEntity<Void> recibirRegresoADeposito(@RequestBody @Valid RegresoDepositoCallbackDTO dto) {
+        regresoADeposito.procesar(dto);
         return ResponseEntity.ok().build();
     }
 }

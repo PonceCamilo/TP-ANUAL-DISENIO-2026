@@ -43,6 +43,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -92,13 +93,108 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
 
     @Override
     public List<LoteResponseDTO> planificar(PlanificacionRequestDTO dto) {
-        List<Camion> camiones = resolverCamiones(dto.getCamionesIds());
         List<DonacionLote> donaciones = dto.getDonaciones().stream().map(this::aDonacionLote).toList();
+        List<Ruta> planificadas = rutasEnEstado(EstadoRuta.PLANIFICADA);
+        planificadas.forEach(Ruta::enlazarEntregas);
 
-        return particionar(donaciones, maxDonacionesPorLote).stream()
-                .map(batch -> crearYPlanificarLote(batch, camiones))
-                .map(resultado -> LoteResponseDTO.desde(resultado.lote(), resultado.rutas()))
-                .toList();
+        // Si ya hay un reparto armado y todavía no salió, las donaciones nuevas
+        // se suman a esas rutas. Si no, cada despacho abría una ruta por donación
+        // aunque fueran a la misma entidad.
+        Map<UUID, Ruta> tocadas = new LinkedHashMap<>();
+        List<DonacionLote> incorporadas = new ArrayList<>();
+        List<DonacionLote> paraElProveedor = new ArrayList<>();
+        for (DonacionLote donacion : donaciones) {
+            Ruta ya = rutaConDonacion(planificadas, donacion.getIdDonacion());
+            if (ya != null) {
+                tocadas.putIfAbsent(ya.getId(), ya);
+                incorporadas.add(donacion);
+                continue;
+            }
+            if (planificadas.isEmpty()) {
+                paraElProveedor.add(donacion);
+                continue;
+            }
+            Ruta destino = rutaConEntidad(planificadas, donacion.getIdEntidadBeneficiaria());
+            if (destino == null) {
+                destino = rutaConMenosParadas(planificadas);
+            }
+            Parada parada = destino.paradaDeEntidad(donacion.getIdEntidadBeneficiaria());
+            if (parada == null) {
+                parada = destino.agregarParada(donacion.getIdEntidadBeneficiaria(),
+                        donacion.getNombreEntidad(), donacion.getDireccionEntrega());
+            }
+            parada.agregarEntrega(Entrega.builder()
+                    .id(UUID.randomUUID())
+                    .idDonacion(donacion.getIdDonacion())
+                    .resumen(donacion.getResumen())
+                    .build());
+            tocadas.put(destino.getId(), destino);
+            incorporadas.add(donacion);
+        }
+        tocadas.values().forEach(rutaRepositorio::guardar);
+
+        List<LoteResponseDTO> respuesta = new ArrayList<>();
+        if (!tocadas.isEmpty()) {
+            respuesta.add(loteDeIncorporacion(incorporadas, new ArrayList<>(tocadas.values())));
+        }
+        if (!paraElProveedor.isEmpty()) {
+            List<Camion> camiones = resolverCamiones(dto.getCamionesIds());
+            respuesta.addAll(particionar(paraElProveedor, maxDonacionesPorLote).stream()
+                    .map(batch -> crearYPlanificarLote(batch, camiones))
+                    .map(resultado -> LoteResponseDTO.desde(resultado.lote(), resultado.rutas()))
+                    .toList());
+        }
+        return respuesta;
+    }
+
+    private List<Ruta> rutasEnEstado(EstadoRuta estado) {
+        List<Ruta> rutas = rutaRepositorio.buscarPorEstado(estado);
+        return rutas == null ? List.of() : rutas;
+    }
+
+    private Ruta rutaConDonacion(List<Ruta> rutas, UUID idDonacion) {
+        for (Ruta ruta : rutas) {
+            if (ruta.contieneDonacion(idDonacion)) {
+                return ruta;
+            }
+        }
+        return null;
+    }
+
+    private Ruta rutaConEntidad(List<Ruta> rutas, UUID idEntidad) {
+        for (Ruta ruta : rutas) {
+            if (ruta.paradaDeEntidad(idEntidad) != null) {
+                return ruta;
+            }
+        }
+        return null;
+    }
+
+    private Ruta rutaConMenosParadas(List<Ruta> rutas) {
+        Ruta elegida = rutas.getFirst();
+        for (Ruta ruta : rutas) {
+            int paradas = ruta.getParadas() == null ? 0 : ruta.getParadas().size();
+            int deLaElegida = elegida.getParadas() == null ? 0 : elegida.getParadas().size();
+            if (paradas < deLaElegida) {
+                elegida = ruta;
+            }
+        }
+        return elegida;
+    }
+
+    /** El broker necesita el id de cada entrega. Estas ya viven en una ruta planificada. */
+    private LoteResponseDTO loteDeIncorporacion(List<DonacionLote> donaciones, List<Ruta> rutas) {
+        LotePlanificacion lote = LotePlanificacion.builder()
+                .id(UUID.randomUUID())
+                .camionIds(rutas.stream().map(Ruta::getCamionId).filter(id -> id != null).distinct().toList())
+                .donaciones(donaciones)
+                .estado(EstadoLote.COMPLETADO)
+                .tokenCorrelacion(UUID.randomUUID().toString())
+                .fechaEnvio(LocalDateTime.now())
+                .fechaRespuesta(LocalDateTime.now())
+                .build();
+        loteRepositorio.guardar(lote);
+        return LoteResponseDTO.desde(lote, rutas);
     }
 
     /**

@@ -231,6 +231,43 @@ class PlanificacionRutasServiceTest {
         }
 
         @Test
+        @DisplayName("Si ya hay una ruta planificada, la donación se suma a esa ruta y no se abre otra")
+        void sumaALaRutaPlanificadaDeLaMismaEntidad() {
+            UUID entidad = UUID.randomUUID();
+            UUID donacionVieja = UUID.randomUUID();
+            Entrega previa = Entrega.builder().id(UUID.randomUUID()).idDonacion(donacionVieja).build();
+            Parada parada = Parada.builder()
+                    .id(UUID.randomUUID())
+                    .orden(1)
+                    .idEntidadBeneficiaria(entidad)
+                    .entregas(new ArrayList<>(List.of(previa)))
+                    .build();
+            Ruta ruta = Ruta.builder()
+                    .id(UUID.randomUUID())
+                    .camionId(UUID.randomUUID())
+                    .estado(EstadoRuta.PLANIFICADA)
+                    .paradas(new ArrayList<>(List.of(parada)))
+                    .build();
+            when(rutaRepositorio.buscarPorEstado(EstadoRuta.PLANIFICADA)).thenReturn(new ArrayList<>(List.of(ruta)));
+
+            DonacionParaRutearRequestDTO nueva = donacionDTO(entidad);
+            DonacionParaRutearRequestDTO otraEntidad = donacionDTO(UUID.randomUUID());
+            PlanificacionRequestDTO dto = new PlanificacionRequestDTO();
+            dto.setDonaciones(List.of(nueva, otraEntidad));
+
+            List<LoteResponseDTO> lotes = servicio.planificar(dto);
+
+            verify(estrategiaRuteo, never()).planificar(any(), any(), any());
+            assertThat(lotes).hasSize(1);
+            assertThat(ruta.getParadas()).hasSize(2);
+            assertThat(ruta.paradaDeEntidad(entidad).getEntregas())
+                    .extracting(Entrega::getIdDonacion)
+                    .containsExactly(donacionVieja, nueva.getIdDonacion());
+            assertThat(ruta.obtenerEntregas()).extracting(Entrega::getIdDonacion)
+                    .contains(otraEntidad.getIdDonacion());
+        }
+
+        @Test
         @DisplayName("Si el proveedor no ubica cada donación una sola vez, rechaza el lote y no crea entregas")
         void respuestaDelProveedorIncompleta() {
             UUID idCamion = UUID.randomUUID();

@@ -1,5 +1,6 @@
 package ar.utn.donatrack.logistica.models.planificacion;
 
+import ar.utn.donatrack.logistica.models.comun.Direccion;
 import ar.utn.donatrack.logistica.models.entrega.Entrega;
 import ar.utn.donatrack.logistica.models.flota.Camion;
 import lombok.AccessLevel;
@@ -13,6 +14,7 @@ import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,6 +55,37 @@ public class Ruta {
                 .filter(p -> p.getEntregas() != null)
                 .flatMap(p -> p.getEntregas().stream())
                 .toList();
+    }
+
+    public boolean contieneDonacion(UUID idDonacion) {
+        return obtenerEntregas().stream().anyMatch(entrega -> idDonacion.equals(entrega.getIdDonacion()));
+    }
+
+    public Parada paradaDeEntidad(UUID idEntidad) {
+        if (paradas == null || idEntidad == null) {
+            return null;
+        }
+        return paradas.stream()
+                .filter(parada -> idEntidad.equals(parada.getIdEntidadBeneficiaria()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /** Una parada nueva, al final. Varias donaciones de la misma entidad comparten la que ya existe. */
+    public Parada agregarParada(UUID idEntidad, String nombreEntidad, Direccion direccion) {
+        if (paradas == null || !(paradas instanceof ArrayList)) {
+            paradas = paradas == null ? new ArrayList<>() : new ArrayList<>(paradas);
+        }
+        Parada parada = Parada.builder()
+                .id(UUID.randomUUID())
+                .orden(paradas.size() + 1)
+                .idEntidadBeneficiaria(idEntidad)
+                .nombreEntidad(nombreEntidad)
+                .direccion(direccion)
+                .entregas(new ArrayList<>())
+                .build();
+        paradas.add(parada);
+        return parada;
     }
 
     public Optional<Entrega> buscarEntrega(UUID entregaId) {

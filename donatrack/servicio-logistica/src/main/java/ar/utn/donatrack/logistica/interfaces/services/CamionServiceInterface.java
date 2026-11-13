@@ -14,4 +14,5 @@ public interface CamionServiceInterface {
     CamionResponseDTO pasarAMantenimiento(UUID id);
     CamionResponseDTO volverADisponible(UUID id);
     CamionResponseDTO registrarUbicacion(UUID id, UbicacionRequestDTO dto);
+    void eliminar(UUID id);
 }

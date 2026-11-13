@@ -193,6 +193,23 @@ class DonanteTest {
 
             assertThat(completadas).isEqualTo(1);
         }
+
+        @Test
+        @DisplayName("La misma insignia no se agrega dos veces y las copias ya guardadas se muestran una sola")
+        void noRepiteLaMismaInsignia() {
+            Donante donante = new Donante();
+            Insignia semilla = insignia("Semilla de Solidaridad");
+            donante.agregarInsignia(new InsigniaObtenida(semilla, true));
+            donante.agregarInsignia(new InsigniaObtenida(insignia("Semilla de Solidaridad"), true));
+            donante.agregarInsignia(new InsigniaObtenida(insignia("Constancia Solidaria"), true));
+
+            assertThat(donante.getInsigniasObtenidas()).hasSize(2);
+            assertThat(donante.tieneInsignia(semilla)).isTrue();
+
+            donante.getInsigniasObtenidas().add(new InsigniaObtenida(insignia("Semilla de Solidaridad"), true));
+
+            assertThat(donante.insigniasSinRepetir()).hasSize(2);
+        }
     }
 
     private Insignia insignia(String nombre) {

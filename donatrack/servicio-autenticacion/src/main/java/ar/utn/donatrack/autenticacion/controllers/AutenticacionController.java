@@ -61,6 +61,13 @@ public class AutenticacionController {
         return cuentas.ingresarConGoogle(datos.idToken(), datos.rol(), datos.tipoDonante());
     }
 
+    @PatchMapping("/perfil")
+    TokenResponse renombrar(@RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera,
+                            @RequestBody Map<String, String> datos) {
+        Jwt token = verificarToken(cabecera);
+        return cuentas.renombrar(UUID.fromString(token.getSubject()), datos.get("nombre"));
+    }
+
     @GetMapping("/sesion")
     PerfilSesion consultarSesion(@RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera) {
         Jwt token = verificarToken(cabecera);
@@ -78,6 +85,14 @@ public class AutenticacionController {
     PerfilSesion asignarCamion(@RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera, @PathVariable UUID id, @RequestBody Asignacion datos) {
         exigirAdministrador(cabecera);
         return PerfilSesion.crearPerfilPara(cuentas.asignarCamion(id, datos.camionId()));
+    }
+
+    @DeleteMapping("/choferes/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void eliminarChofer(@RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera,
+                        @PathVariable UUID id) {
+        exigirAdministrador(cabecera);
+        cuentas.eliminarChofer(id);
     }
 
     @PostMapping("/choferes")

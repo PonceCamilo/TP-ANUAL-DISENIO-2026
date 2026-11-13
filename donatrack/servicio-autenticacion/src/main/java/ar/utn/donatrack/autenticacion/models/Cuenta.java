@@ -41,6 +41,14 @@ public abstract class Cuenta {
     public UUID id() { return id; }
     public String email() { return email; }
     public String nombre() { return nombre; }
+
+    /** El nombre que se muestra en el cliente. El email no se cambia por acá. */
+    public void renombrar(String nombre) {
+        if (nombre == null || nombre.isBlank() || nombre.strip().length() > 100) {
+            throw new IllegalArgumentException("El nombre tiene que tener entre 1 y 100 caracteres.");
+        }
+        this.nombre = nombre.strip();
+    }
     public Rol rol() { return rol; }
     public String passwordHash() { return passwordHash; }
 

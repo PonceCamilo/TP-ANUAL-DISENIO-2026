@@ -114,6 +114,7 @@ public class BrokerEventosListener implements EntregaEventListener {
                 payload.put("motivoFallo", evento.getMotivoFallo());
                 payload.put("replanificable", evento.getReplanificable());
             }
+            case REGRESO_DEPOSITO -> payload.put("idDonacion", evento.getIdDonacion());
         }
 
         return payload;

@@ -9,5 +9,6 @@ package ar.utn.donatrack.logistica.eventos;
 public enum TipoEventoLogistica {
     INICIO_RUTA,
     ENTREGA_CONFIRMADA,
-    ENTREGA_NO_RECIBIDA
+    ENTREGA_NO_RECIBIDA,
+    REGRESO_DEPOSITO
 }

@@ -65,7 +65,7 @@ public class LogrosController {
         return incentivos.buscarPerfilParaMostrar(donanteId)
                 .map(perfil -> new PerfilPublico(
                         perfil.getCategoria() == null ? "Colaborador" : perfil.getCategoria().getNombre(),
-                        perfil.getInsigniasObtenidas().stream()
+                        perfil.insigniasSinRepetir().stream()
                                 .filter(InsigniaObtenida::isVisibilidad)
                                 .map(InsigniaResponse::desde)
                                 .toList()))

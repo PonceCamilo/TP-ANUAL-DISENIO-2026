@@ -8,6 +8,7 @@ import ar.utn.donatrack.autenticacion.models.CuentaDonante;
 import ar.utn.donatrack.autenticacion.models.CuentaEntidadBeneficiaria;
 import ar.utn.donatrack.autenticacion.models.Rol;
 import ar.utn.donatrack.autenticacion.models.TipoDonante;
+import ar.utn.donatrack.autenticacion.repositories.Activaciones;
 import ar.utn.donatrack.autenticacion.repositories.Cuentas;
 import ar.utn.donatrack.autenticacion.seguridad.Contrasenias;
 import ar.utn.donatrack.autenticacion.seguridad.GoogleIdentidad;
@@ -25,13 +26,15 @@ import java.util.UUID;
 @Service
 public class AutenticacionService {
     private final Cuentas cuentas;
+    private final Activaciones activaciones;
     private final Tokens tokens;
     private final GoogleIdentidad google;
     private final Contrasenias claves;
     private final String hashDeRespaldo;
 
-    AutenticacionService(Cuentas cuentas, Tokens tokens, GoogleIdentidad google, Contrasenias claves) {
+    AutenticacionService(Cuentas cuentas, Activaciones activaciones, Tokens tokens, GoogleIdentidad google, Contrasenias claves) {
         this.cuentas = cuentas;
+        this.activaciones = activaciones;
         this.tokens = tokens;
         this.google = google;
         this.claves = claves;
@@ -123,6 +126,28 @@ public class AutenticacionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese chofer."));
         chofer.asignarCamion(camionId);
         return chofer;
+    }
+
+    @Transactional
+    public TokenResponse renombrar(UUID cuentaId, String nombre) {
+        Cuenta cuenta = buscarCuenta(cuentaId);
+        try {
+            cuenta.renombrar(nombre);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+        return tokens.emitir(cuentas.saveAndFlush(cuenta));
+    }
+
+    @Transactional
+    public void eliminarChofer(UUID choferId) {
+        Cuenta cuenta = cuentas.findById(choferId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos ese chofer."));
+        if (cuenta.rol() != Rol.CHOFER) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Solo se pueden eliminar cuentas de chofer.");
+        }
+        activaciones.borrarDe(cuenta);
+        cuentas.delete(cuenta);
     }
 
     @Transactional

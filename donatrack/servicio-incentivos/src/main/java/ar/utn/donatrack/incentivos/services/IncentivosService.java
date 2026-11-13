@@ -60,17 +60,16 @@ public class IncentivosService implements IncentivosServiceInterface {
     }
 
     public List<InsigniaObtenida> obtenerInsignias(UUID donanteId) {
-        return obtenerPerfil(donanteId).getInsigniasObtenidas();
+        return obtenerPerfil(donanteId).insigniasSinRepetir();
     }
 
     @Transactional
     public void cambiarVisibilidadInsignia(UUID donanteId, Long insigniaId, boolean visible) {
-        InsigniaObtenida insignia = repositorio.buscarPerfil(donanteId)
-                .flatMap(perfil -> perfil.getInsigniasObtenidas().stream()
-                        .filter(obtenida -> insigniaId.equals(obtenida.getId()))
-                        .findFirst())
+        Donante perfil = repositorio.buscarPerfil(donanteId)
+                .filter(candidato -> candidato.getInsigniasObtenidas().stream()
+                        .anyMatch(obtenida -> insigniaId.equals(obtenida.getId())))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No encontramos esa insignia."));
-        insignia.setVisibilidad(visible);
+        perfil.cambiarVisibilidadInsignia(insigniaId, visible);
     }
 
     @Transactional(readOnly = true)
@@ -138,11 +137,13 @@ public class IncentivosService implements IncentivosServiceInterface {
             return;
         }
 
-        InsigniaObtenida nueva = activa.otorgarInsignia();
-        perfil.agregarInsignia(nueva);
-        if (destinatario != null && medio != null) {
-            notificacionClient.enviarNotificacion(destinatario, "Mision cumplida: " + activa.getNombre(), medio, "MISION_CUMPLIDA");
-            n8nWebhookClient.notificarInsigniaObtenida(perfil.getId(), nueva, destinatario);
+        if (!perfil.tieneInsignia(activa.getInsignia())) {
+            InsigniaObtenida nueva = activa.otorgarInsignia();
+            perfil.agregarInsignia(nueva);
+            if (destinatario != null && medio != null) {
+                notificacionClient.enviarNotificacion(destinatario, "Mision cumplida: " + activa.getNombre(), medio, "MISION_CUMPLIDA");
+                n8nWebhookClient.notificarInsigniaObtenida(perfil.getId(), nueva, destinatario);
+            }
         }
 
         avanzarMision(perfil, activa, destinatario, medio);
@@ -150,7 +151,7 @@ public class IncentivosService implements IncentivosServiceInterface {
 
     private void avanzarMision(Donante perfil, Mision activa, String destinatario, String medio) {
         sincronizarMisionesDeCategoria(perfil.getCategoria());
-        Mision siguienteMision = perfil.getCategoria().siguienteMision(activa);
+        Mision siguienteMision = siguienteSinInsignia(perfil, activa);
         if (siguienteMision != null) {
             perfil.cambiarMisionActual(siguienteMision);
             return;
@@ -166,6 +167,15 @@ public class IncentivosService implements IncentivosServiceInterface {
         }
 
         perfil.cambiarMisionActual(null);
+    }
+
+    /** Saltea copias de una misión cuya insignia el donante ya tiene. */
+    private Mision siguienteSinInsignia(Donante perfil, Mision desde) {
+        Mision siguiente = perfil.getCategoria().siguienteMision(desde);
+        while (siguiente != null && perfil.tieneInsignia(siguiente.getInsignia())) {
+            siguiente = perfil.getCategoria().siguienteMision(siguiente);
+        }
+        return siguiente;
     }
 
     private void asignarPrimeraMisionDeCategoria(Donante perfil) {

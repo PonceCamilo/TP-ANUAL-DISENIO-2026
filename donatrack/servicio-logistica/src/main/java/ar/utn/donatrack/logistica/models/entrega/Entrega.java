@@ -68,11 +68,30 @@ public class Entrega {
     }
 
     /**
-     * Volvió al depósito y el último fallo admite otra ruta. 
-     * Una entrega ya replanificada no vuelve a entrar: su intento quedó cerrado.
+     * La administración la devolvió al depósito de Donaciones. La próxima salida
+     * se arma asignándola y despachándola de nuevo, no replanificando este intento.
+     */
+    public static final String DEVUELTA_AL_DEPOSITO = "Devuelta al depósito de donaciones";
+
+    /**
+     * Volvió al depósito y el último fallo admite otra ruta.
+     * Una entrega ya replanificada, o devuelta al depósito de Donaciones, no entra.
      */
     public boolean listaParaReplanificar() {
-        return estado == EstadoEntrega.LISTO_PARA_ENTREGAR && admiteOtraRuta();
+        return estado == EstadoEntrega.LISTO_PARA_ENTREGAR && admiteOtraRuta() && !devueltaADonaciones();
+    }
+
+    /** Cierra este intento: la donación vuelve a EN_DEPOSITO en Donaciones. */
+    public void marcarDevueltaAlDeposito() {
+        registrarCambio(EstadoEntrega.LISTO_PARA_ENTREGAR, ultimoMotivoDeFallo(), DEVUELTA_AL_DEPOSITO);
+    }
+
+    public boolean devueltaADonaciones() {
+        if (historial == null) {
+            return false;
+        }
+        return historial.stream().anyMatch(cambio -> cambio.getObservacion() != null
+                && cambio.getObservacion().startsWith(DEVUELTA_AL_DEPOSITO));
     }
 
     /** El administrador puede devolverla al depósito solo si el fallo admite otra ruta. */

@@ -137,8 +137,15 @@ public class EntregaService implements EntregaServiceInterface {
                     "La entrega no puede volver al depósito: el motivo no admite otra ruta.");
         }
         validador.validarTransicion(entrega.getEstado(), EstadoEntrega.LISTO_PARA_ENTREGAR);
-        entrega.registrarCambio(EstadoEntrega.LISTO_PARA_ENTREGAR, "Regreso a depósito");
+        entrega.marcarDevueltaAlDeposito();
         rutaRepositorio.guardar(ruta);
+
+        eventPublisher.publicar(EntregaEvento.builder()
+                .tipo(TipoEventoLogistica.REGRESO_DEPOSITO)
+                .entregaId(entrega.getId())
+                .idDonacion(entrega.getIdDonacion())
+                .rutaId(ruta.getId())
+                .build());
     }
 
     // Cuando esta entrega era la última EN_TRASLADO de su ruta, el camión

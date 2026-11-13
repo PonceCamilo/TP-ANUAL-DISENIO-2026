@@ -18,6 +18,7 @@ public class DonacionesClient {
     public static final String INICIO_RUTA = "/logistica/eventos/inicio-ruta";
     public static final String ENTREGA_EXITOSA = "/logistica/eventos/entrega-exitosa";
     public static final String ENTREGA_FALLIDA = "/logistica/eventos/entrega-fallida";
+    public static final String REGRESO_DEPOSITO = "/logistica/eventos/regreso-deposito";
 
     private static final Logger log = LoggerFactory.getLogger(DonacionesClient.class);
 

@@ -19,4 +19,8 @@ public interface Activaciones extends JpaRepository<Activacion, UUID> {
     @Modifying
     @Query("delete from Activacion a where a.cuenta = ?1 and a.usadaEn is null")
     int borrarPendientes(Cuenta cuenta);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from Activacion a where a.cuenta = ?1")
+    int borrarDe(Cuenta cuenta);
 }

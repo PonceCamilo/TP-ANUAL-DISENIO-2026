@@ -91,6 +91,21 @@ public class CamionController {
     }
 
     @Operation(
+            summary = "Eliminar camión",
+            description = "Solo si no está EN_RUTA y no tiene una ruta planificada o iniciada.",
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Camión eliminado"),
+                    @ApiResponse(responseCode = "404", description = "Camión no encontrado"),
+                    @ApiResponse(responseCode = "409", description = "El camión está en uso")
+            }
+    )
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable UUID id) {
+        camionService.eliminar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
             summary = "Volver a dejar el camión disponible",
             description = "Solo desde MANTENIMIENTO, y si no quedó una ruta abierta.",
             responses = {
