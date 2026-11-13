@@ -17,6 +17,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -95,6 +97,34 @@ class DonatrackLogisticaAdapterTest {
 
         assertThatThrownBy(() -> adapter.solicitarEnvios(List.of(pedida)))
                 .isInstanceOf(ProveedorNoDisponibleException.class);
+    }
+
+    @Test
+    @DisplayName("Entrega 6: manda la clave entre servicios para que Logística acepte la planificación")
+    void mandaLaClaveDeServicios() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer conClave = MockRestServiceServer.bindTo(builder).build();
+        DonatrackLogisticaAdapter adapterConClave = new DonatrackLogisticaAdapter(builder, BASE,
+                "clave-de-servicios-de-al-menos-32-caracteres");
+        conClave.expect(requestTo(BASE + "/api/logistica/planificaciones"))
+                .andExpect(header("X-DonaTrack-Servicio", "clave-de-servicios-de-al-menos-32-caracteres"))
+                .andRespond(withServiceUnavailable());
+
+        assertThatThrownBy(() -> adapterConClave.solicitarEnvios(List.of(donacion())))
+                .isInstanceOf(ProveedorNoDisponibleException.class);
+        conClave.verify();
+    }
+
+    @Test
+    @DisplayName("Sin clave configurada no manda la cabecera")
+    void sinClaveNoMandaCabecera() {
+        servidor.expect(requestTo(BASE + "/api/logistica/planificaciones"))
+                .andExpect(headerDoesNotExist("X-DonaTrack-Servicio"))
+                .andRespond(withServiceUnavailable());
+
+        assertThatThrownBy(() -> adapter.solicitarEnvios(List.of(donacion())))
+                .isInstanceOf(ProveedorNoDisponibleException.class);
+        servidor.verify();
     }
 
     @Test

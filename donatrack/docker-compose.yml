@@ -274,6 +274,8 @@ services:
       BROKER_PROVEEDORES_DONATRACK_URL: http://servicio-logistica:8085
       BROKER_PROVEEDORES_EXTERNA_URL: http://servicio-logistica-externa:8086
       BROKER_PROVEEDORES_PRIORIDAD: DONATRACK,EXTERNA
+      # Entrega 6: clave que manda a servicio-logistica al planificar.
+      DONATRACK_SERVICIOS_KEY: ${DONATRACK_SERVICIOS_KEY:-clave-local-entre-servicios-de-donatrack}
     networks:
       - donatrack-net
 

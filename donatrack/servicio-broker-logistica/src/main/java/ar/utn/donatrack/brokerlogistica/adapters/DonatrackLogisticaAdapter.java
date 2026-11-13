@@ -4,6 +4,7 @@ import ar.utn.donatrack.brokerlogistica.dtos.DireccionDTO;
 import ar.utn.donatrack.brokerlogistica.dtos.DonacionEnvioDTO;
 import ar.utn.donatrack.brokerlogistica.dtos.EnvioAsignadoDTO;
 import ar.utn.donatrack.brokerlogistica.exceptions.ProveedorNoDisponibleException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
@@ -23,16 +24,30 @@ import java.util.UUID;
  * todas las donaciones; logística las particiona en lotes, el proveedor
  * reparte las donaciones entre los camiones y responde las rutas. El id de
  * seguimiento de cada donación es el id de su entrega.
+ *
+ * Entrega 6: servicio-logistica pide autenticación. El broker no tiene usuario:
+ * manda la clave entre servicios en X-DonaTrack-Servicio (DONATRACK_SERVICIOS_KEY),
+ * la misma que tiene configurada Logística.
  */
 @Component
 public class DonatrackLogisticaAdapter extends AdapterLogisticaHttp {
 
     public static final String NOMBRE = "DONATRACK";
+    public static final String CABECERA_CLAVE = "X-DonaTrack-Servicio";
 
+    private final String clave;
+
+    public DonatrackLogisticaAdapter(RestClient.Builder builder, String baseUrl) {
+        this(builder, baseUrl, "");
+    }
+
+    @Autowired
     public DonatrackLogisticaAdapter(
             RestClient.Builder builder,
-            @Value("${broker.proveedores.donatrack.url}") String baseUrl) {
+            @Value("${broker.proveedores.donatrack.url}") String baseUrl,
+            @Value("${broker.seguridad.clave-servicios:}") String clave) {
         super(builder, baseUrl);
+        this.clave = clave == null ? "" : clave;
     }
 
     @Override
@@ -46,6 +61,11 @@ public class DonatrackLogisticaAdapter extends AdapterLogisticaHttp {
         try {
             lotes = restClient.post()
                     .uri("/api/logistica/planificaciones")
+                    .headers(cabeceras -> {
+                        if (!clave.isBlank()) {
+                            cabeceras.set(CABECERA_CLAVE, clave);
+                        }
+                    })
                     .body(new PlanificacionRequest(donaciones.stream().map(this::aDonacionParaRutear).toList()))
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() {});

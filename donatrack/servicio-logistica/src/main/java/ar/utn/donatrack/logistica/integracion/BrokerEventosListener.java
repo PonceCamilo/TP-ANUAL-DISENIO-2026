@@ -14,6 +14,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -101,6 +102,9 @@ public class BrokerEventosListener implements EntregaEventListener {
                 payload.put("idCamion", evento.getIdCamion());
                 payload.put("patenteCamion", evento.getPatenteCamion());
                 payload.put("fechaHoraEntrega", evento.getFechaHoraEntrega());
+                // Entrega 6: las URLs de las fotos de la recepción, con el nombre de
+                // campo de Donaciones (las muestra en la landing).
+                payload.put("fotos", evento.getFotosComprobante() == null ? List.of() : evento.getFotosComprobante());
             }
             case ENTREGA_NO_RECIBIDA -> {
                 payload.put("rutaId", evento.getRutaId());
