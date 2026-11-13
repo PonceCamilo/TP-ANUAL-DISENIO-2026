@@ -41,4 +41,16 @@ public class BienPerecible extends Bien {
     protected Object criterioDeSegmentacion() {
         return fechaVencimiento;
     }
+
+    /** Entrega 6: el mismo bien con otra cantidad, para dividir una donación. */
+    @Override
+    public Bien copiaCon(int cantidad) {
+        return BienPerecible.builder()
+                .subcategoria(subcategoria)
+                .descripcion(descripcion)
+                .foto(foto)
+                .cantidad(cantidad)
+                .unidad(unidad).fechaVencimiento(fechaVencimiento)
+                .build();
+    }
 }

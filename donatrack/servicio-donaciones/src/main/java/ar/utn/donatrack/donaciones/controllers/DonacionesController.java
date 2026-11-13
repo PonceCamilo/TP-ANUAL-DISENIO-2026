@@ -231,6 +231,18 @@ public class DonacionesController {
     }
 
     @Operation(
+            summary = "Dividir una donación en depósito",
+            description = "Entrega 6: pasa la cantidad indicada de cada bien (por id de bien) a una donación nueva, "
+                    + "de la misma persona y en depósito, para repartirla entre varias entidades. Tiene que quedar "
+                    + "algo en las dos. Responde la donación nueva.")
+    @PostMapping("/{id}/division")
+    public ResponseEntity<DonacionResponseDTO> dividir(@PathVariable UUID id,
+                                                       @Valid @RequestBody ar.utn.donatrack.donaciones.dtos.request.DivisionRequestDTO dto) {
+        DonacionResponseDTO parte = comandos.dividir(id, dto);
+        return ResponseEntity.created(java.net.URI.create("/donaciones/" + parte.getId())).body(parte);
+    }
+
+    @Operation(
             summary = "Asignar la donación a una entidad beneficiaria",
             description = "Confirma la entidad beneficiaria destino elegida (a partir del ranking de candidatos) y transiciona la donación a ASIGNACION_REALIZADA.",
             responses = {

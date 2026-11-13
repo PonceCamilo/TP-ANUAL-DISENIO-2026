@@ -478,4 +478,57 @@ public class Donacion extends EntidadPersistible {
     public void agregarBien(Bien bien) {
         bienes.add(bien);
     }
+
+    /**
+     * Entrega 6: parte la donación para repartirla entre varias entidades. De cada
+     * bien saca la cantidad pedida y la pone en una donación nueva, de la misma
+     * persona y en depósito; un bien que queda en cero sale de esta. Solo mientras
+     * está en depósito, y las dos partes tienen que quedar con algo.
+     */
+    public Donacion dividir(java.util.Map<UUID, Integer> cantidades) {
+        if (!estaEnEstado(EstadosDonacion.EN_DEPOSITO)) {
+            throw new ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DivisionInvalidaException(
+                    "Solo se puede dividir una donación en depósito (está en " + estadoNombre + ").");
+        }
+        java.util.Set<UUID> propios = new java.util.HashSet<>();
+        bienes.forEach(bien -> propios.add(bien.getId()));
+        for (UUID idBien : cantidades.keySet()) {
+            if (!propios.contains(idBien)) {
+                throw new ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DivisionInvalidaException(
+                        "El bien " + idBien + " no es de esta donación.");
+            }
+        }
+        Donacion parte = new Donacion();
+        parte.idDonante = idDonante;
+        parte.subcategoria = subcategoria;
+        parte.descripcion = descripcion;
+        parte.fechaDonacion = fechaDonacion;
+        List<Bien> vacios = new ArrayList<>();
+        for (Bien bien : bienes) {
+            Integer pedida = cantidades.get(bien.getId());
+            if (pedida == null || pedida == 0) {
+                continue;
+            }
+            if (pedida < 0 || pedida > bien.getCantidad()) {
+                throw new ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DivisionInvalidaException(
+                        "La cantidad a separar de \"" + bien.getDescripcion() + "\" tiene que estar entre 1 y "
+                                + bien.getCantidad() + ".");
+            }
+            parte.agregarBien(bien.copiaCon(pedida));
+            bien.setCantidad(bien.getCantidad() - pedida);
+            if (bien.getCantidad() == 0) {
+                vacios.add(bien);
+            }
+        }
+        if (parte.bienes.isEmpty()) {
+            throw new ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DivisionInvalidaException(
+                    "Indicá cuánto de algún bien pasa a la donación nueva.");
+        }
+        if (vacios.size() == bienes.size()) {
+            throw new ar.utn.donatrack.donaciones.exceptions.donacionesExceptions.DivisionInvalidaException(
+                    "Tiene que quedar algo en la donación original: para mandar todo a otra entidad, asignala entera.");
+        }
+        bienes.removeAll(vacios);
+        return parte;
+    }
 }

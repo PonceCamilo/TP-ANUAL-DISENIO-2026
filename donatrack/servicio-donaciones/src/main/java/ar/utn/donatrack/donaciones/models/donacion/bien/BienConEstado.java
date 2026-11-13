@@ -40,4 +40,16 @@ public class BienConEstado extends Bien {
     protected Object criterioDeSegmentacion() {
         return esNuevo;
     }
+
+    /** Entrega 6: el mismo bien con otra cantidad, para dividir una donación. */
+    @Override
+    public Bien copiaCon(int cantidad) {
+        return BienConEstado.builder()
+                .subcategoria(subcategoria)
+                .descripcion(descripcion)
+                .foto(foto)
+                .cantidad(cantidad)
+                .unidad(unidad).esNuevo(esNuevo)
+                .build();
+    }
 }

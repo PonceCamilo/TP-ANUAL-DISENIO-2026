@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.services;
 import ar.utn.donatrack.donaciones.dtos.request.AsignacionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.BienRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.request.CambioEstadoRequestDTO;
+import ar.utn.donatrack.donaciones.dtos.request.DivisionRequestDTO;
 import ar.utn.donatrack.donaciones.dtos.response.DonacionResponseDTO;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.mappers.DonacionMapper;
@@ -45,6 +46,19 @@ public class DonacionComandosService {
         Donacion donacion = validador.validarYObtenerDonacion(id);
         donacion.cambiarEstadoManualmente(dto.getEstado(), dto.getJustificacion());
         repositorio.guardar(donacion);
+    }
+
+    /**
+     * Entrega 6: separa parte de una donación en depósito en una donación nueva,
+     * para repartirla entre varias entidades (ver Donacion.dividir). Las dos
+     * quedan en depósito y cada una se asigna por su lado.
+     */
+    public DonacionResponseDTO dividir(UUID id, DivisionRequestDTO dto) {
+        Donacion donacion = validador.validarYObtenerDonacion(id);
+        Donacion parte = donacion.dividir(dto.cantidades());
+        repositorio.guardar(donacion);
+        repositorio.guardar(parte);
+        return mapper.toDTO(parte);
     }
 
     /** Corrige un bien puntual de la donación (ver Donacion.reemplazarBien para las reglas). */

@@ -29,4 +29,16 @@ public class BienGenerico extends Bien {
     protected Object criterioDeSegmentacion() {
         return null;
     }
+
+    /** Entrega 6: el mismo bien con otra cantidad, para dividir una donación. */
+    @Override
+    public Bien copiaCon(int cantidad) {
+        return BienGenerico.builder()
+                .subcategoria(subcategoria)
+                .descripcion(descripcion)
+                .foto(foto)
+                .cantidad(cantidad)
+                .unidad(unidad)
+                .build();
+    }
 }

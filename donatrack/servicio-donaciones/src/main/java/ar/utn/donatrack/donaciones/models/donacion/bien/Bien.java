@@ -102,4 +102,7 @@ public abstract class Bien {
 
     public record ClaveDeSegmentacion(Subcategoria subcategoria, TipoBien tipo, Object criterio) {
     }
+
+    /** Entrega 6: el mismo bien con otra cantidad (para dividir una donación). */
+    public abstract Bien copiaCon(int cantidad);
 }
