@@ -73,7 +73,9 @@ public record DonacionesProperties(
      * lista real de personas administradoras.
      */
     public record Notificaciones(
-            @DefaultValue("admin@donatrack.org") @NotBlank @Email String emailAdmin) {
+            @DefaultValue("admin@donatrack.org") @NotBlank @Email String emailAdmin,
+            // Entrega 6: dirección pública del front, para los enlaces de los avisos.
+            @DefaultValue("http://localhost:8080") @NotBlank String urlFrontend) {
     }
 
     /** Cuántas entidades candidatas devuelve cada algoritmo de asignación. */

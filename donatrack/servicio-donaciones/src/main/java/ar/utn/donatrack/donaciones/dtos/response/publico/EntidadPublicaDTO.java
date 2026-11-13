@@ -24,6 +24,7 @@ public class EntidadPublicaDTO {
         private final String descripcion;
         private final String subcategoria;
         private final int cantidadObjetivo;
+        private final String unidad;
         private final int cantidadRecibida;
         private final String campania;
         private final LocalDate finDeCampania;

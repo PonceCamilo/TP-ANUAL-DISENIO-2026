@@ -31,6 +31,7 @@ public class DonacionMapper {
                 .estado(donacion.getEstado().nombre())
                 .proveedorLogistica(donacion.getProveedorLogistica())
                 .idSeguimientoLogistica(donacion.getIdSeguimientoLogistica())
+                .idRutaLogistica(donacion.getIdRutaLogistica())
                 .fechaEntrega(donacion.getFechaEntrega())
                 .fotosEntrega(List.copyOf(donacion.getFotosEntrega()))
                 .bienes(toBienesDTO(donacion.getBienes()))

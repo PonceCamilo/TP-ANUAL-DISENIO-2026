@@ -20,7 +20,7 @@ public final class PropiedadesDePrueba {
                 new DonacionesProperties.Inactividad(20, "0 0 0 * * *", 100),
                 new DonacionesProperties.Procesos("0 0 3 * * *", "0 30 3 * * *", "0 0 4 * * *", tamanio, true),
                 new DonacionesProperties.Importacion(500, 100),
-                new DonacionesProperties.Notificaciones("admin@donatrack.org"),
+                new DonacionesProperties.Notificaciones("admin@donatrack.org", "http://localhost:8080"),
                 new DonacionesProperties.Matchmaking(10),
                 new DonacionesProperties.Salida(true, 5000, 50, 10, 7, "0 30 4 * * *"),
                 new DonacionesProperties.Seguridad("http://localhost:8088/api/autenticacion/claves-publicas",

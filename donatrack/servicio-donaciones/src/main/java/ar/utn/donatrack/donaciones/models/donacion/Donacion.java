@@ -150,6 +150,13 @@ public class Donacion extends EntidadPersistible {
     @Column(name = "id_seguimiento_logistica")
     protected String idSeguimientoLogistica;
 
+    /**
+     * La ruta de logística que la lleva (Entrega 6): llega con el aviso de inicio de
+     * ruta y sirve para enlazar el mapa de seguimiento desde las pantallas.
+     */
+    @Column(name = "id_ruta_logistica")
+    protected UUID idRutaLogistica;
+
     /** Cuándo se dio de baja; null mientras está vigente (ver BAJA LÓGICA). */
     @Column(name = "fecha_baja")
     protected LocalDateTime fechaBaja;
@@ -235,6 +242,31 @@ public class Donacion extends EntidadPersistible {
      * La entrega que informa logística, con la fecha y hora en que ocurrió (no la
      * del aviso): es la que se informa a incentivos.
      */
+    /** La ruta que la lleva, para el mapa de seguimiento. */
+    public void registrarRuta(UUID idRuta) {
+        if (idRuta != null) {
+            this.idRutaLogistica = idRuta;
+        }
+    }
+
+    /**
+     * Qué se dona, en pocas palabras (Entrega 6): "5 kg de Arroz, 2 unidades de
+     * Frazadas". Lo usan los avisos y el pedido a logística.
+     */
+    public String resumen() {
+        String bienes = getBienes().stream()
+                .map(bien -> {
+                    String unidad = bien.getUnidad() == null || bien.getUnidad().isBlank() ? "" : " " + bien.getUnidad();
+                    String que = bien.getDescripcion() != null && !bien.getDescripcion().isBlank()
+                            ? bien.getDescripcion()
+                            : bien.getSubcategoria() != null ? bien.getSubcategoria().getTipo() : "bienes";
+                    return bien.getCantidad() + unidad + " de " + que;
+                })
+                .collect(java.util.stream.Collectors.joining(", "));
+        String texto = bienes.isBlank() ? (getDescripcion() == null ? "una donación" : getDescripcion()) : bienes;
+        return texto.length() > 160 ? texto.substring(0, 157) + "..." : texto;
+    }
+
     public boolean registrarEntrega(LocalDateTime fechaEntrega, String justificacion) {
         if (estaEnEstado(ENTREGADA)) {
             return false;

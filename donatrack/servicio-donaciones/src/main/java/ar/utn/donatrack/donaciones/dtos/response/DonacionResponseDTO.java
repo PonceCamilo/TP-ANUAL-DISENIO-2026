@@ -22,6 +22,7 @@ public class DonacionResponseDTO {
     /** Proveedor de logística que tomó la entrega y su id de seguimiento; null si todavía no se despachó. */
     private final ProveedorLogistica proveedorLogistica;
     private final String idSeguimientoLogistica;
+    private final UUID idRutaLogistica;
 
     /** Cuándo se entregó; null si todavía no llegó a ENTREGADA (Entrega 6). */
     private final LocalDateTime fechaEntrega;

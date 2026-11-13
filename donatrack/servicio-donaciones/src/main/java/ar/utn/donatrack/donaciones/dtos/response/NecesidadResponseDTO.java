@@ -21,6 +21,7 @@ public abstract class NecesidadResponseDTO {
     private final String descripcion;
     private final String subcategoria;
     private final int cantidadObjetivo;
+    private final String unidad;
     private final int cantidadRecibida;
     private final boolean satisfecha;
 }

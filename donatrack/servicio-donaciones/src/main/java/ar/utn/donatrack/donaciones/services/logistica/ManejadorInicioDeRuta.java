@@ -49,12 +49,14 @@ public class ManejadorInicioDeRuta {
         ParticipantesDeDonaciones.Lote lote = participantes.de(deLaRuta);
 
         for (Donacion donacion : deLaRuta) {
+            donacion.registrarRuta(dto.idRuta());
             if (!donacion.iniciarTraslado("Chofer inició el recorrido. Ruta: " + dto.idRuta())) {
                 log.info("[LOGISTICA] Inicio de ruta repetido para la donación {}: sin cambios.", donacion.getId());
                 continue;
             }
             donaciones.guardar(donacion);
-            notificador.inicioDeRuta(lote.donanteDe(donacion), lote.entidadDe(donacion), dto.urlMapaInteractivo());
+            notificador.inicioDeRuta(lote.donanteDe(donacion), lote.entidadDe(donacion), donacion, dto.idRuta(),
+                    dto.urlMapaInteractivo());
         }
     }
 

@@ -138,6 +138,10 @@ services:
       # manual) reciben una cuenta en Autenticación para activar. Se avisa con
       # la clave entre servicios, la misma que tiene Autenticación.
       - donaciones.cuentas.url=http://servicio-autenticacion:8088
+      # Las alertas operativas van a la cuenta de administración, y los avisos
+      # de inicio de ruta enlazan al mapa del front.
+      - donaciones.notificaciones.email-admin=${AUTH_ADMINISTRADOR_EMAIL:-admin@donatrack.org}
+      - donaciones.notificaciones.url-frontend=${FRONTEND_URL:-http://localhost:8080}
       - donaciones.cuentas.avisar-importados=true
       - donaciones.cuentas.clave=${DONATRACK_SERVICIOS_KEY:-clave-local-entre-servicios-de-donatrack}
     depends_on:

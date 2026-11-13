@@ -37,7 +37,8 @@ public class AvisosOyente {
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void alAsignarse(DonacionAsignada evento) {
         notificador.donacionAsignada(donantes.buscarPorId(evento.idDonante()).orElse(null),
-                entidades.buscarPorId(evento.idEntidad()).orElse(null));
+                entidades.buscarPorId(evento.idEntidad()).orElse(null),
+                donaciones.buscarPorId(evento.idDonacion()).orElse(null));
     }
 
     /** Incentivos usa las entregas para "donaciones exitosas" y "organizaciones ayudadas". */

@@ -45,6 +45,10 @@ public abstract class NecesidadRequestDTO {
     @Min(value = 1, message = "La cantidad objetivo debe ser mayor a 0")
     private Integer cantidadObjetivo;
 
+    /** Entrega 6: en qué se mide la cantidad (kg, unidades, litros…). Opcional. */
+    @jakarta.validation.constraints.Size(max = 30, message = "La unidad tiene hasta 30 caracteres")
+    private String unidad;
+
     public abstract TipoNecesidad tipo();
 
     /** La necesidad nueva, registrada en esa fecha y con lo recibido en cero. */
@@ -59,10 +63,16 @@ public abstract class NecesidadRequestDTO {
             throw new CambioTipoNecesidadException(necesidad.tipo().name(), tipo().name());
         }
         necesidad.actualizarDatos(nombre, descripcion, cantidadObjetivo, subcategoriaDelModelo());
+        necesidad.setUnidad(unidadLimpia());
+    }
+
+    private String unidadLimpia() {
+        return unidad == null || unidad.isBlank() ? null : unidad.strip();
     }
 
     protected <N extends Necesidad> N completar(N necesidad, LocalDate hoy) {
         necesidad.actualizarDatos(nombre, descripcion, cantidadObjetivo, subcategoriaDelModelo());
+        necesidad.setUnidad(unidadLimpia());
         necesidad.setCantidadRecibida(0);
         necesidad.setFechaRegistro(hoy);
         return necesidad;

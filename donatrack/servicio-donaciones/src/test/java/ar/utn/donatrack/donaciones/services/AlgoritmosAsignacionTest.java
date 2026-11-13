@@ -172,7 +172,7 @@ class AlgoritmosAsignacionTest {
         @DisplayName("Una entidad que no recibió nada obtiene el puntaje máximo (1.0)")
         void sinDonacionesRecibidasPuntajeMaximo() {
             // El puntaje es 1 / (1 + recibidas): con 0 recibidas da exactamente 1.
-            EntidadBeneficiaria entidad = entidadCon("Comedor A");
+            EntidadBeneficiaria entidad = entidadCon("Comedor A", "arroz");
             when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of());
 
             List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad), TAMANIO);
@@ -183,7 +183,7 @@ class AlgoritmosAsignacionTest {
         @Test
         @DisplayName("A más donaciones recibidas en el trimestre, menor puntaje")
         void masRecibidasMenorPuntaje() {
-            EntidadBeneficiaria entidad = entidadCon("Comedor A");
+            EntidadBeneficiaria entidad = entidadCon("Comedor A", "arroz");
             when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of(entidad.getId(), 3L));
 
             List<ResultadoAsignacion> ranking = algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(entidad), TAMANIO);
@@ -196,8 +196,8 @@ class AlgoritmosAsignacionTest {
         @DisplayName("La entidad menos atendida encabeza el ranking")
         void laMenosAtendidaVaPrimero() {
             // Éste es el objetivo del criterio: repartir en vez de concentrar.
-            EntidadBeneficiaria muyAtendida = entidadCon("Comedor A");
-            EntidadBeneficiaria pocoAtendida = entidadCon("Comedor B");
+            EntidadBeneficiaria muyAtendida = entidadCon("Comedor A", "arroz");
+            EntidadBeneficiaria pocoAtendida = entidadCon("Comedor B", "arroz");
             when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class)))
                     .thenReturn(Map.of(muyAtendida.getId(), 2L));
 
@@ -222,14 +222,18 @@ class AlgoritmosAsignacionTest {
         }
 
         @Test
-        @DisplayName("A diferencia del semántico, este criterio NO descarta entidades")
-        void nuncaDescartaEntidades() {
-            // No sobreescribe el hook incluir(), así que toda entidad tiene una
-            // chance: incluso una muy atendida sigue en el ranking, pero al final.
+        @DisplayName("Entrega 6: solo prioriza entre las que piden lo que se dona; una muy atendida sigue, al final")
+        void soloEntreLasQueLoPiden() {
+            // Antes puntuaba a todas las entidades y se asignaban donaciones a quien
+            // no las había pedido.
             EntidadBeneficiaria sinNecesidades = entidadCon("Comedor A");
-            when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class))).thenReturn(Map.of());
+            EntidadBeneficiaria muyAtendida = entidadCon("Comedor B", "arroz");
+            when(recepciones.contarRecepcionesPorEntidadDesde(any(LocalDate.class)))
+                    .thenReturn(Map.of(muyAtendida.getId(), 9L));
 
-            assertThat(algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(sinNecesidades), TAMANIO)).hasSize(1);
+            assertThat(algoritmoSubAtendidos.evaluar(donacionDe("arroz"), List.of(sinNecesidades, muyAtendida), TAMANIO))
+                    .extracting(ResultadoAsignacion::getIdEntidad)
+                    .containsExactly(muyAtendida.getId());
         }
     }
 

@@ -72,7 +72,7 @@ class PostgresIntegracionTest {
     @DisplayName("Las migraciones dejan el esquema que valida Hibernate")
     void migraciones() {
         assertThat(Arrays.stream(flyway.info().applied()).map(m -> m.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5");
+                .containsExactly("1", "2", "3", "4", "5", "6");
     }
 
     @Test

@@ -69,6 +69,7 @@ public class PublicoMapper {
                 .descripcion(necesidad.getDescripcion())
                 .subcategoria(necesidad.getSubcategoria() == null ? null : necesidad.getSubcategoria().getTipo())
                 .cantidadObjetivo(necesidad.getCantidadObjetivo())
+                .unidad(necesidad.getUnidad())
                 .cantidadRecibida(necesidad.cantidadRecibidaAl(hoy))
                 .campania(campania.getDescripcionGeneral())
                 .finDeCampania(campania.getFechaFin())

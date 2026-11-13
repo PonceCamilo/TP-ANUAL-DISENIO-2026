@@ -182,8 +182,11 @@ class ManejadoresLogisticaTest {
 
             inicioDeRuta.procesar(evento(donacion.getId()));
 
-            verify(notificacionClient).enviarNotificacion(eq(EMAIL_ENTIDAD), contains(URL_MAPA), eq("EMAIL"));
-            verify(notificacionClient).enviarNotificacion(eq(EMAIL_DONANTE), contains(URL_MAPA), eq("EMAIL"));
+            // Entrega 6: el enlace va al mapa del front; la persona donante lo abre con su donación.
+            verify(notificacionClient).enviarNotificacion(eq(EMAIL_ENTIDAD), contains("/tracking/ruta/"), eq("EMAIL"));
+            verify(notificacionClient).enviarNotificacion(eq(EMAIL_DONANTE),
+                    contains("?donacion=" + donacion.getId()), eq("EMAIL"));
+            assertThat(donacion.getIdRutaLogistica()).isNotNull();
         }
 
         @Test

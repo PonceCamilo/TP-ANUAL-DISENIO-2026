@@ -66,6 +66,10 @@ public abstract class Necesidad {
     @Column(name = "cantidad_recibida")
     protected int cantidadRecibida;
 
+    /** Entrega 6: en qué se mide la cantidad (kg, unidades, litros…). Opcional. */
+    @Column(name = "unidad", length = 30)
+    protected String unidad;
+
     public abstract TipoNecesidad tipo();
 
     /** Datos que se pueden editar (PUT): no incluyen lo recibido ni el período en curso. */

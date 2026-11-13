@@ -42,14 +42,33 @@ public class AlgoritmoPrioridadSubAtendidos extends AlgoritmoAsignacionBase {
 
     @Override
     protected double calcularPuntaje(Donacion donacion, EntidadBeneficiaria entidad) {
+        if (!necesitaLoQueSeDona(donacion, entidad)) {
+            return 0;
+        }
         return puntaje(recepciones.contarRecepcionesDesde(entidad.getId(), inicioDelTrimestre()));
+    }
+
+    /**
+     * Entrega 6: prioriza a las que menos recibieron, pero solo entre las que
+     * piden lo que se dona. Antes puntuaba a todas las entidades, y la
+     * administración terminaba asignando donaciones a quien no las necesitaba.
+     */
+    private static boolean necesitaLoQueSeDona(Donacion donacion, EntidadBeneficiaria entidad) {
+        return donacion.getSubcategoria() != null && !donacion.getSubcategoria().estaVacia()
+                && entidad.contarNecesidadesCompatiblesCon(donacion.getSubcategoria(), FechaHoraArgentina.hoy()) > 0;
+    }
+
+    @Override
+    protected boolean incluir(double puntaje) {
+        return puntaje > 0;
     }
 
     @Override
     protected ToDoubleFunction<EntidadBeneficiaria> prepararPuntaje(Donacion donacion,
                                                                   List<EntidadBeneficiaria> entidades) {
         Map<UUID, Long> recibidas = recepciones.contarRecepcionesPorEntidadDesde(inicioDelTrimestre());
-        return entidad -> puntaje(recibidas.getOrDefault(entidad.getId(), 0L));
+        return entidad -> necesitaLoQueSeDona(donacion, entidad)
+                ? puntaje(recibidas.getOrDefault(entidad.getId(), 0L)) : 0;
     }
 
     private static LocalDate inicioDelTrimestre() {
