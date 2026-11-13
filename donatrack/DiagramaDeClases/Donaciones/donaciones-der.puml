@@ -11,10 +11,11 @@ skinparam class {
   BorderColor<<infraestructura>> #5B7BA6
 }
 
-' DER físico de la base donaciones_db (PostgreSQL 16), Entrega 5.
+' DER físico de la base donaciones_db (PostgreSQL 16), Entregas 5 y 6.
 ' El esquema lo crean las migraciones de Flyway de servicio-donaciones
 ' (db/migration: V1 esquema de la Entrega 5, V2 cambios de la revisión, V3
-' normalización de datos, V4 bloqueo de tareas) y Hibernate lo valida al
+' normalización de datos, V4 bloqueo de tareas, V5 datos para la interfaz de
+' la Entrega 6: coordenadas, fecha y fotos de entrega) y Hibernate lo valida al
 ' arrancar (ddl-auto=validate): mismos nombres de tabla y columna, mismos
 ' tipos, PK, FK, restricciones e índices que las entidades JPA.
 
@@ -35,6 +36,8 @@ entity persona_donante {
   direccion_codigo_postal : varchar(255)
   localidad_nombre : varchar(255)
   provincia_nombre : varchar(255)
+  direccion_latitud : float(53)
+  direccion_longitud : float(53)
 }
 
 entity persona_humana {
@@ -89,6 +92,8 @@ entity entidad_beneficiaria {
   direccion_codigo_postal : varchar(255)
   localidad_nombre : varchar(255)
   provincia_nombre : varchar(255)
+  direccion_latitud : float(53)
+  direccion_longitud : float(53)
 }
 
 entity campania {
@@ -134,6 +139,7 @@ entity donacion {
   descripcion : varchar(1000)
   fecha_donacion : timestamp(6) <<IX>>
   fecha_asignacion : date <<IX>>
+  fecha_entrega : timestamp(6) <<IX, D>>
   fecha_baja : timestamp(6)
   subcategoria_tipo : varchar(255) <<D>>
   subcategoria_tipo_normalizado : varchar(255) <<IX, D>>
@@ -148,7 +154,7 @@ entity bien {
   --
   tipo_bien : varchar(31) <<NN>>
   descripcion : varchar(255)
-  foto : varchar(255)
+  foto : varchar(2048)
   cantidad : integer
   unidad : varchar(255)
   subcategoria_tipo : varchar(255)
@@ -167,6 +173,13 @@ entity cambio_estado {
   justificacion : varchar(1000)
   fecha_hora : timestamp(6) <<NN>>
   donacion_id : uuid <<FK, IX>>
+}
+
+entity donacion_foto_entrega {
+  donacion_id : uuid <<PK, FK>>
+  posicion : integer <<PK>>
+  --
+  url : varchar(2048) <<NN>>
 }
 
 ' ─────────────── TABLAS DE LECTURA (Entrega 5) ───────────────
@@ -236,6 +249,7 @@ necesidad ||--o| necesidad_recurrente
 
 donacion |o--o{ bien
 donacion |o--o{ cambio_estado
+donacion ||--o{ donacion_foto_entrega
 
 ranking_precalculado ||--o{ ranking_puesto
 
@@ -256,6 +270,7 @@ legend right
   <b>Índices (Entrega 5)</b>
   donacion: (estado) · (id_donante, estado) · (id_entidad_beneficiaria, fecha_asignacion)
              (subcategoria_tipo_normalizado) · (fecha_donacion DESC, id)
+  donacion (Entrega 6): (fecha_entrega DESC) para la landing pública
   persona_donante: (estado) · (ultima_interaccion) · email UNIQUE
   ranking_puesto: (id_donacion) · mensaje_saliente: (estado, proximo_intento)
   Columnas FK de las colecciones: bien, cambio_estado, medio_de_contacto,
@@ -267,6 +282,8 @@ legend right
   entidad_recepcion_diaria: donaciones asignadas por entidad y día (derivable de donacion);
              se mantiene en la misma transacción que la asignación y se reconcilia cada noche
   donacion.estado: estado actual (derivable del último cambio_estado)
+  donacion.fecha_entrega (Entrega 6): cuándo llegó (derivable del cambio_estado ENTREGADA);
+             la landing lista por esta columna sin recorrer el historial
   donacion.subcategoria_*: subcategoría de sus bienes · *_tipo_normalizado: forma de búsqueda
              (minúsculas, sin acentos, espacios colapsados)
   ----
@@ -305,6 +322,13 @@ legend right
   Direccion (con Localidad y Provincia), Subcategoria y Documento son @Embeddable:
   sus columnas viven en la tabla que las contiene.
   No se persiste CargaDonacion (objeto de un solo uso para segmentar).
+  ----
+  <b>Entrega 6</b>
+  direccion_latitud / direccion_longitud: opcionales; las dos o ninguna (lo valida el DTO).
+             Con coordenadas, la entidad aparece en el mapa de la landing.
+  bien.foto y donacion_foto_entrega.url: URLs http o https (no se suben archivos).
+  donacion_foto_entrega: fotos de la recepción, hasta 10, que llegan con el aviso de
+             entrega exitosa (logística → broker → donaciones).
 endlegend
 
 @enduml

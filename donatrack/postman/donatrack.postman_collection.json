@@ -1,10 +1,214 @@
 {
   "info": {
     "name": "DonaTrack - Todos los Servicios - Swagger Completo",
-    "description": "Coleccion unificada para mostrar todos los endpoints expuestos en Swagger, incluyendo CRUD completo de necesidades materiales.",
+    "description": "Coleccion unificada para mostrar todos los endpoints expuestos en Swagger, incluyendo CRUD completo de necesidades materiales.\n\nEntrega 6: los servicios piden el JWT del Servicio de Autenticación. Correr primero '0. Autenticación > Ingresar como administración': guarda el token y la colección lo manda en cada pedido. Las páginas empiezan en 1. Lo que llaman otros servicios lleva la clave entre servicios (X-DonaTrack-Servicio, variable claveServicios).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "0. Autenticación (Entrega 6)",
+      "description": "Ingresar primero: el resto de la colección manda el token guardado en la variable token (Authorization: Bearer). Confirmar una entrega lo hace la entidad (tokenEntidad).",
+      "item": [
+        {
+          "name": "Ingresar como administración",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlAutenticacion}}/api/autenticacion/ingreso",
+              "host": [
+                "{{baseUrlAutenticacion}}"
+              ],
+              "path": [
+                "api",
+                "autenticacion",
+                "ingreso"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"rol\": \"ADMINISTRADOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "La cuenta la crean AUTH_ADMINISTRADOR_EMAIL y AUTH_ADMINISTRADOR_PASSWORD. Guarda el token en la variable token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Ingreso correcto', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingresar como entidad beneficiaria",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlAutenticacion}}/api/autenticacion/ingreso",
+              "host": [
+                "{{baseUrlAutenticacion}}"
+              ],
+              "path": [
+                "api",
+                "autenticacion",
+                "ingreso"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{entidadEmail}}\",\n  \"password\": \"{{entidadPassword}}\",\n  \"rol\": \"ENTIDAD_BENEFICIARIA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Una cuenta de entidad ya vinculada a su entidad (se registra desde el front). Guarda el token en tokenEntidad, para confirmar entregas."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Ingreso correcto', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('tokenEntidad', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Claves públicas (JWKS)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlAutenticacion}}/api/autenticacion/claves-publicas",
+              "host": [
+                "{{baseUrlAutenticacion}}"
+              ],
+              "path": [
+                "api",
+                "autenticacion",
+                "claves-publicas"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Pedir enlace de activación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-DonaTrack-Frontend",
+                "value": "{{claveFrontend}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlAutenticacion}}/api/autenticacion/activaciones",
+              "host": [
+                "{{baseUrlAutenticacion}}"
+              ],
+              "path": [
+                "api",
+                "autenticacion",
+                "activaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"persona.importada@example.com\",\n  \"rol\": \"DONANTE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Lo usa el front (/activar). Responde 202 exista o no la cuenta."
+          }
+        },
+        {
+          "name": "Cuentas importadas (lo llama Donaciones)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-DonaTrack-Servicio",
+                "value": "{{claveServicios}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlAutenticacion}}/api/autenticacion/cuentas/importadas",
+              "host": [
+                "{{baseUrlAutenticacion}}"
+              ],
+              "path": [
+                "api",
+                "autenticacion",
+                "cuentas",
+                "importadas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"donantes\": [\n    {\n      \"donanteId\": \"11111111-1111-1111-1111-111111111111\",\n      \"email\": \"persona.importada@example.com\",\n      \"nombre\": \"Persona Importada\",\n      \"tipoDonante\": \"HUMANA\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Lo manda la bandeja de salida de Donaciones al importar o dar de alta personas."
+          }
+        }
+      ]
+    },
     {
       "name": "Incentivos",
       "item": [
@@ -16,6 +220,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-DonaTrack-Servicio",
+                "value": "{{claveServicios}}"
               }
             ],
             "url": {
@@ -33,12 +241,15 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"donanteId\": \"{{incentivosDonanteId}}\",\n  \"destinatario\": \"{{destinatario}}\",\n  \"medio\": \"EMAIL\",\n  \"cantidadBienes\": 3,\n  \"categoriasDonadas\": [\n    \"ALIMENTOS\",\n    \"ABRIGO\"\n  ],\n  \"fecha\": \"2026-06-24T19:07:54\",\n  \"entidadBeneficiaria\": \"Comedor Los Pibes\"\n}",
+              "raw": "{\n  \"donanteId\": \"{{incentivosDonanteId}}\",\n  \"destinatario\": \"{{destinatario}}\",\n  \"medio\": \"EMAIL\",\n  \"cantidadBienes\": 3,\n  \"categoriasDonadas\": [\n    \"ALIMENTOS\",\n    \"ABRIGO\"\n  ],\n  \"fecha\": \"2026-06-24T19:07:54\",\n  \"entidadBeneficiaria\": \"Comedor Los Pibes\",\n  \"nombreVisible\": \"Ana P.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -165,6 +376,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-DonaTrack-Servicio",
+                "value": "{{claveServicios}}"
               }
             ],
             "url": {
@@ -182,12 +397,15 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"donanteId\": \"{{incentivosDonanteId}}\",\n  \"destinatario\": \"{{destinatario}}\",\n  \"medio\": \"EMAIL\",\n  \"cantidadBienes\": 3,\n  \"categoriasDonadas\": [\n    \"ALIMENTOS\",\n    \"ABRIGO\"\n  ],\n  \"fecha\": \"2026-06-24T19:07:54\",\n  \"entidadBeneficiaria\": \"Comedor Los Pibes\"\n}",
+              "raw": "{\n  \"donanteId\": \"{{incentivosDonanteId}}\",\n  \"destinatario\": \"{{destinatario}}\",\n  \"medio\": \"EMAIL\",\n  \"cantidadBienes\": 3,\n  \"categoriasDonadas\": [\n    \"ALIMENTOS\",\n    \"ABRIGO\"\n  ],\n  \"fecha\": \"2026-06-24T19:07:54\",\n  \"entidadBeneficiaria\": \"Comedor Los Pibes\",\n  \"nombreVisible\": \"Ana P.\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -1697,6 +1915,41 @@
                   }
                 }
               ]
+            },
+            {
+              "name": "Listar donaciones de varias subcategorías",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/donaciones?subcategoria=Alimentos&subcategoria=Abrigo&page=1&size=20",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "donaciones"
+                  ],
+                  "query": [
+                    {
+                      "key": "subcategoria",
+                      "value": "Alimentos"
+                    },
+                    {
+                      "key": "subcategoria",
+                      "value": "Abrigo"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Entrega 6: subcategoria se repite para filtrar por varias; páginas desde 1."
+              }
             }
           ]
         },
@@ -1733,6 +1986,9 @@
                       "language": "json"
                     }
                   }
+                },
+                "auth": {
+                  "type": "noauth"
                 }
               },
               "event": [
@@ -1779,6 +2035,9 @@
                       "language": "json"
                     }
                   }
+                },
+                "auth": {
+                  "type": "noauth"
                 }
               },
               "event": [
@@ -1825,6 +2084,9 @@
                       "language": "json"
                     }
                   }
+                },
+                "auth": {
+                  "type": "noauth"
                 }
               },
               "event": [
@@ -1840,6 +2102,113 @@
                   }
                 }
               ]
+            }
+          ]
+        },
+        {
+          "name": "Público (sin login)",
+          "item": [
+            {
+              "name": "Donaciones entregadas (landing)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/publico/donaciones-entregadas?page=1&size=20",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "publico",
+                    "donaciones-entregadas"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Último mes por defecto; desde y hasta (ISO) opcionales. Sin datos de la persona donante."
+              }
+            },
+            {
+              "name": "Entidades beneficiarias públicas",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/publico/entidades?page=1&size=20",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "publico",
+                    "entidades"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "size",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              }
+            },
+            {
+              "name": "Una entidad pública",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/publico/entidades/{{entidadId}}",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "publico",
+                    "entidades",
+                    "{{entidadId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              }
+            },
+            {
+              "name": "Subcategorías",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrlDonaciones}}/publico/subcategorias",
+                  "host": [
+                    "{{baseUrlDonaciones}}"
+                  ],
+                  "path": [
+                    "publico",
+                    "subcategorias"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                }
+              }
             }
           ]
         }
@@ -1863,7 +2232,10 @@
                 "health"
               ]
             },
-            "description": "Debe responder {\"status\":\"UP\"}. Es lo que consulta el broker para saber si este proveedor esta disponible."
+            "description": "Debe responder {\"status\":\"UP\"}. Es lo que consulta el broker para saber si este proveedor esta disponible.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -2214,6 +2586,9 @@
                       "language": "json"
                     }
                   }
+                },
+                "auth": {
+                  "type": "noauth"
                 }
               },
               "event": [
@@ -2433,15 +2808,25 @@
                     "confirmar"
                   ]
                 },
-                "description": "",
+                "description": "Entrega 6: la confirma la entidad que recibe (tokenEntidad), solo si la entrega es suya. fotosComprobante: de 1 a 10 URLs http o https.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"fotosComprobante\": [\n    \"https://example.com/comprobante-entrega.jpg\"\n  ]\n}",
+                  "raw": "{\n  \"fotosComprobante\": [\n    \"https://fotos.example.com/recepcion-1.jpg\"\n  ]\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{tokenEntidad}}",
+                      "type": "string"
+                    }
+                  ]
                 }
               },
               "event": [
@@ -2574,6 +2959,9 @@
                       "language": "json"
                     }
                   }
+                },
+                "auth": {
+                  "type": "noauth"
                 }
               },
               "event": [
@@ -2612,7 +3000,10 @@
                 "health"
               ]
             },
-            "description": "Debe responder {\"status\":\"UP\"}."
+            "description": "Debe responder {\"status\":\"UP\"}.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -2645,7 +3036,10 @@
                 "proveedores"
               ]
             },
-            "description": "Proveedores en orden de prioridad, con su health check actual."
+            "description": "Proveedores en orden de prioridad, con su health check actual.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -2691,6 +3085,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -2745,6 +3142,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -2799,6 +3199,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -2840,7 +3243,10 @@
                 "{{brokerDonacionId}}"
               ]
             },
-            "description": "Que proveedor tomo la donacion y con que id de seguimiento."
+            "description": "Que proveedor tomo la donacion y con que id de seguimiento.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -2887,6 +3293,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -2934,6 +3343,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -2970,7 +3382,10 @@
                 "health"
               ]
             },
-            "description": "Debe responder {\"status\":\"UP\"}. Es lo que consulta el broker para saber si este proveedor esta disponible."
+            "description": "Debe responder {\"status\":\"UP\"}. Es lo que consulta el broker para saber si este proveedor esta disponible.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -3017,6 +3432,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -3053,7 +3471,10 @@
                 "envios"
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -3086,7 +3507,10 @@
                 "{{trackingId}}"
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -3134,6 +3558,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -3182,6 +3609,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -3230,6 +3660,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -3264,7 +3697,10 @@
                 "entrega"
               ]
             },
-            "description": "EN_CAMINO -> ENTREGADO."
+            "description": "EN_CAMINO -> ENTREGADO.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -3293,6 +3729,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-DonaTrack-Servicio",
+                "value": "{{claveServicios}}"
               }
             ],
             "url": {
@@ -3313,6 +3753,9 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "noauth"
             }
           },
           "event": [
@@ -3335,15 +3778,25 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrlNotificaciones}}/notificaciones",
+              "raw": "{{baseUrlNotificaciones}}/notificaciones?page=1&size=20",
               "host": [
                 "{{baseUrlNotificaciones}}"
               ],
               "path": [
                 "notificaciones"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
               ]
             },
-            "description": ""
+            "description": "Entrega 6: paginado desde 1 y filtrado en el servicio. Con el token de administración trae todas; agregar destinatario=... para filtrar."
           },
           "event": [
             {
@@ -3393,6 +3846,24 @@
               }
             }
           ]
+        },
+        {
+          "name": "Cantidad sin leer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrlNotificaciones}}/notificaciones/no-leidas",
+              "host": [
+                "{{baseUrlNotificaciones}}"
+              ],
+              "path": [
+                "notificaciones",
+                "no-leidas"
+              ]
+            },
+            "description": "Entrega 6: solo la cantidad, para la campanita."
+          }
         }
       ]
     }
@@ -3497,6 +3968,52 @@
     {
       "key": "notificacionId",
       "value": ""
+    },
+    {
+      "key": "baseUrlAutenticacion",
+      "value": "http://localhost:8088"
+    },
+    {
+      "key": "adminEmail",
+      "value": ""
+    },
+    {
+      "key": "adminPassword",
+      "value": ""
+    },
+    {
+      "key": "entidadEmail",
+      "value": ""
+    },
+    {
+      "key": "entidadPassword",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tokenEntidad",
+      "value": ""
+    },
+    {
+      "key": "claveServicios",
+      "value": "clave-local-entre-servicios-de-donatrack"
+    },
+    {
+      "key": "claveFrontend",
+      "value": ""
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
 }

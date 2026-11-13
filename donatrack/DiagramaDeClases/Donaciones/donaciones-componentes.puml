@@ -26,19 +26,27 @@ skinparam queue {
     BorderColor #8B7355
 }
 
-' Diagrama de componentes de servicio-donaciones (Entrega 5).
+' Diagrama de componentes de servicio-donaciones (Entregas 5 y 6).
 ' Muestra las capas internas del servicio, el ORM y la base relacional que
 ' persiste el dominio, y las integraciones con el resto de DonaTrack.
+' Entrega 6: el front (cliente liviano) manda el JWT de Autenticación; la
+' seguridad lo valida con las claves públicas de ese servicio y decide por rol,
+' y ControlDeAcceso que cada persona opere solo sobre lo suyo (perfilId).
 ' Puertos y URLs: docker-compose.yml y application.properties.
 
 actor "Cliente HTTP\n(Postman)" as cliente
 actor "Operación\n(healthcheck)" as operacion
+component "donatrack-frontend :8080\n(Thymeleaf, guarda el JWT\nen la sesión del servidor)" as front <<externo>>
 
-interface "REST\n/donantes\n/donaciones\n/entidades" as apiDominio
+interface "REST\n/donantes\n/donaciones\n/entidades\n(Authorization: Bearer JWT)" as apiDominio
+interface "REST\n/publico/**\n(sin login, sin datos\npersonales)" as apiPublica
 interface "REST\n/logistica/eventos" as apiEventos
 interface "Actuator\n/actuator/health\n/info · /metrics" as apiActuator
 
 component "servicio-donaciones :8081" as donaciones {
+
+    component "Seguridad (Entrega 6)\nSpring Security, resource server\nRS256 · emisor · audiencia · vigencia\npermisos por rol (claim rol)" as seguridad
+    component "ControlDeAcceso\n(cada persona, lo suyo:\nclaim perfilId)" as acceso
 
     component "Controllers REST\n(id de correlación\nX-Correlation-Id)" as controllers
     component "GlobalExceptionHandler\n400 · 404 · 405 · 409\n413 · 415 · 422 · 503" as errores
@@ -54,7 +62,7 @@ component "servicio-donaciones :8081" as donaciones {
 
     component "Puertos de repositorio\n(interfaces.repositories)\n+ adaptadores" as repos
     component "ORM\nSpring Data JPA + Hibernate 6\n(ddl-auto=validate, carga diferida,\nlectura por lotes de 100,\nescritura por lotes de 50)" as orm
-    component "Migraciones\n(Flyway V1–V4)" as flyway
+    component "Migraciones\n(Flyway V1–V5)" as flyway
 
     component "Clientes HTTP\n(@HttpExchange + RestClient,\ntimeouts 2 s / 5 s)" as clientes
     component "NotificacionTransport\n(REST | AMQP con confirmación)" as transporte
@@ -71,11 +79,18 @@ queue "RabbitMQ\nexchange donatrack.notificaciones\ncola notificaciones.queue" a
 component "servicio-notificaciones :8084" as notificaciones <<externo>>
 component "servicio-incentivos :8083" as incentivos <<externo>>
 component "servicio-broker-logistica :8087" as broker <<externo>>
+component "servicio-autenticacion :8088\n(emite el JWT, publica\nlas claves públicas)" as autenticacion <<externo>>
 
 ' ─────────────── ENTRADAS ───────────────
 
 cliente --> apiDominio
-apiDominio -- controllers
+front --> apiDominio : con el JWT de la persona
+front --> apiPublica : landing, mapa, entidades
+apiDominio -- seguridad
+seguridad --> controllers : rol permitido
+seguridad ..> autenticacion : GET /claves-publicas\n(con el primer token)
+controllers --> acceso : ¿es suyo?
+apiPublica -- controllers
 broker --> apiEventos : callbacks de entrega\n(inicio-ruta, entrega-exitosa,\nentrega-fallida; idempotentes)
 apiEventos -- controllers
 operacion --> apiActuator
@@ -104,9 +119,10 @@ shedlock --> db : tabla shedlock
 ' ─────────────── SALIDAS ───────────────
 
 outbox --> transporte : notificaciones
-outbox --> clientes : incentivos
+outbox --> clientes : incentivos · cuentas
+clientes --> autenticacion : REST POST /api/autenticacion/cuentas/importadas\n(personas cargadas por la administración,\nclave X-DonaTrack-Servicio)
 services --> clientes : despacho al broker
-clientes --> incentivos : REST POST /api/incentivos/donantes/...
+clientes --> incentivos : REST POST /api/incentivos/donantes/...\n(con nombre visible y clave entre servicios)
 clientes --> broker : REST POST /api/broker/envios
 transporte --> rabbit : AMQP (en Docker)
 transporte ..> notificaciones : REST POST /notificaciones\n(modo rest, fuera de Docker)
@@ -120,6 +136,15 @@ note bottom of db
     La Entrega 5 agrega índices y tablas de lectura
     derivadas; el documental (MongoDB) se usa en
     logística, no acá.
+end note
+
+note bottom of seguridad
+    Sin token: health e info, Swagger, /publico/**
+    y los avisos del broker (/logistica/eventos/**).
+    Donante: su perfil y sus donaciones. Entidad: su
+    entidad, campañas y donaciones asignadas.
+    Administración: todo lo demás. 401 y 403 con
+    el mismo formato de error que el resto.
 end note
 
 note bottom of outbox

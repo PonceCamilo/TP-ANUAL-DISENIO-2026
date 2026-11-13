@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "DonaTrack - Entrega 5: Donaciones → Logística (flujo completo con replanificación)",
-    "description": "Recorre el flujo completo desde que Donaciones despacha a Logística (vía broker) hasta que Logística resuelve cada entrega, incluida la replanificación de una entrega fallida.\n\nUsar con **Run collection** (en orden) o ejecutando las requests una por una de arriba hacia abajo: cada paso guarda en variables de la colección los ids que necesita el siguiente.\n\nRequisitos: `docker compose up` (o levantados servicio-donaciones 8081, servicio-logistica 8085 con Mongo, servicio-broker-logistica 8087 y, para que salgan los avisos, servicio-notificaciones 8084 + RabbitMQ). Logística carga solos los camiones demo AC456EF y AD789GH en DISPONIBLE.\n\nSe crean 3 donaciones:\n- D1 (entidad A): se entrega al primer intento → ENTREGADA\n- D2 (entidad A): falla por ENTIDAD_AUSENTE, el admin la devuelve al depósito, Logística la replanifica en una ruta nueva y se entrega al segundo intento → ENTREGADA\n- D3 (entidad B): falla por MERCADERIA_ROTA, no se puede replanificar → queda ENTREGA_FALLIDA\n\nLos eventos de Logística llegan a Donaciones de forma asíncrona; si algún chequeo de estado falla por llegar antes que el evento, subir la variable `esperaEventosMs`.",
+    "description": "Recorre el flujo completo desde que Donaciones despacha a Logística (vía broker) hasta que Logística resuelve cada entrega, incluida la replanificación de una entrega fallida.\n\nUsar con **Run collection** (en orden) o ejecutando las requests una por una de arriba hacia abajo: cada paso guarda en variables de la colección los ids que necesita el siguiente.\n\nRequisitos: `docker compose up` (o levantados servicio-donaciones 8081, servicio-logistica 8085 con Mongo, servicio-broker-logistica 8087 y, para que salgan los avisos, servicio-notificaciones 8084 + RabbitMQ). Logística carga solos los camiones demo AC456EF y AD789GH en DISPONIBLE.\n\nSe crean 3 donaciones:\n- D1 (entidad A): se entrega al primer intento → ENTREGADA\n- D2 (entidad A): falla por ENTIDAD_AUSENTE, el admin la devuelve al depósito, Logística la replanifica en una ruta nueva y se entrega al segundo intento → ENTREGADA\n- D3 (entidad B): falla por MERCADERIA_ROTA, no se puede replanificar → queda ENTREGA_FALLIDA\n\nLos eventos de Logística llegan a Donaciones de forma asíncrona; si algún chequeo de estado falla por llegar antes que el evento, subir la variable `esperaEventosMs`.\n\nEntrega 6: Donaciones y Logística piden el JWT de Autenticación. El primer paso ingresa como administración y guarda el token, que la colección manda en cada pedido. Confirmar una entrega ahora lo hace la entidad que la recibe: esos pasos usan tokenEntidad (una cuenta de entidad vinculada a la entidad de la parada).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -100,6 +100,26 @@
     {
       "key": "entregaReintentoD2",
       "value": ""
+    },
+    {
+      "key": "baseUrlAutenticacion",
+      "value": "http://localhost:8088"
+    },
+    {
+      "key": "adminEmail",
+      "value": ""
+    },
+    {
+      "key": "adminPassword",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "tokenEntidad",
+      "value": ""
     }
   ],
   "item": [
@@ -107,12 +127,62 @@
       "name": "0. Chequeos previos",
       "item": [
         {
+          "name": "Ingresar como administración",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrlAutenticacion}}/api/autenticacion/ingreso",
+              "host": [
+                "{{baseUrlAutenticacion}}"
+              ],
+              "path": [
+                "api",
+                "autenticacion",
+                "ingreso"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"rol\": \"ADMINISTRADOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Ingreso correcto', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('token', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "0.1 Donaciones vivo",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrlDonaciones}}/actuator/health",
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -132,7 +202,10 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrlBroker}}/actuator/health",
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -152,7 +225,10 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrlLogistica}}/actuator/health",
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -172,7 +248,10 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrlBroker}}/api/broker/proveedores",
-            "description": "Lo que ve el broker: DONATRACK tiene que aparecer disponible (su health responde UP)."
+            "description": "Lo que ve el broker: DONATRACK tiene que aparecer disponible (su health responde UP).",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -664,7 +743,10 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrlBroker}}/api/broker/envios/{{donacionD1}}",
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -936,6 +1018,16 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEntidad}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "event": [
@@ -1528,6 +1620,16 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenEntidad}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "event": [
@@ -1679,5 +1781,15 @@
         }
       ]
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
 }
