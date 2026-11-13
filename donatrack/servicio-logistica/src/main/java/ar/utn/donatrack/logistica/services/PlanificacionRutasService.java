@@ -202,6 +202,8 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .idDonacion(pendiente.entrega().getIdDonacion())
                 .idEntidadBeneficiaria(parada.getIdEntidadBeneficiaria())
                 .direccionEntrega(parada.getDireccion())
+                .nombreEntidad(parada.getNombreEntidad())
+                .resumen(pendiente.entrega().getResumen())
                 .build();
     }
 
@@ -410,6 +412,11 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
 
     private Ruta crearRuta(LotePlanificacion lote, Camion camion, List<CallbackParadaDTO> paradasDTO) {
         List<Parada> paradas = new ArrayList<>();
+        // Entrega 6: a quién va y qué lleva cada donación, tal como llegó en el pedido.
+        java.util.Map<UUID, DonacionLote> pedidas = new java.util.HashMap<>();
+        if (lote.getDonaciones() != null) {
+            lote.getDonaciones().forEach(d -> pedidas.put(d.getIdDonacion(), d));
+        }
 
         Ruta ruta = Ruta.builder()
                 .id(UUID.randomUUID())
@@ -426,14 +433,19 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                     .orden(paradaDTO.getOrden())
                     .direccion(aDireccion(paradaDTO.getDireccion()))
                     .idEntidadBeneficiaria(paradaDTO.getIdEntidadBeneficiaria())
+                    .nombreEntidad(paradaDTO.getDonacionesIds().stream().map(pedidas::get)
+                            .filter(java.util.Objects::nonNull).map(DonacionLote::getNombreEntidad)
+                            .filter(java.util.Objects::nonNull).findFirst().orElse(null))
                     .entregas(entregas)
                     .build();
             paradas.add(parada);
 
             for (UUID idDonacion : paradaDTO.getDonacionesIds()) {
+                DonacionLote pedida = pedidas.get(idDonacion);
                 Entrega entrega = Entrega.builder()
                         .id(UUID.randomUUID())
                         .idDonacion(idDonacion)
+                        .resumen(pedida == null ? null : pedida.getResumen())
                         .parada(parada)
                         .build();
                 entregas.add(entrega);
@@ -458,6 +470,8 @@ public class PlanificacionRutasService implements PlanificacionServiceInterface 
                 .idDonacion(dto.getIdDonacion())
                 .idEntidadBeneficiaria(dto.getIdEntidadBeneficiaria())
                 .direccionEntrega(aDireccion(dto.getDireccionEntrega()))
+                .nombreEntidad(dto.getNombreEntidad())
+                .resumen(dto.getResumen())
                 .build();
     }
 

@@ -22,4 +22,7 @@ public class DonacionLote {
     private UUID idDonacion;
     private UUID idEntidadBeneficiaria;
     private Direccion direccionEntrega;
+    // Entrega 6: a quién va y qué lleva.
+    private String nombreEntidad;
+    private String resumen;
 }

@@ -250,7 +250,8 @@ public class PlanificacionEntregasService {
                         direccion.getNumero(),
                         direccion.getLocalidad().getNombre(),
                         direccion.getLocalidad().getProvincia().getNombre(),
-                        direccion.getCodigoPostal()));
+                        direccion.getCodigoPostal()),
+                donacion.resumen());
     }
 
     /**

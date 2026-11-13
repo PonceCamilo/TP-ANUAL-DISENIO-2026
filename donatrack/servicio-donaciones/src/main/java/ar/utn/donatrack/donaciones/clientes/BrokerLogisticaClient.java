@@ -81,7 +81,15 @@ public class BrokerLogisticaClient {
             UUID idDonacion,
             UUID idEntidadBeneficiaria,
             String nombreEntidad,
-            DireccionEnvio direccionEntrega) {}
+            DireccionEnvio direccionEntrega,
+            // Entrega 6: qué lleva ("5 kg de Arroz"), para el chofer y la administración.
+            String resumen) {
+
+        public DonacionEnvio(UUID idDonacion, UUID idEntidadBeneficiaria, String nombreEntidad,
+                             DireccionEnvio direccionEntrega) {
+            this(idDonacion, idEntidadBeneficiaria, nombreEntidad, direccionEntrega, null);
+        }
+    }
 
     /** calle, localidad y provincia son obligatorios para el broker; codigoPostal es opcional. */
     public record DireccionEnvio(

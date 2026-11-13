@@ -14,5 +14,12 @@ public record DonacionEnvioDTO(
         @NotNull UUID idDonacion,
         @NotNull UUID idEntidadBeneficiaria,
         String nombreEntidad,
-        @NotNull @Valid DireccionDTO direccionEntrega) {
+        @NotNull @Valid DireccionDTO direccionEntrega,
+        // Entrega 6: qué lleva, para que logística lo muestre al chofer y a la administración.
+        String resumen) {
+
+    public DonacionEnvioDTO(UUID idDonacion, UUID idEntidadBeneficiaria, String nombreEntidad,
+                            DireccionDTO direccionEntrega) {
+        this(idDonacion, idEntidadBeneficiaria, nombreEntidad, direccionEntrega, null);
+    }
 }

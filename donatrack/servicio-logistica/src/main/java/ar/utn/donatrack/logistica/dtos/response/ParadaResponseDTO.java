@@ -14,6 +14,7 @@ public class ParadaResponseDTO {
     private int orden;
     private DireccionResponseDTO direccion;
     private UUID idEntidadBeneficiaria;
+    private String nombreEntidad;
     private List<EntregaEnParadaResponseDTO> entregas;
 
     public static ParadaResponseDTO desde(Parada parada) {
@@ -22,6 +23,7 @@ public class ParadaResponseDTO {
                 .orden(parada.getOrden())
                 .direccion(DireccionResponseDTO.desde(parada.getDireccion()))
                 .idEntidadBeneficiaria(parada.getIdEntidadBeneficiaria())
+                .nombreEntidad(parada.getNombreEntidad())
                 .entregas(parada.getEntregas().stream().map(EntregaEnParadaResponseDTO::desde).toList())
                 .build();
     }

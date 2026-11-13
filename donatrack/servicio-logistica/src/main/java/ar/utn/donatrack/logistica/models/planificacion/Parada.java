@@ -29,6 +29,8 @@ public class Parada {
 
     // Id de la entidad beneficiaria de servicio-donaciones, sin relación hacia esa base.
     private UUID idEntidadBeneficiaria;
+    // Entrega 6: el nombre de la entidad, para el chofer y la administración.
+    private String nombreEntidad;
 
     private List<Entrega> entregas;
 }

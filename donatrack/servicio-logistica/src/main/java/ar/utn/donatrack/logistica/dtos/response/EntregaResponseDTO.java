@@ -18,6 +18,9 @@ public class EntregaResponseDTO {
     private UUID idDonacion;
     // Entrega 6: la entidad de la parada, para que solo ella vea y confirme la entrega.
     private UUID idEntidadBeneficiaria;
+    // Entrega 6: a quién va y qué lleva.
+    private String nombreEntidad;
+    private String resumen;
     private UUID rutaId;
     private UUID camionId;
     private EstadoEntrega estado;
@@ -36,6 +39,8 @@ public class EntregaResponseDTO {
                 .id(entrega.getId())
                 .idDonacion(entrega.getIdDonacion())
                 .idEntidadBeneficiaria(entrega.getParada() != null ? entrega.getParada().getIdEntidadBeneficiaria() : null)
+                .nombreEntidad(entrega.getParada() != null ? entrega.getParada().getNombreEntidad() : null)
+                .resumen(entrega.getResumen())
                 .rutaId(ruta != null ? ruta.getId() : null)
                 .camionId(camion != null ? camion.getId() : null)
                 .estado(entrega.getEstado())

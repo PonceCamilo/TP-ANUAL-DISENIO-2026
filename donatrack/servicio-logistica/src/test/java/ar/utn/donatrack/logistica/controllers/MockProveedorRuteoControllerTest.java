@@ -39,22 +39,38 @@ class MockProveedorRuteoControllerTest {
 
         PlanificacionProveedorResponseDTO respuesta = mock.planificar(pedido).getBody();
 
+        // Entrega 6: se llena un camión antes de usar el otro (antes salía una ruta por donación).
         assertThat(respuesta).isNotNull();
-        assertThat(respuesta.getRutas()).extracting(RutaPlanificadaProveedorDTO::getCamionId).containsExactly(t1, t2);
+        assertThat(respuesta.getRutas()).extracting(RutaPlanificadaProveedorDTO::getCamionId).containsExactly(t1);
 
         RutaPlanificadaProveedorDTO rutaT1 = respuesta.getRutas().getFirst();
-        assertThat(rutaT1.getParadas()).hasSize(1);
-        assertThat(rutaT1.getParadas().getFirst().getOrden()).isEqualTo(1);
-        assertThat(rutaT1.getParadas().getFirst().getIdEntidadBeneficiaria()).isEqualTo(escuelaA);
+        assertThat(rutaT1.getParadas()).extracting(parada -> parada.getIdEntidadBeneficiaria())
+                .containsExactly(escuelaA, comedorB, escuelaC);
+        assertThat(rutaT1.getParadas()).extracting(parada -> parada.getOrden()).containsExactly(1, 2, 3);
         assertThat(rutaT1.getParadas().getFirst().getDonacionesIds())
                 .containsExactly(a1.getIdDonacion(), a2.getIdDonacion());
+        assertThat(rutaT1.getParadas().get(1).getDonacionesIds()).containsExactly(b1.getIdDonacion());
+        assertThat(rutaT1.getParadas().get(2).getDonacionesIds()).containsExactly(c1.getIdDonacion());
+    }
 
-        RutaPlanificadaProveedorDTO rutaT2 = respuesta.getRutas().get(1);
-        assertThat(rutaT2.getParadas()).extracting(parada -> parada.getIdEntidadBeneficiaria())
-                .containsExactly(comedorB, escuelaC);
-        assertThat(rutaT2.getParadas()).extracting(parada -> parada.getOrden()).containsExactly(1, 2);
-        assertThat(rutaT2.getParadas().getFirst().getDonacionesIds()).containsExactly(b1.getIdDonacion());
-        assertThat(rutaT2.getParadas().get(1).getDonacionesIds()).containsExactly(c1.getIdDonacion());
+    @Test
+    @DisplayName("Entrega 6: cuando un camión llega a su máximo de paradas, sigue el próximo")
+    void llenaUnCamionYSigueConElProximo() {
+        UUID t1 = UUID.randomUUID();
+        UUID t2 = UUID.randomUUID();
+        List<DonacionParaRutearRequestDTO> donaciones = new java.util.ArrayList<>();
+        for (int i = 0; i <= MockProveedorRuteoController.PARADAS_POR_CAMION; i++) {
+            donaciones.add(donacion(UUID.randomUUID()));
+        }
+        SolicitudRuteoLoteRequestDTO pedido = new SolicitudRuteoLoteRequestDTO();
+        pedido.setCamiones(List.of(camion(t1), camion(t2)));
+        pedido.setDonaciones(donaciones);
+
+        PlanificacionProveedorResponseDTO respuesta = mock.planificar(pedido).getBody();
+
+        assertThat(respuesta.getRutas()).extracting(RutaPlanificadaProveedorDTO::getCamionId).containsExactly(t1, t2);
+        assertThat(respuesta.getRutas().getFirst().getParadas()).hasSize(MockProveedorRuteoController.PARADAS_POR_CAMION);
+        assertThat(respuesta.getRutas().get(1).getParadas()).hasSize(1);
     }
 
     @Test

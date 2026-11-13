@@ -12,11 +12,13 @@ import java.util.UUID;
 public class EntregaEnParadaResponseDTO {
     private UUID id;
     private UUID idDonacion;
+    private String resumen;
 
     public static EntregaEnParadaResponseDTO desde(Entrega entrega) {
         return EntregaEnParadaResponseDTO.builder()
                 .id(entrega.getId())
                 .idDonacion(entrega.getIdDonacion())
+                .resumen(entrega.getResumen())
                 .build();
     }
 }

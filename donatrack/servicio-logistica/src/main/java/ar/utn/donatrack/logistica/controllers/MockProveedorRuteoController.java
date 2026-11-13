@@ -38,8 +38,11 @@ import java.util.UUID;
  * Regla, en el orden de llegada de las donaciones:
  * 1. Un grupo por entidad beneficiaria. Las donaciones del grupo conservan
  *    el orden en que llegaron.
- * 2. Cada grupo entero va al camión que hasta ese momento tiene menos
- *    donaciones. Si empatan, gana el que aparece primero en la lista.
+ * 2. Entrega 6: se llena un camión antes de usar el siguiente. Cada grupo
+ *    entero (una parada) va al primer camión que tenga menos de
+ *    PARADAS_POR_CAMION paradas. Antes cada grupo iba al camión con menos
+ *    donaciones, así que con varios camiones libres cada donación salía en
+ *    una ruta propia. Si todos están llenos, va al que tenga menos paradas.
  * 3. Un camión sin donaciones no genera ruta.
  * 4. Las paradas de un camión quedan en el orden en que se le asignaron
  *    los grupos. La capacidad del camión viaja en el pedido y no se usa
@@ -51,6 +54,9 @@ import java.util.UUID;
 public class MockProveedorRuteoController {
 
     private static final Logger log = LoggerFactory.getLogger(MockProveedorRuteoController.class);
+
+    /** Paradas (entidades) que lleva un camión antes de usar el siguiente. */
+    static final int PARADAS_POR_CAMION = 8;
 
     @Operation(
             summary = "Planificar las rutas de un lote (mock)",
@@ -93,17 +99,23 @@ public class MockProveedorRuteoController {
         }
 
         for (List<DonacionParaRutearRequestDTO> grupo : grupos.values()) {
-            CamionParaRutearRequestDTO elegido = camiones.getFirst();
-            int menorCantidad = Integer.MAX_VALUE;
+            CamionParaRutearRequestDTO elegido = null;
             for (CamionParaRutearRequestDTO camion : camiones) {
-                int cantidad = cantidadPorCamion.get(camion.getId());
-                if (cantidad < menorCantidad) {
-                    menorCantidad = cantidad;
+                if (gruposPorCamion.get(camion.getId()).size() < PARADAS_POR_CAMION) {
                     elegido = camion;
+                    break;
+                }
+            }
+            if (elegido == null) {
+                elegido = camiones.getFirst();
+                for (CamionParaRutearRequestDTO camion : camiones) {
+                    if (gruposPorCamion.get(camion.getId()).size() < gruposPorCamion.get(elegido.getId()).size()) {
+                        elegido = camion;
+                    }
                 }
             }
             gruposPorCamion.get(elegido.getId()).add(grupo);
-            cantidadPorCamion.put(elegido.getId(), menorCantidad + grupo.size());
+            cantidadPorCamion.merge(elegido.getId(), grupo.size(), Integer::sum);
         }
 
         List<RutaPlanificadaProveedorDTO> rutas = new ArrayList<>();

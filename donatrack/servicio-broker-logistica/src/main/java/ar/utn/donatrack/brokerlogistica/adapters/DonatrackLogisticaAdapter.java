@@ -126,14 +126,16 @@ public class DonatrackLogisticaAdapter extends AdapterLogisticaHttp {
     }
 
     private DonacionParaRutear aDonacionParaRutear(DonacionEnvioDTO donacion) {
-        return new DonacionParaRutear(donacion.idDonacion(), donacion.idEntidadBeneficiaria(), donacion.direccionEntrega());
+        return new DonacionParaRutear(donacion.idDonacion(), donacion.idEntidadBeneficiaria(), donacion.direccionEntrega(),
+                donacion.nombreEntidad(), donacion.resumen());
     }
 
     // Sin camionesIds: logística usa los camiones DISPONIBLE de su flota.
     private record PlanificacionRequest(List<DonacionParaRutear> donaciones) {
     }
 
-    private record DonacionParaRutear(UUID idDonacion, UUID idEntidadBeneficiaria, DireccionDTO direccionEntrega) {
+    private record DonacionParaRutear(UUID idDonacion, UUID idEntidadBeneficiaria, DireccionDTO direccionEntrega,
+                                      String nombreEntidad, String resumen) {
     }
 
     private record LoteRespuesta(UUID id, int cantidadDonaciones, List<RutaRespuesta> rutas) {

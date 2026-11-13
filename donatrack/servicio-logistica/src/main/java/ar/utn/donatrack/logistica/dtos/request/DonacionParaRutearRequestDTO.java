@@ -25,4 +25,11 @@ public class DonacionParaRutearRequestDTO {
     @NotNull
     @Valid
     private DireccionRequestDTO direccionEntrega;
+
+    // Entrega 6 (opcionales): a quién va y qué lleva, para el chofer y la administración.
+    @jakarta.validation.constraints.Size(max = 200)
+    private String nombreEntidad;
+
+    @jakarta.validation.constraints.Size(max = 200)
+    private String resumen;
 }

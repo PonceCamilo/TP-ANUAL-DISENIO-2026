@@ -31,6 +31,8 @@ public class Entrega {
     private UUID id;
 
     private UUID idDonacion;
+    // Entrega 6: qué lleva ("5 kg de Arroz").
+    private String resumen;
 
     @Transient
     private Parada parada;
