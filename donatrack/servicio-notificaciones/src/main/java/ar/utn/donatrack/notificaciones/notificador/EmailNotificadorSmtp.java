@@ -4,6 +4,7 @@ import ar.utn.donatrack.notificaciones.model.Notificacion;
 import ar.utn.donatrack.notificaciones.model.medios.Email;
 import ar.utn.donatrack.notificaciones.model.medios.MedioNotificacion;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class EmailNotificadorSmtp extends NotificadorBase {
 
     private final JavaMailSender mailSender;
@@ -33,6 +35,10 @@ public class EmailNotificadorSmtp extends NotificadorBase {
 
     @Override
     protected void realizarEnvio(Notificacion notificacion) {
+        if (remitente == null || remitente.isBlank()) {
+            log.info("[EMAIL] No hay MAIL_USERNAME. El aviso queda en la aplicación para {}.", notificacion.getDestinatario());
+            return;
+        }
         SimpleMailMessage mensaje = new SimpleMailMessage();
         mensaje.setFrom(remitente);
         mensaje.setTo(notificacion.getDestinatario());
