@@ -45,6 +45,16 @@ public class PersonaHumana extends PersonaDonante {
         return TipoPersona.HUMANA;
     }
 
+    @Override
+    public String nombreCompleto() {
+        return apellido == null || apellido.isBlank() ? nombre : nombre + " " + apellido;
+    }
+
+    @Override
+    public String nombrePublico() {
+        return apellido == null || apellido.isBlank() ? nombre : nombre + " " + apellido.strip().charAt(0) + ".";
+    }
+
     /**
      * La primera palabra es el nombre y el resto el apellido. Si la fila no trae
      * apellido se conserva el que ya tenía la persona.

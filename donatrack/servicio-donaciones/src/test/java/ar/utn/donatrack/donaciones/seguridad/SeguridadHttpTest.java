@@ -497,7 +497,7 @@ class SeguridadHttpTest {
         @Test
         @DisplayName("La administración da de alta a cualquier persona donante (requisito 15)")
         void administracionDaDeAlta() throws Exception {
-            when(donantes.registrar(any())).thenReturn(donanteCreado());
+            when(donantes.registrarPorAdministracion(any())).thenReturn(donanteCreado());
 
             mockMvc.perform(post("/donantes").with(TokensDePrueba.administrador())
                             .contentType(MediaType.APPLICATION_JSON).content(cuerpoAltaHumana("otra@example.com")))

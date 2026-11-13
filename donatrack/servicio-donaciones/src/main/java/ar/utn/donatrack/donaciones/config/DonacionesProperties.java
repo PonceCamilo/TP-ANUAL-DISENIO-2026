@@ -115,9 +115,10 @@ public record DonacionesProperties(
      * que dar de alta, por la bandeja de salida y de a varias por aviso (el
      * mensaje guardado admite hasta 10.000 caracteres: 60 personas entran).
      *
-     * Apagado por defecto hasta que Autenticación tenga el endpoint: mientras está
-     * apagado no se encola nada. Al encenderlo, reimportar el CSV avisa por todas
-     * (las personas que ya existen se actualizan y también se avisan).
+     * Apagado por defecto (Donaciones corriendo solo); el docker-compose lo
+     * enciende junto con Autenticación. Apagado no se encola nada. Al encenderlo,
+     * reimportar el CSV avisa por todas (las que ya existen también se avisan, y
+     * Autenticación no las duplica).
      *
      * @param avisarImportados si se avisa a Autenticación al importar
      * @param url              dirección del Servicio de Autenticación

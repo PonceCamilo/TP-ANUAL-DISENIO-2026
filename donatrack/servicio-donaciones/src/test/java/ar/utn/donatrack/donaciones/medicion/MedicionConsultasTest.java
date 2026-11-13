@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -97,6 +98,8 @@ class MedicionConsultasTest {
     private static final int DONACIONES_ASIGNADAS = 30;
     private static final int DONANTES = 200;
     private static final int FILAS_CSV = 300;
+    /** Entrega 6: entregadas en el último mes, con foto, para la landing. */
+    private static final int DONACIONES_ENTREGADAS = 40;
 
     // ── Topes de sentencias (regresión) ───────────────────────────────────────
     // Línea base medida sobre el código de la Entrega 4, valor medido al cerrar
@@ -119,6 +122,12 @@ class MedicionConsultasTest {
     private static final int TOPE_ASIGNACION = 25;
     /** Línea base 1.200 (altas) y 900 (actualizaciones), medido 4-7. */
     private static final int TOPE_IMPORTACION = 30;
+    /**
+     * Entrega 6, datos públicos sin login. Una consulta por página y por colección
+     * (bienes, fotos, entidades receptoras, campañas): no crece con las filas.
+     * Medido: entregadas 4 (40 filas), entidades 3 (20 filas), subcategorías 2.
+     */
+    private static final int TOPE_PUBLICO = 12;
 
     @Autowired private MockMvc mvc;
     @Autowired private EntityManagerFactory emf;
@@ -138,6 +147,7 @@ class MedicionConsultasTest {
     private final List<UUID> idsDonantes = new ArrayList<>();
     private final List<UUID> idsEntidades = new ArrayList<>();
     private final List<UUID> idsEnDeposito = new ArrayList<>();
+    private final List<EntidadBeneficiaria> entidadesSembradas = new ArrayList<>();
     private byte[] csv;
 
     @FunctionalInterface
@@ -193,6 +203,7 @@ class MedicionConsultasTest {
                     .build();
             entidades.guardar(entidad);
             idsEntidades.add(idEntidad);
+            entidadesSembradas.add(entidad);
         }
 
         List<Donacion> nuevas = new ArrayList<>();
@@ -209,6 +220,20 @@ class MedicionConsultasTest {
                 idsEnDeposito.add(nuevas.get(i).getId());
             }
         }
+
+        // Entrega 6: entregadas en el último mes, cada una con su foto, repartidas
+        // entre las entidades (las lee la landing pública).
+        List<Donacion> entregadas = new ArrayList<>();
+        for (int i = 0; i < DONACIONES_ENTREGADAS; i++) {
+            Donacion donacion = donacionDeArroz(idsDonantes.get(i % 10));
+            donacion.asignarA(entidadesSembradas.get(i % ENTIDADES));
+            donacion.cambiarEstado("LISTA_PARA_ENTREGAR", "despachar", null);
+            donacion.cambiarEstado("EN_TRASLADO", "inicio de ruta", null);
+            donacion.registrarEntrega(FechaHoraArgentina.ahora().minusDays(i % 20), "Entrega confirmada");
+            donacion.registrarFotosDeEntrega(List.of("https://fotos.example/entrega-" + i + ".jpg"));
+            entregadas.add(donacion);
+        }
+        donaciones.cargarDonaciones(entregadas);
 
         StringBuilder filas = new StringBuilder("TipoPersona,TipoDoc,Documento,Nombre/Razón Social,Email,Teléfono\n");
         for (int i = 0; i < FILAS_CSV; i++) {
@@ -370,6 +395,37 @@ class MedicionConsultasTest {
                                 .file(new MockMultipartFile("file", "donantes.csv", "text/csv", csv)))
                         .andExpect(status().isOk()));
         assertThat(sentencias).isLessThanOrEqualTo(TOPE_IMPORTACION);
+    }
+
+    // ── Datos públicos (Entrega 6) ─────────────────────────────────────────────
+
+    @Test
+    @Order(13)
+    @DisplayName("Landing: donaciones entregadas del último mes, con la entidad y las fotos")
+    void entregadasParaLaLanding() throws Exception {
+        long sentencias = medir("GET /publico/donaciones-entregadas (" + DONACIONES_ENTREGADAS + ")", () ->
+                mvc.perform(get("/publico/donaciones-entregadas").param("size", "100").with(anonymous()))
+                        .andExpect(status().isOk()));
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_PUBLICO);
+    }
+
+    @Test
+    @Order(14)
+    @DisplayName("Entidades públicas con lo que necesitan")
+    void entidadesPublicas() throws Exception {
+        long sentencias = medir("GET /publico/entidades (" + ENTIDADES + ")", () ->
+                mvc.perform(get("/publico/entidades").param("size", "50").with(anonymous()))
+                        .andExpect(status().isOk()));
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_PUBLICO);
+    }
+
+    @Test
+    @Order(15)
+    @DisplayName("Catálogo de subcategorías para filtros y formularios")
+    void subcategorias() throws Exception {
+        long sentencias = medir("GET /publico/subcategorias", () ->
+                mvc.perform(get("/publico/subcategorias").with(anonymous())).andExpect(status().isOk()));
+        assertThat(sentencias).isLessThanOrEqualTo(TOPE_PUBLICO);
     }
 
     // ── Informe ────────────────────────────────────────────────────────────────

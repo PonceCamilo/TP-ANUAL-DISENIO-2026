@@ -138,7 +138,7 @@ class FlujoDeDonacionIntegracionTest {
         // Spring Data publica los eventos al guardar la donación; los oyentes en
         // la transacción limpian la bandeja y los de después del commit avisan.
         UUID idDonacion = registrarDonacion(crearDonante());
-        verify(incentivosClient).notificarDonacionRegistrada(any(), eq("ana@mail.com"), eq("EMAIL"), eq(1), any(), any());
+        verify(incentivosClient).notificarDonacionRegistrada(any(), any(), eq("ana@mail.com"), eq("EMAIL"), eq(1), any(), any());
         UUID idEntidad = crearEntidad();
         matchmaking.ejecutarMatchmakingNocturno();
         assertThat(candidatos.obtenerTodos()).extracting(RankingPrecalculado::getIdDonacion).contains(idDonacion);
@@ -158,7 +158,7 @@ class FlujoDeDonacionIntegracionTest {
                             .content("{\"estado\":\"" + estado + "\"}"))
                     .andExpect(status().isNoContent());
         }
-        verify(incentivosClient).notificarDonacionExitosa(any(), eq("ana@mail.com"), eq("EMAIL"), any());
+        verify(incentivosClient).notificarDonacionExitosa(any(), any(), eq("ana@mail.com"), eq("EMAIL"), any());
     }
 
     @Test

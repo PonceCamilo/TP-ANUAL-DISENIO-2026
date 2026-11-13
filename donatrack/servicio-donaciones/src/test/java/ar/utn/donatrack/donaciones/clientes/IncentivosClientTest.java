@@ -45,7 +45,7 @@ class IncentivosClientTest {
         donacion.agregarBien(BienGenerico.builder().subcategoria(new Subcategoria("arroz"))
                 .descripcion("arroz").cantidad(3).unidad("kg").build());
 
-        cliente.notificarDonacionExitosa(donacion, "ana@mail.com", "WHATSAPP", LocalDateTime.of(2026, 3, 15, 14, 30));
+        cliente.notificarDonacionExitosa(donacion, "Ana P.", "ana@mail.com", "WHATSAPP", LocalDateTime.of(2026, 3, 15, 14, 30));
 
         verify(salida).encolar(eq(Destinos.INCENTIVOS_DONACION_EXITOSA), contenido.capture());
         IncentivosClient.SolicitudIncentivo solicitud = (IncentivosClient.SolicitudIncentivo) contenido.getValue();
@@ -54,6 +54,8 @@ class IncentivosClientTest {
         assertThat(solicitud.medio()).isEqualTo("WHATSAPP");
         assertThat(solicitud.cantidadBienes()).isEqualTo(3);
         assertThat(solicitud.categoriasDonadas()).containsExactly("arroz");
+        // Entrega 6: el nombre que muestra el podio de Incentivos.
+        assertThat(solicitud.nombreVisible()).isEqualTo("Ana P.");
     }
 
     @Test
@@ -61,10 +63,11 @@ class IncentivosClientTest {
     void donacionRegistrada() {
         UUID donante = UUID.randomUUID();
 
-        cliente.notificarDonacionRegistrada(donante, "ana@mail.com", "EMAIL", 2, List.of("arroz", "ropa"),
+        cliente.notificarDonacionRegistrada(donante, "Ana P.", "ana@mail.com", "EMAIL", 2, List.of("arroz", "ropa"),
                 LocalDateTime.of(2026, 3, 1, 10, 0));
 
         verify(salida).encolar(Destinos.INCENTIVOS_DONACION_REGISTRADA, new IncentivosClient.SolicitudIncentivo(
-                donante, "ana@mail.com", "EMAIL", 2, List.of("arroz", "ropa"), LocalDateTime.of(2026, 3, 1, 10, 0), null));
+                donante, "ana@mail.com", "EMAIL", 2, List.of("arroz", "ropa"), LocalDateTime.of(2026, 3, 1, 10, 0), null,
+                "Ana P."));
     }
 }

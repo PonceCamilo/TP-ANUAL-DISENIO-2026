@@ -71,7 +71,7 @@ public class CsvImportService {
     /**
      * Entrega 6 (requisito 20): avisa a Autenticación qué personas se crearon o
      * actualizaron, para que les dé un usuario. El aviso va en la transacción del
-     * lote: si el lote no se guarda, no se avisa. Apagado por defecto.
+     * lote: si el lote no se guarda, no se avisa. Lo enciende el docker-compose.
      */
     private final AutenticacionClient cuentas;
 

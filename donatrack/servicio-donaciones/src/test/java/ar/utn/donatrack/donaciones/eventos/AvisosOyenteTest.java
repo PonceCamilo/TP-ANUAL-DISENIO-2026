@@ -143,7 +143,7 @@ class AvisosOyenteTest {
             oyente.alEntregarse(new DonacionEntregada(donacion.getId(), idDonante, null, new Subcategoria("arroz"), 5,
                     entrega));
 
-            verify(incentivos).notificarDonacionExitosa(donacion, "juan@example.com", "EMAIL", entrega);
+            verify(incentivos).notificarDonacionExitosa(donacion, "Juan", "juan@example.com", "EMAIL", entrega);
         }
 
         @Test
@@ -172,7 +172,7 @@ class AvisosOyenteTest {
 
             oyente.alRegistrarse(new DonacionesRegistradas(idDonante, 3, List.of("arroz", "ropa"), cuando));
 
-            verify(incentivos).notificarDonacionRegistrada(idDonante, "juan@example.com", "EMAIL", 3,
+            verify(incentivos).notificarDonacionRegistrada(idDonante, "Juan", "juan@example.com", "EMAIL", 3,
                     List.of("arroz", "ropa"), cuando);
         }
 

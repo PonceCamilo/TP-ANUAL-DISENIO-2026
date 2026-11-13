@@ -3,6 +3,7 @@ package ar.utn.donatrack.donaciones.services;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.DocumentoInvalidoException;
 import ar.utn.donatrack.donaciones.models.donante.Documento;
 import ar.utn.donatrack.donaciones.mappers.MappersDePrueba;
+import ar.utn.donatrack.donaciones.clientes.AutenticacionClient;
 import ar.utn.donatrack.donaciones.exceptions.personasExceptions.PersonaConDonacionesException;
 import ar.utn.donatrack.donaciones.interfaces.repositories.RepositorioDonaciones;
 import ar.utn.donatrack.donaciones.models.donante.Representante;
@@ -87,6 +88,9 @@ class PersonaDonanteServiceTest {
     @Mock
     private RepositorioDonaciones donaciones;
 
+    @Mock
+    private AutenticacionClient cuentas;
+
     @Captor
     private ArgumentCaptor<PersonaDonante> donanteCaptor;
 
@@ -101,7 +105,8 @@ class PersonaDonanteServiceTest {
                 MappersDePrueba.personas(),
                 MappersDePrueba.DIRECCIONES,
                 MappersDePrueba.CONTACTOS,
-                MappersDePrueba.REPRESENTANTES);
+                MappersDePrueba.REPRESENTANTES,
+                cuentas);
     }
 
     // ── Constructores de DTOs de prueba ──────────────────────────────────────
@@ -180,6 +185,27 @@ class PersonaDonanteServiceTest {
     @Nested
     @DisplayName("Alta de donantes")
     class Alta {
+
+        @Test
+        @DisplayName("Entrega 6: si la carga la administración, avisa a Autenticación para que tenga una cuenta")
+        void altaPorAdministracionAvisaLaCuenta() {
+            when(repositorio.existePorEmail("juan@example.com")).thenReturn(false);
+
+            PersonaDonanteResponseDTO respuesta = servicio.registrarPorAdministracion(dtoHumana("juan@example.com"));
+
+            org.mockito.Mockito.verify(cuentas).notificarImportados(java.util.List.of(new AutenticacionClient.DonanteImportado(
+                    respuesta.getId(), "juan@example.com", "Juan Pérez", "HUMANA")));
+        }
+
+        @Test
+        @DisplayName("Si se registra la persona misma no se avisa: ya tiene su cuenta")
+        void altaPropiaNoAvisa() {
+            when(repositorio.existePorEmail("juan@example.com")).thenReturn(false);
+
+            servicio.registrar(dtoHumana("juan@example.com"));
+
+            org.mockito.Mockito.verifyNoInteractions(cuentas);
+        }
 
         @Test
         @DisplayName("Registra una persona humana con id generado, estado ACTIVO e interacción inicial")

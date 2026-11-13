@@ -1,5 +1,6 @@
 package ar.utn.donatrack.donaciones.services;
 
+import ar.utn.donatrack.donaciones.clientes.AutenticacionClient;
 import ar.utn.donatrack.donaciones.mappers.RepresentanteMapper;
 import ar.utn.donatrack.donaciones.mappers.DireccionMapper;
 import ar.utn.donatrack.donaciones.mappers.ContactoMapper;
@@ -40,6 +41,7 @@ public class PersonaDonanteService {
     private final DireccionMapper direcciones;
     private final ContactoMapper contactos;
     private final RepresentanteMapper representantes;
+    private final AutenticacionClient cuentas;
 
     public PersonaDonanteResponseDTO registrar(PersonaDonanteRequestDTO dto) {
         validador.validarEmail(dto.getEmail());
@@ -48,6 +50,23 @@ public class PersonaDonanteService {
         persona.registrarInteraccion();
 
         repositorio.guardar(persona);
+        return mapper.toDTO(persona);
+    }
+
+    /**
+     * Alta que hace la administración (Entrega 6, requisito 20): además de guardar
+     * a la persona, avisa a Autenticación para que tenga una cuenta vinculada a su
+     * perfil, que activa con el enlace que pide por email. El aviso va por la
+     * bandeja de salida en esta misma transacción, como en la importación por CSV.
+     * Cuando la persona se registra sola ya tiene su cuenta: por eso no se avisa.
+     */
+    public PersonaDonanteResponseDTO registrarPorAdministracion(PersonaDonanteRequestDTO dto) {
+        validador.validarEmail(dto.getEmail());
+        PersonaDonante persona = mapper.toModel(dto);
+        persona.registrarInteraccion();
+        repositorio.guardar(persona);
+        cuentas.notificarImportados(List.of(new AutenticacionClient.DonanteImportado(
+                persona.getId(), persona.getEmail(), persona.nombreCompleto(), persona.tipoPersona().name())));
         return mapper.toDTO(persona);
     }
 

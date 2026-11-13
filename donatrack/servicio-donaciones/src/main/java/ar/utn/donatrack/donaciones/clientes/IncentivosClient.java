@@ -25,6 +25,10 @@ import java.util.UUID;
  * fecha en que se había registrado la donación y no con la de la entrega, y el
  * registro tomaba la hora de la zona del servidor en lugar de la de Argentina.
  *
+ * Entrega 6: los avisos llevan el nombre público de la persona (nombre e inicial
+ * del apellido, o razón social) para que Incentivos lo muestre en el podio sin
+ * tener que leer perfiles ajenos en Donaciones.
+ *
  * Desde la Entrega 5 los avisos no se envían en el momento: quedan en la bandeja
  * de salida, en la transacción de quien llama, y los manda EnviadorIncentivos a
  * través de RelayDeMensajes, con reintentos si incentivos no está levantado.
@@ -35,16 +39,18 @@ public class IncentivosClient {
 
     private final BandejaDeSalida salida;
 
-    public void notificarDonacionRegistrada(UUID donanteId, String destinatario, String medio,
+    public void notificarDonacionRegistrada(UUID donanteId, String nombreVisible, String destinatario, String medio,
                                             int cantidadBienes, List<String> categoriasDonadas, LocalDateTime fecha) {
         salida.encolar(Destinos.INCENTIVOS_DONACION_REGISTRADA, new SolicitudIncentivo(
-                donanteId, destinatario, medio, cantidadBienes, categoriasDonadas, fecha, null));
+                donanteId, destinatario, medio, cantidadBienes, categoriasDonadas, fecha, null, nombreVisible));
     }
 
-    public void notificarDonacionExitosa(Donacion donacion, String destinatario, String medio, LocalDateTime fechaEntrega) {
+    public void notificarDonacionExitosa(Donacion donacion, String nombreVisible, String destinatario, String medio,
+                                         LocalDateTime fechaEntrega) {
         salida.encolar(Destinos.INCENTIVOS_DONACION_EXITOSA, new SolicitudIncentivo(
                 donacion.getIdDonante(), destinatario, medio,
-                cantidadBienes(donacion), categoriasDonadas(donacion), fechaEntrega, entidadBeneficiaria(donacion)));
+                cantidadBienes(donacion), categoriasDonadas(donacion), fechaEntrega, entidadBeneficiaria(donacion),
+                nombreVisible));
     }
 
     private int cantidadBienes(Donacion donacion) {
@@ -65,5 +71,5 @@ public class IncentivosClient {
     record SolicitudIncentivo(
             UUID donanteId, String destinatario, String medio,
             int cantidadBienes, List<String> categoriasDonadas,
-            LocalDateTime fecha, String entidadBeneficiaria) {}
+            LocalDateTime fecha, String entidadBeneficiaria, String nombreVisible) {}
 }

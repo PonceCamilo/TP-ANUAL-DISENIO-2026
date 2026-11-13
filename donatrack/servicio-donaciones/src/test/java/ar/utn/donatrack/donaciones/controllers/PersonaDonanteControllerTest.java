@@ -223,7 +223,7 @@ class PersonaDonanteControllerTest {
         void altaOk() throws Exception {
             // El 201 con cuerpo evita que el cliente tenga que hacer un GET extra
             // solo para averiguar el id que le asignó el sistema.
-            when(personaDonanteService.registrar(any())).thenReturn(respuestaHumana());
+            when(personaDonanteService.registrarPorAdministracion(any())).thenReturn(respuestaHumana());
 
             mockMvc.perform(post("/donantes")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -237,7 +237,7 @@ class PersonaDonanteControllerTest {
         @Test
         @DisplayName("Devuelve 400 si el email tiene formato inválido")
         void emailInvalido() throws Exception {
-            when(personaDonanteService.registrar(any())).thenThrow(new EmailInvalidoException("mal"));
+            when(personaDonanteService.registrarPorAdministracion(any())).thenThrow(new EmailInvalidoException("mal"));
 
             mockMvc.perform(post("/donantes")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -250,7 +250,7 @@ class PersonaDonanteControllerTest {
         void emailDuplicado() throws Exception {
             // 409 Conflict: el pedido es válido pero choca con el estado actual
             // del sistema (ya existe un donante con ese email).
-            when(personaDonanteService.registrar(any()))
+            when(personaDonanteService.registrarPorAdministracion(any()))
                     .thenThrow(new EmailYaRegistradoException("juan@example.com"));
 
             mockMvc.perform(post("/donantes")
@@ -264,7 +264,7 @@ class PersonaDonanteControllerTest {
         void emailDuplicadoEnLaBase() throws Exception {
             // Dos altas simultáneas pasan la validación previa: la segunda la
             // frena el UNIQUE de la columna, con el estado SQL de clave duplicada.
-            when(personaDonanteService.registrar(any()))
+            when(personaDonanteService.registrarPorAdministracion(any()))
                     .thenThrow(new DataIntegrityViolationException("duplicado",
                             new SQLException("unique violation", "23505")));
 
@@ -277,7 +277,7 @@ class PersonaDonanteControllerTest {
         @Test
         @DisplayName("Otra violación de integridad (no de unicidad) sigue siendo un 500")
         void otraViolacionDeIntegridad() throws Exception {
-            when(personaDonanteService.registrar(any()))
+            when(personaDonanteService.registrarPorAdministracion(any()))
                     .thenThrow(new DataIntegrityViolationException("not null",
                             new SQLException("null value", "23502")));
 
@@ -308,7 +308,7 @@ class PersonaDonanteControllerTest {
                             .content(objectMapper.writeValueAsString(Map.of("tipo", "HUMANA"))))
                     .andExpect(status().isBadRequest());
 
-            verify(personaDonanteService, never()).registrar(any());
+            verify(personaDonanteService, never()).registrarPorAdministracion(any());
         }
     }
 

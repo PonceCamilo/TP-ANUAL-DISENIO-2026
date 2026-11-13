@@ -220,6 +220,16 @@ public abstract class PersonaDonante extends EntidadPersistible {
     /** HUMANA o JURIDICA: lo responde cada subclase. */
     public abstract TipoPersona tipoPersona();
 
+    /** Nombre y apellido, o la razón social: el nombre de la cuenta en Autenticación. */
+    public abstract String nombreCompleto();
+
+    /**
+     * Cómo se la nombra ante otras personas (podio de Incentivos, Entrega 6): una
+     * persona humana con su nombre y la inicial del apellido, una jurídica con su
+     * razón social.
+     */
+    public abstract String nombrePublico();
+
     /**
      * Aplica el nombre que trae una fila de la importación por CSV, donde nombre
      * y apellido (o la razón social) vienen en una sola columna.

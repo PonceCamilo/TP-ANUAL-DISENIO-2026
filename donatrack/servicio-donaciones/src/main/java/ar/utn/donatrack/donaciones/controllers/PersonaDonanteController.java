@@ -109,7 +109,10 @@ public class PersonaDonanteController {
             @RequestBody @Valid PersonaDonanteRequestDTO dto
     ) {
         acceso.exigirAltaDeDonante(dto.getEmail(), dto instanceof PersonaJuridicaRequestDTO ? "JURIDICA" : "HUMANA");
-        PersonaDonanteResponseDTO donanteCreado = personaDonanteService.registrar(dto);
+        // Si la carga la administración, la persona recibe además una cuenta para activar.
+        PersonaDonanteResponseDTO donanteCreado = acceso.actual().esAdministrador()
+                ? personaDonanteService.registrarPorAdministracion(dto)
+                : personaDonanteService.registrar(dto);
         URI location = URI.create("/donantes/" + donanteCreado.getId());
         return ResponseEntity.created(location).body(donanteCreado);
     }

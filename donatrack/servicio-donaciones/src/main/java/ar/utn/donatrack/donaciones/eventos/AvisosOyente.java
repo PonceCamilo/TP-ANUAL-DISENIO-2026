@@ -43,17 +43,23 @@ public class AvisosOyente {
     /** Incentivos usa las entregas para "donaciones exitosas" y "organizaciones ayudadas". */
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void alEntregarse(DonacionEntregada evento) {
+        PersonaDonante persona = donante(evento.idDonante());
         donaciones.buscarPorId(evento.idDonacion()).ifPresent(donacion ->
-                notificador.destinoDe(donante(evento.idDonante())).ifPresent(destino ->
-                        incentivos.notificarDonacionExitosa(donacion, destino.valor(), destino.canal().name(),
-                                evento.fechaEntrega())));
+                notificador.destinoDe(persona).ifPresent(destino ->
+                        incentivos.notificarDonacionExitosa(donacion, nombrePublico(persona), destino.valor(),
+                                destino.canal().name(), evento.fechaEntrega())));
     }
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void alRegistrarse(DonacionesRegistradas evento) {
-        notificador.destinoDe(donante(evento.idDonante())).ifPresent(destino ->
-                incentivos.notificarDonacionRegistrada(evento.idDonante(), destino.valor(),
+        PersonaDonante persona = donante(evento.idDonante());
+        notificador.destinoDe(persona).ifPresent(destino ->
+                incentivos.notificarDonacionRegistrada(evento.idDonante(), nombrePublico(persona), destino.valor(),
                         destino.canal().name(), evento.cantidadBienes(), evento.categorias(), evento.cuando()));
+    }
+
+    private static String nombrePublico(PersonaDonante persona) {
+        return persona == null ? null : persona.nombrePublico();
     }
 
     private PersonaDonante donante(UUID idDonante) {

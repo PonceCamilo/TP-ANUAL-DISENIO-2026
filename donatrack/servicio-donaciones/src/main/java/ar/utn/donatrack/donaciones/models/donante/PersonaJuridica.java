@@ -52,6 +52,16 @@ public class PersonaJuridica extends PersonaDonante {
     }
 
     @Override
+    public String nombreCompleto() {
+        return razonSocial;
+    }
+
+    @Override
+    public String nombrePublico() {
+        return razonSocial;
+    }
+
+    @Override
     public void actualizarNombreImportado(String razonSocial) {
         this.razonSocial = razonSocial.trim();
     }

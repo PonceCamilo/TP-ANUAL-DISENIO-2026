@@ -19,8 +19,8 @@ import java.util.Set;
  * (Entrega 6, ver AutenticacionClient). Manda el JSON tal como quedó guardado en
  * la bandeja de salida; si Autenticación no responde, RelayDeMensajes reintenta.
  *
- * El endpoint es una propuesta de contrato para el Servicio de Autenticación: por
- * eso el aviso está apagado por defecto (donaciones.cuentas.avisar-importados).
+ * Autenticación lo recibe en CuentasImportadasController, con la clave entre
+ * servicios. El aviso se enciende con donaciones.cuentas.avisar-importados.
  */
 @Component
 public class EnviadorAutenticacion implements EnviadorDeMensajes {

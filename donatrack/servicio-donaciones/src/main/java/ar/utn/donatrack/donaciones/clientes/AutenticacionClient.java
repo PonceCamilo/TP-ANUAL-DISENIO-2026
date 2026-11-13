@@ -11,18 +11,19 @@ import java.util.UUID;
 
 /**
  * Avisos al Servicio de Autenticación (Entrega 6, requisito 20): las personas
- * importadas por CSV necesitan un usuario para entrar.
+ * que carga la administración (por CSV o con el alta manual) necesitan un usuario
+ * para entrar.
  *
- * Donaciones no crea cuentas ni maneja contraseñas: informa qué personas importó
+ * Donaciones no crea cuentas ni maneja contraseñas: informa qué personas cargó
  * (su id, que pasa a ser el perfilId de la cuenta, su email, su nombre y su tipo)
- * y Autenticación decide cómo darles acceso (por ejemplo, un enlace de activación
- * que manda Notificaciones). El aviso va por la bandeja de salida, en la misma
+ * y Autenticación les crea una cuenta sin contraseña, que la persona activa con
+ * un enlace que pide por email. El aviso va por la bandeja de salida, en la misma
  * transacción que guarda las personas: si el lote no se guarda, no se avisa.
  *
- * Contrato propuesto (EnviadorAutenticacion): POST /api/autenticacion/cuentas/importadas
- * con {"donantes":[{"donanteId","email","nombre","tipoDonante"}]}. Tiene que ser
- * idempotente por email: reimportar un archivo vuelve a avisar por las mismas
- * personas.
+ * Contrato (EnviadorAutenticacion): POST /api/autenticacion/cuentas/importadas
+ * con {"donantes":[{"donanteId","email","nombre","tipoDonante"}]}. Autenticación
+ * es idempotente por email: reimportar un archivo vuelve a avisar por las mismas
+ * personas sin duplicar cuentas.
  *
  * Mientras donaciones.cuentas.avisar-importados esté apagado no se encola nada.
  */
