@@ -27,10 +27,24 @@ services:
       AUTH_DB_URL: jdbc:postgresql://postgres-autenticacion:5432/autenticacion_db
       AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-donatrack}
       AUTH_KEY_FILE: /claves/jwt.pkcs8
+      # Obligatoria (al menos 32 caracteres, la misma en el front): sin ella el
+      # servicio no arranca y lo dice en el log.
       AUTH_FRONTEND_KEY: ${AUTH_FRONTEND_KEY:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       AUTH_ADMINISTRADOR_EMAIL: ${AUTH_ADMINISTRADOR_EMAIL:-}
       AUTH_ADMINISTRADOR_PASSWORD: ${AUTH_ADMINISTRADOR_PASSWORD:-}
+      # Clave entre servicios (X-DonaTrack-Servicio): la misma en Donaciones,
+      # Logística y el broker. El valor por defecto es solo para desarrollo local.
+      DONATRACK_SERVICIOS_KEY: ${DONATRACK_SERVICIOS_KEY:-clave-local-entre-servicios-de-donatrack}
+      # Enlaces de activación de las cuentas importadas: dirección del front y
+      # SMTP para mandarlos. Sin MAIL_HOST no sale ningún correo; con
+      # AUTH_ENLACE_EN_LOG=true el enlace se ve en el log (solo para probar).
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      AUTH_ENLACE_EN_LOG: ${AUTH_ENLACE_EN_LOG:-false}
     volumes:
       - claves-autenticacion:/claves
     depends_on:

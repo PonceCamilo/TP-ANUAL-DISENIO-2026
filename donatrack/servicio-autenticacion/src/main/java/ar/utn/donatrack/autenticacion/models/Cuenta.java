@@ -43,4 +43,13 @@ public abstract class Cuenta {
     public String nombre() { return nombre; }
     public Rol rol() { return rol; }
     public String passwordHash() { return passwordHash; }
+
+    /** Una cuenta importada o creada con Google no tiene contraseña hasta que la persona la elige. */
+    public boolean tieneClave() { return passwordHash != null; }
+
+    /** La cargó la administración y la persona todavía no eligió cómo entrar. */
+    public boolean pendienteDeActivacion() { return !tieneClave(); }
+
+    /** La persona eligió su contraseña con un enlace de activación (o la cambió). */
+    public void definirClave(String passwordHash) { this.passwordHash = passwordHash; }
 }

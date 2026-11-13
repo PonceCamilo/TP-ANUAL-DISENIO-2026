@@ -9,16 +9,15 @@ import ar.utn.donatrack.autenticacion.models.CuentaEntidadBeneficiaria;
 import ar.utn.donatrack.autenticacion.models.Rol;
 import ar.utn.donatrack.autenticacion.models.TipoDonante;
 import ar.utn.donatrack.autenticacion.repositories.Cuentas;
+import ar.utn.donatrack.autenticacion.seguridad.Contrasenias;
 import ar.utn.donatrack.autenticacion.seguridad.GoogleIdentidad;
 import ar.utn.donatrack.autenticacion.seguridad.Tokens;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.List;
 import java.util.UUID;
@@ -28,13 +27,15 @@ public class AutenticacionService {
     private final Cuentas cuentas;
     private final Tokens tokens;
     private final GoogleIdentidad google;
-    private final BCryptPasswordEncoder claves = new BCryptPasswordEncoder();
-    private final String hashDeRespaldo = claves.encode("contraseña de respaldo para una cuenta inexistente");
+    private final Contrasenias claves;
+    private final String hashDeRespaldo;
 
-    AutenticacionService(Cuentas cuentas, Tokens tokens, GoogleIdentidad google) {
+    AutenticacionService(Cuentas cuentas, Tokens tokens, GoogleIdentidad google, Contrasenias claves) {
         this.cuentas = cuentas;
         this.tokens = tokens;
         this.google = google;
+        this.claves = claves;
+        this.hashDeRespaldo = claves.codificar("contraseña de respaldo para una cuenta inexistente");
     }
 
     @Transactional
@@ -47,8 +48,7 @@ public class AutenticacionService {
     public TokenResponse ingresar(String email, String password, Rol rol) {
         Cuenta cuenta = cuentas.findByEmailAndRol(normalizar(email), rol).orElse(null);
         String hash = cuenta == null || cuenta.passwordHash() == null ? hashDeRespaldo : cuenta.passwordHash();
-        if (password.getBytes(StandardCharsets.UTF_8).length > 72 || !claves.matches(password, hash)
-                || cuenta == null || cuenta.passwordHash() == null) {
+        if (!claves.coincide(password, hash) || cuenta == null || cuenta.passwordHash() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email, contraseña o perfil incorrectos.");
         }
         return tokens.emitir(cuenta);
@@ -135,15 +135,17 @@ public class AutenticacionService {
     private Cuenta crearConClave(String email, String nombre, String password, Rol rol, TipoDonante tipo) {
         email = normalizar(email);
         comprobarCuentaNueva(email, rol);
-        if (password.length() < 8 || password.getBytes(StandardCharsets.UTF_8).length > 72) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 8 caracteres y hasta 72 bytes.");
-        }
-        Cuenta cuenta = crearCuenta(email, nombre.strip(), rol, tipo, claves.encode(password), null);
+        Cuenta cuenta = crearCuenta(email, nombre.strip(), rol, tipo, claves.codificar(password), null);
         return cuentas.saveAndFlush(cuenta);
     }
 
     private void comprobarCuentaNueva(String email, Rol rol) {
-        if (cuentas.findByEmailAndRol(email, rol).isPresent()) {
+        var existente = cuentas.findByEmailAndRol(email, rol);
+        if (existente.isPresent() && existente.get().pendienteDeActivacion()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La administración ya cargó tus datos con ese email. "
+                    + "Activá tu cuenta pidiendo el enlace de activación.");
+        }
+        if (existente.isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una cuenta para ese email y perfil. Ingresá con el método original.");
         }
     }

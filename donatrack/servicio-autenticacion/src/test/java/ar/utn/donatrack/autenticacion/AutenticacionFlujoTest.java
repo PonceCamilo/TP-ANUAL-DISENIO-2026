@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -16,12 +17,8 @@ import java.util.UUID;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:auth;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa", "spring.datasource.password=",
-        "AUTH_ADMINISTRADOR_EMAIL=admin@example.test", "AUTH_ADMINISTRADOR_PASSWORD=admin-test-2026",
-        "donatrack.auth.clave-frontend=clave-solo-para-la-prueba-de-integracion"
-})
+@SpringBootTest
+@ActiveProfiles("test")
 @AutoConfigureMockMvc
 @DisplayName("Autenticación de DonaTrack")
 class AutenticacionFlujoTest {

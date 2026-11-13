@@ -24,6 +24,9 @@ public class CuentaEntidadBeneficiaria extends Cuenta {
         this.googleSub = googleSub;
     }
 
+    @Override
+    public boolean pendienteDeActivacion() { return super.pendienteDeActivacion() && googleSub == null; }
+
     public UUID entidadBeneficiariaId() { return entidadBeneficiariaId; }
 
     public void vincularEntidadBeneficiaria(UUID entidadBeneficiariaId) {

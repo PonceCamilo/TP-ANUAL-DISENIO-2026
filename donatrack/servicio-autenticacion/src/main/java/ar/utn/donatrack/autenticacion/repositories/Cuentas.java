@@ -19,6 +19,9 @@ public interface Cuentas extends JpaRepository<Cuenta, UUID> {
     @Query("select d from CuentaDonante d where d.googleSub = ?1")
     Optional<CuentaDonante> buscarDonantePorGoogleSub(String googleSub);
 
+    @Query("select count(d) > 0 from CuentaDonante d where d.donanteId = ?1")
+    boolean existeDonanteVinculadoA(UUID donanteId);
+
     @Query("select e from CuentaEntidadBeneficiaria e where e.googleSub = ?1")
     Optional<CuentaEntidadBeneficiaria> buscarEntidadPorGoogleSub(String googleSub);
 }

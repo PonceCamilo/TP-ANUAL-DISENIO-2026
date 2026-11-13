@@ -29,6 +29,20 @@ public class CuentaDonante extends Cuenta {
         this.googleSub = googleSub;
     }
 
+    /**
+     * Cuenta de una persona que la administración cargó en Donaciones (CSV o alta
+     * manual). Nace vinculada a su perfil y sin contraseña: la persona la elige con
+     * el enlace de activación que pide por email.
+     */
+    public static CuentaDonante importada(String email, String nombre, TipoDonante tipoDonante, UUID donanteId) {
+        CuentaDonante cuenta = new CuentaDonante(email, nombre, null, tipoDonante, null);
+        cuenta.donanteId = donanteId;
+        return cuenta;
+    }
+
+    @Override
+    public boolean pendienteDeActivacion() { return super.pendienteDeActivacion() && googleSub == null; }
+
     public TipoDonante tipoDonante() { return tipoDonante; }
 
     public UUID donanteId() { return donanteId; }

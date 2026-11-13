@@ -9,11 +9,11 @@ import ar.utn.donatrack.autenticacion.dtos.request.Vinculo;
 import ar.utn.donatrack.autenticacion.dtos.response.PerfilSesion;
 import ar.utn.donatrack.autenticacion.dtos.response.TokenResponse;
 import ar.utn.donatrack.autenticacion.models.Rol;
+import ar.utn.donatrack.autenticacion.seguridad.ClavesCompartidas;
 import ar.utn.donatrack.autenticacion.seguridad.Tokens;
 import ar.utn.donatrack.autenticacion.services.AutenticacionService;
 
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -26,8 +26,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 
 @RestController
 @RequestMapping("/api/autenticacion")
@@ -36,12 +34,12 @@ public class AutenticacionController {
 
     private final AutenticacionService cuentas;
     private final Tokens tokens;
-    private final String claveFrontend;
+    private final ClavesCompartidas claves;
 
-    AutenticacionController(AutenticacionService cuentas, Tokens tokens, @Value("${donatrack.auth.clave-frontend}") String claveFrontend) {
+    AutenticacionController(AutenticacionService cuentas, Tokens tokens, ClavesCompartidas claves) {
         this.cuentas = cuentas;
         this.tokens = tokens;
-        this.claveFrontend = claveFrontend;
+        this.claves = claves;
     }
 
     @PostMapping("/registro") // las cuentas de choferes solo pueden ser creadas por un administrador, no por el chofer mismo.
@@ -97,11 +95,8 @@ public class AutenticacionController {
 
     @PostMapping("/perfil")
     TokenResponse vincularPerfil(@RequestHeader(value = HttpHeaders.AUTHORIZATION, defaultValue = "") String cabecera, 
-                                @RequestHeader(value = "X-DonaTrack-Frontend", defaultValue = "") String clave, @Valid @RequestBody Vinculo datos) {
-        if (claveFrontend.length() < 32 || !MessageDigest.isEqual(claveFrontend.getBytes(StandardCharsets.UTF_8),
-                clave.getBytes(StandardCharsets.UTF_8))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "La vinculación requiere un frontend autorizado.");
-        }
+                                @RequestHeader(value = ClavesCompartidas.CABECERA_FRONTEND, defaultValue = "") String clave, @Valid @RequestBody Vinculo datos) {
+        claves.exigirFrontend(clave, "La vinculación requiere un frontend autorizado.");
         Jwt token = verificarToken(cabecera);
         UUID cuentaId = UUID.fromString(token.getSubject());
         return cuentas.vincularPerfil(cuentaId, datos.perfilId());
